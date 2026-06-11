@@ -11,7 +11,7 @@
 - [x] 2.1 Pint wired: config present (or explicit framework defaults), `composer format` and `composer lint` scripts added, both green on the codebase.
 - [x] 2.2 Pest confirmed as the test runner: example unit test + the health feature test green via `php artisan test`; `composer test` script added; verify the `test_filter` command from `CLAUDE.md` works with one named test.
 - [x] 2.3 Larastan wired: `phpstan.neon` at the highest level that passes without a baseline (target ≥ 8), `composer analyse` script, `vendor/bin/phpstan analyse` green.
-- [ ] 2.4 Run all five Quality Commands from the `CLAUDE.md` table in order — all green; record exact installed versions (PHP, Laravel, Filament n/a yet, Pest, PHPStan, Pint) in `progress.md`.
+- [x] 2.4 Run all five Quality Commands from the `CLAUDE.md` table in order — all green; record exact installed versions (PHP, Laravel, Filament n/a yet, Pest, PHPStan, Pint) in `progress.md`.
 
 ## 3. Operator Panel & CI
 

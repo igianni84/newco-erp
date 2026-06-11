@@ -3,7 +3,7 @@
 ## Codebase Patterns
 (consolidated reusable patterns — read first each iteration)
 
-- **Installed stack (tasks 1.1–2.3, 2026-06-11):** Laravel **13.15.0** · PHP **8.5.2** · Composer **2.9.2** · **Pest 4.7** (+ pest-plugin-laravel 4.1, installed in 1.2; coexists with skeleton phpunit/phpunit ^12.5.12 in require-dev), laravel/pint ^1.27 (Pint 1.29.1), **Larastan v3.10.0 + PHPStan 2.2.2** (2.3), and a `laravel/pao` dev package (new in the 13.x skeleton). DB = SQLite (`database/database.sqlite`, gitignored); default drivers: cache/queue/session = database. Tests run on sqlite `:memory:` (phpunit.xml) — pinned by `tests/Feature/EnvironmentTest.php`.
+- **Installed stack — canonical version snapshot (confirmed task 2.4, 2026-06-11):** PHP **8.5.2** · Composer **2.9.2** · Laravel (laravel/framework) **13.15.0** · Filament **n/a** (not installed until 3.1) · Pest (pestphp/pest) **4.7.2** (+ pestphp/pest-plugin-laravel **4.1.0**, installed in 1.2; coexists with skeleton phpunit/phpunit ^12.5.12 in require-dev) · PHPStan (phpstan/phpstan) **2.2.2** · Larastan (larastan/larastan) **3.10.0** · Pint (laravel/pint, constraint ^1.27) **1.29.1** — plus a `laravel/pao` dev package new in the 13.x skeleton. DB = SQLite (`database/database.sqlite`, gitignored); default drivers: cache/queue/session = database. Tests run on sqlite `:memory:` (phpunit.xml) — pinned by `tests/Feature/EnvironmentTest.php`. The PHP ≥ 8.4 and Laravel ^13 **floors** (CLAUDE.md "Tech Stack and Tech Rules") are now executable guards in `tests/Feature/PlatformRequirementsTest.php` (floor checks, not exact pins — patch/minor bumps stay green; a drop below baseline fails loudly).
 - **Pest specifics:** `php artisan pest:install` does NOT exist in pest-plugin-laravel 4.x — scaffold with `vendor/bin/pest --init` (creates only `tests/Pest.php`, leaves phpunit.xml/TestCase/existing tests untouched). PHPUnit-class tests run fine under Pest. `php artisan test` auto-delegates to Pest once installed. Feature tests bind `Tests\TestCase` via `pest()->extend()` in `tests/Pest.php`; apply `RefreshDatabase` per-file with `uses(...)`. **As of 2.2 the whole suite is Pest-native** (both skeleton `ExampleTest`s converted: Unit = `test('that true is true', fn() => expect(true)->toBeTrue())` runs on bare PHPUnit `TestCase`; Feature uses `use function Pest\Laravel\get;` per sibling `HealthCheckTest`). **`test_filter` (`php artisan test --filter={name}`) matches the test *description* string** — `--filter='that true is true'` selects exactly that one test (verified 2.2).
 - **`OPERATOR_*` env contract (defined 1.2):** `OPERATOR_NAME` / `OPERATOR_EMAIL` / `OPERATOR_PASSWORD` in `.env.example` (placeholders only, password empty) — task 3.1's `OperatorSeeder` must read exactly these names.
 - **Quality-command output is hook-wrapped:** pint/phpunit output arrives as one-line JSON like `{"tool":"pint","result":"passed"}` — parse that, don't expect vanilla CLI output.
@@ -88,4 +88,34 @@
   - The bare `vendor/bin/phpstan analyse` (CLAUDE.md type_check) needs >128M; the committed `phpstan-bootstrap.php` makes it host-independent — there's no place to add `--memory-limit` on the bare command, so the bootstrap `ini_set` is the fix.
   - Level **max** is unforgiving: every future task's code (incl. 3.1 Filament `AdminPanelProvider` + `OperatorSeeder`) must be type-clean. Narrow `mixed`, never silence. If Filament-generated code legitimately can't reach max, use a narrow `excludePaths` (NOT a baseline) or step the level down — a documented decision at that gate.
   - PHPStan exact versions for the 2.4 snapshot: Larastan **v3.10.0**, PHPStan **2.2.2**.
+---
+
+## [2026-06-11 12:27] — 2.4 Run all five Quality Commands in order + record versions
+- What was implemented:
+  - **Ran all five `CLAUDE.md` Quality Commands verbatim, in table order, all green:**
+    1. `format` → `vendor/bin/pint` → `{"tool":"pint","result":"passed"}` (no files reformatted)
+    2. `test_filter` → `php artisan test --filter='per CLAUDE.md tech rules'` → 2 tests / 4 assertions ✅
+    3. `test` → `php artisan test` → **13 tests / 25 assertions** ✅
+    4. `type_check` → `vendor/bin/phpstan analyse` → **0 errors @ level max** ✅
+    5. `lint` → `vendor/bin/pint --test` → `{"tool":"pint","result":"passed"}` ✅
+  - **Recorded the canonical version snapshot** (see the updated `## Codebase Patterns` "Installed stack" bullet) — gathered from `composer show` (resolved versions, not constraints) + `php -v` + `composer --version`:
+    | Tool | Version |
+    |---|---|
+    | PHP | 8.5.2 |
+    | Composer | 2.9.2 |
+    | Laravel (laravel/framework) | 13.15.0 |
+    | Filament | n/a (installed in 3.1) |
+    | Pest (pestphp/pest) | 4.7.2 |
+    | pestphp/pest-plugin-laravel | 4.1.0 |
+    | PHPStan (phpstan/phpstan) | 2.2.2 |
+    | Larastan (larastan/larastan) | 3.10.0 |
+    | Pint (laravel/pint) | 1.29.1 |
+  - **Added `tests/Feature/PlatformRequirementsTest.php`** (the task's mandatory test): executable guards for the CLAUDE.md tech-stack **floors** — `PHP_VERSION_ID >= 80400` (PHP ≥ 8.4) and `app()->version()` within `[13.0.0, 14.0.0)` (Laravel ^13.0). Floor checks, not exact pins, so the snapshot above can drift on patch/minor bumps without breaking the suite; a drop below the supported baseline fails loudly. Pest function-style, matches sibling `EnvironmentTest`/`HealthCheckTest`.
+- Files changed: `tests/Feature/PlatformRequirementsTest.php` (new), `tasks.md`, `progress.md`.
+- Quality loop: **green** — format ✅ · test_filter (2 tests) ✅ · full test ✅ (13/25) · type_check ✅ (0 errors @ level max) · lint ✅ · `openspec validate --strict` ✅. No protected files touched; no `composer require` (no lock churn).
+- Acceptance walked: all five Quality Commands run in `CLAUDE.md` table order, all green ✅ · exact installed versions (PHP, Laravel, Filament=n/a, Pest, PHPStan, Pint) recorded in `progress.md` ✅.
+- **Learnings for future iterations:**
+  - **Get resolved versions from `composer show <pkg>` flat-list output** (`name  version  desc`), NOT `composer show <pkg> | grep versions` — the `versions :` line prints the *constraint* (`*`), not the installed version. `composer show` rejects multiple package names; loop one at a time or grep the full listing.
+  - `php artisan test --filter` is regex — pick a description substring free of metacharacters (`(`, `^`, `>=`). `'per CLAUDE.md tech rules'` cleanly selects both PlatformRequirements tests.
+  - Baseline counts going into 3.1 (Filament): suite = **13 tests / 25 assertions**; phpstan = **0 errors @ level max**. Filament's generated `AdminPanelProvider` + `OperatorSeeder` must keep both green (level max is strict — narrow `excludePaths` or step level down only as a documented decision, never a baseline).
 ---
