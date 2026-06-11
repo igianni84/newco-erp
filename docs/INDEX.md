@@ -18,4 +18,4 @@
 
 | Doc | Content | Added by change |
 |---|---|---|
-| _(development.md — pending)_ | Setup, quality commands, loop usage | bootstrap-laravel-app (task 3.3) |
+| [development.md](development.md) | Setup, quality commands, CI, ralph loop usage, AI tooling, installed-version snapshot | bootstrap-laravel-app (task 3.4) |

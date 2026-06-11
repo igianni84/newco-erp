@@ -10,27 +10,25 @@ updated: 2026-06-11
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-11 13:05 (ralph iteration — task 3.3 green)** — **GitHub Actions CI committed**: `.github/workflows/ci.yml`, single `quality` job on ubuntu-latest; bare `push:` + `pull_request:` triggers (every push/PR per the platform delta spec); `setup-php@v2` **php 8.5** (local minor) + explicit extensions **incl. `pdo_sqlite`/`sqlite3`** (no package declares them — runtime-only need); `actions/cache@v4` keyed on `composer.lock`; **`cp .env.example .env && php artisan key:generate` before tests** (skeleton `phpunit.xml` ships NO `APP_KEY` — bare checkout would throw `MissingAppKeyException` on encrypter-touching panel tests); gates in CLAUDE.md order `pint --test` → `phpstan analyse` → `php artisan test` (in-memory SQLite via phpunit.xml, no service container, no memory flag — committed `phpstan-bootstrap.php` covers it). New `CiWorkflowTest` (5 pins on the **`run:`-prefixed** lines). CI has not yet run remotely — first run when Giovanni pushes.
+**2026-06-11 13:15 (ralph iteration — task 3.4 green → CHANGE_COMPLETE)** — **`bootstrap-laravel-app` is DONE: 10/10 tasks.** Final task shipped `docs/development.md` (setup → serve, five Quality Commands verbatim, CI PHP-pin policy, full `./ralph.sh` run/monitor reference incl. `RALPH_EFFORT`/`CLAUDE_FLAGS`, AI-tooling section with `boost:install --guidelines -n` + https://filamentphp.com/docs/llms.txt, exact-version table incl. Boost v2.4.10 with composer.json-verified constraints), updated the `docs/INDEX.md` row, and added `DevelopmentDocsTest` (6 tests) whose **live doc↔composer.lock guard** fails the suite if a `composer update` drifts from the documented snapshot. The change now sits on `ralph/bootstrap-laravel-app` awaiting the **human ritual (GUIDE.md §2.7)**: review branch → merge `--no-ff` → semantic check → `openspec archive bootstrap-laravel-app --yes`. Loop never pushes; CI's first remote run happens on push.
 
 ## Build & Quality Status
-- **Version snapshot:** PHP **8.5.2** · Composer **2.9.2** · Laravel **13.15.0** · Filament **v5.6.7** + Livewire **v4.3.1** · **Boost v2.4.10** · Pest **4.7.2** (+plugin-laravel 4.1.0) · PHPStan **2.2.2** · Larastan **3.10.0** · Pint **1.29.1**. SQLite dev DB; tests on sqlite `:memory:`.
-- Quality loop (last run, 13:05): format ✅ · test_filter ✅ · full test **30/30 (70 assertions)** ✅ · type_check **0 errors @ level max** ✅ · lint ✅ · `openspec validate --strict` ✅.
-- CI: workflow committed (3.3), awaiting first remote run on push. Local quality loop remains the authority until then.
+- **Version snapshot (recorded in docs/development.md + guarded by test):** PHP **8.5.2** · Composer **2.9.2** · Laravel **13.15.0** (`^13.8`) · Filament **v5.6.7** (`^5.0`) + Livewire **v4.3.1** · **Boost v2.4.10** (dev) · Pest **4.7.2** (+plugin-laravel 4.1.0) · PHPStan **2.2.2** · Larastan **3.10.0** · Pint **1.29.1**. SQLite dev DB; tests on sqlite `:memory:`.
+- Quality loop (last run, 13:15): format ✅ · test_filter ✅ · full test **36/36 (99 assertions)** ✅ · type_check **0 errors @ level max** ✅ · lint ✅ · `openspec validate --strict` ✅.
+- CI workflow committed; not yet run remotely (first run on push).
 
 ## Active Change & Next Task
-- `openspec/changes/bootstrap-laravel-app/` — APPROVED, strict-valid, **9/10 tasks done** (1.1–3.3 ✅).
-- **Next task: 3.4 (FINAL)** — `docs/development.md`: clone → composer install → env → migrate → serve; the five Quality Commands; how to run/monitor `./ralph.sh`; exact installed versions **incl. Boost v2.4.10** (snapshot above); link https://filamentphp.com/docs/llms.txt as agent-facing Filament docs index; CI PHP-pin note (8.5, bump with local minor, floor ≥ 8.4) per design risk bullet; `boost:install --guidelines -n` as AGENTS.md regeneration command. Update `docs/INDEX.md` row. Re-run ALL quality commands one final time. **Then all 10 tasks are done → final pass over every acceptance bullet → emit `CHANGE_COMPLETE`** (no archive, no merge — human's job).
-- Branch: `ralph/bootstrap-laravel-app`. Pinned per ADR 2026-06-11: laravel ^13.0, filament ^5.0, boost --dev.
+- `openspec/changes/bootstrap-laravel-app/` — **COMPLETE (10/10)**, strict-valid, branch `ralph/bootstrap-laravel-app`. **Next actor: human** (review/merge/verify/archive per GUIDE.md §2.7). No other change is approved/in-flight.
+- After archive: next change comes from the Build Workplan via `/spec-to-change`; first Module 0 migration requires the **production-DB-engine ADR** first (open gate).
 
 ## Blockers & Decisions Needed
-- None active for the bootstrap change.
-- Open ADR gates (none block bootstrap): production DB engine, identity/auth (owns `User::canAccessPanel()`), queue driver, event substrate, audit store, object storage, EU hosting, frontend stack.
+- None for the loop. Human actions pending: branch review/merge + archive; push to trigger first CI run.
+- Open ADR gates (pre-module work): production DB engine, identity/auth (owns `User::canAccessPanel()` — current bootstrap stub returns `true`), queue driver, event substrate, audit store, object storage, EU hosting, frontend stack.
 - External sandbox credentials (Airwallex/Xero/HubSpot) needed before F6 changes — human-procured.
 
 ## Open Patterns
-- **NEW lesson (lessons.md):** git-guardrails' unanchored `(rm|mv)…spec` regex matches prose like "platform spec" in heredocs — write memory files (progress/log/hot/lessons) via Edit/Write tools, never Bash heredocs. Suggested hook fix for Giovanni: anchor the verb `(^|[;&|[:space:]])(rm|mv)[[:space:]]`.
-- **Pin artifacts by executable form** (`run: <cmd>`), never bare command strings — comments mentioning commands satisfy `strpos`/`toContain` first (bit 3.3 once).
-- **Boost contract:** `AGENTS.md` generated — regenerate via `php artisan boost:install --guidelines -n`; `boost.json` + `config/boost.php` keep it deterministic and CLAUDE.md-safe; `AiToolingTest` guards the redirect.
-- **Filament 5 FQCNs:** auth pages `Filament\Auth\Pages\*`; failed login = ValidationException on `data.email`; `Livewire::test(Login::class)->fillForm([...])->call('authenticate')` idiom.
-- Versions from `composer show <pkg>` flat list; Pest `--filter` is description-regex; `php artisan test <file>` runs one file.
-- Full list: `openspec/changes/bootstrap-laravel-app/progress.md` → `## Codebase Patterns`.
+- **Verify-before-write applies to docs too:** constraint strings (`^13.8` not `^13.0`, `^4.7`, `^3.10`) came from composer.json, not memory — same discipline as code identifiers.
+- **Doc↔reality guards are cheap:** `DevelopmentDocsTest::lockedPackageVersion()` cross-checks the doc's version table against composer.lock (`ltrim(v)` — lock prefixes are inconsistent), making doc refresh an enforced part of dependency upgrades.
+- Write memory files via Edit/Write tools, never Bash heredocs (git-guardrails' unanchored `(rm|mv)…spec` regex matches prose like "platform spec").
+- Pin artifacts by executable form (`run: <cmd>`); Boost regen = `php artisan boost:install --guidelines -n`; Filament 5 auth FQCNs `Filament\Auth\Pages\*`.
+- Full pattern list: `openspec/changes/bootstrap-laravel-app/progress.md` → `## Codebase Patterns`.
