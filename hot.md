@@ -10,26 +10,25 @@ updated: 2026-06-11
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-11 (fase-0 review + approvazione)** — Rilievi Giovanni applicati al change bootstrap: versioni pinnate (Laravel 13.x + Filament 5.x, ADR supersede), task Laravel Boost aggiunto (guida AI Filament), direzione frontend TanStack registrata, CLAUDE.md aggiornato con OK esplicito. Change strict-valid e **APPROVATO** (marker creato 10:27 su istruzione esplicita di Giovanni, commit 88f9b71 + approve commit). No application code yet — pronto per il primo lancio del loop.
+**2026-06-11 13:15 (ralph iteration — task 3.4 green → CHANGE_COMPLETE)** — **`bootstrap-laravel-app` is DONE: 10/10 tasks.** Final task shipped `docs/development.md` (setup → serve, five Quality Commands verbatim, CI PHP-pin policy, full `./ralph.sh` run/monitor reference incl. `RALPH_EFFORT`/`CLAUDE_FLAGS`, AI-tooling section with `boost:install --guidelines -n` + https://filamentphp.com/docs/llms.txt, exact-version table incl. Boost v2.4.10 with composer.json-verified constraints), updated the `docs/INDEX.md` row, and added `DevelopmentDocsTest` (6 tests) whose **live doc↔composer.lock guard** fails the suite if a `composer update` drifts from the documented snapshot. The change now sits on `ralph/bootstrap-laravel-app` awaiting the **human ritual (GUIDE.md §2.7)**: review branch → merge `--no-ff` → semantic check → `openspec archive bootstrap-laravel-app --yes`. Loop never pushes; CI's first remote run happens on push.
 
 ## Build & Quality Status
-- No Laravel app installed yet — quality commands not runnable (expected; bootstrap change does this).
-- CI: not configured yet (now task **3.3** of bootstrap change, after renumbering).
-- Guardrails live (60/60 hook tests green, 2026-06-11): `.claude/hooks/protected-paths.sh` (PreToolUse Edit/Write), `.claude/hooks/git-guardrails.sh` (write-verbs any-mode; push/APPROVED/archive loop-only), `ralph.sh` integrity gate (exit 5). See GUIDE.md §5.
-- Note: OpenSpec CLI (1.4.1, core profile) has no `verify` command — semantic verification is prompt-based, see GUIDE.md §2.7.
+- **Version snapshot (recorded in docs/development.md + guarded by test):** PHP **8.5.2** · Composer **2.9.2** · Laravel **13.15.0** (`^13.8`) · Filament **v5.6.7** (`^5.0`) + Livewire **v4.3.1** · **Boost v2.4.10** (dev) · Pest **4.7.2** (+plugin-laravel 4.1.0) · PHPStan **2.2.2** · Larastan **3.10.0** · Pint **1.29.1**. SQLite dev DB; tests on sqlite `:memory:`.
+- Quality loop (last run, 13:15): format ✅ · test_filter ✅ · full test **36/36 (99 assertions)** ✅ · type_check **0 errors @ level max** ✅ · lint ✅ · `openspec validate --strict` ✅.
+- CI workflow committed; not yet run remotely (first run on push).
 
 ## Active Change & Next Task
-- `openspec/changes/bootstrap-laravel-app/` — **10 task** (era 9: aggiunto 3.2 Laravel Boost; CI→3.3, docs→3.4), strict-valid, **APPROVED (2026-06-11)**.
-- Pinned: `laravel/laravel:^13.0` (create-project), `filament/filament:^5.0`, `laravel/boost --dev` per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md` (supersede del tech-stack ADR). Boost non deve mai toccare CLAUDE.md (acceptance nel task 3.2).
-- Next human action (GUIDE §2.6): chiudere la finestra Claude e dal terminale `caffeinate -i ./ralph.sh --change bootstrap-laravel-app 2` (osservare le prime 2 iterazioni), poi rilanciare con `15`. Il loop gira su Fable 5 1M (da `~/.claude/settings.json`) con `--effort max` hardcoded di default in ralph.sh (override: `RALPH_EFFORT=xhigh ./ralph.sh …`).
-- After bootstrap: ADR sessions #1 (DB engine) e #2 (event substrate), poi `/spec-to-change` per i tre foundations changes (GUIDE.md §3–4).
-- Strategy notes (2026-06-11): foundations changes must bake in mechanical invariant enforcement — Pest arch tests for module boundaries, domain-event registry, Money value object, i18n skeleton; PostgreSQL CI lane from Module A (`lockForUpdate()` no-op on SQLite).
+- `openspec/changes/bootstrap-laravel-app/` — **COMPLETE (10/10)**, strict-valid, branch `ralph/bootstrap-laravel-app`. **Next actor: human** (review/merge/verify/archive per GUIDE.md §2.7). No other change is approved/in-flight.
+- After archive: next change comes from the Build Workplan via `/spec-to-change`; first Module 0 migration requires the **production-DB-engine ADR** first (open gate).
 
 ## Blockers & Decisions Needed
-- **Frontend TanStack (direzione founder, 2026-06-11):** consumer storefront + producer portal in TypeScript/TanStack, niente PHP frontend; Filament/Livewire solo operator panel. ADR formale al gate Module S storefront via grill-with-docs (API layer, customer auth, i18n ×6 fuori da Laravel localization, SSR/SEO, EU hosting). Dettagli: `.claude/memory/frontend-stack-direction.md`.
-- **Filament Blueprint** (premium, licenza a pagamento): NON adottato — acquisto è decisione di Giovanni se/quando vorrà.
-- Open ADR gates (CLAUDE.md table): DB engine, identity/auth, queue, event substrate, audit store, object storage, hosting EU, frontend stack. None blocks the bootstrap change.
+- None for the loop. Human actions pending: branch review/merge + archive; push to trigger first CI run.
+- Open ADR gates (pre-module work): production DB engine, identity/auth (owns `User::canAccessPanel()` — current bootstrap stub returns `true`), queue driver, event substrate, audit store, object storage, EU hosting, frontend stack.
 - External sandbox credentials (Airwallex/Xero/HubSpot) needed before F6 changes — human-procured.
 
 ## Open Patterns
-- None yet — first loop iterations will seed `knowledge/` and the change's `## Codebase Patterns`.
+- **Verify-before-write applies to docs too:** constraint strings (`^13.8` not `^13.0`, `^4.7`, `^3.10`) came from composer.json, not memory — same discipline as code identifiers.
+- **Doc↔reality guards are cheap:** `DevelopmentDocsTest::lockedPackageVersion()` cross-checks the doc's version table against composer.lock (`ltrim(v)` — lock prefixes are inconsistent), making doc refresh an enforced part of dependency upgrades.
+- Write memory files via Edit/Write tools, never Bash heredocs (git-guardrails' unanchored `(rm|mv)…spec` regex matches prose like "platform spec").
+- Pin artifacts by executable form (`run: <cmd>`); Boost regen = `php artisan boost:install --guidelines -n`; Filament 5 auth FQCNs `Filament\Auth\Pages\*`.
+- Full pattern list: `openspec/changes/bootstrap-laravel-app/progress.md` → `## Codebase Patterns`.

@@ -1,0 +1,19 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+
+    paths:
+        - app
+        - database
+        - routes
+        - tests
+
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
+    # Filament's own typings for the Livewire Testable macros it registers
+    # (fillForm, assertHasFormErrors, ...) — vendor-shipped, not a baseline.
+    stubFiles:
+        - vendor/filament/forms/.stubs.php
