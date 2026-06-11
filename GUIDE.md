@@ -194,6 +194,7 @@ L'ordine è il **Build Workplan** (`spec/05-release/Build_Workplan_v0.3-MVP.md`)
 | **1** | Iterazioni esaurite, task rimasti | Normale sui change grossi: guarda il progresso e rilancia `./ralph.sh --change <name>` (riprende dai checkbox) |
 | **3** | `HUMAN_NEEDED` — l'agente chiede te | Leggi `progress.md` (in fondo) e `.last-output`. Tipico: gate ADR, contraddizione nella spec, credenziale mancante. Risolvi (ADR / correzione artefatti / .env), poi rilancia |
 | **4** | Stallo: 3 iterazioni senza progresso | Leggi i `> ⚠ FAILED` in `tasks.md` e `progress.md`. Poi finestra Claude: *"Il loop è in stallo sul task X del change Y: leggi progress.md e .last-output, riproduci il problema con la disciplina diagnose e risolvilo con me sul branch ralph/Y."* A fix fatto (commit sul branch, checkbox spuntata a mano se il task ora è completo), rilancia il loop |
+| **5** | Violazione di integrità: commit del loop hanno toccato `spec/`, `openspec/specs/`, file della macchina o un `APPROVED` | Trova i commit (`git log --oneline main..ralph/<name>`), `git revert` di quelli incriminati sul branch, indaga in `progress.md` perché l'agente ci ha provato → `lessons.md`, poi rilancia |
 
 Casi rari: commit sporco sfuggito al quality loop → `git revert <sha>` sul branch + nota in `lessons.md`; artefatti del change da correggere in corsa → modificali, `openspec validate <name> --strict`, rilancia (i task già spuntati restano fatti).
 

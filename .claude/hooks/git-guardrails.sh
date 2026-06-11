@@ -33,4 +33,29 @@ echo "$CMD" | grep -qE 'git[^|;&]*restore[^|;&]*[[:space:]]\.([[:space:]]|$)' &&
 # Protect the immutable layers from shell-level deletion/overwrite
 echo "$CMD" | grep -qE '(rm|mv)[^|;&]*[[:space:]](\./)?(spec|openspec/specs)(/|[[:space:]]|$)' && block "deleting/moving the immutable spec layers"
 
+# Write-verbs aimed at the immutable layers (read access stays free)
+echo "$CMD" | grep -qE '>>?[[:space:]]*(\./)?(spec|openspec/specs)/' && block "shell redirect into the immutable spec layers"
+echo "$CMD" | grep -qE '(^|[;&|[:space:]])(sed[[:space:]]+-[a-zA-Z]*i|tee|cp|touch|install)[[:space:]]+([^|;&]*[[:space:]])?(\./)?(spec|openspec/specs)/' && block "writing into the immutable spec layers (read them with cat/Read instead)"
+
+# -----------------------------------------------------------------------------
+# Loop-only rules — active when the ralph loop runs (RALPH_LOOP=1 exported by
+# ralph.sh; permission_mode=bypassPermissions catches other headless runs).
+# These steps belong to the human operator, not the loop.
+# -----------------------------------------------------------------------------
+PERM="$(printf '%s' "$INPUT" | jq -r '.permission_mode // empty' 2>/dev/null)"
+LOOP=0
+[ "${RALPH_LOOP:-0}" = "1" ] && LOOP=1
+[ "$PERM" = "bypassPermissions" ] && LOOP=1
+
+if [ "$LOOP" -eq 1 ]; then
+  block_loop() {
+    echo "BLOCKED by git-guardrails (loop mode): $1. This step belongs to the human operator (GUIDE.md). End the iteration normally and record state in progress.md." >&2
+    exit 2
+  }
+  echo "$CMD" | grep -qE '(^|[;&|[:space:]])git[^|;&]*[[:space:]]push([[:space:]]|$)' && block_loop "git push — the loop commits locally; humans push after review"
+  echo "$CMD" | grep -qE '(^|[;&|[:space:]])(touch|cp|mv|tee|install)[[:space:]][^|;&]*APPROVED' && block_loop "creating/altering an APPROVED marker — the human's signature"
+  echo "$CMD" | grep -qE '>>?[[:space:]]*[^|;&[:space:]]*APPROVED' && block_loop "writing an APPROVED marker — the human's signature"
+  echo "$CMD" | grep -qE '(^|[;&|[:space:]])openspec[^|;&]*[[:space:]]archive([[:space:]]|$)' && block_loop "openspec archive — humans archive after review (GUIDE.md §2.7)"
+fi
+
 exit 0

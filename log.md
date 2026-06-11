@@ -11,3 +11,4 @@
 ## [2026-06-11 08:40] openspec | bootstrap-laravel-app | change drafted (9 tasks) — awaiting human approval
 ## [2026-06-11 09:05] push | origin/main | initial scaffold published by Giovanni (85881df)
 ## [2026-06-11 09:20] docs | GUIDE.md | operator playbook added (fase 0→go-live); ralph.sh/README verify references aligned (no /opsx:verify in CLI 1.4.1 core profile)
+## [2026-06-11 09:41] harden | guardrails | P0 enforcement live: protected-paths hook (Edit/Write), git-guardrails write-verbs + loop-only rules (push/APPROVED/archive), ralph.sh integrity gate (exit 5) — 60/60 hook tests green

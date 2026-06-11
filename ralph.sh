@@ -18,6 +18,7 @@
 #
 # Exit codes: 0 change complete · 1 max iterations reached · 2 preflight error
 #             3 agent requested human help · 4 stalled (3 iterations, no progress)
+#             5 integrity violation (a protected layer was modified by the loop)
 #
 # Env: CLAUDE_FLAGS — extra flags appended to the claude invocation.
 # Prerequisites: claude CLI, jq, openspec (or npx fallback), git.
@@ -110,6 +111,34 @@ if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
 fi
 
 # ------------------------------------
+# Loop identity + immutable-layer baseline
+# ------------------------------------
+# Exported so the .claude/hooks guardrails apply their loop-only rules (no
+# push, no APPROVED creation, no machine-file edits) even though the agent
+# runs with --dangerously-skip-permissions.
+export RALPH_LOOP=1
+export RALPH_ACTIVE_CHANGE="$CHANGE"
+
+BASELINE_SHA="$(git rev-parse HEAD)"
+
+if [ -n "$(git status --porcelain -- spec/ openspec/specs/ 2>/dev/null)" ]; then
+  fail "spec/ or openspec/specs/ has uncommitted modifications — these layers are immutable; resolve before looping"
+fi
+
+# Protected layers the loop must never touch (RALPH.md "NEVER modify"):
+# checks commits since loop start + the spec-layer working tree.
+check_integrity() {
+  INTEGRITY_VIOLATIONS="$(
+    {
+      git diff --name-only "$BASELINE_SHA" HEAD -- spec/ openspec/specs/ CLAUDE.md RALPH.md ralph.sh .claude/ 2>/dev/null
+      git diff --name-only "$BASELINE_SHA" HEAD 2>/dev/null | grep -E '(^|/)APPROVED$'
+      git status --porcelain -- spec/ openspec/specs/ 2>/dev/null | cut -c4-
+    } | sed '/^$/d' | sort -u
+  )"
+  [ -z "$INTEGRITY_VIOLATIONS" ]
+}
+
+# ------------------------------------
 # Progress file init
 # ------------------------------------
 if [ ! -f "$PROGRESS_FILE" ]; then
@@ -155,6 +184,19 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   # Fresh instance, autonomous mode. Project hooks (.claude/settings.json)
   # still apply: hot.md injection, git guardrails.
   OUTPUT=$({ echo "$RUN_CONTEXT"; cat "$SCRIPT_DIR/RALPH.md"; } | claude --dangerously-skip-permissions --print ${CLAUDE_FLAGS:-} 2>&1 | tee /dev/stderr) || true
+
+  # ------------------------------------
+  # Immutable-layer integrity gate
+  # ------------------------------------
+  if ! check_integrity; then
+    echo "$OUTPUT" | tail -100 > "$LAST_OUTPUT_FILE"
+    echo ""
+    echo "INTEGRITY VIOLATION at iteration $i — protected layer modified since loop start:"
+    printf '%s\n' "$INTEGRITY_VIOLATIONS" | sed 's/^/    /'
+    echo "Inspect:  git log --oneline $BASELINE_SHA..HEAD ; git status"
+    echo "Recover:  git revert the offending commit(s) on $BRANCH, note the cause in lessons.md, then re-run."
+    exit 5
+  fi
 
   # ------------------------------------
   # Stop tokens

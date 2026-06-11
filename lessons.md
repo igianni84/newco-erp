@@ -14,3 +14,7 @@ Format:
 ---
 
 (no lessons yet)
+## 2026-06-11 — Protected files need explicit per-file authorization
+- **Mistake:** Treated a generic "procedi" as sufficient authorization to edit protected files (.claude/settings.json, .claude/hooks/, ralph.sh).
+- **Correction:** The permission classifier blocked the edits; explicit per-file confirmation (AskUserQuestion) was required before retrying.
+- **Rule:** Before touching anything in the CLAUDE.md "Protected Files" list, name the exact files and obtain an explicit per-file OK in that same exchange.
