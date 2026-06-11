@@ -9,6 +9,8 @@
 - **Quality-command output is hook-wrapped:** pint/phpunit output arrives as one-line JSON like `{"tool":"pint","result":"passed"}` — parse that, don't expect vanilla CLI output.
 - **Root `.gitignore` is a curated union** (our infra rules + Laravel skeleton section appended at the bottom). Skeleton entries subsumed by our globs (`.env.*`, `/vendor/`, `/node_modules/`) were deliberately NOT duplicated. Extend the bottom section if new tooling needs ignores.
 - **PHPStan not installed yet** → quality-loop step 4 (type_check) is skipped until task 2.3 wires Larastan.
+- **Composer quality aliases (2.1):** scripts reference the bare binary name (`"format": "pint"`, `"lint": "pint --test"`) — Composer prepends `vendor/bin` to PATH, so no `vendor/bin/` prefix or `@php` needed. They mirror the `CLAUDE.md` Quality Commands table verbatim (format = fix, lint = `--test` check-only). `composer analyse` (2.3) + the already-present skeleton `test` (2.2) complete the set. `tests/Feature/QualityToolingTest.php` pins these script keys + the pint preset so a later `composer require` (Filament 3.1, Boost 3.2) that rewrites `composer.json` can't silently drop them — re-run it after any `composer require`.
+- **Pint config:** `pint.json` = `{"preset":"laravel"}` — the framework default made explicit (a documented home for future rule additions), not a custom ruleset. Pint 1.29.1.
 
 ---
 
@@ -40,4 +42,18 @@
   - **Task 2.2 scope is now:** confirm runner (`"tool":"pest"` in hook output already proves delegation), add `composer test` script, verify `test_filter` per CLAUDE.md, optionally convert the two ExampleTests to Pest syntax. Install is DONE.
   - The hook-wrapped runner output switched from `{"tool":"phpunit",...}` to `{"tool":"pest",...}` automatically — `php artisan test` detects Pest.
   - `--no-interaction` on `vendor/bin/pest --init` works (the GitHub-star prompt answers itself with the default).
+---
+
+## [2026-06-11 12:00] — 2.1 Pint wired
+- What was implemented:
+  - **`pint.json`** = `{"preset": "laravel"}` — explicit framework default (decision: the task allowed "config present (or explicit framework defaults)"; chose an explicit file as a documented home for future rules over relying on Pint's implicit default). Pint 1.29.1.
+  - **`composer.json` scripts** — added `"format": "pint"` and `"lint": "pint --test"` (grouped just before the skeleton `test` alias). Mirror the `CLAUDE.md` Quality Commands table exactly: format = auto-fix, lint = check-only.
+  - **`tests/Feature/QualityToolingTest.php`** (Pest, 3 tests) — regression guard: asserts `scripts.format`/`scripts.lint` exist and reference `pint` (+ `--test` for lint), and that `pint.json` pins `preset: laravel`. Normalises string-or-array script forms via a `composerScript()` helper.
+- Files changed: `pint.json` (new), `composer.json` (+2 scripts), `tests/Feature/QualityToolingTest.php` (new), `tasks.md`, `progress.md`.
+- Quality loop: **green** — format ✅ · test_filter (`QualityToolingTest`, 3/7) ✅ · full test ✅ (9 tests / 16 assertions) · type_check skipped (Larastan = 2.3) · lint ✅ · also ran the actual `composer format` + `composer lint` aliases (both `{"tool":"pint","result":"passed"}`) · `openspec validate --strict` ✅.
+- Acceptance walked: config present (`pint.json`) ✅; `composer format` + `composer lint` scripts added ✅; both green on the codebase ✅.
+- **Learnings for future iterations:**
+  - Composer resolves bare binary names against `vendor/bin` (PATH is extended for scripts) — `"format": "pint"` needs no `vendor/bin/` prefix or `@php` wrapper.
+  - `QualityToolingTest` must stay green through tasks 3.1 (Filament) and 3.2 (Boost): both run `composer require`, which can rewrite `composer.json` — if the quality scripts vanish from the rewrite, this test catches it.
+  - Task 2.2 remaining scope is unchanged (already noted in 1.2): `composer test` alias already exists from the skeleton; remaining is `test_filter` verification + optional ExampleTest→Pest conversion. `composer analyse` is task 2.3.
 ---

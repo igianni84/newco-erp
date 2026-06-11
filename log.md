@@ -18,3 +18,4 @@
 ## [2026-06-11 10:40] config | ralph.sh | --effort max di default su ogni iterazione (richiesta esplicita Giovanni; override per-lancio via RALPH_EFFORT) — flag validato su CLI installata, bash -n ok, commit db386d8
 ## [2026-06-11 10:51] ralph | bootstrap-laravel-app 1.1 | green | 21 files (Laravel 13.15.0 skeleton merged at root, .gitignore union, quality loop green, no pre-existing file touched)
 ## [2026-06-11 10:59] ralph | bootstrap-laravel-app 1.2 | green | 7 files (Pest 4.7 installed + tests/Pest.php, OPERATOR_* env contract in .env.example, /up health + :memory: environment Pest tests, fresh-file migrate verified)
+## [2026-06-11 12:00] ralph | bootstrap-laravel-app 2.1 | green | 5 files (pint.json laravel-preset, composer format/lint aliases mirroring CLAUDE.md table, QualityToolingTest pins scripts+preset vs composer-require rewrites; full suite 9/16, both aliases green)
