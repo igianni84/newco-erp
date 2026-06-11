@@ -8,9 +8,16 @@ function composerScript(string $name): string
 {
     $composer = json_decode((string) file_get_contents(base_path('composer.json')), true);
 
-    expect($composer['scripts'] ?? [])->toHaveKey($name);
+    $scripts = is_array($composer) && is_array($composer['scripts'] ?? null)
+        ? $composer['scripts']
+        : [];
 
-    return implode("\n", (array) $composer['scripts'][$name]);
+    expect($scripts)->toHaveKey($name);
+
+    $value = $scripts[$name] ?? [];
+    $lines = array_filter(is_array($value) ? $value : [$value], 'is_string');
+
+    return implode("\n", $lines);
 }
 
 it('exposes a Pint-backed format script', function () {
@@ -27,6 +34,12 @@ it('exposes an Artisan-backed test script', function () {
     expect(composerScript('test'))->toContain('artisan test');
 });
 
+it('exposes a PHPStan-backed analyse script', function () {
+    expect(composerScript('analyse'))
+        ->toContain('phpstan')
+        ->toContain('analyse');
+});
+
 it('pins the Laravel preset in pint.json', function () {
     $path = base_path('pint.json');
 
@@ -34,5 +47,7 @@ it('pins the Laravel preset in pint.json', function () {
 
     $pint = json_decode((string) file_get_contents($path), true);
 
-    expect($pint['preset'] ?? null)->toBe('laravel');
+    $preset = is_array($pint) ? ($pint['preset'] ?? null) : null;
+
+    expect($preset)->toBe('laravel');
 });
