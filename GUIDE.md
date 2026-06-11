@@ -159,7 +159,7 @@ Quando un gate si avvicina, apri una finestra Claude Code e incolla:
 | 3 | Auth/identity (operatori vs clienti) | Prima di Module K |
 | 4 | Queue driver | Prima del primo workflow async (S/E) |
 | 5 | Object storage (fatture) | Prima di INV1 (Module S) |
-| 6 | Storefront consumer (Livewire vs Inertia) | Prima delle fette storefront di Module S |
+| 6 | Frontend consumer/producer — direzione founder: TanStack SPA (TypeScript, no PHP lato frontend); l'ADR al gate formalizza API layer, auth customer, i18n ×6, SSR/SEO | Prima delle fette storefront di Module S |
 | 7 | Hosting EU | Prima dello staging (F7) |
 
 ---

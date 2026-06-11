@@ -8,7 +8,7 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 
 ## Tech Stack and Tech Rules
 
-- **PHP ≥ 8.4** · **Laravel** (latest stable at bootstrap; exact versions recorded in `docs/development.md`) · **Filament** (latest stable) for the operator panel.
+- **PHP ≥ 8.4** · **Laravel 13.x** (`^13.0`) · **Filament 5.x** (`^5.0`) for the operator panel — pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md`; exact installed versions recorded in `docs/development.md`.
 - **Pest** for tests · **Larastan/PHPStan** for static analysis · **Pint** for format/lint.
 - Dev/test database: **SQLite** (`:memory:` in tests). Production engine: OPEN decision (see below).
 - Prefer framework conventions: Eloquent, FormRequests, Policies, Events, Jobs, Notifications. No new heavyweight dependency without an ADR in `decisions/`.
@@ -26,7 +26,7 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 | Audit/financial event store (10-year immutability mechanism) | first financial event |
 | Object storage for documents (invoices, statements) | INV1 issuance |
 | Hosting/infra (EU data-residency is mandatory) | staging environment |
-| Consumer storefront stack (Livewire vs Inertia) | Module S storefront |
+| Consumer/producer frontend stack (founder direction: TanStack SPA — TypeScript, no PHP frontend; formal ADR at gate) | Module S storefront |
 
 When a gate approaches, run a `grill-with-docs` session, write the ADR, then proceed.
 

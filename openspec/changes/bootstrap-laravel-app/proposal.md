@@ -4,9 +4,10 @@ The repository has its development infrastructure (spec, OpenSpec, ralph loop, m
 
 ## What Changes
 
-- Install Laravel (latest stable) at the repo root via a temp-dir merge that preserves all existing infrastructure files.
+- Install Laravel 13.x at the repo root via a temp-dir merge that preserves all existing infrastructure files.
 - Wire the quality pipeline: Pint (format/lint), Pest (tests), Larastan (static analysis), matching the `CLAUDE.md` Quality Commands table exactly.
-- Install Filament and expose an authenticated operator panel shell at `/admin` (no resources yet).
+- Install Filament 5.x and expose an authenticated operator panel shell at `/admin` (no resources yet).
+- Install Laravel Boost (dev-only) with the Laravel + Filament AI guidelines, per Filament's AI-assisted development guidance (ADR 2026-06-11-stack-versions-and-filament-ai-tooling).
 - Add GitHub Actions CI that fails on any failing test, static-analysis error, or lint violation.
 - Verify the health endpoint (`GET /up`) with a feature test.
 - Write `docs/development.md` (setup + quality commands + loop usage quickstart).
@@ -21,6 +22,6 @@ The repository has its development infrastructure (spec, OpenSpec, ralph loop, m
 
 ## Impact
 
-- **New:** `composer.json`/`composer.lock`, `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `tests/`, `artisan`, `package.json`, `vite.config.js`, `phpstan.neon`, `pint.json` (or framework defaults), `.github/workflows/ci.yml`, `docs/development.md`.
+- **New:** `composer.json`/`composer.lock`, `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `tests/`, `artisan`, `package.json`, `vite.config.js`, `phpstan.neon`, `pint.json` (or framework defaults), `.github/workflows/ci.yml`, `docs/development.md`, `AGENTS.md` + Boost guideline files (from `php artisan boost:install`).
 - **Merged (never replaced):** root `.gitignore` (union with Laravel's), existing `README.md`/`CLAUDE.md`/infra files remain untouched.
 - **Deliberately NOT in this change:** any ERP domain logic, module skeletons (`app/Modules/`), production DB engine choice (SQLite only), auth/identity decision (panel uses the default local users table for the seeded operator), consumer-facing surfaces. Module scaffolding arrives with the first Phase-1/Module-0 change after its ADR gates clear.

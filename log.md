@@ -12,3 +12,5 @@
 ## [2026-06-11 09:05] push | origin/main | initial scaffold published by Giovanni (85881df)
 ## [2026-06-11 09:20] docs | GUIDE.md | operator playbook added (fase 0→go-live); ralph.sh/README verify references aligned (no /opsx:verify in CLI 1.4.1 core profile)
 ## [2026-06-11 09:41] harden | guardrails | P0 enforcement live: protected-paths hook (Edit/Write), git-guardrails write-verbs + loop-only rules (push/APPROVED/archive), ralph.sh integrity gate (exit 5) — 60/60 hook tests green
+## [2026-06-11 10:20] review | bootstrap-laravel-app | fase-0 rilievi Giovanni: pinned Laravel 13.x + Filament 5.x (ADR superseded → stack-versions-and-filament-ai-tooling), task 3.2 Boost aggiunto (ora 10 task, CI→3.3 docs→3.4), direzione frontend TanStack registrata (.claude/memory + ADR; gate Module S invariato) — strict valid, NOT approved; edit CLAUDE.md in attesa di OK esplicito
+## [2026-06-11 10:25] config | CLAUDE.md | edit autorizzato esplicitamente da Giovanni (AskUserQuestion, entrambe le righe): tech-stack pinnata a Laravel 13.x + Filament 5.x; riga gate storefront riscritta con direzione TanStack

@@ -1,7 +1,8 @@
 ---
 type: decision
-status: active
+status: superseded
 date: 2026-06-11
+superseded-by: 2026-06-11-stack-versions-and-filament-ai-tooling.md
 ---
 
 ## Decision: Laravel (latest stable) + Filament as the core stack

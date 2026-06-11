@@ -10,26 +10,25 @@ updated: 2026-06-11
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-11** — Guardrail hardening (P0) completed: protection of immutable layers is now mechanical, not just textual. No application code yet.
+**2026-06-11 (fase-0 review)** — Rilievi Giovanni applicati al change bootstrap: versioni pinnate (Laravel 13.x + Filament 5.x, ADR supersede), task Laravel Boost aggiunto (guida AI Filament), direzione frontend TanStack registrata, CLAUDE.md aggiornato con OK esplicito. Change ri-validato strict, **NON ancora approvato**. No application code yet.
 
 ## Build & Quality Status
 - No Laravel app installed yet — quality commands not runnable (expected; bootstrap change does this).
-- CI: not configured yet (task 3.2 of bootstrap change).
-- Guardrails live (60/60 hook tests green, 2026-06-11):
-  - `.claude/hooks/protected-paths.sh` (PreToolUse Edit/Write): spec/, openspec/specs/, APPROVED blocked in every mode; CLAUDE.md/RALPH.md/ralph.sh/.claude/** (except .claude/memory/) + non-active changes blocked in loop mode (RALPH_LOOP=1 or bypassPermissions).
-  - `.claude/hooks/git-guardrails.sh`: write-verbs (redirect/sed -i/tee/cp/touch) onto immutable layers blocked any-mode; `git push`, APPROVED creation, `openspec archive` blocked in loop mode.
-  - `ralph.sh`: exports RALPH_LOOP + RALPH_ACTIVE_CHANGE; per-iteration integrity gate vs loop-start baseline → exit 5 on violation (documented in GUIDE.md §5).
-- Note: protected-paths hook activates for interactive sessions at next session start (settings.json is read at startup).
+- CI: not configured yet (now task **3.3** of bootstrap change, after renumbering).
+- Guardrails live (60/60 hook tests green, 2026-06-11): `.claude/hooks/protected-paths.sh` (PreToolUse Edit/Write), `.claude/hooks/git-guardrails.sh` (write-verbs any-mode; push/APPROVED/archive loop-only), `ralph.sh` integrity gate (exit 5). See GUIDE.md §5.
 - Note: OpenSpec CLI (1.4.1, core profile) has no `verify` command — semantic verification is prompt-based, see GUIDE.md §2.7.
 
 ## Active Change & Next Task
-- `openspec/changes/bootstrap-laravel-app/` — drafted + strict-validated, **NOT yet approved**.
-- Next human action: commit the guardrail hardening, then **GUIDE.md → Fase 0** (read change → `touch …/APPROVED` + commit → `./ralph.sh --change bootstrap-laravel-app 2` to observe, then `15`).
-- After bootstrap: ADR sessions #1 (DB engine) and #2 (event substrate), then `/spec-to-change` for the three foundations changes (GUIDE.md §3–4).
-- Strategy notes (2026-06-11 analysis): foundations changes must bake in mechanical invariant enforcement — Pest arch tests for module boundaries, domain-event registry, Money value object, i18n skeleton; add a PostgreSQL CI lane from the first invariant-bearing change (Module A) because `lockForUpdate()` is a no-op on SQLite, so no-oversell concurrency is untestable there.
+- `openspec/changes/bootstrap-laravel-app/` — **10 task** (era 9: aggiunto 3.2 Laravel Boost; CI→3.3, docs→3.4), strict-valid, **NOT yet approved**.
+- Pinned: `laravel/laravel:^13.0` (create-project), `filament/filament:^5.0`, `laravel/boost --dev` per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md` (supersede del tech-stack ADR). Boost non deve mai toccare CLAUDE.md (acceptance nel task 3.2).
+- Next human action: Giovanni rilegge gli artefatti aggiornati → `touch openspec/changes/bootstrap-laravel-app/APPROVED` + commit → `./ralph.sh --change bootstrap-laravel-app 2` (osservare), poi `15`.
+- After bootstrap: ADR sessions #1 (DB engine) e #2 (event substrate), poi `/spec-to-change` per i tre foundations changes (GUIDE.md §3–4).
+- Strategy notes (2026-06-11): foundations changes must bake in mechanical invariant enforcement — Pest arch tests for module boundaries, domain-event registry, Money value object, i18n skeleton; PostgreSQL CI lane from Module A (`lockForUpdate()` no-op on SQLite).
 
 ## Blockers & Decisions Needed
-- Open ADR gates (CLAUDE.md table): DB engine, event substrate, auth, queue, object storage, storefront, hosting EU. None blocks the bootstrap change.
+- **Frontend TanStack (direzione founder, 2026-06-11):** consumer storefront + producer portal in TypeScript/TanStack, niente PHP frontend; Filament/Livewire solo operator panel. ADR formale al gate Module S storefront via grill-with-docs (API layer, customer auth, i18n ×6 fuori da Laravel localization, SSR/SEO, EU hosting). Dettagli: `.claude/memory/frontend-stack-direction.md`.
+- **Filament Blueprint** (premium, licenza a pagamento): NON adottato — acquisto è decisione di Giovanni se/quando vorrà.
+- Open ADR gates (CLAUDE.md table): DB engine, identity/auth, queue, event substrate, audit store, object storage, hosting EU, frontend stack. None blocks the bootstrap change.
 - External sandbox credentials (Airwallex/Xero/HubSpot) needed before F6 changes — human-procured.
 
 ## Open Patterns
