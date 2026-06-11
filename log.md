@@ -16,3 +16,4 @@
 ## [2026-06-11 10:25] config | CLAUDE.md | edit autorizzato esplicitamente da Giovanni (AskUserQuestion, entrambe le righe): tech-stack pinnata a Laravel 13.x + Filament 5.x; riga gate storefront riscritta con direzione TanStack
 ## [2026-06-11 10:27] approve | bootstrap-laravel-app | APPROVED creato su istruzione esplicita di Giovanni ("mi tornano, procedi") dopo review fase-0 — change pronto per il loop (10 task)
 ## [2026-06-11 10:40] config | ralph.sh | --effort max di default su ogni iterazione (richiesta esplicita Giovanni; override per-lancio via RALPH_EFFORT) — flag validato su CLI installata, bash -n ok, commit db386d8
+## [2026-06-11 10:51] ralph | bootstrap-laravel-app 1.1 | green | 21 files (Laravel 13.15.0 skeleton merged at root, .gitignore union, quality loop green, no pre-existing file touched)

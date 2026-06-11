@@ -26,3 +26,21 @@ lint-report.md
 /public/build
 /public/hot
 /public/storage
+
+# Laravel skeleton defaults (merged from laravel/laravel 13.x at bootstrap — union with the rules above)
+*.log
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/public/fonts-manifest.dev.json
+/storage/pail
+_ide_helper.php
+Homestead.json
+Homestead.yaml
