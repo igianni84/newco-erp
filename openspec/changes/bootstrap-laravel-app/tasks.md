@@ -3,7 +3,7 @@
 - [x] 1.1 Install Laravel 13.x at the repo root via temp-dir merge: `composer create-project laravel/laravel:^13.0 /tmp/newco-laravel-skeleton --no-interaction`, then `rsync -a --ignore-existing --exclude .git /tmp/newco-laravel-skeleton/ ./`, then merge Laravel's `.gitignore` into the existing root `.gitignore` (union; keep existing comments and rules), then `composer install` + `php artisan key:generate`.
   - Acceptance: `php artisan about` runs without error and reports Laravel 13.x.
   - Acceptance: `git status` shows NO modification/deletion of pre-existing files (`README.md`, `CLAUDE.md`, `RALPH.md`, `ralph.sh`, `CONTEXT.md`, `hot.md`, `log.md`, `lessons.md`, `.claude/`, `openspec/`, `spec/`, `docs/`, `decisions/`, `knowledge/`) — except the intentional `.gitignore` merge.
-- [ ] 1.2 Configure environments: `.env.example` committed with SQLite config + documented `OPERATOR_*` seeder vars; tests run on `sqlite :memory:`; `php artisan migrate` green on a fresh SQLite file; add a Pest feature test asserting `GET /up` returns 200.
+- [x] 1.2 Configure environments: `.env.example` committed with SQLite config + documented `OPERATOR_*` seeder vars; tests run on `sqlite :memory:`; `php artisan migrate` green on a fresh SQLite file; add a Pest feature test asserting `GET /up` returns 200.
   - Test hint: `it('responds healthy on /up')->get('/up')->assertStatus(200)`.
 
 ## 2. Quality Pipeline
