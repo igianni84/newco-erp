@@ -12,3 +12,8 @@ parameters:
 
     bootstrapFiles:
         - phpstan-bootstrap.php
+
+    # Filament's own typings for the Livewire Testable macros it registers
+    # (fillForm, assertHasFormErrors, ...) — vendor-shipped, not a baseline.
+    stubFiles:
+        - vendor/filament/forms/.stubs.php

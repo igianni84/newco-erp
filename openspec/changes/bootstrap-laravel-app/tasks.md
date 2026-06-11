@@ -15,7 +15,7 @@
 
 ## 3. Operator Panel & CI
 
-- [ ] 3.1 Filament 5.x installed (`composer require filament/filament:"^5.0"`, `--no-interaction`): panel id `admin` at `/admin`; `OperatorSeeder` creating the operator from env vars; Pest feature tests: unauthenticated `GET /admin` redirects to the panel login, seeded operator can authenticate and reach the dashboard.
+- [x] 3.1 Filament 5.x installed (`composer require filament/filament:"^5.0"`, `--no-interaction`): panel id `admin` at `/admin`; `OperatorSeeder` creating the operator from env vars; Pest feature tests: unauthenticated `GET /admin` redirects to the panel login, seeded operator can authenticate and reach the dashboard.
   - Acceptance: `composer show filament/filament` reports a 5.x version.
   - Test hint: use Filament's testing helpers (`livewire()`/`actingAs`) per Filament docs; factories for the operator user.
 - [ ] 3.2 Laravel Boost installed per Filament AI guidance (design.md "AI tooling"): `composer require laravel/boost --dev`, then `php artisan boost:install` selecting the Laravel + Filament guidelines (manual fallback per Boost/Filament docs if prompts block non-interactive use); reference https://filamentphp.com/docs/llms.txt in the docs task notes.
