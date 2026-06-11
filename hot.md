@@ -10,19 +10,21 @@ updated: 2026-06-11
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-11** — Development infrastructure scaffolded; no application code yet.
+**2026-06-11** — Infrastructure pushed to GitHub; operator playbook (`GUIDE.md`) added. No application code yet.
 
 ## Build & Quality Status
-- No Laravel app installed yet — quality commands not runnable (expected; see bootstrap change).
+- No Laravel app installed yet — quality commands not runnable (expected; bootstrap change does this).
 - CI: not configured yet (task 3.2 of bootstrap change).
+- Note: this OpenSpec CLI (1.4.1, core profile) has no `verify` artifact/command — semantic verification is prompt-based, see GUIDE.md §2.7.
 
 ## Active Change & Next Task
-- `openspec/changes/bootstrap-laravel-app/` — drafted, **NOT yet approved** (no APPROVED file).
-- Next human action: review the change, `touch openspec/changes/bootstrap-laravel-app/APPROVED`, then `./ralph.sh --change bootstrap-laravel-app 15` as the loop smoke test.
-- After bootstrap: `/spec-to-change` for Phase 1 foundations (event substrate, audit log, module skeleton) per `spec/05-release/Build_Workplan_v0.3-MVP.md`.
+- `openspec/changes/bootstrap-laravel-app/` — drafted + strict-validated, **NOT yet approved**.
+- Next human action: **GUIDE.md → Fase 0** (read change → `touch …/APPROVED` + commit → `./ralph.sh --change bootstrap-laravel-app 2` to observe, then `15`).
+- After bootstrap: ADR sessions #1 (DB engine) and #2 (event substrate), then `/spec-to-change` for the three foundations changes (GUIDE.md §3–4).
 
 ## Blockers & Decisions Needed
-- Open ADR gates (root CLAUDE.md table): production DB engine (before Module 0 migrations), auth/identity (before Module K), event substrate (before first cross-module event), hosting EU (before staging). None blocks the bootstrap change.
+- Open ADR gates (CLAUDE.md table): DB engine, event substrate, auth, queue, object storage, storefront, hosting EU. None blocks the bootstrap change.
+- External sandbox credentials (Airwallex/Xero/HubSpot) needed before F6 changes — human-procured.
 
 ## Open Patterns
-- None yet — first iterations will seed `knowledge/` and `## Codebase Patterns` in the change's progress.md.
+- None yet — first loop iterations will seed `knowledge/` and the change's `## Codebase Patterns`.

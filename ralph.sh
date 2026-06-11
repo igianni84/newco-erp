@@ -167,10 +167,10 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     fi
     rm -f "$LAST_OUTPUT_FILE"
     echo ""
-    echo "Next steps (human):"
+    echo "Next steps (human) — full ritual in GUIDE.md §2.7:"
     echo "  1. Review the branch:    git log --oneline main..$BRANCH ; git diff main...$BRANCH"
     echo "  2. Merge to main:        git checkout main && git merge --no-ff $BRANCH"
-    echo "  3. Semantic check:       /opsx:verify  (in Claude Code)"
+    echo "  3. Semantic check:       run the verification prompt from GUIDE.md §2.7 in Claude Code"
     echo "  4. Archive the change:   $OPENSPEC archive $CHANGE --yes"
     exit 0
   fi

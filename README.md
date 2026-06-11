@@ -50,8 +50,10 @@ touch openspec/changes/<name>/APPROVED
 
 # 4. When the loop reports CHANGE_COMPLETE:
 #    review the ralph/<name> branch → merge to main →
-#    /opsx:verify (semantic check) → openspec archive <name> --yes
+#    semantic verification (prompt in GUIDE.md §2.7) → openspec archive <name> --yes
 ```
+
+**Step-by-step operator playbook: [`GUIDE.md`](GUIDE.md).**
 
 ### Monitoring a running loop
 

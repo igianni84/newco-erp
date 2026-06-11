@@ -6,6 +6,7 @@
 
 | Question | Source |
 |---|---|
+| How do I operate this machine, step by step? | `GUIDE.md` (root) — the operator's playbook (in Italian) |
 | What must the system do? (requirements) | `spec/` — immutable v0.3-MVP handoff (start: `spec/README.md`) |
 | How does the system behave **today**? | `openspec/specs/` — accumulated truth, merged at each change archive |
 | Why is it built this way? | `decisions/` — ADRs (index: `decisions/INDEX.md`) |
