@@ -21,7 +21,7 @@ updated: 2026-06-11
 ## Active Change & Next Task
 - `openspec/changes/bootstrap-laravel-app/` — **10 task** (era 9: aggiunto 3.2 Laravel Boost; CI→3.3, docs→3.4), strict-valid, **APPROVED (2026-06-11)**.
 - Pinned: `laravel/laravel:^13.0` (create-project), `filament/filament:^5.0`, `laravel/boost --dev` per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md` (supersede del tech-stack ADR). Boost non deve mai toccare CLAUDE.md (acceptance nel task 3.2).
-- Next human action (GUIDE §2.6): chiudere la finestra Claude e dal terminale `caffeinate -i ./ralph.sh --change bootstrap-laravel-app 2` (osservare le prime 2 iterazioni), poi rilanciare con `15`.
+- Next human action (GUIDE §2.6): chiudere la finestra Claude e dal terminale `caffeinate -i ./ralph.sh --change bootstrap-laravel-app 2` (osservare le prime 2 iterazioni), poi rilanciare con `15`. Il loop gira su Fable 5 1M (da `~/.claude/settings.json`) con `--effort max` hardcoded di default in ralph.sh (override: `RALPH_EFFORT=xhigh ./ralph.sh …`).
 - After bootstrap: ADR sessions #1 (DB engine) e #2 (event substrate), poi `/spec-to-change` per i tre foundations changes (GUIDE.md §3–4).
 - Strategy notes (2026-06-11): foundations changes must bake in mechanical invariant enforcement — Pest arch tests for module boundaries, domain-event registry, Money value object, i18n skeleton; PostgreSQL CI lane from Module A (`lockForUpdate()` no-op on SQLite).
 
