@@ -23,6 +23,10 @@ it('exposes a Pint-backed lint script that only checks', function () {
         ->toContain('--test');
 });
 
+it('exposes an Artisan-backed test script', function () {
+    expect(composerScript('test'))->toContain('artisan test');
+});
+
 it('pins the Laravel preset in pint.json', function () {
     $path = base_path('pint.json');
 
