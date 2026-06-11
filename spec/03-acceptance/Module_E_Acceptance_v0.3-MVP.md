@@ -1,0 +1,488 @@
+# NewCo ERP — Module E (Finance — Financial-Event Recorder + Payment Execution + Xero Routing) Acceptance Criteria — v0.3-MVP
+
+- **Version**: v0.3-MVP (Phase D re-baseline — the launch-MVP acceptance contract for Module E; re-cut from the v0.1 DRAFT). **The eighth and final module acceptance doc.**
+- **Date**: 2026-06-08
+- **Status**: **DRAFT — awaiting batch ratification (Paolo).** Held in `mvp/`; nothing promoted to `handoff/` until Phase E. The acceptance delta is **bounded — broad in *touch* (the D19/D4/D21 arms span the settlement + dunning + chargeback AC buckets) but *annotations + automation-deferrals + the R4 re-anchor, NOT floor removals*** — because the defers are *automation/orchestration* deferrals (the recording + the floor criteria are untouched). Module E is **KEPT WHOLE on the customer-side payment-execution + Xero-routing + tax-correct-invoicing-recording floor + the three-actor split + the dual-record FX (D18) + chargeback automation (D21 KEPT — Paolo override)**: this doc (a) **annotates the D19 settlement-engine criteria deferred-to-operator-run** (the settlement-input *recording* criteria stand — FLOOR); (b) **annotates the D4 INV3-dunning criteria manual-first** (the `StoragePaymentFailed`→Hold→Suspension chain criteria stand); (c) **keeps the D21 chargeback criteria UNCHANGED** (automated from day 1); (d) **⚠️ lands R4 — re-anchors the `SupplierPaymentCompleted` criteria to E-EMITS / D+B-consume** (the trap — the v0.1 AC said "Module D emits"; Phase C R4 supersedes); (e) applies the **lightest naming cascade** to the financial-event-lineage criteria; (f) re-anchors to the v0.3-MVP PRD; (g) adds a **§6.11 MVP re-baseline** section. **No criterion in launch scope is removed; all floor criteria stand unchanged.**
+- **Owner**: Paolo (product sign-off authority)
+- **Companion spec**: [`../02-prd/Module_E_PRD_v0.3-MVP.md`](../02-prd/Module_E_PRD_v0.3-MVP.md) — the source of truth this document validates against. The PRD says *what to build*; this document says *what passes*. Together they are the dev-team's complete brief for the launch-MVP Module E.
+- **Predecessor (re-cut from)**: [`../../reference/v1.1/01-prd/Module_E_Acceptance_v0.1.md`](../../reference/v1.1/01-prd/Module_E_Acceptance_v0.1.md) — the v1.1 acceptance template (**DRAFT 2026-05-15; 223 criteria; 95.5% AUTO / 4.0% MIXED / 0.4% HUMAN; Packet verdict APPROVE-WITH-CLARIFICATIONS — NOT yet Paolo-validated**, like D/S/B/C). `greenfield/` is frozen (plan R4); this is a derivative under `mvp/`. **The MVP re-cut + the original validation + the Packet's clarifications land together** at Paolo's batch ratification. *(The AMB-E-1..7 acceptance-authoring backlog is orthogonal to MVP scope — not re-opened.)*
+- **Audience** (three concurrent uses): **Paolo** at module-delivery sign-off (the AUTO verdict report + the MIXED spot-checks [the 5-section settlement-statement composition + Section-D anonymisation + the multi-currency dual-recording — clustered where rendering quality + boundary nuance benefit from human review] + the one HUMAN end-to-end demo); **dev team** during build (the definition of done, read alongside the PRD from day one); **AI coding agents** during code generation (AUTO criteria as fitness functions in the build loop).
+- **Purpose**: the demonstrable behaviours that, taken together, constitute "Module E is delivered as specified per v0.3-MVP." Each criterion is traceable to a PRD anchor (DEC / event / FSM transition / § / BR-style invariant) and tagged AUTO / MIXED / HUMAN.
+- **Methodology DECs binding this document**: **DEC-072** (Module E records financial events; Xero decides GL — the boundary lock), **DEC-073** (product-spec layer; criteria are business-behaviour, not tech-implementation — incl. the Airwallex/Xero/SDI/HubSpot API contracts, the settlement-run code, the dunning-orchestration internals), **DEC-074** (self-contained; anchors restated inline), **DEC-014/028/119** (the Airwallex/Xero stack + the three-actor split), **Phase C R4** (`SupplierPaymentCompleted` = **E-emits** / D+B-consume — Module E owns it) **+ N2** (chargeback automated / storage-payment manual-first; K trigger-agnostic) **+ N3** (CRURATED-vs-NEWCO two-ledger) **+ items E/F** (OC capture whole; title-timing named, no accounting position), **DEC-181** (sanctions/Hold uniformity at charge/refund), `feedback_prd_rr_approval` (operator approval-tier policy admin-configurable — out of scope).
+- **What this document is NOT**: engineering Definition of Done (coverage thresholds, performance budgets, retry/idempotency mechanics, schema design, the Airwallex/Xero/HubSpot API contract literals); UI / UX acceptance (the Admin Panel dunning-config / manual-reconciliation / settlement-composition / FX-variance screens, the Customer Portal credit-history, the Producer Portal financial dashboard, the statement-document layout [Xero scope]); operational R&R / approval-tier *policy* (admin-configurable per `feedback_prd_rr_approval`); **GL accounting policy (DEC-072 — revenue recognition, COGS timing, deferred-revenue, journal-entry posting, chart-of-accounts, IFRS 15, COGS-vs-OpEx classification — all Xero scope)**; Phase 2+ deferrals (the D19 settlement *engine* automation, the D4 INV3 *dunning orchestration* automation, the SDI connector, INV4/paid-services, partial PO settlement, active-consignment SELL_THROUGH_SETTLEMENT, AR-aging dunning); cross-module behaviours owned by other modules (Module S invoice-issuance logic, Module K Hold-lifecycle + credit-balance entity, Module B inventory-state mutation + ownership flip, Module D supplier-payment domain + InboundEvent, Module C shipping/replacement/insurance, Module A allocation lineage, Xero GL).
+
+---
+
+## §0 What changed from v0.1 (the re-cut delta)
+
+Module E is **KEPT WHOLE on the customer-side finance floor**, with **D19 (DEFER the settlement engine) + D4 (DEFER the INV3 dunning orchestration) + D21 (KEEP chargeback automation — Paolo override) + D18 (KEEP dual-record — FLOOR) + R4 (E-emits `SupplierPaymentCompleted`) + the lightest naming cascade** landing in-module. The acceptance delta is **bounded — annotations + automation-deferrals + the R4 re-anchor, not floor removals** (the defers are *automation/orchestration*; the recording + floor criteria are untouched):
+
+1. **D19 — the settlement *engine* (DEFER → operator-run; §0.1):** the settlement-**composition** criteria — **AC-E-J-22/23/24/25** (5-section statement composition + buyer-identity asymmetry), **AC-E-J-26/27** (Direct-Purchase + V1/V2 routing), **AC-E-J-28/29** (clawback cause-routing + cross-period netting), **AC-E-J-45** (settlement currency), **AC-E-FSM-9** (settlement-statement FSM), **AC-E-EVT-16/18** (`SellThroughSettled` aggregation + `ProducerSettlementStatementIssued`), **AC-E-BR-Settle-1/9/10/11/13/14/17** — annotated **operator-run-at-launch / deferred-with-engine** (verified end-to-end when the engine is built; the operator composes the first statement(s) manually from the recorded events). **The settlement-input *recording* criteria stand UNCHANGED — FLOOR:** **AC-E-J-19** (OC accrual recording at INV1), **AC-E-EVT-17** (`OCShareAccrued` payload + Section-D info-disclosure), the `SellThroughSettled`/`SupplierPaymentCompleted`/`RefundExecuted`-cause recording rows are the seam. **The Direct-Purchase arm (AC-E-J-26/J-38, AC-E-BR-Settle-10) is additionally annotated not-exercised-at-launch** (Direct Purchase deferred — A/D-ratified; the `sourcing_model` discriminator + routing are the seam). See AC-E-MVP-1.
+2. **D4 — the INV3-failed-charge auto-escalation orchestration (DEFER → manual-first; §0.2):** the INV3-escalation criteria — **AC-E-J-8/9/10** (Stage 1/2/3 auto-escalation), **AC-E-J-12/13** (multi-cycle per-cycle Hold-lift + parallel chains), **AC-E-FSM-5/6/7** (the INV3 escalation FSM) — annotated **manual-first operator handling at launch** (the automated orchestration verified when it lands; the `StoragePaymentFailed`→K-Hold→Suspension event chain + the admin-configurable thresholds + the multi-cycle rules are the seam). **The floor on this surface stands:** **AC-E-J-7** (INV3 happy-path charge — the saved-card charge is FLOOR); **AC-E-J-14** (sanctions/Hold gating at charge, DEC-181 — **FLOOR**); **AC-E-J-11** (Hold-lift on remediation) + the **no-auto-lift discipline** (**AC-E-BR-Pay-6**). See AC-E-MVP-2.
+3. **D21 — chargeback ingestion (KEPT — Paolo override; §0.3):** the chargeback-chain criteria — **AC-E-J-39** (5-step chain), **AC-E-J-40** (no-auto-lift), **AC-E-J-41** (Hold composition), **AC-E-J-42** (customer-fraud parallel flow), **AC-E-FSM-8** (dispute FSM), **AC-E-EVT-5..9** (the chargeback emissions), **AC-E-BR-CB-1..5** — **stand UNCHANGED** (the webhook auto-ingestion is KEPT from day 1; payment automation rides the day-1 Airwallex integration). No deferral annotation. **N2:** the chargeback trigger is automated; the storage-payment trigger is manual-first (D4); Module K's registry is trigger-agnostic (the K-side criteria verify both). See AC-E-MVP-3.
+4. **⚠️ R4 — `SupplierPaymentCompleted` re-anchored to E-EMITS (the trap; §0.4):** the v0.1 criteria **AC-E-J-37** ("Module D's `SupplierPaymentCompleted` is consumed independently by E + B"), **AC-E-J-38** (Direct-Purchase no-op), **AC-E-EVT-34** ("consumes from Module D"), **AC-E-EVT-48** ("Module E emits to Module B"), **AC-E-XM-8** ("consumes from Module D"), **AC-E-XM-18** ("emits to Module B"), **AC-E-BR-Own-1/2**, **AC-E-BR-Settle-12** (discriminator) — **re-anchored to: Module E EMITS `SupplierPaymentCompleted`; Module D consumes (settle/close PO) + Module B consumes (`ownership_flag` PRODUCER→CRURATED) independently.** ⚠️ **The v0.1 AC-E-J-37 said "Module D emits" — Phase C R4 (Paolo Q2) FLIPS it to E-emits; the cut-sheet's claim that "AC-E-J-37 already carries the correct framing" is itself superseded.** Naming/contract only — money moves identically. See AC-E-MVP-4.
+5. **Naming cascade + re-anchor (§0.5):** `Bottle Reference → Product Reference`, `Wine Variant/Master → Product Variant/Master` in the financial-event-lineage criteria (**AC-E-EVT-12/16/17**, **AC-E-J-30**, **AC-E-XM-22**, **AC-E-BR-NRC-2/5**) + the Module 0 reads. **Module E's own event names are category-neutral — unchanged** (the §18 carve-out). The **credit-event names** are aligned to Module K's drafted registry (`ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` + `StoreCredit*`; **AC-E-EVT-21/22**, **AC-E-XM-10**) — a forward-consistency reconciliation (digest flag). PRD §-numbers now refer to [`../02-prd/Module_E_PRD_v0.3-MVP.md`](../02-prd/Module_E_PRD_v0.3-MVP.md); **the body §-anchors §1–§10 remain valid** (the one relocation: v1.1 §0.2 three-actor split → §1.1 — so AC anchored "§0.2" re-anchors to "§1.1"). See AC-E-MVP-5.
+
+### §0.1 D19 — the settlement *engine* (DEFER → operator-run; the recording is the seam; ratified Q1)
+
+Per the cut-sheet Q1 (ratified: DEFER the quarterly settlement engine → operator-run for the first cycle(s); Module E keeps RECORDING all settlement-input events; the first quarterly close lands months post-launch). The engine is **composition + aggregation + routing**; the recording is the seam — so the acceptance delta is **annotations on the composition arm, the recording arm stands:**
+
+- **Stand UNCHANGED — the settlement-input recording (the seam) + the OC capture (FLOOR, item E):** **AC-E-J-19** (OC accrual at INV1 — the one-shot, unreconstructable capture; Module E records it at launch), **AC-E-EVT-17** (`OCShareAccrued` payload + the Section-D info-disclosure constraint DEC-180/162 enforced at payload composition — **floor-adjacent, producer-trust**), **AC-E-J-20** (OC reversal symmetry), **AC-E-EVT-16** (`SellThroughSettled` recording), **AC-E-EVT-34/48** (`SupplierPaymentCompleted` recording — now E-emitted, §0.4), the `RefundExecuted`-cause recording rows. **If the accrual were not recorded at INV1 it could not be reconstructed — it is recorded; the capture is whole.**
+- **Annotated operator-run-at-launch / deferred-with-engine (the composition arm):** **AC-E-J-22** (Producer-as-Supplier collapse), **AC-E-J-23** (Discovery-with-Supplier-not-Producer two-statement case), **AC-E-J-24** (the 5-section statement composition — MIXED), **AC-E-J-25** (Section A buyer-identity asymmetry), **AC-E-J-28** (clawback cause-routing into Section A/B), **AC-E-J-29** (cross-period clawback indexing), **AC-E-J-45** (settlement currency), **AC-E-FSM-9** (the settlement-statement FSM `accruing→composing→issued→settled`), **AC-E-EVT-18** (`ProducerSettlementStatementIssued`), **AC-E-BR-Settle-1/9/13/14/17** → **verified end-to-end when the engine is built; at launch the operator composes the first statement(s) manually from the recorded events + runs Xero AP manually** (the finance-ops console). The composition logic + the FSM are the seam.
+- **Annotated not-exercised-at-launch (Direct Purchase deferred — item I):** **AC-E-J-26** (Direct-Purchase immediate-Xero + Section E informational), **AC-E-J-38** (Direct-Purchase ownership no-op), **AC-E-BR-Settle-10/12** (the Direct-Purchase routing arm + the `sourcing_model` discriminator) → the discriminator + routing are the seam; re-enable is additive. **AC-E-J-27** (V1/V2 sell-through routing) stands as the launch surface but its *quarterly aggregation* defers with the engine.
+- **Honesty note (the cut-sheet's explicit ask):** the D19 defer is genuinely heavy, but the recording is verified whole — **be careful the operator-run annotation does NOT drop the settlement-input recording.** The AC-E-J-19/EVT-16/17/34 recording criteria are the guard that it does not.
+
+### §0.2 D4 — the INV3-failed-charge auto-escalation orchestration (DEFER → manual-first; ratified Q2)
+
+Per the cut-sheet Q2 (ratified "ok because is months away": KEEP card+SEPA + the saved-card charge for INV2 + the Hold chain + the sanctions gate + no-auto-lift; DEFER the INV3-failed-charge 3-stage auto-escalation orchestration → manual first cycle). The first INV3 storage-billing cycle lands months post-launch, so the acceptance delta is an **annotation on the orchestration arm, the charge + the compliance gate + the chain stand:**
+
+- **Stand UNCHANGED — the charge + the floor:** **AC-E-J-7** (INV3 happy-path saved-card charge + the cadence-unconditional rule — **the charge is FLOOR**), **AC-E-J-14** (sanctions/Hold gating at INV3 charge per DEC-181 — **FLOOR**; cadence unconditional, charge gated), **AC-E-J-11** (Hold-lift on remediation — `StoragePaymentSucceeded`), **AC-E-BR-Pay-6** (the **no-auto-lift discipline** — write-off does not auto-lift; FLOOR-adjacent), **AC-E-BR-Pay-8** (sanctions at charge), **AC-E-EVT-10/11** (`StoragePaymentFailed`/`StoragePaymentSucceeded` — the chain events, retained as the seam).
+- **Annotated manual-first operator handling at launch:** **AC-E-J-8** (Stage 1 auto-retry + auto-reminder), **AC-E-J-9** (Stage 2 auto-`StoragePaymentFailed`→K-Hold), **AC-E-J-10** (Stage 3 auto-Profile-Suspension), **AC-E-J-12** (multi-cycle per-cycle Hold-lift), **AC-E-J-13** (multi-cycle parallel chains — MIXED), **AC-E-FSM-5/6/7** (the INV3 escalation FSM + per-cycle independence + cadence-vs-charge invariant) → **at launch the operator drives the retry / K-Hold-placement / Suspension manually via the Admin Panel; verified end-to-end via the operator surface; the automated orchestration verified when it lands.** The `StoragePaymentFailed`→K-Hold (`STORAGE_PAYMENT_FAILED`)→Profile-Suspension event chain + the admin-configurable thresholds + the multi-cycle rules are the seam. **N2:** the storage-payment Hold trigger is manual-first; Module K's registry is trigger-agnostic (the K-side criteria verify the Hold creation whether the trigger is automated or operator-placed).
+
+### §0.3 D21 — chargeback ingestion (KEPT — Paolo override; payment automation from day 1; ratified Q3)
+
+Per the cut-sheet Q3 (ratified REVISED to KEEP — Paolo override of the locked dial: "payment automation should be KEPT"; the Airwallex integration is floor from day 1, the chargeback webhook rides it cheaply, manual monitoring opens a fraud/Hold-latency gap). **The chargeback criteria stand UNCHANGED — no deferral annotation:**
+
+- **Stand UNCHANGED — automated from day 1:** **AC-E-J-39** (the 5-step chain — auto-ingestion), **AC-E-J-40** (Hold-no-auto-lift, even on win), **AC-E-J-41** (Chargeback × INV3 Hold composition), **AC-E-J-42** (customer-fraud refund parallel flow), **AC-E-FSM-8** (the dispute FSM), **AC-E-EVT-5..9** (`ChargebackReceived`/`ChargebackPotentialLoss`/`ChargebackResolved`/`ChargebackRecovered`/`CustomerChargebackFlagged`), **AC-E-BR-CB-1..5** (the chain + Module-K-is-Hold-registry + distinct `hold_type` + no-auto-lift + customer-fraud). **N2:** the `CHARGEBACK_REVIEW` trigger is automated (the webhook); composes with the manual-first `STORAGE_PAYMENT_FAILED` trigger (§0.2) on Module K's trigger-agnostic registry (**AC-E-J-41**).
+
+### §0.4 ⚠️ R4 — `SupplierPaymentCompleted` re-anchored to E-EMITS (the trap; Phase C §2-C/§5-R4)
+
+Per Phase C R4 (ratified Paolo Q2 — the FLIP): **Module E EMITS `SupplierPaymentCompleted`** on payment clearing (the payment executor; three-actor split DEC-119; symmetric with the customer-side `AirwallexChargeExecuted`); **Module D consumes it** (settle/close the PO) **+ Module B consumes it** (`ownership_flag` PRODUCER→CRURATED) — independently. **⚠️ The v0.1 AC-E-J-37 + the §5.9/§9.2 criteria framed it as "Module D emits; E + B consume"; the cut-sheet's RECONCILE kept that "D-emits" reading. Phase C R4 SUPERSEDES — these criteria re-anchor to E-emits.** Naming/contract only (money moves identically):
+
+- **Re-anchored to E-emits:** **AC-E-J-37** (was: "Module D's `SupplierPaymentCompleted` consumed by E + B" → now: "**Module E emits** `SupplierPaymentCompleted`; **Module D consumes** [close PO] + **Module B consumes** [`OwnershipTransitioned` PRODUCER→CRURATED] independently; no synchronous coupling"), **AC-E-EVT-34** (was: "consumes `SupplierPaymentCompleted` from Module D" → now: "**emits** `SupplierPaymentCompleted`; routes per `sourcing_model`; D + B consume"), **AC-E-EVT-48** (the Module-B trigger — re-anchored to clean E-emits, D+B-consume), **AC-E-XM-8** (the Module-D contract — E emits, D consumes; E still consumes `InboundEventCostFinalized`), **AC-E-XM-18** (the Module-B contract — E emits, B consumes), **AC-E-BR-Own-1/2** (the ownership-trigger invariants — E emits, B consumes), **AC-E-BR-Settle-12** (the `sourcing_model` discriminator — E reads its own emitted event's context), **AC-E-BR-Cost-3** (atomic per PO — unchanged).
+- **N3 (two-ledger clarity):** the inventory `ownership_flag` `CRURATED` (Module B, keyed to `SupplierPaymentCompleted`) vs the PO-level title `NEWCO` (Module D, keyed to the sale signal `VoucherIssued`) — same party, two ledgers, two signals; Module E takes no position on either ledger's accounting (DEC-072). **Item F:** `VoucherIssued`/`VoucherShipped` named; no accounting position on the title timing. See AC-E-MVP-4.
+
+### §0.5 Naming cascade (the lightest of the eight) + the credit-name alignment + re-anchor
+
+Per Phase C item A (Module 0 §18 source of truth): `Bottle Reference → Product Reference`, `Wine Variant/Master → Product Variant/Master` in the **financial-event-lineage** criteria only (**AC-E-EVT-12** NonRevenueCost lineage, **AC-E-EVT-16/17** settlement lineage, **AC-E-J-30** the wrapper, **AC-E-XM-22** the Module 0 read, **AC-E-BR-NRC-2/5** the wrapper composition + `BottleId` traceability). **Module E's own event names are category-neutral — unchanged** (`Invoice*`, `Payment*`, `Settlement*`, `NonRevenueCost*`, `OCShare*`, `Chargeback*`, `Refund*`, `Xero*`, `FXVariance*`, `ClubCredit*`, `StoreCredit*`, `SupplierPaymentCompleted`). **The credit-event names** are aligned to Module K's drafted registry (`ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` + `StoreCreditIssued`/`Applied` — **AC-E-EVT-21/22**, **AC-E-XM-10**) for forward-consistency (a naming reconciliation, digest flag). **Re-anchored to the v0.3-MVP PRD** — the body §-anchors §1–§10 are unchanged from v1.1 (Module E had no structural entity insertion — the D19/D4 defers are automation-deferrals, not a re-model); the one relocation is v1.1 §0.2 three-actor split → §1.1 (AC anchored "§0.2" re-anchors to "§1.1"). Behaviour is identical.
+
+---
+
+## §1 How to use this document
+
+### §1.1 Verification tags
+- **AUTO** — an AI agent / test harness reads the criterion + the spec anchor + the running system (event stream, entity state, API responses, Xero sync records, Airwallex webhook logs) → PASS/FAIL with evidence. Paolo reviews the batch.
+- **MIXED** — AI prepares the evidence (assembles the 5-section settlement statement for a representative quarter; gathers the per-leg FX recording; renders the OC-share Section-D anonymised payload); Paolo confirms a judgment call.
+- **HUMAN** — Paolo executes personally (a single end-to-end demo session).
+
+Module E's distribution (carried from v0.1, ~95.5% AUTO / 4.0% MIXED / 0.4% HUMAN across the 223 rows): the MIXED items cluster around the producer-side settlement statement (now operator-run-at-launch — D19) + the multi-currency dual-recording surface. **The D19/D4 annotations do not change a criterion's verification tag — they change *when* and *how* (operator-run / manual-first at launch; automated verification when the engine/orchestration lands).**
+
+### §1.2 Build-time usage
+The dev reads the PRD + this doc together; AUTO criteria wire into CI as fitness functions; MIXED + HUMAN are scheduled, not surprised; the doc evolves with the spec in lock-step. **The D19/D4 deferred-with-engine / manual-first annotations carry an inline "verified when X lands" note so the build pipeline schedules verification correctly — the launch-critical criteria (the recording + the floor) verify at Module E handover; the deferred-automation criteria verify when the engine/orchestration is built.**
+
+### §1.3 Sign-off cadence
+At handover the engineering team produces the AUTO verdict report; Paolo reviews + executes the MIXED items + walks the HUMAN demo. States: OPEN → DEMOED → ACCEPTED. Module E is **delivered** when every launch-scope criterion is ACCEPTED (the deferred-automation criteria carry their "verified when the engine/orchestration lands" state to the roadmap).
+
+### §1.4 Anchors
+PRD §-numbers refer to [`../02-prd/Module_E_PRD_v0.3-MVP.md`](../02-prd/Module_E_PRD_v0.3-MVP.md). Events refer to PRD §8. DEC refers to [`greenfield/04-decisions/decisions.md`](../../reference/v1.1/04-decisions/decisions.md) (bridged, never extended — see the MVP decisions register). Cross-module anchors refer to the named module's v0.3-MVP PRD.
+
+### §1.5 Format conventions (carried from v0.1 §1.5)
+(1) §4 BR statements are verbatim/near-verbatim from the PRD per-domain prose (Module E has no consolidated §13 BRs); (2) §4 BR→AC pointer rows preserve traceability; (3) §6 cross-module ACs verify the Module-E-side surface only (downstream behaviour is verified in the receiving module's doc); (4) AUTO criteria dependent on consumer modules or Xero/Airwallex carry an inline "verified when X lands" note. **MVP addition: D19/D4-deferred criteria carry a "deferred-with-engine / manual-first at launch" annotation; R4-affected criteria carry the "E-emits" re-anchor.**
+
+---
+
+## §2 Canonical journeys — end-to-end financial flows
+
+| AC ID | Statement (re-anchored to v0.3-MVP; MVP annotation in **bold**) | Anchor | Verification |
+|---|---|---|---|
+| **AC-E-J-1** | On Module S `InvoiceINV1Issued` (card), Module E records `AirwallexChargeExecuted`, routes the financial-event payload to Xero for accounting (DEC-072), routes the document-generation request to Xero (DEC-028), receives the Xero-hosted URL, confirms it back to Module S. Module E does NOT generate a PDF / mint an invoice number / compose legal text — Xero does. **FLOOR (Clause 1 + three-actor split).** | §1.1 + §3.1; DEC-119 | AUTO — drive the card chain; assert the five-event sequence; assert no PDF artefact in Module E storage; assert Xero is the sole document generator. |
+| **AC-E-J-2** | For a bank-transfer order, Module S creates the Order in PENDING_PAYMENT + Voucher PENDING_PAYMENT; the Cart Hold extends to 7 days; Module E watches for the Airwallex `transfer.received` webhook. NO proforma (INV-P) generated. **FLOOR.** | §3.2; DEC-101/159/157 | AUTO — assert Order = PENDING_PAYMENT; assert no INV-P artefact; assert no proforma Xero call; assert 7-day timer. |
+| **AC-E-J-3** | On `transfer.received`, Module E validates + matches the Order, emits `BankTransferFundsCleared`; Module S transitions Order → CONFIRMED + Voucher → ISSUED + emits `InvoiceINV1Issued`; Module E routes to Xero per the §3.1 step-5 pattern. **FLOOR.** | §3.2; DEC-159 | AUTO — simulate the webhook; assert the state-transition chain; assert subsequent Xero routing identical to the card path. |
+| **AC-E-J-4** | Bank-transfer operator-fallback: a Finance Analyst manually reconciles a transfer via the Admin Panel; on operator-confirmed match, Module E emits `BankTransferFundsCleared` identically. **(L-PP ops surface — operator-driven by spec; no cut.)** | §3.2 operator-fallback; DEC-159 | MIXED — AI walks the manual-reconciliation path → the emitted event; Paolo confirms the operator surface + emitted-event equivalence. |
+| **AC-E-J-5** | If no `transfer.received` within 7 days, Module S auto-VOIDs the Voucher + releases the Allocation; no INV1; no Module E financial event. | §3.2 7-day expiry; DEC-101/049 | AUTO — let the window lapse; assert Voucher VOIDED + Allocation released + no Module E event. |
+| **AC-E-J-6** | On `InvoiceINV2Issued` (Module C `ShipmentDispatched`), Module E charges the saved card, emits `AirwallexChargeExecuted`, routes to Xero. **FLOOR (the saved-card charge is FLOOR).** | §3.3; DEC-158/146 | AUTO — drive dispatch + INV2; assert saved-card charge; assert Xero routing identical to INV1. |
+| **AC-E-J-7** | INV3 happy path: at the semi-annual cadence Module S emits `InvoiceINV3Issued`; Module E charges the saved card, emits `AirwallexChargeExecuted` + `StoragePaymentSucceeded`, routes to Xero. Multi-cycle INV3 fires unconditionally regardless of prior-cycle Hold (cadence-unconditional). **FLOOR (the charge is FLOOR; the cadence is Module-S-side).** | §3.3; DEC-118/160 | AUTO — set up an active prior-cycle Hold; trigger a fresh-cycle INV3; assert `InvoiceINV3Issued` fires; assert Module E attempts the charge unconditionally. |
+| **AC-E-J-8** | INV3 Stage-1 retry (14-day window): on `charge.failed`, Module E emits `AirwallexChargeFailed`; retries per Airwallex built-in; HubSpot reminder; NO Hold; NO Suspension; counter resets on success. **[D4 — manual-first at launch: the operator monitors + re-charges + triggers the reminder via the Admin Panel; the auto-retry orchestration is the seam, verified when it lands.]** | §3.3 Stage 1; DEC-160 | AUTO — simulate decline; assert `AirwallexChargeFailed` per attempt; assert HubSpot trigger; assert no Hold during the window; assert counter reset. **(Launch: verified via the operator surface.)** |
+| **AC-E-J-9** | INV3 Stage-2: after the window, Module E emits `StoragePaymentFailed`; Module K creates a Hold `hold_type = STORAGE_PAYMENT_FAILED`; Module E does NOT create the Hold. **[D4 — manual-first: the operator places the K Hold (or operator-triggers `StoragePaymentFailed`) at launch; the event + Hold contract are the seam.]** | §3.3 Stage 2; DEC-160 | AUTO — fail the retries; assert `StoragePaymentFailed`; assert the Hold originates from Module K; assert `hold_type`. **(Launch: operator-driven.)** |
+| **AC-E-J-10** | INV3 Stage-3: if the Hold persists past the 30-day grace, Module K Suspends the Profile; cascade (cannot purchase/ship). **[D4 — manual-first: the operator drives the Module K Suspension at launch; the chain is the seam.]** | §3.3 Stage 3; DEC-160 | AUTO — let the Hold persist; assert the Module K Suspension; assert downstream rejection. **(Launch: operator-driven.)** |
+| **AC-E-J-11** | Hold-lift on remediation: Customer updates the saved card AND Module E charges (OR pays via bank-transfer fallback) → Module E emits `StoragePaymentSucceeded`; Module K lifts the Hold; the Suspended Profile transitions back (operator review). **FLOOR-adjacent (the lift is KEPT; the trigger is operator-driven at launch — D4).** | §3.3 Hold-lift; DEC-160 | AUTO — drive remediation; assert `StoragePaymentSucceeded` emitted by Module E; assert the lift originates from Module K. |
+| **AC-E-J-12** | Multi-cycle per-cycle Hold-lift: `StoragePaymentSucceeded` for a cycle lifts ONLY that cycle's Hold; prior-cycle Holds persist. No aggregate lift. **[D4 — the multi-cycle rule retained as the seam; manual-first at launch.]** | §3.3 multi-cycle (b); DEC-160 | AUTO — two prior cycles; remediate the recent one; assert only that cycle's Hold lifts. |
+| **AC-E-J-13** | Multi-cycle parallel chains: each cycle's failed INV3 runs its own escalation independently; Suspension = the strongest per-cycle state. **[D4 — manual-first; the multi-cycle composition is the deferred automation.]** | §3.3 multi-cycle (c); DEC-160 | MIXED — AI sets up two concurrent failed cycles + produces the trace; Paolo confirms independence + the union state. AUTO sub-check: per-cycle traces independent. |
+| **AC-E-J-14** | Sanctions/Hold gating at INV3 charge (DEC-181): Module E re-reads sanctions at each charge attempt. Cadence continues unconditionally (rule a), BUT the charge is GATED on sanctions clear; accrual preserved. **FLOOR — never deferred (only the auto-escalation orchestration defers, D4).** | §3.3 sanctions paragraph; DEC-181 | MIXED — AI walks the sanctions-failure + INV3 scenario; Paolo confirms the cadence-vs-charge decoupling + accrual preservation + moment-of-action re-read. AUTO sub-check: charge blocked under sanctions failure; resumes on clearance. |
+| **AC-E-J-15** | Hero Package: Module E charges (card/bank-transfer); Module S emits `InvoiceINV1Issued` (no INV0) + `MembershipFeePaid`; Module E records the `MembershipFeePaid` financial event; Module K auto-issues Club Credit when `generates_credit = true`. **KEEP (club VP).** | §3.4; DEC-007/114/157 | AUTO — drive Hero checkout; assert single INV1 (no INV0); assert `MembershipFeePaid` recorded; assert Module K auto-credit. |
+| **AC-E-J-16** | Pickup/immediate-ship near-simultaneous INV1 + INV2: Module S emits INV1 then INV2 as separate events; Module E routes each to Xero independently; aggregation is Xero scope (DEC-072). | §3.5; BMD §8.7 + DEC-072 | AUTO — drive pickup order; assert two distinct events in sequence; assert no Module E batching. |
+| **AC-E-J-17** | Refund execution chain (DEC-165): Module S emits `RefundRequested` (Voucher + Order ref + `refund_cause` + amount + currency); Module E reads the original Payment record + Airwallex refund API + emits `RefundExecuted`; notifies Module S; routes the refund + credit-note to Xero; NO direct-refund path outside credit-note. **FLOOR-adjacent (the mechanism + credit-note discipline).** | §5.1; DEC-165 | AUTO — drive a 14-day cancellation; assert `RefundRequested` (Module S) → `RefundExecuted` (Module E) at original-currency-at-original-FX; assert credit-note routed to Xero. |
+| **AC-E-J-18** | Refund currency = ORIGINAL payment currency at ORIGINAL FX rate (no fresh snapshot); `RefundExecuted` carries the original `fx_rate`/`fx_rate_date`. **FLOOR (D18).** | §7.2 refund rule + §5.1; BMD §4.8 | AUTO — drive a USD-paid refund; assert the payload references the ORIGINAL `fx_rate`/`fx_rate_date`, not today's snapshot. |
+| **AC-E-J-19** | OC accrual at INV1 (DEC-112/161): on `InvoiceINV1Issued` for an OC sale, Module E records `OCShareAccrued` carrying `originating_club_producer_party_id = buyer's OC Producer` (via `Customer.originating_club_id → Club.partner_producer_id`). The bottle's Producer is IRRELEVANT. **FLOOR-adjacent — the OC capture is whole at launch (item E); the 5% computation defers with the engine (D19).** | §4.1 + §4.2; DEC-112/161/066 | AUTO — Discovery purchase where OC Producer X ≠ bottle Producer Y; assert `OCShareAccrued.originating_club_producer_party_id = X`, not Y. **(The capture is recorded at launch; aggregation deferred.)** |
+| **AC-E-J-20** | OC reversal symmetry (DEC-182): a Discovery refund → Module S `DiscoveryRevenueShareReversed`; Module E records the reversal into the (deferred) clawback aggregation (net = accruals − reversals). Replacement follows the same symmetry (reversal + fresh accrual). **KEEP (the recording is the seam; the netting defers with the engine).** | §5.1 OC reversal; DEC-180/182 | AUTO — drive a Discovery refund post-INV1; assert the reversal recorded; repeat for replacement; assert original reversed + fresh accrued. |
+| **AC-E-J-21** | Section D info-disclosure (DEC-162/180): the `OCShareAccrued` payload strips Customer-identifying data — NO `customer_id`/`buyer_id`; NO `original_bottle_producer_party_id`; only anonymised transaction reference + amount + currency + period. **FLOOR-adjacent (producer-trust) — preserved on the recorded accrual at launch.** | §4.2 Section D; DEC-162/180 | MIXED — AI generates an OC-accrual payload; Paolo confirms no customer identity + no bottle's-Producer identity + accurate running balance. AUTO: assert disallowed fields absent. |
+| **AC-E-J-22** | Producer-as-Supplier collapse (DEC-067): `supplier_party_id` = `originating_club_producer_party_id` → both streams feed one Producer's statement. **[D19 — deferred-with-engine: verified when the engine is built; at launch the operator composes the statement from the recorded events.]** | §4.1 collapse; DEC-067/082/088 | AUTO — Club allocation where bottle Producer = OC Producer = Supplier; assert single `ProducerSettlementStatementIssued`. **(Launch: operator-run.)** |
+| **AC-E-J-23** | Discovery-with-Supplier-not-Producer (DEC-082): the two references differ → TWO statements (Supplier sell-through + OC Producer 5%); zero-accrual OC Producer → no statement. **[D19 — deferred-with-engine; operator-run at launch.]** | §4.1; DEC-082 | AUTO — Discovery purchase where Supplier ≠ bottle Producer ≠ OC Producer; assert two distinct statements; assert zero-accrual → zero events. **(Launch: operator-run.)** |
+| **AC-E-J-24** | `ProducerSettlementStatementIssued` 5-section breakdown (DEC-156): A per-Club (buyer-identity) / B Discovery (aggregate) / C refunds+clawbacks / D OC shares (aggregate) / E Direct-Purchase informational. One per Producer per period; net-30 invoice-back. **[D19 — deferred-with-engine: the composition is operator-run at launch; verified when the engine is built.]** | §4.4; DEC-156 + BMD §3.10/§3.11 | MIXED — AI assembles a representative quarter's statement; Paolo confirms section completeness + readability + the buyer-identity disclosure asymmetry. **(Launch: operator-composed.)** |
+| **AC-E-J-25** | Section A buyer-identity disclosure: own-club sales include full per-purchase buyer detail; Section B + D do NOT (aggregate-only). **[D19 — deferred-with-engine; the disclosure discipline is preserved on the recorded `OCShareAccrued` at launch — AC-E-J-21.]** | §4.4; BMD §3.11 + DEC-162 | AUTO — inspect a Section A row (buyer-identity present); inspect Section B + D rows (buyer-identity absent). |
+| **AC-E-J-26** | Direct Purchase routing (DEC-163): for `sourcing_model = direct_purchase`, Module E routes immediately to Xero + surfaces Section E informational rows only (no monetary settlement). **[D19 deferred-with-engine + not-exercised-at-launch (Direct Purchase deferred — item I); the discriminator + routing are the seam.]** | §4.3 + §4.4 Section E; DEC-163/086 | AUTO — *(when Direct Purchase re-enabled)* drive a Direct-Purchase PO; assert immediate Xero sync + Section E informational + no monetary line. **(Launch: idle; the seam is retained.)** |
+| **AC-E-J-27** | V1 + V2 routing (DEC-163): for `sourcing_model ∈ {passive_v1, passive_v2}`, Module E aggregates into the quarterly statement Section A/B with the monetary amount per `commercial_terms` (DEC-092). **[D19 — the recording is the launch surface; the quarterly aggregation defers with the engine.]** | §4.3; DEC-092/163 | AUTO — drive V1 + V2 sell-through; assert the recording at launch; assert the quarterly Section A/B amount per DEC-092 **when the engine is built.** |
+| **AC-E-J-28** | Refund clawback cause routing (DEC-164/025): `producer_fault` → Section A/B deduction; the other four → no clawback, NewCo absorbs as `NonRevenueCostRecorded`. **[D19 — the cause-tagged recording is the seam at launch; the netting defers with the engine.]** | §4.5; DEC-164/025 | AUTO — for each `refund_cause`, drive a refund + assert the recording with the cause discriminator; assert the netting behaviour **when the engine is built.** |
+| **AC-E-J-29** | Cross-period clawback indexing (DEC-164): refunds indexed by the original sale's settlement period; same-period nets within; cross-period claws back from the later period; no retroactive modification of a synced prior period (post-sync immutability). **[D19 — deferred-with-engine; the indexed recording is the seam.]** | §4.5; DEC-164 + BMD §3.10 | AUTO — Q3-sale + Q4-refund; assert the Q4 deduction **(engine)**; assert the Q3 statement not retroactively modified. |
+| **AC-E-J-30** | NonRevenueCost unified wrapper (DEC-167): for each upstream trigger (Module C `ReplacementShipmentIssued`, Module B `BottleBreakageInCustody`, Module C `BottleBreakageInTransit`/`BottleLossInTransit`/`BottleWriteOff`), Module E records a single `NonRevenueCostRecorded` carrying `cost_cause` + upstream ref + cost basis + **Product-Reference** allocation lineage *(GENERALISE)* + dual-currency; routes to Xero. **KEEP.** | §5.4; DEC-167/072 | AUTO — trigger each cost-cause; assert a single wrapper for each with the correct discriminator; assert no batching; assert Xero-routed. |
+| **AC-E-J-31** | Replacement cost (DEC-167/138): on `ReplacementShipmentIssued`, Module E records `NonRevenueCostRecorded` (substitute cost + replacement shipping) + a SEPARATE write-off (original cost); no new INV2; lineage via `original_allocation_id` + `substitute_allocation_id`; margin reconciliation reads two events + optional `InsurancePoolPayment`. **KEEP (the DEC-182 OC-reversal-mirror fires here — the Module E seam).** | §5.4 replacement; DEC-167/138 | MIXED — AI drives a replacement + assembles the trace; Paolo confirms the two events compose for margin reconciliation. AUTO: exactly two events; no fresh INV2; lineage fields present. |
+| **AC-E-J-32** | Insurance recovery (DEC-167/151): on `InsuranceClaimResolved` (positive), Module E records `InsuranceRecoveryReceived` (net negative); Xero offsets the prior `NonRevenueCostRecorded`; `insurance_pool ∈ {carrier, newco_supplementary}` (DEC-048) travels with the recovery (a **net-back, not a synchronous offset**). **KEEP.** | §5.4 insurance; DEC-151/048 | AUTO — drive breakage → claim opened → resolved positive; assert `NonRevenueCostRecorded` then `InsuranceRecoveryReceived` with pool metadata; assert both reach Xero separately. |
+| **AC-E-J-33** | Module B `InventoryAdjusted` ingestion (DEC-190): Module E consumes for `adjustment_type ∈ {damage, loss, recount, found}` → the §5.6 cost-cause extension; `consumption` + `transfer` are Phase-2+ placeholders; cost basis read from the InboundBatch. **KEEP.** | §5.6; DEC-190/072 | AUTO — emit `InventoryAdjusted` for each active type; assert the correct cost-cause extension; assert `consumption`/`transfer` produce no Module E event. |
+| **AC-E-J-34** | `InventoryShortfallDetected` is NOT consumed by Module E (§5.6): the short-circuit is Module-A-side; Module E records the financial event only downstream of the resolution (refund → §5.1 / replacement → §5.4). **KEEP.** | §5.6; DEC-190 | AUTO — emit `InventoryShortfallDetected`; assert no immediate Module E event; drive each resolution path; assert the correct downstream event. |
+| **AC-E-J-35** | Cost-basis-at-dispatch (DEC-195): Module C dispatch → `ShipmentDispatched` carrying `inventory_cost_basis` + `cost_basis_provisional` → Module S `VoucherShipped` + `InvoiceINV2Issued` → Module E routes to Xero with the cost-basis attribute. **KEEP.** | §5.7; DEC-195/142 | AUTO — drive dispatch with a provisional-cost InboundBatch; assert the payload carries cost basis + flag; assert Module E's Xero routing includes it. |
+| **AC-E-J-36** | COGS revision (§5.7): when `InboundEventCostFinalized` flips an InboundBatch provisional→finalized AFTER bottles shipped, Module E records `COGSAdjustmentRecorded` per affected bottle (InboundBatch ref + prior/new cost + qty + dispatch ref); routes to Xero. Rare at NewCo (V2 default). **KEEP.** | §5.7 + §8.1; DEC-072/092 | AUTO — V1/Direct-Purchase ship with provisional cost; trigger `InboundEventCostFinalized` post-dispatch; assert `COGSAdjustmentRecorded` with the revision payload. |
+| **AC-E-J-37** | **⚠️ R4 re-anchored — `SupplierPaymentCompleted` is E-EMITTED.** Module E **emits** `SupplierPaymentCompleted` on supplier-payment clearing (the payment executor; three-actor split; symmetric with `AirwallexChargeExecuted`); **Module D consumes** it (settle/close the PO) AND **Module B consumes** it (`OwnershipTransitioned` flipping InboundBatch + SerializedBottle `PRODUCER → CRURATED`) — independently, event-driven, no synchronous coupling. **(v0.1 said "Module D emits"; Phase C R4 supersedes.)** | §5.9; Phase C R4; DEC-119/185/091 | AUTO — drive a passive-V2 settlement record; assert **Module E emits** `SupplierPaymentCompleted` + routes the financial event to Xero; assert Module D consumes (PO close) + Module B emits `OwnershipTransitioned` independently; assert no synchronous call chain. |
+| **AC-E-J-38** | Direct-Purchase ownership no-op (§5.9): for `direct_purchase`, the InboundBatch is `CRURATED` from creation → no PRODUCER→CRURATED transition; Module E's `SupplierPaymentCompleted` (E-emitted) still fires for the cost-out-the-door recording. **[R4 re-anchored to E-emits + not-exercised-at-launch (Direct Purchase deferred).]** | §5.9 Direct-Purchase; DEC-063/081/091 | AUTO — *(when re-enabled)* drive a Direct-Purchase `SupplierPaymentCompleted` (E-emitted); assert Module E's financial event fires; assert no PRODUCER→CRURATED transition for batches already CRURATED. **(Launch: idle.)** |
+| **AC-E-J-39** | Chargeback 5-step chain (DEC-168): (1) `dispute.created` → record; (2) `ChargebackReceived` + `ChargebackPotentialLoss` → Xero; (3) `CustomerChargebackFlagged` → Module K creates the `CHARGEBACK_REVIEW` Hold + fraud-flag (Module E does NOT create the Hold); (4) Operations submits evidence (7-BD SLA); (5) `dispute.resolved` → `ChargebackResolved` (+ `ChargebackRecovered` on win). **KEPT — automated from day 1 (D21, Paolo override).** | §6.1; DEC-168/047 | AUTO — simulate the full chain; assert all five steps in order; assert Module E does NOT create the Hold; assert Module K is the registry-of-record. |
+| **AC-E-J-40** | Chargeback Hold-no-auto-lift (§6.2): the Hold + fraud-flag do NOT auto-lift on `ChargebackResolved`, even on win; lift requires explicit Module K operator action; the flag persists the retention window. **KEPT (D21).** | §6.2; DEC-168 | AUTO — drive a win; assert `ChargebackRecovered`; assert no auto-lift; require explicit operator action; assert flag persists. |
+| **AC-E-J-41** | Chargeback × INV3 Hold composition (§6.3): `CHARGEBACK_REVIEW` + `STORAGE_PAYMENT_FAILED` can be concurrently active; independently remediable; any active Hold blocks. **N2: the chargeback trigger is automated (D21); the storage-payment trigger is manual-first (D4); Module K's registry is trigger-agnostic.** | §6.3 + §3.3; DEC-168/160 | AUTO — trigger both Hold types; assert both visible with distinct `hold_type`; assert blocking while either is active; lift one; assert the other still blocks. |
+| **AC-E-J-42** | Customer-fraud refund × chargeback parallel (§6.4): NewCo absorbs the refund as `NonRevenueCostRecorded`; the chargeback recovery runs in parallel; `dispute.resolved` determines recovered/finalised; NO producer clawback. **KEPT (D21).** | §6.4 + §4.5; DEC-025/164/168 | AUTO — drive abuse; assert the NewCo-side cost event AND the chargeback chain in parallel; assert no producer clawback. |
+| **AC-E-J-43** | Multi-currency dual-recording (DEC-169): every event carries `amount` + `currency` + `eur_equivalent_amount` + `fx_rate` + `fx_rate_date`. Per-leg rate-lock — customer-leg at `PaymentCaptureSucceeded`, supplier-EUR at **`SupplierPaymentCompleted`** (E-emitted, R4), OC at INV1. Three independent FX moments. **FLOOR (D18).** | §7.2; DEC-169 + BMD §8.8 | MIXED — AI assembles a full USD-customer Discovery trace; Paolo confirms the three distinct rates + each leg's locked rate + the emission-moment alignment. |
+| **AC-E-J-44** | FX variance (§7.2): if Airwallex's capture FX ≠ Module E's snapshot, Module E records `FXVarianceRecorded`; routes to Xero. **FLOOR-adjacent (D18).** | §7.2; DEC-169/072 | AUTO — simulate capture R1 ≠ snapshot R2; assert `FXVarianceRecorded` with the gap; assert Xero-routed. |
+| **AC-E-J-45** | Settlement currency (§4.6): EUR default; the Producer may opt for their currency; Module E reads the preference + applies the snapshot rate; the statement carries dual-currency + `fx_rate`/`fx_rate_date`. **[D19 — deferred-with-engine; the dual-record machinery (the seam) is KEPT.]** | §4.6 + §7.2; DEC-038/169 | AUTO — *(engine)* drive a USD-electing Producer settlement; assert the statement carries both currencies + the snapshot rate. **(Launch: the machinery is KEPT; the statement composition is operator-run.)** |
+| **AC-E-J-46** | End-to-end demo: Paolo observes a card INV1, a bank-transfer happy path, an INV3 saved-card escalation **(operator-driven at launch — D4)**, a settlement-statement composition for single-producer + Discovery-with-Supplier-not-Producer **(operator-run at launch — D19)**, a chargeback chain **(automated — D21)**, a replacement-cost wrapper trace, and the per-leg FX rate-lock. | §3 + §4 + §5 + §6 + §7 | HUMAN — one session (~90–120 min) with dev + Finance; Paolo signs off against this document. |
+
+---
+
+## §3 State machine round-trips — Module E FSMs
+
+| AC ID | Statement | Anchor | Verification |
+|---|---|---|---|
+| **AC-E-FSM-1** | Payment record FSM (§3.1 step 2): `pending → completed` (charge.succeeded) / `pending → failed` (charge.failed); completed → optionally `refunded`; no completed → pending. **FLOOR.** | §3.1; DEC-158/165 | AUTO — drive all valid transitions; assert the forbidden reverse. |
+| **AC-E-FSM-2** | Xero sync FSM (§7.1): `pending → syncing → synced` / `syncing → sync_failed` / `sync_failed → syncing` (retry); `synced` TERMINAL (post-sync immutability). **FLOOR-adjacent (audit).** | §7.1; DEC-072 | AUTO — drive every transition; assert `synced → any` rejected; assert corrections flow via credit notes. |
+| **AC-E-FSM-3** | Post-sync immutability (§7.1): once `synced`, no mutation; corrections via credit notes only. **FLOOR.** | §7.1; DEC-072 | AUTO — attempt to mutate a synced event; assert rejection; assert a "correction" generates a new event. |
+| **AC-E-FSM-4** | Reversal-ordering invariant (§7.1): a reversal against a `sync_failed` source queues until the source syncs; persistent stuck reversals escalate. **FLOOR-adjacent.** | §7.1; DEC-072 | AUTO — source in `sync_failed`; land a reversal; assert queued; resolve the source; assert the reversal then syncs. |
+| **AC-E-FSM-5** | INV3 escalation FSM (§3.3): per cycle, `stage_1_retrying → stage_2_hold_active → stage_3_profile_suspended`; success at any stage → `cycle_resolved` + `StoragePaymentSucceeded` + Module K lifts the per-cycle Hold. **[D4 — manual-first at launch; the FSM states + transitions are the seam, verified when the orchestration lands.]** | §3.3; DEC-160 | AUTO — drive each forward transition; assert events at each boundary; assert `cycle_resolved` on remediation. **(Launch: operator-driven.)** |
+| **AC-E-FSM-6** | INV3 per-cycle independence (§3.3): each cycle's FSM is independent; overall posture = union; Suspension = strongest. **[D4 — manual-first; the multi-cycle rule is the seam.]** | §3.3 multi-cycle (c); DEC-160 | AUTO — two cycles at different stages; assert independent progression; assert max-strength. **(Launch: operator-driven.)** |
+| **AC-E-FSM-7** | INV3 cadence-vs-charge invariant (§3.3 rule a): `InvoiceINV3Issued` fires UNCONDITIONALLY (Module-S-side); Module E's charge is GATED on sanctions/Hold (DEC-181). Decoupled — cadence unconditional, charge conditional. **FLOOR (the gate is FLOOR; only the auto-escalation defers).** | §3.3 rule (a) + sanctions; DEC-160/181 | AUTO — active sanctions; trigger the cycle boundary; assert `InvoiceINV3Issued` fires; assert the charge blocked; assert accrual + ledger row preserved. |
+| **AC-E-FSM-8** | Chargeback dispute FSM (§6.1): `dispute_received → dispute_under_response → dispute_resolved_win` (`ChargebackRecovered`) / `dispute_resolved_loss` (provisional materialises); the Module K Hold + flag do NOT auto-lift on either. **KEPT — automated (D21).** | §6.1 + §6.2; DEC-168 | AUTO — drive each resolution; assert the event emission; assert the Hold persists through both. |
+| **AC-E-FSM-9** | Settlement-statement FSM (§4.4): per Producer per period, `accruing → composing → issued → settled`; `ProducerSettlementStatementIssued` at composing→issued; `settled` is Xero-side (AP, DEC-072). **[D19 — deferred-with-engine: operator-run composition at launch; the FSM is the seam, verified when the engine is built.]** | §4.4; DEC-156/072 | AUTO — *(engine)* drive a full quarter; assert the event at the transition; assert Module E does not own `settled`. **(Launch: operator-composed.)** |
+| **AC-E-FSM-10** | NonRevenueCost lifecycle is single-event (record-only): one `NonRevenueCostRecorded` per upstream trigger; terminal at the Module E layer (post-sync immutability); insurance recovery is a SEPARATE `InsuranceRecoveryReceived`, not a mutation. **KEEP.** | §5.4 + §7.1; DEC-167/072 | AUTO — drive breakage + claim resolved; assert two distinct events; assert no mutation of the wrapper. |
+
+---
+
+## §4 Business rule + invariant enforcement
+
+### §4.1 Three-actor split invariants (LOAD-BEARING — DEC-119; re-anchored §0.2 → §1.1)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Actor-1** | **Module E does NOT generate financial documents** — PDFs, templates, numbering, legal text, SDI/MTD/Factur-X are Xero scope (DEC-028/119); Module E sends the payload + document-generation request to Xero; Xero returns the URL; Module E confirms back to Module S. **FLOOR.** | AUTO — inspect the API + storage; assert absence of a PDF library/template engine/numbering authority; assert all document ops route through Xero. |
+| **AC-E-BR-Actor-2** | **Module E does NOT issue customer-facing invoices** — Module S emits the three `Invoice*Issued`; Module E consumes. | AUTO — covered by AC-E-J-1/3/6/7 + AC-E-XM-1. |
+| **AC-E-BR-Actor-3** | **Module E does NOT compute storage fees / manage the clock / emit accrual events** — Module S owns them (DEC-119); Module E reads `StorageFeeAccrued` informationally + acts on `InvoiceINV3Issued`. | AUTO — assert no storage-fee computation / no accrual emission in Module E. |
+| **AC-E-BR-Actor-4** | **Module E does NOT own the Voucher activation gate** — Module S owns PENDING_PAYMENT → ISSUED; Module E provides only `BankTransferFundsCleared`. | AUTO — covered by AC-E-J-3; assert no Voucher state-mutation in Module E. |
+| **AC-E-BR-Actor-5** | **Module E does NOT determine GL treatment (DEC-072)** — no revenue-recognition / deferred-revenue / COGS-timing / journal-posting / chart-of-accounts / IFRS-15 logic. **FLOOR (methodology).** | AUTO — assert no GL-account fields / no revenue-recognition logic / no journal composition; all classification downstream of the Xero call. |
+
+### §4.2 Invoice typology (DEC-157) — FLOOR (tax)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Inv-1** | Customer-facing typology = INV1 + INV2 + INV3 ONLY. **FLOOR.** | AUTO — assert exactly three invoice-issuance event types consumed; assert INV4/INV0/INV-P/INV1_INV2_COMBINED absent. |
+| **AC-E-BR-Inv-2** | No proforma (INV-P) — bank-transfer uses PENDING_PAYMENT. | AUTO — covered by AC-E-J-2. |
+| **AC-E-BR-Inv-3** | No membership-fee (INV0) — Hero fires INV1. | AUTO — covered by AC-E-J-15. |
+| **AC-E-BR-Inv-4** | No B2B combined (INV1_INV2_COMBINED) — consumer-only. | AUTO — assert absent. |
+| **AC-E-BR-Inv-5** | No paid-services (INV4) + no EVENT_CONSUMPTION_SETTLEMENT — deferred. | AUTO — assert absent. |
+| **AC-E-BR-Inv-6** | No active-consignment SELL_THROUGH_SETTLEMENT — B2C-only (the launch `SellThroughSettled` for passive consignment is a different event). | AUTO — assert absent. |
+
+### §4.3 Payment-execution invariants (DEC-014/158/159/160) — FLOOR + the D4 arm
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Pay-1** | Airwallex is the sole NewCo-side payment provider; the AirwallexAdapter under a Provider-Agnostic Adapter Pattern. **FLOOR.** | AUTO — assert a single AirwallexAdapter; no Stripe/Adyen/other code. |
+| **AC-E-BR-Pay-2** | Cards authorize-and-capture in one step; no PENDING_PAYMENT for cards. **FLOOR.** | AUTO — assert Order → CONFIRMED directly for cards. |
+| **AC-E-BR-Pay-3** | Bank-transfer uses PENDING_PAYMENT + 7-day Cart Hold. **FLOOR.** | AUTO — covered by AC-E-J-2/5. |
+| **AC-E-BR-Pay-4** | INV3 saved-card flow with 3-stage escalation (DEC-160). **[D4 — the saved-card charge is FLOOR; the auto-escalation orchestration is manual-first at launch; the chain + thresholds are the seam.]** | AUTO — covered by AC-E-J-8/9/10 + AC-E-FSM-5 **(operator-driven at launch)**. |
+| **AC-E-BR-Pay-5** | Module E does NOT create the Hold directly — `StoragePaymentFailed` triggers Module K Hold creation. **[D4 — manual-first trigger at launch; the contract is the seam.]** | AUTO — covered by AC-E-J-9. |
+| **AC-E-BR-Pay-6** | **Hold-no-auto-lift discipline** — write-off does NOT auto-lift; lift requires explicit operator action. **FLOOR-adjacent — KEPT, never deferred.** | AUTO — covered by AC-E-J-40 (chargeback) + AC-E-J-11 (storage). |
+| **AC-E-BR-Pay-7** | Multi-cycle INV3 cadence-unconditional / per-cycle Hold-lift / parallel chains. **[D4 — manual-first; the multi-cycle rules are the seam.]** | AUTO — covered by AC-E-J-12/13 + AC-E-FSM-6/7. |
+| **AC-E-BR-Pay-8** | Sanctions/Hold uniformity at INV3 charge (DEC-181) — active sanctions failure blocks the charge. **FLOOR — never deferred.** | AUTO — covered by AC-E-J-14. |
+| **AC-E-BR-Pay-9** | Sanctions/Hold uniformity at refund routing (DEC-181) — active sanctions blocks the refund; non-regulatory Holds do NOT block refunds. **FLOOR.** | AUTO — drive a refund with active sanctions (blocked) + with a non-regulatory Hold (proceeds). |
+
+### §4.4 Producer/Supplier settlement invariants (DEC-156/161/162/163/164) — D19 (the recording stands; the composition defers)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Settle-1** | Quarterly cadence default (DEC-042); per-Producer override (DEC-070). **[D19 — deferred-with-engine.]** | AUTO — *(engine)* assert quarterly default + override. **(Launch: operator-run.)** |
+| **AC-E-BR-Settle-2** | `SellThroughSettled` carries `supplier_party_id` = PO counterparty (DEC-088). **[The capture is the seam — recorded at launch.]** | AUTO — drive sell-through; assert `supplier_party_id` resolves per DEC-088. |
+| **AC-E-BR-Settle-3** | `OCShareAccrued` carries `originating_club_producer_party_id` = buyer's OC Producer (DEC-066/161); bottle's Producer IRRELEVANT. **FLOOR-adjacent (item E capture).** | AUTO — covered by AC-E-J-19. |
+| **AC-E-BR-Settle-4** | OC share fired at INV1 (DEC-112) — post-payment-cleared, not OrderPlaced. **FLOOR-adjacent (the capture seam).** | AUTO — assert `OCShareAccrued` on `InvoiceINV1Issued`, not OrderPlaced. |
+| **AC-E-BR-Settle-5** | Section D info-disclosure — aggregate-only; no per-purchase-buyer detail; no bottle's-Producer identity; enforced at payload composition. **FLOOR-adjacent — preserved on the recorded accrual.** | AUTO — assert disallowed fields absent; pair with AC-E-J-21. |
+| **AC-E-BR-Settle-6** | DEC-180 structural enforcement at the payload level (not a downstream filter). | AUTO — covered by AC-E-J-21 + AC-E-BR-Settle-5. |
+| **AC-E-BR-Settle-7** | Producer-as-Supplier collapse — both events to one statement. **[D19 — deferred-with-engine.]** | AUTO — covered by AC-E-J-22. |
+| **AC-E-BR-Settle-8** | Discovery-with-Supplier-not-Producer — two statements; zero-accrual → none. **[D19 — deferred-with-engine.]** | AUTO — covered by AC-E-J-23. |
+| **AC-E-BR-Settle-9** | Five-section statement shape (DEC-156); net-30 invoice-back. **[D19 — deferred-with-engine; operator-composed at launch.]** | MIXED — covered by AC-E-J-24. |
+| **AC-E-BR-Settle-10** | Direct Purchase — immediate Xero + Section E informational. **[D19 + not-exercised-at-launch (item I).]** | AUTO — covered by AC-E-J-26. |
+| **AC-E-BR-Settle-11** | V1 + V2 — quarterly Section A/B per `commercial_terms` (DEC-092). **[D19 — recording at launch; aggregation deferred.]** | AUTO — covered by AC-E-J-27. |
+| **AC-E-BR-Settle-12** | **⚠️ R4 — the `sourcing_model` discriminator on the E-EMITTED `SupplierPaymentCompleted`** ∈ {`passive_v1`/`passive_v2`/`direct_purchase`} read from Module A. **(v0.1 framed it on a D-emitted event; Module E now emits it + reads its own `sourcing_model` routing context.)** | AUTO — covered by AC-E-J-26/27/37. |
+| **AC-E-BR-Settle-13** | Refund clawback per-cause routing (DEC-164/025). **[D19 — the cause-tagged recording is the seam; the netting defers.]** | AUTO — covered by AC-E-J-28. |
+| **AC-E-BR-Settle-14** | Cross-period clawback indexing. **[D19 — deferred-with-engine.]** | AUTO — covered by AC-E-J-29. |
+| **AC-E-BR-Settle-15** | Storage-fee pro-rata refund cause-conditional inclusion (DEC-025/046). **[The cause-tagged recording is the seam.]** | AUTO — drive the pro-rata refund per cause; assert inclusion/exclusion. |
+| **AC-E-BR-Settle-16** | `refund_cause` classification is Module S's, not Module E's — Module E consumes the cause. | AUTO — assert no cause-classification logic; assert read-from-payload. |
+| **AC-E-BR-Settle-17** | Settlement currency default = EUR; producer-currency option. **[D19 — deferred-with-engine; the dual-record machinery is KEPT.]** | AUTO — covered by AC-E-J-45. |
+
+### §4.5 Refund + credit + non-revenue cost invariants (DEC-165/166/167) — KEEP
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Ref-1** | Refund ownership split — Module S emits `RefundRequested`; Module E executes. **FLOOR-adjacent.** | AUTO — covered by AC-E-J-17. |
+| **AC-E-BR-Ref-2** | Refund currency = original at original FX (no fresh snapshot). **FLOOR (D18).** | AUTO — covered by AC-E-J-18. |
+| **AC-E-BR-Ref-3** | Credit-note discipline (single payment path) — no direct-refund path outside credit-note. **FLOOR (audit).** | AUTO — covered by AC-E-J-17; assert no direct-refund-to-method path. |
+| **AC-E-BR-Cred-1** | Module K owns the credit-balance entity; Module E records credit-issuance + application events only. | AUTO — assert no credit-balance entity in Module E; all reads via the Module K API. |
+| **AC-E-BR-Cred-2** | Credit as prepayment instrument, NOT discount — INV1 at full price; credit applies as payment-method-equivalent. | AUTO — assert INV1 = full price; assert `ClubCreditApplied`/`StoreCreditApplied` records the prepayment. |
+| **AC-E-BR-Cred-3** | Cross-stream boundary — refunds (`RefundExecuted`) / credits (`ClubCredit*`/`StoreCredit*`) / non-revenue costs (`NonRevenueCostRecorded`/`InsuranceRecoveryReceived`) strictly partitioned. | AUTO — schema inspection across the three families. |
+| **AC-E-BR-Cred-4** | Mutual-exclusivity matrix enforced at Module S checkout (not Module E); Module E records the resulting events. **(K.18/K.19 paths don't fire at launch — item D; no Module E cut.)** | AUTO — drive each combination at Module S; assert the disallowed rejected; assert Module E records the allowed. |
+| **AC-E-BR-NRC-1** | Unified `NonRevenueCostRecorded` wrapper (DEC-167) — single family; `cost_cause` discriminator. **KEEP.** | AUTO — covered by AC-E-J-30. |
+| **AC-E-BR-NRC-2** | Wrapper composition — `cost_cause` + upstream ref + cost basis + **Product-Reference** allocation lineage *(GENERALISE)* + dual-currency. | AUTO — inspect the wrapper; assert all five elements present. |
+| **AC-E-BR-NRC-3** | Replacement: TWO distinct events (substitute wrapper + original write-off); no new INV2; lineage fields; margin reconciliation reads two events + optional `InsurancePoolPayment`. **KEEP.** | AUTO — covered by AC-E-J-31. |
+| **AC-E-BR-NRC-4** | Insurance recovery — separate `InsuranceRecoveryReceived` (net-back); Xero offsets; `insurance_pool` metadata preserved. **KEEP.** | AUTO — covered by AC-E-J-32. |
+| **AC-E-BR-NRC-5** | Wrapper carries `BottleId` for traceability but NO on-chain data (DEC-014; D12 decoupled); no NFT mint/burn/recovery. | AUTO — assert `BottleId`/SerializedBottle ref present; assert no on-chain/NFT fields; no Avalanche integration. |
+
+### §4.6 Multi-currency + Xero invariants (DEC-038/072/169) — FLOOR (D18)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-FX-1** | Dual-currency on every event — `amount` + `currency` + `eur_equivalent_amount` + `fx_rate` + `fx_rate_date`. **FLOOR (D18; not a candidate — narrowing currencies saves ~nothing).** | AUTO — schema inspection across all event types; assert all five fields. |
+| **AC-E-BR-FX-2** | Per-leg FX rate-lock — customer-leg at PaymentCaptureSucceeded; **supplier-EUR at `SupplierPaymentCompleted` (E-emitted, R4)**; OC at INV1. **FLOOR.** | MIXED — covered by AC-E-J-43. |
+| **AC-E-BR-FX-3** | FX policy mechanics (DEC-038) — EOD Rome snapshot; admin buffer; daily refresh; Airwallex mid-market; weekend/holiday prior-business-day. | AUTO — inspect the snapshot logic; assert all five mechanics. |
+| **AC-E-BR-FX-4** | `FXVarianceRecorded` for the capture-vs-snapshot gap. **FLOOR-adjacent.** | AUTO — covered by AC-E-J-44. |
+| **AC-E-BR-Xero-1** | Real-time per-event Xero sync; no batched-aggregation. | AUTO — assert each event triggers an immediate sync; no batching layer. |
+| **AC-E-BR-Xero-2** | Sync FSM `pending → syncing → synced`/`sync_failed`. | AUTO — covered by AC-E-FSM-2. |
+| **AC-E-BR-Xero-3** | Post-sync immutability; corrections via credit notes. **FLOOR.** | AUTO — covered by AC-E-FSM-3. |
+| **AC-E-BR-Xero-4** | Reversal-ordering invariant. | AUTO — covered by AC-E-FSM-4. |
+| **AC-E-BR-Xero-5** | Module E is the sole NewCo-side Xero integration point. | AUTO — assert all Xero calls originate from Module E. |
+| **AC-E-BR-Xero-6** | GL-treatment boundary (DEC-072) — Module E records; Xero decides. **FLOOR (methodology).** | AUTO — covered by AC-E-BR-Actor-5. |
+| **AC-E-BR-Xero-7** | Bank reconciliation — Airwallex → Module E (routes) → Xero (reconciles). | AUTO — assert Module E routes the confirmations; assert Module E does NOT reconcile. |
+| **AC-E-BR-Xero-8** | 10-year retention (DEC-027) — Module E retains its records per the same horizon. **FLOOR (audit/retention).** | AUTO — assert the 10-year horizon on Module E's event store. |
+
+### §4.7 Cost-basis + ownership invariants (DEC-185/190/195) — ⚠️ R4 (E-emits)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Cost-1** | Module E reads InboundBatch cost-basis at dispatch (provisional/finalized); downstream `COGSAdjustmentRecorded` on the flip. **KEEP.** | AUTO — covered by AC-E-J-35/36. |
+| **AC-E-BR-Cost-2** | `COGSAdjustmentRecorded` rare at NewCo (V2 default); primarily V1 + Direct-Purchase. | AUTO — V2 dispatch → no adjustment; V1 post-dispatch finalization → adjustment fires. |
+| **AC-E-BR-Cost-3** | `SupplierPaymentCompleted` is atomic per PO (partial PO settlement deferred — OQ-20). **[R4: now E-EMITTED.]** | AUTO — inspect the payload; assert no `partial_amount`/`outstanding_balance`; one event per PO. |
+| **AC-E-BR-Own-1** | **⚠️ R4 re-anchored** — Module B's `OwnershipTransitioned` is observed by Module E for AUDIT only; **the E-EMITTED `SupplierPaymentCompleted` is the financial event Module E records**; no fresh Module E event on `OwnershipTransitioned` consumption. **(v0.1 said "the upstream D-emitted event"; Module E now emits it.)** | AUTO — drive a passive-V2 settlement; assert a single Module E financial event from the E-emitted `SupplierPaymentCompleted`; assert no fresh event on `OwnershipTransitioned`. |
+| **AC-E-BR-Own-2** | **⚠️ R4 re-anchored** — **Module E EMITS `SupplierPaymentCompleted`; Module B consumes it independently** → `OwnershipTransitioned` PRODUCER→CRURATED; event-driven; Module E does NOT author the Module B transition. **N3:** the inventory `ownership_flag` `CRURATED` (B) vs the PO-level title `NEWCO` (D) — same party, two ledgers, two signals. | AUTO — covered by AC-E-J-37. |
+
+### §4.8 Inventory adjustment ingestion (DEC-190) — KEEP
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Adj-1** | `InventoryAdjusted` ingestion for `damage`/`loss`/`recount`/`found`; `consumption`/`transfer` Phase-2+. | AUTO — covered by AC-E-J-33. |
+| **AC-E-BR-Adj-2** | Cost-cause discriminator extensions (`custody_breakage`/`custody_loss`/`recount_variance`/`inventory_found`). | AUTO — covered by AC-E-J-33. |
+| **AC-E-BR-Adj-3** | `InventoryShortfallDetected` NOT consumed by Module E; financial event downstream of the resolution only. | AUTO — covered by AC-E-J-34. |
+| **AC-E-BR-Adj-4** | Module B emits the operational event; Module E emits the financial event (DEC-072). | AUTO — assert Module B operational + Module E financial + no GL logic in Module E. |
+
+### §4.9 Chargeback invariants (DEC-168) — D21 KEPT (automated)
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-CB-1** | 5-step chargeback chain (DEC-168). **KEPT — automated from day 1 (D21, Paolo override).** | AUTO — covered by AC-E-J-39 + AC-E-FSM-8. |
+| **AC-E-BR-CB-2** | Module K is the Hold registry-of-record; Module E does NOT create the Hold. **(N2 — K trigger-agnostic.)** | AUTO — covered by AC-E-J-39. |
+| **AC-E-BR-CB-3** | Chargeback Hold uses a distinct `hold_type` (`CHARGEBACK_REVIEW`) from `STORAGE_PAYMENT_FAILED`. | AUTO — covered by AC-E-J-41. |
+| **AC-E-BR-CB-4** | Hold-no-auto-lift on resolution (even on win). | AUTO — covered by AC-E-J-40. |
+| **AC-E-BR-CB-5** | Customer-fraud refund + chargeback parallel; no producer clawback. | AUTO — covered by AC-E-J-42. |
+
+### §4.10 Deferred-items invariants (DEC-171) — carry verbatim
+
+| AC ID | Invariant | Verification |
+|---|---|---|
+| **AC-E-BR-Def-1** | SDI connector deferred (D20/DEC-171); the principle (E → Xero only; SDI XML downstream) holds. | AUTO — assert no SDI connector code; all payloads + doc-gen requests route through Xero. |
+| **AC-E-BR-Def-2** | Paid services + INV4 + EVENT_CONSUMPTION_SETTLEMENT deferred. | AUTO — covered by AC-E-BR-Inv-5. |
+| **AC-E-BR-Def-3** | Partial PO settlement deferred (OQ-20) — `SupplierPaymentCompleted` atomic per PO. | AUTO — covered by AC-E-BR-Cost-3. |
+
+---
+
+## §5 Domain event emission and consumption (⚠️ R4 — §5.9 the E-emits move)
+
+### §5.1–§5.7 Module E EMITS at launch
+
+| AC ID | Statement | Anchor | Verification |
+|---|---|---|---|
+| **AC-E-EVT-1** | `AirwallexChargeExecuted` on successful charge (card/saved card) for INV1/INV2/INV3; dual-currency payload; routed to Xero. | §8.1; DEC-158/160/169 | AUTO |
+| **AC-E-EVT-2** | `AirwallexChargeFailed` per attempt; drives the §3.3 INV3 escalation. **[D4 — the auto-escalation around it is manual-first; the event is the seam.]** | §8.1; DEC-160 | AUTO |
+| **AC-E-EVT-3** | `BankTransferFundsCleared` on `transfer.received` (auto-matched or operator-confirmed); → Module S fires INV1. | §8.1; DEC-159 | AUTO |
+| **AC-E-EVT-4** | `RefundExecuted` on Airwallex refund completion; carries the original FX rate/date (not a fresh snapshot). | §8.1; DEC-165 + BMD §4.8 | AUTO |
+| **AC-E-EVT-5..9** | `ChargebackReceived` / `ChargebackPotentialLoss` / `ChargebackResolved` / `ChargebackRecovered` / `CustomerChargebackFlagged` (→ Module K Hold + fraud-flag). **KEPT — automated (D21).** | §8.1; DEC-168 | AUTO |
+| **AC-E-EVT-10** | `StoragePaymentFailed` on INV3 charge failure after Stage 1; → Module K `STORAGE_PAYMENT_FAILED` Hold. **[D4 — manual-first trigger at launch; the event is the seam.]** | §8.1; DEC-160 | AUTO |
+| **AC-E-EVT-11** | `StoragePaymentSucceeded` on INV3 charge success; → Module K lifts the per-cycle Hold. **[D4 — the chain is the seam.]** | §8.1; DEC-160 | AUTO |
+| **AC-E-EVT-12** | `NonRevenueCostRecorded` per upstream trigger; `cost_cause` + upstream ref + cost basis + **Product-Reference** lineage *(GENERALISE)* + dual-currency. **KEEP.** | §8.1; DEC-167/169 | AUTO |
+| **AC-E-EVT-13** | `InsuranceRecoveryReceived` on `InsuranceClaimResolved` (net-back); Xero offsets. **KEEP.** | §8.1; DEC-151/167/072 | AUTO |
+| **AC-E-EVT-14** | `COGSAdjustmentRecorded` on provisional→finalized flip post-dispatch; rare at NewCo. **KEEP.** | §8.1; DEC-072/092 | AUTO |
+| **AC-E-EVT-15** | `FXVarianceRecorded` on the Airwallex-vs-snapshot gap. **FLOOR-adjacent (D18).** | §8.1; DEC-169/072 | AUTO |
+| **AC-E-EVT-16** | `SellThroughSettled` for sell-through aggregation; carries `supplier_party_id`; **Product-Reference** lineage *(GENERALISE)*. **[D19 — recorded at launch (the seam); aggregation deferred.]** | §8.1; DEC-161/164 | AUTO — assert the recording at launch; the aggregation verified **when the engine is built.** |
+| **AC-E-EVT-17** | `OCShareAccrued` at INV1; `originating_club_producer_party_id`; Section-D info-disclosure (DEC-162/180) enforced at composition. **FLOOR-adjacent — the capture is whole at launch (item E); the 5% aggregation defers (D19).** | §8.1; DEC-112/161/162/180 | AUTO |
+| **AC-E-EVT-18** | `ProducerSettlementStatementIssued` per Producer per period, 5-section. **[D19 — deferred-with-engine; operator-composed at launch.]** | §8.1; DEC-156 | AUTO — *(engine)* assert the emission. **(Launch: operator-run.)** |
+| **AC-E-EVT-19/20** | `XeroSyncCompleted` / `XeroSyncFailed`. | §8.1; §7.1 | AUTO |
+| **AC-E-EVT-21** | `ClubCreditIssued` on Club Credit creation; Module K records the balance. **[Naming aligned to Module K §15.8 — `ClubCreditIssued` (was `ClubCreditAccrued`); + `ClubCreditRestored`/`ClubCreditForfeited`.]** | §5.3; DEC-166 + Module K §15.8 | AUTO |
+| **AC-E-EVT-22** | `StoreCreditIssued` / `StoreCreditApplied` on store-credit creation/application; Module K records the balance. | §5.3; DEC-166 | AUTO |
+
+### §5.8 Module E CONSUMES from Module S
+
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-EVT-23/24/25** | `InvoiceINV1Issued` / `InvoiceINV2Issued` / `InvoiceINV3Issued` — route to Xero + (INV2/INV3) charge the saved card; on INV3 failure the escalation is **manual-first at launch (D4)**. | AUTO |
+| **AC-E-EVT-26** | `RefundRequested` — execute the Airwallex refund; carries `refund_cause` (Module E does NOT classify). | AUTO |
+| **AC-E-EVT-27** | `OrderPaymentPending` — watch for `transfer.received`. | AUTO |
+| **AC-E-EVT-28** | `StoreCreditApplied` / `ClubCreditApplied` — record for Xero. | AUTO |
+| **AC-E-EVT-29** | `MembershipFeePaid` — record (Hero). | AUTO |
+| **AC-E-EVT-30** | `StorageFeeAccrued` — informational. | AUTO |
+| **AC-E-EVT-31** | `StorageFeeProRataRefundIssued` — record (cause-conditional). | AUTO |
+| **AC-E-EVT-32** | `SupervisorOverridePostDeliveryRefund` — execute the refund. | AUTO |
+| **AC-E-EVT-33** | `DiscoveryRevenueShareReversed` — record into the (deferred) clawback aggregation + Section-D running balance. **[D19 — the recording is the seam.]** | AUTO |
+
+### §5.9 Module E EMITS `SupplierPaymentCompleted` + CONSUMES from Module D — ⚠️ R4
+
+| AC ID | Statement (re-anchored) | Verification |
+|---|---|---|
+| **AC-E-EVT-34** | **⚠️ R4 — Module E EMITS `SupplierPaymentCompleted`** on supplier-payment clearing (the payment executor; at launch via the operator's manual settlement record [D19 deferred]; post-launch via the engine); routes the financial event to Xero per `Allocation.sourcing_model`. **Module D consumes it (close PO) + Module B consumes it (ownership flip) independently.** Atomic per PO. **(v0.1: "consumes from Module D" — superseded.)** | AUTO — assert **Module E emits** `SupplierPaymentCompleted`; assert the `sourcing_model` routing; assert D + B consume independently. |
+| **AC-E-EVT-35** | `InboundEventCostFinalized` (Module D → Module E) — record `COGSAdjustmentRecorded` (rare at NewCo). **(Stays D-emitted / E-consumed.)** | AUTO |
+
+### §5.10 Module E CONSUMES from Module C
+
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-EVT-36** | `ReplacementShipmentIssued` → `NonRevenueCostRecorded` (substitute cost) + separate write-off (original); the DEC-182 OC-reversal-mirror. **KEEP.** | AUTO |
+| **AC-E-EVT-37/38/39** | `BottleBreakageInTransit` / `BottleLossInTransit` / `BottleWriteOff` → `NonRevenueCostRecorded`. **KEEP.** | AUTO |
+| **AC-E-EVT-40** | `InsuranceClaimResolved` → `InsuranceRecoveryReceived` with `insurance_pool` metadata (DEC-048). | AUTO |
+| **AC-E-EVT-41** | `ShippingFeeQuoted` / `ShipmentDispatched` / `ExciseCalculated` — informational (Module S composes the INV2 line; Module E records the financial-event side via INV2 routing). | AUTO |
+
+### §5.11 Module E CONSUMES from Module B + EMITS `SupplierPaymentCompleted` to Module B — ⚠️ R4
+
+| AC ID | Statement (re-anchored) | Verification |
+|---|---|---|
+| **AC-E-EVT-42** | `BottleBreakageInCustody` → `NonRevenueCostRecorded`. **KEEP.** | AUTO |
+| **AC-E-EVT-43** | `InventoryAdjusted` → `NonRevenueCostRecorded` (§5.6 cost-cause extensions); cost basis from the InboundBatch. **KEEP.** | AUTO |
+| **AC-E-EVT-44** | `InventoryShortfallDetected` — NOT consumed by Module E (the resolution sources the financial event). | AUTO |
+| **AC-E-EVT-45** | `OwnershipTransitioned` — observed for AUDIT only (the E-EMITTED `SupplierPaymentCompleted` is the financial event; no fresh recording). **[R4 re-anchored.]** | AUTO |
+| **AC-E-EVT-46/47** | `BottleQuarantineResolved` / `StocktakeReconciled` — observed for audit (downstream `InventoryAdjusted` sources the financial events). | AUTO |
+| **AC-E-EVT-48** | **⚠️ R4 re-anchored — Module E EMITS `SupplierPaymentCompleted`; Module B consumes it** → `OwnershipTransitioned` PRODUCER→CRURATED. Event-driven; no synchronous coupling; **Module B does NOT emit it.** **(v0.1: "Module E's existing financial event is now ALSO a trigger" — re-anchored to clean E-emits.)** | AUTO — covered by AC-E-J-37; assert Module E emits, Module B consumes. |
+
+---
+
+## §6 Cross-module contracts + boundary respect (⚠️ R4 — §6.3 + §6.7)
+
+### §6.1 Three-actor split contract (LOAD-BEARING — re-anchored §0.2 → §1.1)
+
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-1** | Module S decides WHEN an invoice fires; Module E consumes — does NOT decide. | AUTO — assert no invoice-emission logic in Module E; uniformly a consumer. |
+| **AC-E-XM-2** | Xero produces WHAT the customer + tax authority receive; Module E routes — does NOT generate documents. | AUTO — covered by AC-E-BR-Actor-1 (§1.1 / §10 item 1). |
+| **AC-E-XM-3** | Module E is the HOW between commercial event and accounting record. | AUTO — covered by AC-E-J-1/3/6/7 + the AC-E-EVT family. |
+| **AC-E-XM-4** | "Ownership flip" in DEC-119 = commercial-state/event ownership (not document generation); Xero remains the Document Generator. | AUTO — covered by AC-E-XM-2 + AC-E-BR-Actor-1 (PRD §1.1 clarification). |
+
+### §6.2 Module E ↔ Module S
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-5** | Consumes from Module S: the three `Invoice*Issued` / `RefundRequested` / `OrderPaymentPending` / `StoreCreditApplied` / `ClubCreditApplied` / `MembershipFeePaid` / `StorageFeeAccrued` / `StorageFeeProRataRefundIssued` / `SupervisorOverridePostDeliveryRefund` / `DiscoveryRevenueShareReversed`. | AUTO — covered by AC-E-EVT-23..33. |
+| **AC-E-XM-6** | Emits to Module S: `BankTransferFundsCleared` / `AirwallexChargeExecuted` / `AirwallexChargeFailed` / `StoragePaymentSucceeded` / `RefundExecuted`. | AUTO — covered by AC-E-EVT-1..4/11 + AC-E-J-3. |
+| **AC-E-XM-7** | Module E does NOT mutate Module S state; uniformly consume + route + execute (storage Module-S-internal per R2 — no bidirectional S↔E). | AUTO — assert no Module S state-mutation calls. |
+
+### §6.3 Module E ↔ Module D — ⚠️ R4 (E emits; D consumes)
+| AC ID | Statement (re-anchored) | Verification |
+|---|---|---|
+| **AC-E-XM-8** | **⚠️ R4 — Module E EMITS `SupplierPaymentCompleted`; Module D consumes it** (settle/close the PO). Module E **consumes `InboundEventCostFinalized`** from Module D (→ `COGSAdjustmentRecorded`). **(v0.1: "consumes `SupplierPaymentCompleted` from Module D" — superseded; the discriminator + routing are on Module E's own emitted event.)** | AUTO — assert Module E emits `SupplierPaymentCompleted` + Module D consumes (close PO); assert Module E consumes `InboundEventCostFinalized`. |
+| **AC-E-XM-9** | Module E does NOT mutate Module D state; it reads allocation lineage / cost basis via Module A + `InboundEventCostFinalized`. **(R1: `SupplierPaymentCompleted` has no Allocation-FSM-activation role — Module A aligned.)** | AUTO — assert no Module D state-mutation. |
+
+### §6.4 Module E ↔ Module K — N2 (trigger-agnostic)
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-10** | Emits to Module K: `StoragePaymentFailed` (→ `STORAGE_PAYMENT_FAILED` Hold — **manual-first trigger, D4**) + `CustomerChargebackFlagged` (→ `CHARGEBACK_REVIEW` Hold — **automated, D21**) + `ClubCreditIssued`/`ClubCreditApplied`/`ClubCreditRestored`/`ClubCreditForfeited` + `StoreCredit*` (→ Module K records balances). **N2: Module K's Hold registry is trigger-agnostic.** | AUTO — covered by AC-E-EVT-9/10/21/22; assert the K-side Hold creation for both triggers. |
+| **AC-E-XM-11** | Reads from Module K: `ProducerAgreement.settlement_cadence` (deferred settlement) + `Customer.originating_club_id → Club.partner_producer_id` + `OriginatingClubLocked` (the OC capture seam) + credit-balance entities. | AUTO — drive each read; assert the correct Module K call; no state mutation. |
+| **AC-E-XM-12** | Module E does NOT own the Hold lifecycle — only emits the trigger events. | AUTO — assert no Hold-entity / Hold-state-machine code. |
+
+### §6.5 Module E ↔ Module A (read-only)
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-13** | Reads `Allocation.sourcing_model` / `commercial_terms` (per-constituent `C_i`) / `visibility` / `producer_id` / `supplier_id` — the settlement lineage seam (E does NOT re-derive; Module A §11.7). **Direct Purchase arm idles (item I).** | AUTO — drive each read; assert the correct Module A call; no event consumption / no mutation. |
+| **AC-E-XM-14** | Module E emits NO events to Module A + consumes NO domain events; read-only-attribute at settlement-composition time. | AUTO — assert no events + no state mutation. |
+
+### §6.6 Module E ↔ Module C (consume)
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-15** | Consumes `ReplacementShipmentIssued` / `BottleBreakageInTransit` / `BottleLossInTransit` / `BottleWriteOff` / `InsuranceClaimResolved` / `ShippingFeeQuoted` / `ShipmentDispatched` / `ExciseCalculated`. **(C records the operational event; E records the financial event; Xero decides GL.)** | AUTO — covered by AC-E-EVT-36..41. |
+| **AC-E-XM-16** | Module E emits NO events to Module C; no state mutation. | AUTO — assert no Module C state-mutation / emission. |
+
+### §6.7 Module E ↔ Module B — ⚠️ R4 (E emits; B consumes)
+| AC ID | Statement (re-anchored) | Verification |
+|---|---|---|
+| **AC-E-XM-17** | Consumes from Module B: `BottleBreakageInCustody` / `InventoryAdjusted` / `InventoryShortfallDetected` (NOT consumed) / `OwnershipTransitioned` (audit) / `BottleQuarantineResolved` (audit) / `StocktakeReconciled` (audit). | AUTO — covered by AC-E-EVT-42..47. |
+| **AC-E-XM-18** | **⚠️ R4 — Module E EMITS `SupplierPaymentCompleted`; Module B consumes it** → `OwnershipTransitioned` PRODUCER→CRURATED. Event-driven; no synchronous coupling; **Module B does NOT emit it.** **(v0.1: "Module E emits to Module B [now ALSO a trigger]" — re-anchored to clean E-emits/D+B-consume.)** | AUTO — covered by AC-E-EVT-48 + AC-E-J-37. |
+| **AC-E-XM-19** | Reads from Module B: InboundBatch cost-basis at dispatch + bottle-days-in-storage per allocation lineage (Module B answers the data query; Module S computes the fee + issues INV3; Module E records the INV3 financial event). | AUTO — covered by AC-E-J-35/36. |
+| **AC-E-XM-20** | Module E does NOT mutate Module B state; the contract is event-driven (E emits `SupplierPaymentCompleted`; B consumes + emits its own `OwnershipTransitioned`). | AUTO — assert no Module B state-mutation. |
+| **AC-E-XM-21** | NO Avalanche/NFT touchpoint (DEC-014); `NonRevenueCostRecorded` carries `BottleId` but no on-chain data (D12 decoupled). | AUTO — covered by AC-E-BR-NRC-5. |
+
+### §6.8 Module E ↔ Module 0 (read-only)
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-22** | Reads **Product Reference** / Product Variant / Composite SKU constituent context for financial-event payload lineage *(GENERALISE — the lightest cascade touchpoint)*; no events / no mutation. | AUTO — drive lineage-carrying events; assert the correct Module 0 reads; no state mutation. |
+
+### §6.9 External integration contracts
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-23** | Airwallex is the sole payment provider; inbound webhooks (`charge.succeeded/failed`, `transfer.received`, `dispute.created/resolved`); outbound (authorize+capture, saved-card charge, refund, dispute-evidence). | AUTO — assert a single AirwallexAdapter; all five inbound + four outbound patterns. |
+| **AC-E-XM-24** | Xero is the sole NewCo-side accounting integration; real-time sync + document-generation routing. | AUTO — covered by AC-E-BR-Xero-1/5. |
+| **AC-E-XM-25** | HubSpot routes notifications; Module E emits triggers only (`StoragePaymentFailed`, `CustomerChargebackFlagged`, `RefundExecuted`); no content logic. | AUTO — assert no template/channel/recipient logic. |
+| **AC-E-XM-26** | SDI connector DEFERRED (D20); the principle (E → Xero only; SDI XML downstream) preserved. | AUTO — covered by AC-E-BR-Def-1. |
+
+### §6.10 Boundary statements — Module E does NOT carry (per §10)
+
+| AC ID | Statement | Verification |
+|---|---|---|
+| **AC-E-XM-27..41** | Module E does NOT own: the Voucher FSM (Module S); the Order FSM (Module S); Allocation state/sub-pool/capacity (Module A); Hold entity creation/lifecycle (Module K — E emits triggers); Customer/Profile/KYC/sanctions/OC-lock (Module K); Producer/Supplier/ProducerAgreement/SupplierProducerLink (Module K + Module D); Shipping Order + carrier integration (Module C); NFC/NFT/Bottle Page (Module B — no Avalanche); Product master data/PR/Variant/Composite SKU/Case Config (Module 0); SDI XML (downstream of Xero); the credit-balance entity (Module K); credit-Hold-lift/write-off/refund-comp/dunning-config authority (operator-tier, admin-configurable); B2B/INV0/INV-P/INV1_INV2_COMBINED/INV4/SELL_THROUGH_SETTLEMENT/EVENT_CONSUMPTION_SETTLEMENT (out at launch); the Voucher activation gate (Module S); customer-facing notifications (HubSpot); the Airwallex/Xero/SDI/HubSpot operational integration mechanics (tech). | AUTO — inspect the Module E codebase; assert the absence of each owned-elsewhere capability (one assertion per boundary item, mirroring v0.1 AC-E-XM-27..41). |
+
+---
+
+## §6.11 MVP re-baseline criteria (AC-E-MVP-*) **(NEW — verifies the Phase D re-baseline)**
+
+| AC ID | Statement | Anchor | Verification |
+|---|---|---|---|
+| **AC-E-MVP-1** | *(D19 — the recording is the seam)* The settlement *engine* (the 5-section composition, the OC 5% aggregation, the clawback netting, the counterparty disambiguation routing, the settlement-statement FSM, the Xero AP routing) is deferred-to-operator-run at launch; **Module E keeps RECORDING every settlement-input event** (the E-emitted `SupplierPaymentCompleted`, D's `InboundEventCostFinalized`, S's `DiscoveryRevenueShareAccrued`/refund/reversal stream, C's NonRevenueCost triggers, B's `InventoryAdjusted`/cost-basis) + routes each to Xero in real time. The recording is NOT dropped; the engine reads the same records post-launch (additive). | PRD §4 / §4.7; cut-sheet §3.1; Phase C item E/N | AUTO — assert each settlement-input event is recorded + Xero-routed at launch; assert the composition/aggregation/FSM are absent-but-seamed (the engine criteria carry their "verified when the engine is built" state); **assert the recording is whole (the guard against dropping the seam).** |
+| **AC-E-MVP-2** | *(D4 — the chain is the seam)* The INV3-failed-charge 3-stage auto-escalation orchestration is manual-first at launch (operator-driven via the Admin Panel); the **`StoragePaymentFailed` → K-Hold (`STORAGE_PAYMENT_FAILED`) → Profile-Suspension event chain + the admin-configurable thresholds + the multi-cycle rules are retained**; the card+SEPA + saved-card charge + the sanctions/Hold gate (DEC-181) + the no-auto-lift discipline stand UNCHANGED — FLOOR. | PRD §3.3; cut-sheet §3.2; Phase C N2 | AUTO — assert the saved-card charge + the sanctions gate + the Hold chain present; assert the auto-escalation orchestration absent-but-seamed (operator-driven); assert no floor regression. |
+| **AC-E-MVP-3** | *(D21 — KEPT, Paolo override)* The chargeback 5-step chain auto-ingestion is KEPT from day 1 (automated `dispute.created`/`dispute.resolved`, `CustomerChargebackFlagged` → K `CHARGEBACK_REVIEW` Hold, 7-BD SLA, no-auto-lift). **N2:** the chargeback Hold trigger is automated; the storage-payment Hold trigger is manual-first (D4); Module K's registry is trigger-agnostic (both compose). | PRD §6 / §6.3; cut-sheet §3.3; Phase C N2 | AUTO — assert the full auto-ingestion fires from day 1; assert both Hold triggers compose on Module K's registry. |
+| **AC-E-MVP-4** | *(⚠️ R4 — E-emits; the trap)* **Module E EMITS `SupplierPaymentCompleted`** on payment clearing; **Module D consumes it** (settle/close the PO) + **Module B consumes it** (`ownership_flag` PRODUCER→CRURATED) — independently, event-driven, no synchronous coupling; atomic per PO. **N3:** the inventory `ownership_flag` `CRURATED` (B, keyed to `SupplierPaymentCompleted`) vs the PO-level title `NEWCO` (D, keyed to `VoucherIssued`) — same party, two ledgers, two signals; no accounting position on either (DEC-072). **Item F:** `VoucherIssued`/`VoucherShipped` named; no accounting position on the title timing. *(Supersedes the v0.1/cut-sheet "D-emits" framing.)* | PRD §5.9 / §8.1 / §9.2 / §9.6; Phase C §5-R4/N3/item F | AUTO — assert **Module E emits** `SupplierPaymentCompleted` (in its emitted catalogue, NOT consumed-from-D); assert Module D + Module B consume independently; assert the Direct-Purchase no-op; assert the two-ledger labels are not conflated. |
+| **AC-E-MVP-5** | *(naming cascade — the lightest of the eight)* The financial-event-lineage criteria carry `Product Reference`/`Product Variant`/`Product Master` *(was Bottle Reference / Wine Variant / Wine Master)*; **Module E's own event names are category-neutral — unchanged** (`Invoice*`/`Payment*`/`Settlement*`/`NonRevenueCost*`/`OCShare*`/`Chargeback*`/`Refund*`/`Xero*`/`FXVariance*`/`ClubCredit*`/`StoreCredit*`/`SupplierPaymentCompleted`); the credit-event names align to Module K's registry (`ClubCreditIssued`/`Applied`/`Restored`/`Forfeited`). "Bottle Reference" retained as a wine-display alias; behaviour identical. | PRD §12; Phase C item A; Module 0 §18 | AUTO — assert the lineage payloads carry the Product-* names; assert Module E's own names unchanged; assert the credit-event names match Module K §15.8. |
+| **AC-E-MVP-6** | *(floor whole + boundary parity)* The customer-side floor is whole in composition: tax-correct INV1/INV2/INV3 recording (FLOOR); card + bank-transfer + saved-card execution (FLOOR); the three-actor split (FLOOR); the dual-record FX + per-leg rate-lock + refund-at-original-FX + `FXVarianceRecorded` (D18 FLOOR); sanctions/Hold at charge + refund (DEC-181 FLOOR); real-time Xero sync + post-sync immutability + reversal-ordering + credit-note discipline + 10-yr retention (FLOOR/audit). Zero producer writes + zero consumer self-serve writes (L-PP — no backend cut). No Module E NFT touchpoint (D12 decoupled). | PRD §0 / §2 / §3 / §7 / §1.4; Phase C §6 | AUTO/MIXED — assert each floor chain Module E holds composes; assert L-PP (no write UI); assert no Avalanche touchpoint. |
+
+---
+
+## §7 Out of scope for this acceptance pass
+
+Carried from v0.1 §7 (re-anchored), plus the MVP deferrals:
+- **Engineering Definition of Done** (DEC-073): coverage/perf/retry/idempotency/webhook-signature/key-rotation/API-version; the Airwallex/Xero/HubSpot literal contracts; the settlement-run code; the dunning-orchestration internals.
+- **UI / UX acceptance**: the Admin Panel dunning-config / manual-reconciliation / **settlement-composition (now operator-run — D19)** / FX-variance screens; the Customer Portal credit-history; the Producer Portal financial dashboard; the statement-document layout (Xero scope).
+- **Operational R&R / approval-tier policy** (`feedback_prd_rr_approval`): admin-configurable thresholds (dunning cadence, retry window, FX buffer, refund-comp premium, Hold-lift authority).
+- **GL accounting policy (DEC-072)**: revenue recognition, deferred-revenue, COGS timing, journal posting, chart-of-accounts, period-close, IFRS 15, COGS-vs-OpEx on `NonRevenueCostRecorded`, impairment, warranty reserve, deferred-revenue between INV1/INV2 under MPV, GL of multi-currency variance — all Xero + Finance.
+- **MVP-deferred automation (verified when the engine/orchestration lands — NOT removed)**: the **D19 settlement engine** (composition + aggregation + netting + counterparty routing + statement FSM + Xero AP); the **D4 INV3 dunning orchestration** (auto-retry + auto-Hold + auto-Suspension + multi-cycle composition). The launch posture (operator-run / manual-first) is the verified surface; the automation criteria carry their state to the roadmap.
+- **Phase 2+ deferrals (carry verbatim)**: SDI connector (D20); paid services + INV4 + EVENT_CONSUMPTION_SETTLEMENT; partial PO settlement (OQ-20); active-consignment SELL_THROUGH_SETTLEMENT (tri-module B+C+E); AR-aging dunning; producer-override shipping / US-state expansion / excise rate-matrix / DDP-DAP / reverse-logistics / blockchain-expert review (Module E records the resulting events identically once activated).
+- **Cross-module behaviours owned by other modules**: Module S invoice-issuance logic, Module K Hold-lifecycle + credit-balance entity + Profile Suspension, Module B inventory-state mutation + ownership flip, Module D supplier-payment domain + InboundEvent, Module C shipping/replacement/insurance, Module A allocation lineage. Module E acceptance verifies only the Module-E-side surface.
+- **PRD ambiguities (AMB-E-1..7)**: the acceptance-authoring backlog — deferred to a future v0.3 editorial pass; not re-opened. *(AMB-E-4 settlement-statement FSM + AMB-E-6 AR-aging dunning intersect the D19/D4 defers — fold into the engine-build if convenient; not scope decisions.)*
+
+---
+
+## §8 Sign-off log
+
+### §8.1 Format-validation milestones
+| Milestone | Date | Notes |
+|---|---|---|
+| v0.1 authored (parallel agent) | 2026-05-15 | Initial draft; 223 criteria; awaiting Paolo packet review. |
+| **v0.3-MVP re-cut (this session)** | 2026-06-08 | Re-cut from v0.1 per the cut-sheet §5 delta + Phase C R4/N2/N3/item E/F: D19 settlement-engine criteria annotated deferred-to-operator-run (the recording stands — FLOOR); D4 INV3-dunning criteria annotated manual-first (the chain stands); D21 chargeback criteria unchanged (automated); **R4 — the `SupplierPaymentCompleted` criteria re-anchored to E-EMITS / D+B-consume** (AC-E-J-37/38, EVT-34/48, XM-8/18, BR-Own-1/2, BR-Settle-12); lightest naming cascade + credit-name alignment to Module K; §6.11 MVP re-baseline (AC-E-MVP-1..6); re-anchored to the v0.3-MVP PRD (§0.2 three-actor → §1.1). **No launch-scope criterion removed.** **DRAFT — awaiting batch ratification.** |
+
+### §8.2 Per-AC delivery sign-off
+Maintained at first delivery review (OPEN / DEMOED / ACCEPTED + Paolo signature + date). Placeholder rows omitted in the draft.
+
+---
+
+## §9 Cross-references
+
+- **Companion spec**: [`../02-prd/Module_E_PRD_v0.3-MVP.md`](../02-prd/Module_E_PRD_v0.3-MVP.md).
+- **Predecessor (re-cut from; frozen)**: [`../../reference/v1.1/01-prd/Module_E_Acceptance_v0.1.md`](../../reference/v1.1/01-prd/Module_E_Acceptance_v0.1.md) + the v1.1 PRD [`../../reference/v1.1/01-prd/Module_E_PRD_v0.2.md`](../../reference/v1.1/01-prd/Module_E_PRD_v0.2.md).
+- **Ratified scope source**: [`../01-triage/Module_E_CutSheet_v0.1.md`](../01-triage/Module_E_CutSheet_v0.1.md) §5 (the acceptance delta). **⚠️ Its "D-emits" RECONCILE is superseded by Phase C R4 (E-emits).**
+- **Coherence gate**: [`../01-triage/Phase_C_Reconciliation_v0.1.md`](../01-triage/Phase_C_Reconciliation_v0.1.md) (R4 §5-R4/§2-C; N2 §5-N2; N3 §5-N3; items E/F; floor §6).
+- **Settled siblings' acceptance**: `Module_S_Acceptance_v0.3-MVP.md` / `Module_D_Acceptance_v0.3-MVP.md` / `Module_B_Acceptance_v0.3-MVP.md` / `Module_C_Acceptance_v0.3-MVP.md` (the R4 consumer sides — D consumes / B consumes; the §6.11 re-baseline convention).
+- **MVP decisions register**: [`../04-decisions/MVP_Decisions_Register_v0.1.md`](../04-decisions/MVP_Decisions_Register_v0.1.md).
+
+### §9.1 v0.1 → v0.3-MVP re-baseline trace
+
+| Bucket | v0.1 anchor | Cut-sheet §5 / Phase C | MVP disposition |
+|---|---|---|---|
+| §2 Journeys (AC-E-J-1..46) | §2 | D19/D4/D21/R4 | KEEP; D19 (J-22..29/45) deferred-with-engine; D4 (J-8..13) manual-first; D21 (J-39..42) unchanged; **R4 (J-37/38) E-emits**; floor (J-1..7/14..21/30..36/43/44) unchanged. |
+| §3 FSMs (AC-E-FSM-1..10) | §3 | D19/D4/D21 | KEEP; FSM-9 (settlement) deferred-with-engine; FSM-5/6/7 (INV3) manual-first; FSM-8 (chargeback) unchanged; FSM-1/2/3/4/10 floor unchanged. |
+| §4 BRs (AC-E-BR-*) | §4 | all dials + R4 | KEEP; Settle-* deferred-with-engine (recording stands); Pay-4/5/7 manual-first; **Own-1/2 + Settle-12 R4 re-anchored**; FX/Xero/Inv/Actor/NRC floor unchanged. |
+| §5 Events (AC-E-EVT-1..48) | §5 | R4 + naming | KEEP; **EVT-34 emits / 48 emits (R4)**; EVT-16/17/18 settlement recorded/deferred; EVT-21/22 credit names aligned; lineage GENERALISE. |
+| §6 Cross-module (AC-E-XM-1..41) | §6 | R4 + §0.2→§1.1 | KEEP; **XM-8 (D consumes) / 18 (B consumes) R4**; XM-1..4 re-anchored to §1.1; XM-10 N2. |
+| §6.11 MVP re-baseline | — (new) | cut-sheet §5; Phase C | NEW — AC-E-MVP-1..6 (D19 recording seam / D4 chain seam / D21 KEPT / R4 E-emits / naming / floor-whole). |
+
+---
+
+*End of Module E Acceptance Criteria v0.3-MVP — Phase D re-baseline. **DRAFT — awaiting batch ratification.** The eighth and final module acceptance doc. The delta is **bounded — annotations + automation-deferrals + the R4 re-anchor, not floor removals**: D19 (the settlement-engine composition criteria deferred-to-operator-run; the settlement-input *recording* criteria stand — FLOOR), D4 (the INV3-dunning criteria manual-first; the Hold chain + thresholds stand), D21 (the chargeback criteria unchanged — automated, Paolo override), ⚠️ **R4 (the `SupplierPaymentCompleted` criteria re-anchored to E-EMITS / D+B-consume — the v0.1 "D-emits" superseded by Phase C)**, the lightest naming cascade + credit-name alignment, and §6.11 (AC-E-MVP-1..6). The customer-side payment-execution + Xero-routing + tax-correct-invoicing-recording + dual-record-FX (D18) + three-actor-split criteria are untouched. No launch-scope criterion removed; the OC accrual capture is whole at launch. Nothing handed off until Phase E.*

@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Dependencies (the Laravel bootstrap change extends this file — merge, never replace)
+/vendor/
+/node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Ralph runtime state (failure-context files live inside change dirs)
+**/.last-output
+.ralph/
+
+# Transient reports
+lint-report.md
+
+# Laravel runtime (pre-seeded; framework defaults merged at bootstrap)
+/storage/*.key
+/public/build
+/public/hot
+/public/storage
