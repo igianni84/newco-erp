@@ -20,9 +20,7 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 | Open decision | Decide before (gate) |
 |---|---|
 | Identity/auth (first-party vs external IdP; customer vs operator auth) | Module K |
-| Queue driver (Redis + Horizon vs database) | first async workflow |
-| Domain-event substrate (in-process sync + outbox vs broker) | first cross-module event |
-| Audit/financial event store (10-year immutability mechanism) | first financial event |
+| Queue driver (Redis + Horizon vs database; substrate ADR pre-set: at-least-once + per-job delay) | first `queued` consumer (expected F4–F6) |
 | Object storage for documents (invoices, statements) | INV1 issuance |
 | Hosting/infra (EU data-residency is mandatory) | staging environment |
 | Consumer/producer frontend stack (founder direction: TanStack SPA — TypeScript, no PHP frontend; formal ADR at gate) | Module S storefront |
@@ -34,7 +32,7 @@ When a gate approaches, run a `grill-with-docs` session, write the ADR, then pro
 **Modular monolith.** One Laravel application; nine bounded contexts under `app/Modules/{Catalog,Parties,Allocation,Procurement,Commerce,Inventory,Fulfilment,Finance,OperatorPanel}` (module ↔ spec letter: Catalog=0, Parties=K, Allocation=A, Procurement=D, Commerce=S, Inventory=B, Fulfilment=C, Finance=E).
 
 - **No cross-module Eloquent relationships, joins, or model imports.** Modules communicate via domain events and small read contracts (interfaces). The ~120 events in the spec are the inter-module API.
-- Domain events are append-logged for audit (implementation per open ADR).
+- Domain events: transactional outbox — the append-only `domain_events` log (written in the emitting transaction) is simultaneously outbox, 10-year audit log and financial event store; per-consumer delivery ledger (inline at launch, queued post queue-ADR); operator actions in `audit_records` (before/after, structural immutability + GDPR redaction). ADR: `decisions/2026-06-12-event-substrate-and-audit-store.md`.
 - The four spec reconciliations **R1–R4 are canonical**: `SupplierPaymentCompleted` is emitted by **Module E** (D and B consume it independently); storage fees and INV1/INV2/INV3 are **Module-S-internal**; Logilize streams split C=4 fulfilment / B=5 inventory-state; Allocation FSM activation is operator publish, not payment-triggered.
 - NFT/on-chain is **decoupled behind a feature flag** (D12): serialization ships launch-ready; mint/burn stays flagged off. The non-serialized (NS) path is the universal fallback.
 

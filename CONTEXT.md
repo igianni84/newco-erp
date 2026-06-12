@@ -97,6 +97,20 @@ Module D enum on POs: `PRODUCER` / `NEWCO` / `THIRD_PARTY`. Keys to the sale/shi
 **Dual-currency recording**:
 Every customer-facing financial event records the customer-currency amount AND the EUR amount with a locked FX rate; refunds settle at the original captured rate.
 
+## Events & Audit
+
+**Domain Event**:
+A named, versioned business fact that one module announces and other modules consume — the sole inter-module API (~120 in the launch catalogue). Immutable once recorded; consumers tolerate cross-transaction arrival order. Payloads reference parties by ID and never carry personal data.
+_Avoid_: message, notification, webhook
+
+**Audit Record**:
+The immutable trace of an operator or system action: who (actor_role), what, when, before/after state, and the authorization basis. Write-only — inspected for compliance, never consumed by modules. Distinct from a Domain Event (a contract between modules).
+_Avoid_: log entry, history
+
+**Financial Event**:
+A domain event recording a monetary fact (Module E's catalogue, ~30 types at launch). Dual-currency recorded, immutable post-sync, corrections only via compensating events (credit notes), retained 10 years.
+_Avoid_: transaction (overloaded), ledger entry
+
 ## Operations & Integrations
 
 **Vinlock**:
