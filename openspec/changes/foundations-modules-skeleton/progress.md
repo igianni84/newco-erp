@@ -123,3 +123,30 @@
   - Doc-pin idiom consolidated to `## Codebase Patterns` (reusable for any future module-enumerating doc): mirror `DevelopmentDocsTest`; same-line name+letter pairing is the meaningful registry-completeness check (`toContain($letter)` alone is near-vacuous for single-char letters); number doc sections `## {n}.` for `range`-based completeness; doc-pin tests go in `tests/Feature/` (need the booted container for `base_path()`).
   - **Group 3 (docs) complete (1/1). 8/9 tasks done — only 4.1 (final quality + traceability sweep) remains.** Next: 4.1 — five Quality Commands in CLAUDE.md order; `openspec validate --strict`; walk every `#### Scenario:` in `specs/module-architecture/spec.md` → record a scenario→covering-test mapping table in progress.md (add a test on the spot if any scenario is uncovered — expect full coverage already: 2.x red-proofs + this doc-pin test cover all scenarios); confirm no protected-file mod + `git diff main -- composer.json composer.lock` empty. On all-green → `<promise>CHANGE_COMPLETE</promise>` (human reviews/merges/archives; ralph never pushes).
 ---
+
+## [2026-06-12 12:21] — 4.1 traceability + final quality sweep (change COMPLETE)
+- **Scope:** the final task — **no new production code**. Deliverable = the scenario→covering-test traceability mapping below + the green five-command sweep. Walked every `#### Scenario:` in `specs/module-architecture/spec.md` (6 requirements / **15 scenarios**): full coverage already existed from tasks 1.1–3.1, so **zero new tests added** (per the task's own rule — add only on a gap; none found).
+- **Five Quality Commands, CLAUDE.md table order, all green:** `format` (pint) ✅ no-op · `test_filter` (`--filter="is registry-complete"`) 1/1 (9 assert) ✅ · `test` **60/60 (317 assert)** ✅ · `type_check` (phpstan) **0 @ level max** ✅ · `lint` (pint --test) ✅. `openspec validate foundations-modules-skeleton --strict` ✅. `git diff main -- composer.json composer.lock` **empty** (zero new deps). 27 files changed vs main, **no protected file touched** (no `CLAUDE.md` / `RALPH.md` / `ralph.sh` / `.claude/**` / `spec/**` / `openspec/specs/**` / `APPROVED`).
+- **Scenario → covering-test traceability (delta-spec `module-architecture`):**
+
+| Requirement | Scenario | Covering test | Red-proof |
+|---|---|---|---|
+| Module Skeleton and Registry | Nine module providers load | `tests/Feature/Modules/ModuleProvidersTest.php` — "registers a standard service provider for every module at boot" (`getLoadedProviders()->toHaveKeys`) | — |
+| | Canonical registry matches the spec mapping | `tests/Unit/Modules/ModuleTest.php` — letters/values/namespace/providerClass verbatim `toBe` | — |
+| | No stray entries at the modules root | `tests/Architecture/ModuleConformanceTest.php` — sorted set-equality (both tests) | 2.1 (mkdir Warehouse → red) |
+| Module Boundary Law | Cross-module internal import fails the suite | `tests/Architecture/ModuleBoundariesTest.php` — "keeps each module private…" | 2.2(a) |
+| | Public-surface import is allowed | idem — `->ignoring([…\Contracts, …\Events])` | 2.2(b) |
+| | Platform never imports modules | `tests/Architecture/ModuleBoundariesTest.php` — "forbids platform code from depending on any module" | 2.3 |
+| Module Persistence Conventions | Module model declares its prefixed table | `tests/Architecture/ModulePersistenceConventionsTest.php` | 2.4 ×3 |
+| | Empty model set is handled honestly | idem — `$scannedFiles` not-empty THEN `$violations->toBe([])` | — |
+| Operator Panel Module Placement | Panel served from the OperatorPanel module | `ModuleProvidersTest` — "loads the AdminPanelProvider from the OperatorPanel module" + "no longer exposes … old platform location" | — |
+| | Panel behavior is unchanged by the move | `tests/Feature/OperatorPanelTest.php` — "redirects unauthenticated visitors to the panel login" (+3), passes UNMODIFIED | — |
+| | OperatorPanel has no special rights | `ModuleBoundariesTest` privacy loop iterates all `Module::cases()`, incl. OperatorPanel as a source module | 2.2 |
+| Boundary Enforcement in the Default Test Suite | Architecture suite runs by default | `phpunit.xml` `<testsuite name="Architecture">`; full `php artisan test` = 60 tests incl. Architecture | — |
+| | Violations are demonstrably caught | recorded red-proofs for 2.1–2.4 in this progress log | 2.1–2.4 |
+| Module-Build Template | Template exists, is complete and indexed | `tests/Feature/ModuleTemplateDocsTest.php` (exists / nine `## n.` sections / public surface / persistence / `CONTEXT.md`) + `docs/INDEX.md` row | — |
+| | Template is registry-complete | `ModuleTemplateDocsTest` — "is registry-complete" + non-vacuous "a non-module name pairs with no line" | — |
+
+- **Verdict: 15/15 scenarios covered, no gap.** Interactive semantic verification (GUIDE §2.7) was run **pre-merge** by the operator and came back CLEAN — no CRITICAL/WARNING on the implementation. The sole finding was process, not code: the ralph loop had stopped after task 3.1 (8/9), leaving this final task unrun; closed here interactively.
+- **CHANGE COMPLETE — Group 4 (final) 1/1 → 9/9 tasks done.** Ready for merge → archive.
+---

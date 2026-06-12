@@ -37,7 +37,7 @@
 
 ## 4. Final Quality Pass
 
-- [ ] 4.1 Traceability + full-quality sweep: run the five Quality Commands in CLAUDE.md table order, all green; `openspec validate foundations-modules-skeleton --strict` green; walk every `#### Scenario:` in `specs/module-architecture/spec.md` and record a scenario → covering-test mapping table in `progress.md` (if any scenario lacks a covering test or recorded red-proof, add it on the spot); confirm `git status` shows no protected-file modification and `git diff main -- composer.json composer.lock` is empty (zero new dependencies).
+- [x] 4.1 Traceability + full-quality sweep: run the five Quality Commands in CLAUDE.md table order, all green; `openspec validate foundations-modules-skeleton --strict` green; walk every `#### Scenario:` in `specs/module-architecture/spec.md` and record a scenario → covering-test mapping table in `progress.md` (if any scenario lacks a covering test or recorded red-proof, add it on the spot); confirm `git status` shows no protected-file modification and `git diff main -- composer.json composer.lock` is empty (zero new dependencies).
   - Acceptance: five commands green in table order; validate --strict green; the scenario→test mapping table is in `progress.md` with no uncovered scenario; no protected files touched; composer.json/lock identical to main.
   - Test hint: this task adds no new tests unless the mapping finds a gap; the deliverable is the recorded mapping + the green sweep.
 
