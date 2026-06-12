@@ -66,9 +66,14 @@ Tool specifics:
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs a single `quality` job on **every push and pull request**: composer cache + install, `cp .env.example .env && php artisan key:generate` (the skeleton `phpunit.xml` ships no `APP_KEY`), then the gates in Quality Commands order — `vendor/bin/pint --test` → `vendor/bin/phpstan analyse` → `php artisan test` (in-memory SQLite, no service container). The contract is pinned by `tests/Feature/CiWorkflowTest.php`.
+`.github/workflows/ci.yml` runs on **every push and pull request**, in two lanes (`foundations-domain-events-audit` design D8):
 
-**CI PHP pin:** the workflow pins `php-version: '8.5'` — the local minor at bootstrap time, satisfying the project floor of **PHP ≥ 8.4**. When the local PHP minor is upgraded, bump the workflow pin alongside it (and this page's snapshot); never drop below 8.4.
+- **`quality`** — composer cache + install, `cp .env.example .env && php artisan key:generate` (the skeleton `phpunit.xml` ships no `APP_KEY`), then the gates in Quality Commands order: `vendor/bin/pint --test` → `vendor/bin/phpstan analyse` → `php artisan test` on **in-memory SQLite** (the dev/test engine, no service container). Lint and PHPStan are engine-independent, so they run **only here, once**.
+- **`tests-pgsql`** — the same `php artisan test` re-run against a **PostgreSQL 17** service container. 17 is the production-DB ADR floor (`decisions/2026-06-12-production-db-engine.md`); CI tests the floor, managed providers may run newer. This lane proves the Postgres-truthful migration branches the SQLite lane can't exercise — the `actor_role` CHECK constraint, the partial `WHERE status = 'pending'` index, and the plpgsql immutability trigger functions. The connection is passed as job-level env (`DB_CONNECTION: pgsql` + host/port/database/username/password); because `phpunit.xml`'s `<env>` entries are not `force="true"`, they do **not** clobber those already-set real env vars, so `php artisan test` runs on Postgres with no `--env` gymnastics.
+
+The contract is pinned by `tests/Feature/CiWorkflowTest.php` (both job names, the `postgres:17` image, the `DB_CONNECTION: pgsql` switch, and that the lint/type_check gates appear exactly once). The ralph loop never pushes, so the `tests-pgsql` lane's **first live run is the human push after review** — treat that run as part of the change's acceptance; if it reds, fix it in a follow-up iteration before merge.
+
+**CI PHP pin:** both lanes pin `php-version: '8.5'` — the local minor at bootstrap time, satisfying the project floor of **PHP ≥ 8.4**. When the local PHP minor is upgraded, bump the workflow pin alongside it (and this page's snapshot); never drop below 8.4. The `tests-pgsql` lane additionally adds the `pdo_pgsql`/`pgsql` extensions to the setup-php list.
 
 ## The ralph loop (autonomous implementation)
 

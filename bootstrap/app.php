@@ -1,5 +1,7 @@
 <?php
 
+use App\Platform\Events\Demo\DemoCommand;
+use App\Platform\Events\SweepCommand;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,6 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // Platform console commands live beside their concern under App\Platform (design D1); Laravel's
+    // auto-discovery only scans app/Console/Commands, so they are registered explicitly here.
+    ->withCommands([
+        SweepCommand::class,
+        DemoCommand::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })

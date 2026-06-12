@@ -1,6 +1,16 @@
 # Quality gates per CLAUDE.md: lint (pint --test), type_check (phpstan analyse),
 # test (php artisan test). PHP minor matches local dev (8.5; repo floor is >= 8.4).
 # PHPStan memory comes from the committed phpstan-bootstrap.php — no flag needed.
+#
+# Two lanes (foundations-domain-events-audit design D8):
+#   - `quality`     : lint + type_check + test on in-memory SQLite (the dev/test engine).
+#                     Lint and PHPStan are engine-independent, so they run ONCE, here.
+#   - `tests-pgsql` : the SAME `php artisan test` re-run against PostgreSQL 17 (the
+#                     production-DB ADR floor), so the Postgres-truthful migrations —
+#                     the `actor_role` CHECK, the partial pending index, the plpgsql
+#                     immutability triggers — are proven on the engine that ships.
+#                     Only the test gate runs twice; the lane's first live run is the
+#                     human push after review (the ralph loop never pushes).
 name: CI
 
 on:
@@ -51,4 +61,71 @@ jobs:
         run: vendor/bin/phpstan analyse
 
       - name: Tests (Pest on in-memory SQLite)
+        run: php artisan test
+
+  tests-pgsql:
+    runs-on: ubuntu-latest
+
+    # PostgreSQL 17 = the production-DB ADR floor (decisions/2026-06-12-production-db-engine.md).
+    # CI tests the floor; managed providers may run newer. Throwaway credentials.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: newco
+          POSTGRES_PASSWORD: newco
+          POSTGRES_DB: newco_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Real OS env vars for the job. PHPUnit's phpunit.xml <env> entries are NOT
+    # force="true", so they do not clobber an already-set env var (verified in
+    # vendor PhpHandler::handleEnvVariables); Collision's test subprocess inherits
+    # these via Symfony Process getDefaultEnv(); Laravel's immutable dotenv keeps
+    # them over .env. Net: `php artisan test` runs on pgsql. 127.0.0.1 (not
+    # localhost) dodges the IPv6 ::1 mismatch with the IPv4-bound service port.
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: newco_test
+      DB_USERNAME: newco
+      DB_PASSWORD: newco
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: ctype, curl, dom, fileinfo, filter, iconv, intl, mbstring, openssl, pdo_pgsql, pgsql, pdo_sqlite, session, simplexml, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Tests (Pest on PostgreSQL 17)
         run: php artisan test

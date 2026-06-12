@@ -4,7 +4,7 @@
 
 | Domain | Folder | Status |
 |---|---|---|
-| _(none yet — created on first insight)_ | | |
+| architecture | `knowledge/architecture/` | 1 rule |
 
 Suggested domains as work begins: `architecture` · `data-model` · `laravel` · `filament` · `testing` · `integrations` · `module-{0,k,a,d,s,b,c,e}` (one per spec module).
 
