@@ -56,6 +56,11 @@ it('derives each module namespace as App\Modules\{CaseName}', function () {
         ->and(Module::OperatorPanel->namespace())->toBe('App\Modules\OperatorPanel');
 });
 
+it('derives each module standard service-provider FQCN', function () {
+    expect(Module::Catalog->providerClass())->toBe('App\Modules\Catalog\Providers\CatalogServiceProvider')
+        ->and(Module::OperatorPanel->providerClass())->toBe('App\Modules\OperatorPanel\Providers\OperatorPanelServiceProvider');
+});
+
 it('rejects an unknown module value', function () {
     expect(fn () => Module::from('warehouse'))->toThrow(ValueError::class);
 });

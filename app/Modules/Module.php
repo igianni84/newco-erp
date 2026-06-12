@@ -52,4 +52,17 @@ enum Module: string
     {
         return __NAMESPACE__.'\\'.$this->name;
     }
+
+    /**
+     * The module's standard service-provider FQCN, e.g.
+     * App\Modules\Catalog\Providers\CatalogServiceProvider (design D1).
+     *
+     * The wiring seam registered in bootstrap/providers.php. OperatorPanel's
+     * Filament panel is provided separately by AdminPanelProvider (design D5),
+     * not by this standard provider.
+     */
+    public function providerClass(): string
+    {
+        return $this->namespace().'\\Providers\\'.$this->name.'ServiceProvider';
+    }
 }
