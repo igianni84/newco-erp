@@ -82,6 +82,13 @@ it('forbids platform code from depending on any module', function () {
         'App\\Providers',
         'App\\Models',
         'App\\Http',
+        // foundations-domain-events-audit design D1 (amendment protocol, skeleton
+        // design D7): the domain-event + audit substrate is platform code —
+        // modules depend on it (they call the recorders and implement the consumer
+        // contract), so it must never depend on a module. Its root joins the
+        // platform-never-imports-modules direction here; non-vacuity proven by the
+        // task 1.1 red-proof recorded in progress.md.
+        'App\\Platform',
     ];
 
     foreach ($platformNamespaces as $platformNamespace) {
