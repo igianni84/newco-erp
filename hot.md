@@ -17,7 +17,7 @@ updated: 2026-06-12
 - Quality loop (ultimo run pre-merge 06-11): format ✅ · test 36/36 (99 assertions) ✅ · type_check 0 @ level max ✅ · lint ✅. CI remota verde.
 
 ## Active Change & Next Task
-- **`foundations-modules-skeleton` APPROVED, in attesa del loop:** `caffeinate -i ./ralph.sh --change foundations-modules-skeleton 15` — **da terminale puro, mai dentro una sessione Claude**. Primo task: 1.1 (enum Module). A `CHANGE_COMPLETE`: rituale GUIDE §2.7 (review branch → merge --no-ff → push → verifica semantica → archive).
+- **`foundations-modules-skeleton` APPROVED, in attesa del loop:** `caffeinate -i ./ralph.sh --change foundations-modules-skeleton 15` — **da terminale puro, mai dentro una sessione Claude**. _(Il loop gira ora su **Opus 4.8 contesto-1M + effort max** — pin in ralph.sh:188 `--model "${RALPH_MODEL:-claude-opus-4-8[1m]}"`; override `RALPH_MODEL`/`RALPH_EFFORT`, `CLAUDE_FLAGS` vince.)_ Primo task: 1.1 (enum Module). A `CHANGE_COMPLETE`: rituale GUIDE §2.7 (review branch → merge --no-ff → push → verifica semantica → archive).
 - **Dopo:** `/spec-to-change foundations-domain-events-audit` (implementa ADR 2: tabelle+trigger, delivery runner+sweep, hello-world "DB + event bus + audit trail"; **incorpora lane CI pgsql + policy migration di ADR 1** — primo change con migration). Poi `foundations-money-i18n-flags`.
 
 ## Blockers & Decisions Needed

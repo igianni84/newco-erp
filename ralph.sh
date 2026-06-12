@@ -21,6 +21,7 @@
 #             5 integrity violation (a protected layer was modified by the loop)
 #
 # Env: CLAUDE_FLAGS — extra flags appended to the claude invocation.
+# Env: RALPH_MODEL  — model per iteration (default: claude-opus-4-8[1m] — Opus 4.8, 1M context).
 # Env: RALPH_EFFORT — reasoning effort per iteration: low|medium|high|xhigh|max (default: max).
 # Prerequisites: claude CLI, jq, openspec (or npx fallback), git.
 # =============================================================================
@@ -184,7 +185,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
   # Fresh instance, autonomous mode. Project hooks (.claude/settings.json)
   # still apply: hot.md injection, git guardrails.
-  OUTPUT=$({ echo "$RUN_CONTEXT"; cat "$SCRIPT_DIR/RALPH.md"; } | claude --dangerously-skip-permissions --print --effort "${RALPH_EFFORT:-max}" ${CLAUDE_FLAGS:-} 2>&1 | tee /dev/stderr) || true
+  OUTPUT=$({ echo "$RUN_CONTEXT"; cat "$SCRIPT_DIR/RALPH.md"; } | claude --dangerously-skip-permissions --print --model "${RALPH_MODEL:-claude-opus-4-8[1m]}" --effort "${RALPH_EFFORT:-max}" ${CLAUDE_FLAGS:-} 2>&1 | tee /dev/stderr) || true
 
   # ------------------------------------
   # Immutable-layer integrity gate
