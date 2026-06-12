@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\Audit\AuditRecord;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DeliveryStatus;
 use Illuminate\Database\QueryException;
@@ -21,8 +22,13 @@ uses(RefreshDatabase::class);
  */
 function captureImmutabilityError(Closure $attempt): string
 {
+    // Wrap the forbidden DML in a nested transaction (a SAVEPOINT under the RefreshDatabase wrapper):
+    // PostgreSQL aborts the entire (sub)transaction when a trigger RAISEs, so without this the caller's
+    // follow-up verification SELECT would hit SQLSTATE 25P02 "current transaction is aborted". Rolling
+    // back to the savepoint keeps the outer transaction alive on PG; on SQLite (statement-level abort)
+    // the nesting is a harmless no-op. The throw is still surfaced, so assertion strength is unchanged.
     try {
-        $attempt();
+        DB::transaction($attempt);
     } catch (QueryException $e) {
         return $e->getMessage();
     }
@@ -113,6 +119,7 @@ it('rejects a structural UPDATE against audit_records and leaves the row unchang
 
 it('allows an UPDATE that changes ONLY before/after — the GDPR redaction seam stays open', function () {
     $redacted = json_encode(['email' => '[REDACTED]']);
+    $expectedRedaction = ['email' => '[REDACTED]'];
 
     $id = DB::table('audit_records')->insertGetId(immutabilityAuditRow());
 
@@ -122,8 +129,13 @@ it('allows an UPDATE that changes ONLY before/after — the GDPR redaction seam 
         'after' => $redacted,
     ]);
 
-    expect(DB::table('audit_records')->where('id', $id)->value('before'))->toEqual($redacted)
-        ->and(DB::table('audit_records')->where('id', $id)->value('after'))->toEqual($redacted)
+    // Read before/after through AuditRecord's array cast (the production access path): PostgreSQL jsonb
+    // normalizes key order and spacing, so a raw-string compare is non-portable; the decoded snapshot is
+    // the contract.
+    $record = AuditRecord::findOrFail($id);
+
+    expect($record->before)->toBe($expectedRedaction)
+        ->and($record->after)->toBe($expectedRedaction)
         // structural columns left untouched by the redaction
         ->and(DB::table('audit_records')->where('id', $id)->value('action'))->toEqual('voucher.cancel')
         ->and(DB::table('audit_records')->where('id', $id)->value('module'))->toEqual('platform')

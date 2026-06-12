@@ -49,25 +49,29 @@ it('has the two launch composite indexes, id-suffixed for causal-order reads', f
 });
 
 it('accepts a fully-formed event row and defaults schema_version to 1', function () {
-    DB::table('domain_events')->insert(domainEventRow(['event_id' => 'evt-happy']));
+    $eventId = (string) Str::uuid();
+    DB::table('domain_events')->insert(domainEventRow(['event_id' => $eventId]));
 
     // The row coming back (and schema_version defaulting to 1) proves the happy-path insert:
     // had it thrown, the test would error before this assertion; had no row landed, the value
-    // would be null and `toEqual(1)` would fail.
-    expect(DB::table('domain_events')->where('event_id', 'evt-happy')->value('schema_version'))
+    // would be null and `toEqual(1)` would fail. A real UUID is used because event_id is a native
+    // `uuid` column on PostgreSQL (strict), only a loose varchar on SQLite.
+    expect(DB::table('domain_events')->where('event_id', $eventId)->value('schema_version'))
         ->toEqual(1);
 });
 
 it('links a causal chain through the self-referencing causation_id FK', function () {
-    DB::table('domain_events')->insert(domainEventRow(['event_id' => 'evt-root']));
-    $rootId = DB::table('domain_events')->where('event_id', 'evt-root')->value('id');
+    $rootEventId = (string) Str::uuid();
+    DB::table('domain_events')->insert(domainEventRow(['event_id' => $rootEventId]));
+    $rootId = DB::table('domain_events')->where('event_id', $rootEventId)->value('id');
 
+    $causedEventId = (string) Str::uuid();
     DB::table('domain_events')->insert(domainEventRow([
-        'event_id' => 'evt-caused',
+        'event_id' => $causedEventId,
         'causation_id' => $rootId,
     ]));
 
-    expect(DB::table('domain_events')->where('event_id', 'evt-caused')->value('causation_id'))
+    expect(DB::table('domain_events')->where('event_id', $causedEventId)->value('causation_id'))
         ->toEqual($rootId);
 });
 
@@ -79,6 +83,7 @@ it('rejects an insert missing actor_role at the DB layer (invariant-8 NOT NULL f
 })->throws(QueryException::class);
 
 it('rejects a duplicate event_id at the DB layer', function () {
-    DB::table('domain_events')->insert(domainEventRow(['event_id' => 'evt-dup']));
-    DB::table('domain_events')->insert(domainEventRow(['event_id' => 'evt-dup']));
+    $eventId = (string) Str::uuid();
+    DB::table('domain_events')->insert(domainEventRow(['event_id' => $eventId]));
+    DB::table('domain_events')->insert(domainEventRow(['event_id' => $eventId]));
 })->throws(QueryException::class);

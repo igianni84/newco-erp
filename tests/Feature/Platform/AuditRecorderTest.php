@@ -137,7 +137,8 @@ it('stamps occurred_at as the application-set UTC clock', function () {
     $record = DB::transaction(fn () => recordTestAudit());
 
     // occurred_at is left uncast on AuditRecord (reads back as the stored string); the recorder set it
-    // to CarbonImmutable::now('UTC'), bound to the grammar's 'Y-m-d H:i:s' format — proving the clock
-    // is application-set (time-travel-testable) and in UTC, not a DB default.
-    expect(AuditRecord::findOrFail($record->id)->occurred_at)->toBe('2026-06-12 09:30:00');
+    // to CarbonImmutable::now('UTC'). SQLite returns 'Y-m-d H:i:s'; PostgreSQL's timestamptz appends a
+    // '+00' zone suffix — so match the prefix, which proves the clock is application-set
+    // (time-travel-testable) and in UTC on both engines, not a DB default.
+    expect(AuditRecord::findOrFail($record->id)->occurred_at)->toStartWith('2026-06-12 09:30:00');
 });

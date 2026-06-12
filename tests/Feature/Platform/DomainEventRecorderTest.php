@@ -3,7 +3,6 @@
 use App\Modules\Module;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\ConsumerRegistry;
-use App\Platform\Events\Contracts\DomainEventConsumer;
 use App\Platform\Events\DeliveryStatus;
 use App\Platform\Events\DomainEvent;
 use App\Platform\Events\DomainEventRecorder;
@@ -13,6 +12,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\Platform\InertConsumerA;
+use Tests\Support\Platform\InertConsumerB;
 
 /**
  * Pins the DomainEventRecorder (foundations-domain-events-audit, task 3.4; design D3) — the single
@@ -73,29 +74,24 @@ function recordTestEvent(
 }
 
 /**
- * Registers two DISTINCT fake consumers for an event name (two separate `new class` statements →
- * two distinct anonymous-class FQCNs) and returns those FQCNs in registration order, so a test can
- * assert the recorder fanned out exactly those two rows in that order. The registry is the container
- * singleton AppServiceProvider binds, so this is the same instance the recorder resolves.
+ * Registers two DISTINCT, NAMED fake consumers for an event name and returns their FQCNs in
+ * registration order, so a test can assert the recorder fanned out exactly those two rows in that
+ * order. The consumers are named classes (InertConsumerA/B), NOT anonymous `new class` doubles: an
+ * anonymous-class FQCN carries a NUL byte that PostgreSQL truncates, collapsing the two onto one
+ * stored `consumer` string and tripping a false unique(domain_event_id, consumer) collision — see
+ * InertConsumerA's docblock. Named classes are also the production-faithful shape (real module
+ * consumers are always named). The registry is the container singleton AppServiceProvider binds, so
+ * this is the same instance the recorder resolves.
  *
  * @return list<string>
  */
 function registerTwoFakeConsumers(string $eventName): array
 {
-    $first = new class implements DomainEventConsumer
-    {
-        public function handle(DomainEvent $event): void {}
-    };
-    $second = new class implements DomainEventConsumer
-    {
-        public function handle(DomainEvent $event): void {}
-    };
-
     $registry = app(ConsumerRegistry::class);
-    $registry->register($eventName, $first::class);
-    $registry->register($eventName, $second::class);
+    $registry->register($eventName, InertConsumerA::class);
+    $registry->register($eventName, InertConsumerB::class);
 
-    return [$first::class, $second::class];
+    return [InertConsumerA::class, InertConsumerB::class];
 }
 
 it('records a domain event and reads it back complete with its full envelope', function () {
@@ -126,7 +122,11 @@ it('records a domain event and reads it back complete with its full envelope', f
         ->and($read->entity_id)->toBe('42')
         ->and($read->correlation_id)->toBe($correlationId)     // caller-passed value preserved
         ->and($read->causation_id)->toBeNull()                 // root event has no cause
-        ->and($read->payload)->toBe(['amount_minor' => 12000, 'currency' => 'EUR', 'fx_rate' => '1.0842'])
+        // payload asserted by key (not a whole-array ->toBe): PostgreSQL jsonb does not preserve key
+        // order, so an order-sensitive array compare is non-portable; the values are what matter.
+        ->and($read->payload['amount_minor'])->toBe(12000)
+        ->and($read->payload['currency'])->toBe('EUR')
+        ->and($read->payload['fx_rate'])->toBe('1.0842')
         ->and($read->occurred_at)->toBeInstanceOf(CarbonImmutable::class);
 });
 
@@ -160,7 +160,7 @@ it('discards the state change, the event and its deliveries together on rollback
         DB::table('cache')->insert(['key' => 'demo:rollback', 'value' => 'discarded', 'expiration' => 9999999999]);
         recordTestEvent(name: 'PlatformDemoRecorded');
         throw new RuntimeException('force rollback');
-    }))->toThrow(RuntimeException::class);
+    }))->toThrow(RuntimeException::class, 'force rollback');
 
     // No dual-write: a rolled-back transaction leaves nothing behind in any of the three.
     expect(DB::table('cache')->where('key', 'demo:rollback')->count())->toBe(0)
