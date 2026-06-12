@@ -13,17 +13,20 @@ use RuntimeException;
 use Throwable;
 
 /**
- * The launch delivery engine (foundations-domain-events-audit, task 4.1; design D5) — the single
- * code path that runs `event_deliveries` rows, shared by the inline post-commit hook (wired in
- * {@see DomainEventRecorder}) and, post task 4.2, the scheduled sweep. Implements the delta-spec
- * Inline Delivery and Per-Consumer Delivery Ledger requirements: exactly-once for DB effects,
- * per-consumer failure isolation (R4), exponential backoff with dead-letter, and done-is-terminal.
+ * The launch delivery engine (foundations-domain-events-audit, tasks 4.1–4.2; design D5/D6) — the
+ * single code path that runs `event_deliveries` rows, shared by the inline post-commit hook (wired
+ * in {@see DomainEventRecorder}) and the scheduled sweep ({@see SweepCommand}). Implements the
+ * delta-spec Inline Delivery and Per-Consumer Delivery Ledger requirements: exactly-once for DB
+ * effects, per-consumer failure isolation (R4), exponential backoff with dead-letter, done-is-terminal.
  *
- * deliver() selects the DUE `pending` deliveries (NULL `available_at` = due now; a future
- * `available_at` is a row still in backoff and is skipped) for the given event ids, ordered by
- * `domain_event_id` then `id` — recorded/causal order (Module A § 12.4) — and runs each through
- * attempt(). The inline hook hands it the just-committed event's id; a directly-invoked deliver()
- * (and task 4.2's sweep, over its own due selection) reuses the same per-delivery logic.
+ * Two entry points share one per-delivery core (attempt()) and one "due" definition (dueDeliveries()):
+ *   - deliver(array $eventIds) — the inline hook's path: the just-committed events' deliveries, in
+ *     `domain_event_id` then `id` order (recorded/causal order, Module A § 12.4).
+ *   - deliverDue() — the sweep's path: ALL due deliveries, ordered `(consumer, domain_event_id)`
+ *     (design D6) so each consumer's stream drains in recorded order with no per-consumer FIFO
+ *     blocking — a poison row in backoff never stalls a later event for the same consumer.
+ * A delivery is DUE when it is `pending` and its backoff has elapsed (NULL `available_at` = due now;
+ * a future `available_at` is a row still in backoff and is skipped).
  *
  * attempt() is the exactly-once-for-DB-effects core: the consumer's handler AND the `done` status
  * flip (attempts+1) share ONE database transaction, so they commit together or not at all. A handler
@@ -35,10 +38,10 @@ use Throwable;
  * construction (the `status = pending` filter excludes it), so re-running the executor never
  * re-invokes a completed handler.
  *
- * Tunables come from `config('events.sweep.*')` with the design-D6 defaults baked into the config()
- * fallbacks, so the executor is self-sufficient before task 4.2 adds `config/events.php` (which only
- * makes the same numbers explicit and env-overridable). Consumers are container-resolved by FQCN at
- * delivery time (design D4) — the ledger stores only the class name.
+ * Tunables come from `config/events.php` (`events.sweep.*`, task 4.2) read via Config::integer with
+ * the design-D6 defaults baked into the fallbacks, so the executor stays correct even if a key is
+ * unset. Consumers are container-resolved by FQCN at delivery time (design D4) — the ledger stores
+ * only the class name.
  */
 class InlineDeliveryExecutor
 {
@@ -55,15 +58,8 @@ class InlineDeliveryExecutor
             return;
         }
 
-        $now = CarbonImmutable::now('UTC');
-
-        $deliveries = EventDelivery::query()
+        $deliveries = $this->dueDeliveries()
             ->whereIn('domain_event_id', $domainEventIds)
-            ->where('status', DeliveryStatus::Pending->value)
-            ->where(function (Builder $query) use ($now): void {
-                // Due = no backoff clock, or its backoff has elapsed.
-                $query->whereNull('available_at')->orWhere('available_at', '<=', $now);
-            })
             ->orderBy('domain_event_id')   // events delivered in recorded/causal order (A § 12.4)
             ->orderBy('id')                // within one event, consumers in fan-out (registration) order
             ->get();
@@ -71,6 +67,46 @@ class InlineDeliveryExecutor
         foreach ($deliveries as $delivery) {
             $this->attempt($delivery);
         }
+    }
+
+    /**
+     * Execute ALL due deliveries — the scheduled sweep's entry point ({@see SweepCommand}, task 4.2;
+     * design D6). It is the at-least-once guarantee behind the inline fast path: it picks up
+     * deliveries whose inline execution never ran (a crash between the emitting commit and the hook)
+     * and retryable failures whose backoff has elapsed. Ordered `(consumer, domain_event_id)` so each
+     * consumer's stream drains in recorded order; a poison row still in backoff is simply not due and
+     * is skipped, never blocking a later event for that same consumer (no per-consumer FIFO).
+     */
+    public function deliverDue(): void
+    {
+        $deliveries = $this->dueDeliveries()
+            ->orderBy('consumer')          // sweep order (design D6): per consumer…
+            ->orderBy('domain_event_id')   // …then in recorded order within that consumer
+            ->get();
+
+        foreach ($deliveries as $delivery) {
+            $this->attempt($delivery);
+        }
+    }
+
+    /**
+     * The base query for deliveries due to run now, shared by deliver() (the inline hook's
+     * event-scoped run) and deliverDue() (the sweep's global run) so the "due" definition can never
+     * drift between the two paths: `pending` (a `done`/`failed` row is terminal and excluded) whose
+     * backoff window has elapsed (no `available_at`, or it is now in the past).
+     *
+     * @return Builder<EventDelivery>
+     */
+    private function dueDeliveries(): Builder
+    {
+        $now = CarbonImmutable::now('UTC');
+
+        return EventDelivery::query()
+            ->where('status', DeliveryStatus::Pending->value)
+            ->where(function (Builder $query) use ($now): void {
+                // Due = no backoff clock, or its backoff has elapsed.
+                $query->whereNull('available_at')->orWhere('available_at', '<=', $now);
+            });
     }
 
     /**
