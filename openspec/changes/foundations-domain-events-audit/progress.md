@@ -273,3 +273,58 @@
   - **6.2 (final sweep) is the LAST task** — it adds no production code: run the five quality commands in table order, `openspec validate --strict`, then walk EVERY `#### Scenario:` in `specs/event-substrate/spec.md` AND `specs/platform/spec.md` and record the scenario→covering-test mapping table in this file (any uncovered scenario gets its test on the spot). Re-confirm the two required proofs are already recorded here: the 1.1 arch red-proof (entry @ 2026-06-12 14:26) and the D5 afterCommit resolution (4.1 entry @ 2026-06-12 20:45 + the Codebase Pattern). Confirm `git status` shows no protected-file mod and `git diff main -- composer.json composer.lock` is empty. After 6.2 flips, ALL 15 tasks are `[x]` → emit `<promise>CHANGE_COMPLETE</promise>` (do NOT archive/merge — the human does that).
   - The doc-pin idiom is consolidated as a Codebase Pattern above (throwing reader for non-vacuity, verbatim-substring traps incl. the fenced-SQL alignment whitespace + `immutable`≠`immutability`, preserve a sibling doc's pinned tokens when refreshing it).
 ---
+
+## [2026-06-12 23:55] — 6.2 Final traceability + quality sweep
+- **What:** The change's closing task (no new production code). Ran the five Quality Commands in CLAUDE.md table order + `openspec validate --strict`, walked EVERY `#### Scenario:` in both delta specs and recorded the scenario→covering-test map below, confirmed the two required proofs are already journaled here, and re-checked the protected-file / composer-churn guards. The scenario walk found ONE gap — event-substrate "Retries are per-consumer" — and closed it with a test on the spot (the task's prescribed action), the only code change this task makes.
+- **Files changed (1 modified, not protected):**
+  - `tests/Feature/Platform/SweepTest.php` — +1 test *"retries only the failed consumer to done and never re-runs the already-done sibling (retries are per-consumer)"*: seeds a previously-FAILED-but-retryable delivery (RecordingConsumer, `pending`, attempts 1, backoff elapsed → due) + an already-`done` sibling on the SAME event (FailingConsumer, so a wrong re-run would THROW), runs `events:sweep`, asserts the retried row → `done`/attempts 2 and that only it ran, the sibling untouched (`done`/attempts 1). Closes the scenario-12 gap: no existing test drove a *previously-failed* delivery to success on retry — crash-recovery starts at attempts 0 (never failed), backoff/dead-letter never succeed, poison-no-stall skips the backoff row rather than retrying it to success.
+- **Quality loop (table order, all green):** format (pint) ✅ · test_filter (the new test) 1/1 (6 assertions) ✅ · test (full) **151/151 (598 assertions)**, +1 test/+6 vs the 150/592 baseline ✅ · type_check (phpstan level max) 0 errors ✅ · lint (pint --test) ✅ · `openspec validate foundations-domain-events-audit --strict` ✅.
+- **Guards:** `git status` → only `tests/Feature/Platform/SweepTest.php` modified (NOT a protected path) ✅ · `git diff main -- composer.json composer.lock` empty (zero dependency churn — the standing invariant of this change) ✅.
+- **Two required proofs confirmed present in this file:** (1) the 1.1 arch-amendment RED-PROOF — entry @ 2026-06-12 14:26 (the temp `App\Platform\TempBoundaryProbe` turned the suite RED with `Expecting 'App\Platform' not to use 'App\Modules'.`, then removed → green, tree clean) ✅ · (2) the design-D5 afterCommit resolution — 4.1 entry @ 2026-06-12 20:45 ("the landmine does NOT exist on this framework … no fallback was needed") + the Codebase Pattern at the top of this file ✅.
+
+### Scenario → covering-test traceability (all 29 scenarios mapped, no uncovered scenario)
+
+**`specs/event-substrate/spec.md` — 26 scenarios:**
+
+| Requirement › Scenario | Covering test — file › `it(...)` |
+|---|---|
+| Transactional Event Recording › State, event and deliveries commit atomically | `DomainEventRecorderTest` › *commits the state change, the event and one pending delivery per consumer atomically* |
+| Transactional Event Recording › Rollback discards state, event and deliveries together | `DomainEventRecorderTest` › *discards the state change, the event and its deliveries together on rollback* |
+| Transactional Event Recording › Recording outside a transaction is refused | `DomainEventRecorderTest` › *refuses to record outside a database transaction and writes nothing* |
+| Domain Event Envelope › Envelope persisted and read back complete | `DomainEventRecorderTest` › *records a domain event and reads it back complete with its full envelope* (supported by `ModelsTest` round-trips) |
+| Domain Event Envelope › actor_role is mandatory at the database layer | `DomainEventsSchemaTest` › *rejects an insert missing actor_role at the DB layer (invariant-8 NOT NULL floor)* |
+| Domain Event Envelope › FX rates survive as exact decimal strings | `DomainEventRecorderTest` › *preserves an FX rate as the exact decimal string it was given, never a float* |
+| Domain Event Envelope › Intra-transaction ids are monotonic in emission order | `DomainEventRecorderTest` › *assigns strictly increasing ids and a distinct event_id to events recorded in one transaction* |
+| Domain Event Envelope › Provenance is an envelope query | `DomainEventRecorderTest` › *returns an entity history by entity_type and entity_id in id order* |
+| Audit Records › Operator action recorded with before and after state | `AuditRecorderTest` › *records an operator action and reads it back complete with its envelope core* |
+| Audit Records › Audit records create no deliveries | `AuditRecorderTest` › *creates no event_deliveries rows when an audit record is written* |
+| Per-Consumer Delivery Ledger › Fan-out failure isolation (R4 mechanized) | `InlineDeliveryTest` › *isolates a failing consumer from its sibling (R4) and rolls back the failed handler's DB effect* |
+| Per-Consumer Delivery Ledger › Retries are per-consumer | `SweepTest` › *retries only the failed consumer to done and never re-runs the already-done sibling (retries are per-consumer)* **(added this task)** |
+| Inline Delivery and Scheduled Sweep › Inline delivery happy path | `InlineDeliveryTest` › *delivers inline after commit: the consumer runs and its delivery row reads done with attempts 1* |
+| Inline Delivery and Scheduled Sweep › Crash recovery — the sweep delivers what inline never ran | `SweepTest` › *delivers a committed pending delivery that the inline hook never ran (crash recovery)* |
+| Inline Delivery and Scheduled Sweep › Exponential backoff then dead-letter | `SweepTest` › *applies exponential backoff and skips a row whose backoff has not yet elapsed* + `SweepTest` › *dead-letters a delivery at max attempts and never executes it again* |
+| Inline Delivery and Scheduled Sweep › Done is terminal | `InlineDeliveryTest` › *never re-invokes a consumer whose delivery is already done (done is terminal)* |
+| Inline Delivery and Scheduled Sweep › Queued mode is gated | `ConsumerRegistryTest` › *keeps Inline the only registrable delivery mode until the queue ADR* |
+| Ordering and Consumer Obligations › Causal order within a transaction | `InlineDeliveryTest` › *delivers events recorded in one transaction to a consumer in their id (causal) order* |
+| Ordering and Consumer Obligations › A poison event does not stall the stream | `SweepTest` › *does not let a poison delivery in backoff stall a due delivery for the same consumer* |
+| Immutability Enforcement › domain_events UPDATE is rejected | `ImmutabilityTest` › *rejects an UPDATE against domain_events and leaves the row unchanged* |
+| Immutability Enforcement › domain_events DELETE is rejected | `ImmutabilityTest` › *rejects a DELETE against domain_events and the row remains* |
+| Immutability Enforcement › audit_records structural UPDATE is rejected | `ImmutabilityTest` › *rejects a structural UPDATE against audit_records and leaves the row unchanged* |
+| Immutability Enforcement › audit_records redaction UPDATE is allowed | `ImmutabilityTest` › *allows an UPDATE that changes ONLY before/after — the GDPR redaction seam stays open* |
+| Immutability Enforcement › audit_records DELETE is rejected | `ImmutabilityTest` › *rejects a DELETE against audit_records and the row remains* |
+| Hello-World Demonstration › End-to-end pipeline test | `HelloWorldPipelineTest` › *commits state, event and audit atomically, delivers inline to the demo consumer, and completes the ledger* |
+| Hello-World Demonstration › Demo command runs the full trail | `EventsDemoCommandTest` › *runs the full trail and exits 0* |
+
+**`specs/platform/spec.md` — 3 scenarios (MODIFIED Quality Pipeline requirement):**
+
+| Requirement › Scenario | Covering test — file › `it(...)` |
+|---|---|
+| Quality Pipeline › CI fails on a failing test | `CiWorkflowTest` › *runs the CI gates in Quality Commands order: lint, type_check, test* (the workflow runs `run: php artisan test`; a failing test fails that step → the run fails) + `CiWorkflowTest` › *triggers CI on every push and pull request* (the WHEN) |
+| Quality Pipeline › Local quality loop passes on a clean checkout | `QualityToolingTest` (pins all five Quality Commands — format/lint/test/analyse scripts + the Laravel pint preset); the green table-order run in THIS entry is the runtime witness that every configured command exits 0 |
+| Quality Pipeline › The suite runs against PostgreSQL in CI | `CiWorkflowTest` › *runs a second test lane on PostgreSQL 17 (the production-DB ADR floor)* (supported by *runs the engine-independent gates exactly once and the test gate in both lanes* + *scopes the pgsql connection switch to the second lane*) |
+
+- **Learnings for future iterations:**
+  - **A scenario whose WHEN composes two already-tested behaviors still needs its own test when no single test exercises the composition.** Scenario 12 ("retry of a failed delivery succeeds; sibling not re-executed") looked covered piecewise — crash-recovery proves "sweep delivers a pending row to done", done-is-terminal proves "a done row is never re-run" — but neither drove a *previously-failed* (attempts ≥ 1) delivery to success, which is the scenario's actual claim. The traceability walk is exactly where this surfaces; map each `#### Scenario:` to a test that exercises *its* WHEN, not an adjacent one.
+  - The PG branches of the schema migrations (2.1 `actor_role` CHECK, 2.3 partial pending index, 2.4 plpgsql immutability triggers) carry NO dedicated PG-only tests by design — the behavior assertions are engine-agnostic and the `tests-pgsql` CI lane (5.2) re-runs the WHOLE suite on PostgreSQL 17 at the human's pre-merge push (design D8). That CI run is part of the reviewer's acceptance, not something the loop can observe green.
+  - All 15 tasks are now `[x]`. Final state: full suite 151/151 green on SQLite, phpstan level max 0, pint clean, `openspec validate --strict` green, composer.json/lock identical to main, no protected file touched. → `<promise>CHANGE_COMPLETE</promise>` (the human archives + merges after review; the loop never does).
+---

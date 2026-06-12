@@ -169,6 +169,40 @@ it('does not let a poison delivery in backoff stall a due delivery for the same 
         ->and(RecordingConsumer::$handled)->toBe([$fresh->domain_event_id]);     // only the due event ran
 });
 
+it('retries only the failed consumer to done and never re-runs the already-done sibling (retries are per-consumer)', function () {
+    $t0 = CarbonImmutable::parse('2026-06-12 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($t0);
+
+    // The scenario-11 aftermath on ONE event with TWO consumers: the first consumer's delivery FAILED
+    // and is now retryable (pending, attempts 1, its backoff window already elapsed → due now); the
+    // sibling already completed `done`. The retrying consumer SUCCEEDS this time. The already-done
+    // sibling is a FailingConsumer on purpose — were the sweep to wrongly re-run it, it would THROW and
+    // visibly change state, so its staying `done`/attempts-1 is a non-vacuous "not re-executed" proof.
+    $retrying = sweepSeedDelivery(RecordingConsumer::class, [
+        'attempts' => 1,
+        'available_at' => $t0->subMinute(),
+        'last_error' => 'earlier failure',
+    ], entityId: 'retry');
+
+    $sibling = DB::transaction(fn (): EventDelivery => EventDelivery::create([
+        'domain_event_id' => $retrying->domain_event_id,   // same event → the sibling of the failed delivery
+        'consumer' => FailingConsumer::class,
+        'status' => DeliveryStatus::Done,
+        'attempts' => 1,
+    ]));
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    $retrying->refresh();
+    $sibling->refresh();
+
+    expect($retrying->status)->toBe(DeliveryStatus::Done)                      // the retry succeeded…
+        ->and($retrying->attempts)->toEqual(2)                                 // …a second attempt atop the failed one
+        ->and(RecordingConsumer::$handled)->toBe([$retrying->domain_event_id]) // only the retried consumer ran
+        ->and($sibling->status)->toBe(DeliveryStatus::Done)                    // the already-done sibling stayed put…
+        ->and($sibling->attempts)->toEqual(1);                                 // …never re-executed (FailingConsumer would have thrown)
+});
+
 it('schedules events:sweep every thirty seconds without overlapping', function () {
     // Bootstrapping the console kernel requires routes/console.php, registering the schedule entry on
     // the Schedule singleton (FoundationServiceProvider binds it shared, so this resolution and the
