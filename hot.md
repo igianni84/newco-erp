@@ -10,7 +10,7 @@ updated: 2026-06-12
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-12 14:26 (ralph — `foundations-domain-events-audit` task 1.1/15 ✅ green)** — Creato il root piattaforma `App\Platform` con i tre enum substrate (`ActorRole`, `DeliveryStatus`, `DeliveryMode`) ed esteso la legge boundary a coprirlo (design D1). Red-proof eseguito e registrato in progress.md. Primo task del change chiuso; restano 14.
+**2026-06-12 14:52 (fix interattivo — gate integrità ralph `exit 5` RISOLTO; task 1.1/15 resta ✅ green)** — Il loop si è fermato dopo 1.1 NON per un task fallito ma sul gate integrità di `ralph.sh` (riga 136): `APPROVED` è comparso nel diff `baseline..HEAD`. Causa provata: le impalcature del change + il marker `APPROVED` erano UNTRACKED al lancio (assenti in `BASELINE_SHA=64b6e5c`), e il `git add -A` del commit task-1.1 `0582628` le ha risucchiate (15 file, incl. `APPROVED|0`). Benigno (marker 0-byte, contenuto invariato). NON revertito `0582628`. Lezione + memoria registrate; **re-run sicuro** (HEAD contiene già `APPROVED` → prossimo baseline lo include → gate non riscatta). Prossimo task invariato: 2.1.
 
 ## Build & Quality Status
 - Stack invariato: PHP 8.5.2 · Laravel 13.15.0 (`^13.8`) · Filament v5.6.7 + Livewire v4.3.1 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev; tests `:memory:`.
@@ -23,7 +23,8 @@ updated: 2026-06-12
 - Ordine successivo: 2.2 audit_records · 2.3 event_deliveries (+ partial index `status='pending'`) · 2.4 trigger immutabilità (2 engine) · 3.x recorder/registry/model · 4.x delivery+sweep · 5.x hello-world+lane pgsql · 6.x docs+sweep finale.
 
 ## Blockers & Decisions Needed
-- Nessuno bloccante. La lane CI pgsql (task 5.2) sarà vista verde la PRIMA volta solo al push umano pre-merge (il loop non pusha) — parte dell'acceptance di review (design D8).
+- **Sbloccato.** Gate integrità iter-1 era un falso allarme benigno (`APPROVED` untracked risucchiato nel commit task-1.1), diagnosticato e risolto. Per ripartire: `./ralph.sh --change foundations-domain-events-audit` — riprende da 2.1, gate non riscatta. Regola per i prossimi change: committare impalcature + `APPROVED` come commit `approve:` PRIMA del loop (lessons.md 2026-06-12).
+- La lane CI pgsql (task 5.2) sarà vista verde la PRIMA volta solo al push umano pre-merge (il loop non pusha) — parte dell'acceptance di review (design D8).
 - Carry-over: gate ADR aperti (identity/auth K · queue driver F4–F6 · object storage INV1 · hosting EU F7 · frontend TanStack S); `openspec/specs/module-architecture/spec.md` ha `Purpose: TBD` (tidy-up opzionale, non a mano). Debiti semantic-verify W1/W2/W3/S1/S3 dal bootstrap (gate Module K).
 
 ## Open Patterns
