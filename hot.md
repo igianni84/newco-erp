@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-11
+updated: 2026-06-12
 ---
 
 # Hot Cache
@@ -10,26 +10,30 @@ updated: 2026-06-11
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-11 14:23 (interactive — chiusura rituale §2.7)** — **FASE 0 CHIUSA.** `bootstrap-laravel-app` mergiato su main (`merge --no-ff`, commit 5d474ba), pushato, branch ralph cancellato. **Prima run CI remota: SUCCESS in 30s** (run 27346064961). Verifica semantica (subagent, report-only): **CLEAN — 0 CRITICAL**, 3 WARNING + 3 SUGGESTION registrati in log.md e qui sotto. `openspec archive` eseguito: il change vive in `changes/archive/2026-06-11-bootstrap-laravel-app/` e i delta sono confluiti in **`openspec/specs/platform/spec.md`** (3 requirement — la prima living spec del repo).
+**2026-06-12 09:00 (interactive — sessione ADR 1)** — **ADR "production DB engine" DECISA: PostgreSQL** (floor 17, managed EU; dev/test resta SQLite). `decisions/2026-06-12-production-db-engine.md` + riga INDEX scritti. Baseline: UTF-8 + default collation `C.UTF-8` (ICU opt-in per-superficie), **zero estensioni al lancio**, policy migration **"Postgres-truthful, SQLite-compatible"**, lane CI `pgsql` da introdurre nel primo change F1 con migration di dominio. L'ADR non decide: hosting provider (F7 — direzione probabile registrata: hyperscaler EU-region, non vincolante), audit store, queue, event substrate. **Azione umana pendente: 2 righe di CLAUDE.md da aggiornare a mano** (file protetto): riga tech-stack "Production engine: OPEN decision" e riga "Production DB engine" della tabella gate.
 
 ## Build & Quality Status
-- **Version snapshot (docs/development.md + guardato da DevelopmentDocsTest):** PHP **8.5.2** · Composer **2.9.2** · Laravel **13.15.0** (`^13.8`) · Filament **v5.6.7** (`^5.0`) + Livewire **v4.3.1** · **Boost v2.4.10** (dev) · Pest **4.7.2** · PHPStan **2.2.2** · Larastan **3.10.0** · Pint **1.29.1**. SQLite dev; test su `:memory:`.
-- Quality loop (rieseguito pre-merge ~14:00): format ✅ · test **36/36 (99 assertions)** ✅ · type_check **0 @ level max** ✅ · lint ✅ · `openspec validate --strict` ✅.
-- **CI remota verde** sul merge commit; ogni push la rilancia.
+- **Invariato da 2026-06-11 (nessun codice toccato oggi):** PHP **8.5.2** · Composer **2.9.2** · Laravel **13.15.0** (`^13.8`) · Filament **v5.6.7** + Livewire **v4.3.1** · **Boost v2.4.10** (dev) · Pest **4.7.2** · PHPStan **2.2.2** · Larastan **3.10.0** · Pint **1.29.1**. SQLite dev; test su `:memory:`.
+- Quality loop (ultimo run pre-merge 06-11): format ✅ · test **36/36 (99 assertions)** ✅ · type_check **0 @ level max** ✅ · lint ✅. **CI remota verde** (run 27346064961).
 
 ## Active Change & Next Task
-- **Nessun change in-flight.** Archive completato; `openspec/specs/` ora è la living documentation (capability `platform`).
-- **Prossimo (GUIDE.md roadmap F1):** sessione **ADR 1 — production DB engine** (PostgreSQL vs MySQL, gate per la prima migration Module 0) e **ADR 2 — event substrate + audit store** (gate per `foundations-domain-events`). Poi `/spec-to-change` per la prima fetta foundations (`foundations-modules-skeleton`).
+- **Nessun change in-flight.** `openspec/specs/platform/spec.md` è l'unica living spec.
+- **Gate "first Module 0 migration" sbloccato** (ADR 1 ✅; resta solo l'edit manuale CLAUDE.md di Giovanni).
+- **Prossimo (GUIDE.md §3):** sessione **ADR 2 — event substrate + audit/financial event store** (gate per `foundations-domain-events-audit`; vincolo dal grill di oggi da portare in dote: eventi a cascata emessi in ordine causale dentro la stessa business transaction, Module A §12.4 → candidato naturale outbox-in-DB). Poi `/spec-to-change` per `foundations-modules-skeleton`.
+- **Da incorporare nel primo change F1 con migration:** job CI `pgsql` (service container Postgres, matrix con SQLite, ogni push) + policy migration dell'ADR.
 
 ## Blockers & Decisions Needed
-- **Debiti dalla verifica semantica** (non bloccanti, da assorbire nei prossimi change): **W1** `/up` risponde 200 al solo boot — nessun check DB (manca listener `DiagnosingHealth`), la prosa del requirement platform promette di più; **W2** `DatabaseSeeder` crea `test@example.com`/`password` e `User::canAccessPanel()` ritorna `true` per tutti → login /admin da seed, bonificare prima di staging (si aggancia all'ADR identity/auth, Module K); **W3** `composer.json` dichiara `php ^8.3` ma il floor di progetto è ≥8.4 (fix one-liner); **S1** commento fuorviante in `phpstan-bootstrap.php` (forza 1G anche su limiti maggiori); **S3** `welcome.blade.php` copy hardcoded — l'invariante i18n la vieta su superfici reali.
-- Open ADR gates: production DB engine · identity/auth · queue driver · event substrate · audit store · object storage · hosting EU · frontend stack (TanStack SPA, founder direction).
+- **Azione umana:** le 2 righe CLAUDE.md di cui sopra (dettate in chat 2026-06-12).
+- **Debiti dalla verifica semantica 06-11** (non bloccanti): **W1** `/up` senza check DB (manca listener `DiagnosingHealth`); **W2** `DatabaseSeeder` crea `test@example.com`/`password` + `canAccessPanel()` true per tutti → bonificare prima di staging (aggancio: ADR identity/auth, Module K); **W3** `composer.json` `php ^8.3` vs floor ≥8.4 (one-liner); **S1** commento fuorviante `phpstan-bootstrap.php`; **S3** `welcome.blade.php` copy hardcoded.
+- Open ADR gates rimasti: identity/auth · queue driver · event substrate · audit store · object storage · hosting EU (direzione: hyperscaler EU-region) · frontend stack (TanStack SPA, founder direction).
 - Credenziali sandbox esterne (Airwallex/Xero/HubSpot) prima dei change F6 — procurement umano.
 
 ## Open Patterns
-- **Merge ralph→main:** se main è antenato del branch (loop partito da main fermo), il tree mergiato == tip branch e nulla può perdersi — verificare con `git merge-base` + `git diff --cached <tip>` vuoto prima di concludere.
+- **Migrations (ADR 2026-06-12):** Postgres-truthful, SQLite-compatible — CHECK / partial / expression index ok ovunque; niente feature PG senza equivalente SQLite documentato; nessuna estensione PG al lancio.
+- **La spec è tech-agnostic by design (DEC-073):** i vincoli per le ADR si estraggono dai PRD via subagent (contratti, NFR, invarianti) — mai cercando nomi di tecnologie, che non ci sono.
+- **Merge ralph→main:** se main è antenato del branch, tree mergiato == tip branch — verificare con `git merge-base` + `git diff --cached <tip>` vuoto prima di concludere.
 - **Verify-before-write vale anche per i doc:** constraint/versioni sempre da composer.json/lock, mai da memoria.
 - **Doc↔reality guards:** `DevelopmentDocsTest` cross-checka la tabella versioni contro composer.lock — il refresh dei doc è enforced.
 - Memory files via Edit/Write, mai Bash heredoc (regex git-guardrails matcha prose tipo "platform spec").
 - Pin artifacts by executable form (`run: <cmd>`); Boost regen = `php artisan boost:install --guidelines -n`; Filament 5 auth FQCNs `Filament\Auth\Pages\*`.
-- Pattern completi del change: `openspec/changes/archive/2026-06-11-bootstrap-laravel-app/progress.md` → `## Codebase Patterns`.
+- Pattern completi fase 0: `openspec/changes/archive/2026-06-11-bootstrap-laravel-app/progress.md` → `## Codebase Patterns`.

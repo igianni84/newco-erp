@@ -10,7 +10,7 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 
 - **PHP ≥ 8.4** · **Laravel 13.x** (`^13.0`) · **Filament 5.x** (`^5.0`) for the operator panel — pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md`; exact installed versions recorded in `docs/development.md`.
 - **Pest** for tests · **Larastan/PHPStan** for static analysis · **Pint** for format/lint.
-- Dev/test database: **SQLite** (`:memory:` in tests). Production engine: OPEN decision (see below).
+- Dev/test database: **SQLite** (`:memory:` in tests). Production engine: **PostgreSQL ≥ 17** (managed, EU) — ADR `decisions/2026-06-12-production-db-engine.md`. Migrations are Postgres-truthful, SQLite-compatible; no PG extensions at launch
 - Prefer framework conventions: Eloquent, FormRequests, Policies, Events, Jobs, Notifications. No new heavyweight dependency without an ADR in `decisions/`.
 - **Money is always integer minor units + ISO 4217 currency code. Never floats.**
 - All user-facing strings go through Laravel localization (6 locales: EN, IT, FR, DE, JP, ZH). No hardcoded copy.
@@ -19,7 +19,6 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 
 | Open decision | Decide before (gate) |
 |---|---|
-| Production DB engine (PostgreSQL vs MySQL) | first Module 0 migration |
 | Identity/auth (first-party vs external IdP; customer vs operator auth) | Module K |
 | Queue driver (Redis + Horizon vs database) | first async workflow |
 | Domain-event substrate (in-process sync + outbox vs broker) | first cross-module event |
