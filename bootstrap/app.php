@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\Events\Demo\DemoCommand;
 use App\Platform\Events\SweepCommand;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     // auto-discovery only scans app/Console/Commands, so they are registered explicitly here.
     ->withCommands([
         SweepCommand::class,
+        DemoCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         //
