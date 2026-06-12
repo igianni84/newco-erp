@@ -142,9 +142,13 @@ it('commits the state change, the event and one pending delivery per consumer at
         recordTestEvent(name: 'PlatformDemoRecorded');
     });
 
+    // Co-persistence (atomicity) is the claim here: the state change, the event and one delivery row
+    // per consumer all committed together. The delivery STATUS is deliberately not asserted — task
+    // 4.1's afterCommit hook now runs these deliveries post-commit, so the fan-out's pending state is
+    // pinned inside the recording transaction by the dedicated fan-out test below, not here.
     expect(DB::table('cache')->where('key', 'demo:atomic')->count())->toBe(1)  // the state change
         ->and(DomainEvent::count())->toBe(1)                                    // the event
-        ->and(EventDelivery::where('status', DeliveryStatus::Pending->value)->count())->toBe(count($consumers)); // fan-out
+        ->and(EventDelivery::count())->toBe(count($consumers));                 // one delivery row per consumer, co-persisted
 });
 
 it('discards the state change, the event and its deliveries together on rollback', function () {
@@ -242,14 +246,19 @@ it('defaults correlation_id to the event\'s own event_id for a root event', func
 it('fans out one pending delivery row per registered consumer, and none when no consumer is registered', function () {
     [$first, $second] = registerTwoFakeConsumers('PlatformDemoRecorded');
 
-    $event = DB::transaction(fn () => recordTestEvent(name: 'PlatformDemoRecorded'));
+    // Assert INSIDE the recording transaction — before commit, before task 4.1's afterCommit hook
+    // runs the deliveries — so this pins the recorder's in-transaction fan-out contract (the pending
+    // rows it enqueues), immune to post-commit delivery flipping them to `done`.
+    DB::transaction(function () use ($first, $second) {
+        $event = recordTestEvent(name: 'PlatformDemoRecorded');
 
-    $deliveries = EventDelivery::query()->where('domain_event_id', $event->id)->orderBy('id')->get();
+        $deliveries = EventDelivery::query()->where('domain_event_id', $event->id)->orderBy('id')->get();
 
-    expect($deliveries)->toHaveCount(2)
-        ->and($deliveries->pluck('consumer')->all())->toBe([$first, $second])  // FQCNs, in registration order
-        ->and($deliveries->pluck('status')->all())->toBe([DeliveryStatus::Pending, DeliveryStatus::Pending])
-        ->and($deliveries->pluck('attempts')->all())->toEqual([0, 0]);         // freshly enqueued
+        expect($deliveries)->toHaveCount(2)
+            ->and($deliveries->pluck('consumer')->all())->toBe([$first, $second])  // FQCNs, in registration order
+            ->and($deliveries->pluck('status')->all())->toBe([DeliveryStatus::Pending, DeliveryStatus::Pending])
+            ->and($deliveries->pluck('attempts')->all())->toEqual([0, 0]);         // freshly enqueued
+    });
 
     // An event whose name has no registered consumer gets zero delivery rows (no fan-out).
     $orphan = DB::transaction(fn () => recordTestEvent(name: 'NobodyListens'));

@@ -17,10 +17,15 @@ use Illuminate\Support\Str;
  * `pending` `event_deliveries` row per consumer registered for the event name, all in that one
  * transaction, so the state change and the events recorded with it commit or roll back together
  * (no dual-write). The transaction guard (shared {@see NotInTransactionException}) makes that rule
- * enforced, not advised — recording outside a transaction fails loudly. Delivery EXECUTION is NOT
- * this method's concern: it only durably enqueues the `pending` ledger rows. The post-commit hook
- * that runs them (`DB::afterCommit` → InlineDeliveryExecutor) is wired in task 4.1; the at-least-once
- * guarantee is the sweep, so nothing here depends on that hook existing yet.
+ * enforced, not advised — recording outside a transaction fails loudly. After the fan-out it
+ * registers a post-commit hook (`DB::afterCommit` → {@see InlineDeliveryExecutor}, task 4.1) that
+ * runs the just-recorded event's deliveries once the caller's transaction COMMITS — so a rolled-back
+ * transaction delivers nothing (Laravel discards uncommitted after-commit callbacks). That inline
+ * hook is the fast path, not the durability guarantee: the at-least-once guarantee is the scheduled
+ * sweep (task 4.2) over the same `pending` ledger rows, so a crash between commit and the hook loses
+ * no event. One hook is registered per record() call (each handing its own event id); multiple
+ * records in one transaction attach their hooks to the same transaction record and fire FIFO in
+ * recorded (= id) order, preserving causal delivery order.
  *
  * Mirrors the audit recorder's envelope-core assembly (task 3.3) and shares its transaction guard,
  * adding the event-log-only fields: an application-side UUIDv7 `event_id` (the public identity for
@@ -43,7 +48,10 @@ use Illuminate\Support\Str;
  */
 class DomainEventRecorder
 {
-    public function __construct(private readonly ConsumerRegistry $registry) {}
+    public function __construct(
+        private readonly ConsumerRegistry $registry,
+        private readonly InlineDeliveryExecutor $executor,
+    ) {}
 
     /**
      * Append one domain event to `domain_events` and fan out one `pending` delivery row per
@@ -97,6 +105,13 @@ class DomainEventRecorder
                 'attempts' => 0,
             ]);
         }
+
+        // Inline fast path: run this event's deliveries once the caller's transaction commits. On
+        // rollback the callback is discarded (no delivery); the sweep (task 4.2) is the durable
+        // at-least-once guarantee over the same pending rows.
+        DB::afterCommit(function () use ($event): void {
+            $this->executor->deliver([$event->id]);
+        });
 
         return $event;
     }
