@@ -4,6 +4,8 @@ How to set up, run, and quality-check the NewCo ERP Laravel application, and how
 
 For the *what* and *why* of the repo (spec authority, OpenSpec lifecycle, memory systems), start at the root [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md); the operator's playbook is [`GUIDE.md`](../GUIDE.md) (Italian).
 
+To build inside a module, follow [`module-template.md`](module-template.md) — the conventions (canonical layout, boundary law, provider / operator-surface / persistence / test patterns, naming cascade) every F2+ module change inherits.
+
 ## Prerequisites
 
 - **PHP ≥ 8.4** with `pdo_sqlite`/`sqlite3` (snapshot: 8.5.2) — the floor is enforced by `tests/Feature/PlatformRequirementsTest.php`

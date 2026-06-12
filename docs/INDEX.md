@@ -19,3 +19,4 @@
 | Doc | Content | Added by change |
 |---|---|---|
 | [development.md](development.md) | Setup, quality commands, CI, ralph loop usage, AI tooling, installed-version snapshot | bootstrap-laravel-app (task 3.4) |
+| [module-template.md](module-template.md) | The falsariga every F2+ module change follows: the nine modules, canonical layout, public surface & boundary law, provider / operator-surface / persistence / test conventions, naming cascade | foundations-modules-skeleton (task 3.1) |
