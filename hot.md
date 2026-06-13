@@ -10,7 +10,7 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (ralph iter 1/20 — `foundations-money-i18n-flags` task 1.1 DONE).** Implemented `App\Platform\Money\Currency`: a `string`-backed enum, launch ISO 4217 set fixed at five (EUR base/USD/GBP/CHF/JPY, DEC-037), `minorUnitExponent()` via exhaustive `match` (JPY 0, cents 2), `base()`→EUR, fail-closed `of(string)` factory (`tryFrom ?? throw InvalidArgumentException`, exact match, no case-folding). 7 new tests. Suite 151→**158/158**. No dep churn (owned code).
+**2026-06-13 (interactive — loop exit-5 diagnosed + `ralph.sh` hardened; task 1.1 still green, 158/158).** Iter-1 halted on the integrity gate: the change folder (incl. human `APPROVED`) was untracked at launch, so task-1.1 commit `866e92a` swept `APPROVED` into `baseline..HEAD` — benign false-halt (recurrence of 2026-06-12), **no revert**. Hardened `ralph.sh` preflight (`bfcd885`) to auto-`approve:`-commit the change's untracked artifacts before `BASELINE_SHA` (scoped to `$CHANGE_DIR`, idempotent; verified 3-case test + `bash -n`). **Re-run safe** → resumes at task 1.2.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 runtime · Laravel 13.x (^13.8) · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17. (`composer.json` still `php ^8.3` — bump staged in substrate-hardening.)
