@@ -22,7 +22,7 @@
 
 ## 2. Internationalisation (`App\Platform\I18n` + `lang/` + `config/i18n.php`)
 
-- [ ] 2.1 Supported-locale registry (design D4): `config/i18n.php` + a `SupportedLocale` enum (the typed anchor) listing exactly `en, it, fr, de, ja, zh_Hans` with `en` as fallback; a validation helper (`isSupported`/`assertSupported`). `config/app.php` `locale`/`fallback_locale` already = `en` — leave as-is.
+- [x] 2.1 Supported-locale registry (design D4): `config/i18n.php` + a `SupportedLocale` enum (the typed anchor) listing exactly `en, it, fr, de, ja, zh_Hans` with `en` as fallback; a validation helper (`isSupported`/`assertSupported`). `config/app.php` `locale`/`fallback_locale` already = `en` — leave as-is.
   - Acceptance: the three delta scenarios pass (registry is exactly the six; fallback is `en`; an unsupported locale is rejected); quality commands green.
   - Test hint: `tests/Unit/Platform/I18n/SupportedLocaleTest.php` — assert the case/value set verbatim with `toBe` (order-sensitive, mirroring F1 2/3 `EnumsTest`); `SupportedLocale::isSupported('es')` is false, `'zh_Hant'` is false, all six are true; fallback accessor returns `en`.
 - [ ] 2.2 `lang/` scaffolding (design D4): translation resources for all six locales — English authored with the keys this change introduces (incl. the welcome-page keys from 2.4); the other five present and falling back to English per key (partial coverage allowed). Verify the Laravel 13 file convention in vendor (`lang/{locale}/*.php` vs `lang/{locale}.json`) before choosing; document the choice in `docs/`.

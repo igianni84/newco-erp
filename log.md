@@ -25,3 +25,5 @@
 ## [2026-06-13 09:49] ralph | foundations-money-i18n-flags 1.4 | green | DualCurrencyAmount VO (D18 dual-record, DEC-169 payload) + 6 tests; suite 177/177 (+6), phpstan 0 @max, pint+validate-strict ok; no composer churn | 2 files
 
 ## [2026-06-13 10:05] ralph | foundations-money-i18n-flags 1.5 | green | 3 files (MoneyCast + Feature test + tasks/progress) | Section 1 Money VOs 5/5 complete; suite 183/183, phpstan 0, no composer churn
+
+## [2026-06-13 10:14] ralph | foundations-money-i18n-flags 2.1 SupportedLocale | green | enum SSOT + config/i18n.php derives; isSupported/assertSupported; 196/196 (+13), phpstan 0 @ max; §2 i18n started; 4 new files
