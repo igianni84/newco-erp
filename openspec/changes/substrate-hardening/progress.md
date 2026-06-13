@@ -197,3 +197,18 @@
   - Assertion-count PARITY across lanes (904===904) is expected for this change, NOT a red flag: net-zero engine guards (one SQLite-only assertion balanced by one PG-only one) are still both genuinely executing — equal totals ≠ skipped assertions. When the totals are equal, the proof the PG-specific paths fired is the per-file/per-test breakdown, not the grand total.
   - 6.2 is now teed up: `openspec validate --strict` already re-confirmed green this iter; the remaining work is purely the scenario→test traceability mapping (both *Concurrent Delivery Safety* scenarios → 1.1 reflection tests; all three *Delivery Failure Observability* scenarios → 1.2 `Log::spy` tests) plus confirming the two durable patterns are recorded at the top of this file (they are: white-box concurrency-guard via reflection; engine-guarded DB-CHECK test).
 ---
+
+## [2026-06-13 23:07] — 6.2 Spec validation + traceability (CHANGE COMPLETE)
+- **Verified (no code change — final global-acceptance gate):** `openspec validate substrate-hardening --strict` → **valid**. Every ADDED-requirement delta scenario maps to a real, named, passing test — confirmed by READING the delta spec (`specs/event-substrate/spec.md`) and the test files, not assumed:
+  - **Requirement: Concurrent Delivery Safety** (2 scenarios) →
+    - "A completed delivery is not re-invoked by a concurrent attempt" → `tests/Feature/Platform/InlineDeliveryTest.php:170` (`never re-invokes the handler for a delivery a sibling already completed done (C1: locked status re-check)`) — the 1.1 re-invocation guard.
+    - "A late failure record never resurrects a completed delivery" → `tests/Feature/Platform/InlineDeliveryTest.php:189` (`never resurrects a delivery a sibling completed done … (C1: pending-guarded write)`) — the 1.1 resurrection guard.
+  - **Requirement: Delivery Failure Observability** (3 scenarios) →
+    - "A retryable failure is logged at warning" → `tests/Feature/Platform/SweepTest.php:241` (`logs a warning identifying a retryable delivery failure and leaves it pending`) — 1.2.
+    - "Dead-lettering is logged at error" → `tests/Feature/Platform/SweepTest.php:271` (`logs an error when a delivery exhausts its attempts and is dead-lettered`) — 1.2.
+    - "The sweep logs a run summary" → `tests/Feature/Platform/SweepTest.php:295` (`logs a run summary recording deliveries swept and failed`) — 1.2.
+  - **NB on the task wording:** the task text says "the 1.2 `Log::fake` tests" — but this framework has no `Log::fake()`; the three observability tests use the `Log::spy()` facade-spy (Codebase Pattern #4) and live in `SweepTest.php` (not a `1.2`-named file). The mapping is by behaviour and is confirmed above against the real test descriptions.
+- **Durable patterns recorded (top of this file):** the two the task names are present — white-box concurrency-guard test via reflection (#1) and engine-guarded DB-CHECK-constraint test (#5) — alongside the other four consolidated this change.
+- **Files changed:** `tasks.md` (6.2 ✓), this `progress.md`. Zero production/test files — verification + documentation gate; `progress.md`/`tasks.md` are read by no test, so the suite is unaffected (6.1 already proved 254/254 (904 asserts) cross-engine green, with no code touched since).
+- **17/17 — `<promise>CHANGE_COMPLETE</promise>`.** Hand-off to the human review/merge/archive ritual (GUIDE §2.7); the loop itself does not merge or archive.
+---

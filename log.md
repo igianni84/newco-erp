@@ -81,3 +81,5 @@
 ## [2026-06-13 18:28] ralph | substrate-hardening 5.4 | green | C15: 4 op/sec gates (secrets/observability/PCI/sec-review) registered in decisions/INDEX.md; suite 254/254 unchanged; 3 files
 
 ## [2026-06-13 18:33] ralph | substrate-hardening 6.1 | green | cross-engine: SQLite 254/254 + PostgreSQL 17 254/254 (904 asserts each), pint/phpstan-max/openspec-strict clean | 2 files (tasks.md, progress.md)
+
+## [2026-06-13 23:11] close | substrate-hardening 6.2 | 6.2 done -> 17/17 openspec Complete; validate --strict valid; 5/5 delta scenarios -> named passing tests (InlineDeliveryTest:170,189; SweepTest:241,271,295); 2 patterns confirmed; doc-only. Loop exited early at iter16, completed 6.2 manually. CHANGE_COMPLETE.
