@@ -10,23 +10,24 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (interactive — 360° audit + second-brain source fix).** Full read-only audit (5 parallel agents: OpenSpec/traceability, substrate code, tests/CI, second brain, workplan coverage) + quality gates. Second brain now self-enforces: new `scripts/memlog.sh` (real-clock timestamp + 280-char outcome cap) and `.claude/hooks/memory-health.sh` (Stop hook: warns on hot.md >550w / log.md >200KB / giant entry lines); rules updated in `.claude/CLAUDE.md` + `RALPH.md`; `log.md` rotated to `log-archive-2026-H1.md`, restarted slim. Minor doc fixes (removed the non-existent `/opsx:verify`, PHP floor text → 8.5, grill ADR-format override).
+**2026-06-13 (ralph iter 1/20 — `foundations-money-i18n-flags` task 1.1 DONE).** Implemented `App\Platform\Money\Currency`: a `string`-backed enum, launch ISO 4217 set fixed at five (EUR base/USD/GBP/CHF/JPY, DEC-037), `minorUnitExponent()` via exhaustive `match` (JPY 0, cents 2), `base()`→EUR, fail-closed `of(string)` factory (`tryFrom ?? throw InvalidArgumentException`, exact match, no case-folding). 7 new tests. Suite 151→**158/158**. No dep churn (owned code).
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.x (^13.8) · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17.
-- `main`: suite **151/151** green (SQLite 602 assertions; PG 17 lane green) · phpstan 0 @ max · pint clean · `composer validate --strict` + `composer audit` clean. The second-brain fix touched no app/test code.
+- Stack: PHP 8.5.2 runtime · Laravel 13.x (^13.8) · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17. (`composer.json` still `php ^8.3` — bump staged in substrate-hardening.)
+- Branch `ralph/foundations-money-i18n-flags`: suite **158/158** green · phpstan **0** @ max · pint clean · `openspec validate --strict` green. composer.json/.lock untouched so far (Pennant added only in task 3.1).
 
 ## Active Change & Next Task
-- **NO active change.** Phase-1 substrate (domain-events + audit) merged/archived.
-- **CORRECTED Next:** F1 3/3 **`foundations-money-i18n-flags`** was wrongly skipped — author via `/spec-to-change` (Money value objects, i18n 6 locales D2, Pennant flags D12, actor_role helper). THEN F2 = Module 0 + K, with the identity/auth ADR grilled before any K slice.
-- **Staged:** a `substrate-hardening` change (audit fixes below) — run via ralph after APPROVED.
+- **In progress: `foundations-money-i18n-flags` (F1 3/3) — 1 of 14 tasks done.**
+- **NEXT = task 1.2 `Money`** (`tests/Unit/Platform/Money/MoneyTest.php`): immutable VO of `int $minorUnits` + `Currency`; **no float construction path** (assert via reflection the factory param type is `int`); `plus`/`minus`/`negate` with same-currency guard; value equality; negatives valid; `toPayload()`→`['minor_units'=>int,'currency'=>'EUR']`. Compose `Currency::of()` to rehydrate, `$currency->value` to serialise the code. 5 delta scenarios.
+- Then 1.3 FxRate (decimal-string VO) → 1.4 DualCurrencyAmount (DEC-169 shape, pure representation) → 1.5 MoneyCast (Feature + RefreshDatabase) → §2 i18n → §3 Pennant → §4 ActorContext → §5 docs/sweep.
 
 ## Blockers & Decisions Needed
-- **Audit fixes (→ `substrate-hardening`):** executor inline-vs-sweep race (no row lock, `InlineDeliveryExecutor`); sweep `withoutOverlapping()` 24h TTL; silent dead-letters; CI no concurrency group; composer `php ^8.3`→`^8.5`; 4 test gaps (UUIDv7 pin, backoff cap, PG actor_role CHECK, mixed structural+redaction UPDATE).
-- **Open ADR gates:** identity/auth (first to fire — before Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
-- **Carry-overs:** queued-mode scenario wording (runtime) vs compile-time gate; bootstrap W1/W2/W3/S1/S3 (W2 seeder backdoor → fix with auth ADR). `openspec/specs` wording (Purpose TBD ×3, citations) rides future changes — no hand-edit.
+- None active. Founder-approved default calls stand (DualCurrencyAmount included now; welcome.blade → minimal localized placeholder; carry iii = ActorContext seam only).
+- **Open ADR gates (do not step into):** identity/auth (before Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). This change touches none.
+- **Staged sibling:** `substrate-hardening` (audit fixes incl. `php ^8.3`→`^8.5`) — keep composer churn out of THIS change except Pennant (3.1).
 
 ## Open Patterns
-- **Second brain self-enforces now:** append to log.md ONLY via `scripts/memlog.sh`; timestamps from the real clock; rotation by size (~200KB) not line count; `memory-health.sh` warns at Stop.
-- **Closing ritual includes a LOCAL PostgreSQL verify** (SQLite-green ≠ done): `docker run postgres:17` + `DB_CONNECTION=pgsql php artisan test`. Traps in `knowledge/testing/rules.md`.
-- **Substrate (`App\Platform`)**: boundary law (arch-test enforced); recorder rides caller's transaction; envelope UUIDv7 + minor-units + FX decimal-string; inline post-commit + `events:sweep` at-least-once; immutability via DB triggers (SQLite/PG parity); module identities cross as `string`.
+- **`progress.md` Codebase Patterns is now populated — read it first.** Reusables for §1: fixed-set VO → string-backed enum + exhaustive `match`; fail-closed `of()` = `tryFrom ?? throw InvalidArgumentException`; no `declare(strict_types=1)` in `app/Platform`; verbatim order-sensitive set pin mirroring `tests/Unit/Platform/EnumsTest.php`; pure VO tests → `tests/Unit/Platform/<Sub>/`, cast tests → `tests/Feature/Platform/` with per-file `uses(RefreshDatabase::class)`.
+- **F1 3/3 landmines (design D1–D7):** verify vendor APIs before writing (Pennant define/active + migration SQLite-clean, Laravel 13 custom casts, `lang/` file convention); `DualCurrencyAmount` = pure representation (no FX policy — Module E); `ActorContext` imports no auth/module code; composer churn bounded to Pennant.
+- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotation by size (~200KB); `memory-health.sh` warns at Stop. Closing ritual includes a LOCAL PostgreSQL verify (SQLite-green ≠ done).
+- **Substrate (`App\Platform`)**: boundary law arch-test-enforced (prefix-matched — sub-namespaces free); recorder rides caller's transaction; envelope UUIDv7 + minor-units + FX decimal-string; inline post-commit + `events:sweep` at-least-once; immutability via DB triggers (SQLite/PG parity); module identities cross as `string`.
