@@ -25,7 +25,7 @@ openspec/changes/<name>/    proposal · delta specs · design · tasks
   ▼
 <promise>CHANGE_COMPLETE</promise>
   │
-  │  human: review branch → merge → /opsx:verify → openspec archive
+  │  human: review branch → merge → semantic-verify (GUIDE §2.7) → openspec archive
   ▼
 openspec/specs/             ← accumulated truth: living documentation of
                                how the system actually behaves today
@@ -36,7 +36,7 @@ openspec/specs/             ← accumulated truth: living documentation of
 ## Quickstart
 
 ```bash
-# 0. Prerequisites: claude CLI, jq, php >= 8.4, composer, node >= 20, openspec
+# 0. Prerequisites: claude CLI, jq, php >= 8.5, composer, node >= 20, openspec
 npm install -g @fission-ai/openspec@latest
 
 # 1. Prepare a change (interactive, in Claude Code)
@@ -65,7 +65,7 @@ git log --oneline -10                                   # one commit per task
 cat hot.md                                              # current state cache
 ```
 
-Exit codes of `ralph.sh`: `0` change complete · `1` max iterations reached · `3` agent requested human help · `4` stalled (no progress for 3 iterations).
+Exit codes of `ralph.sh`: `0` change complete · `1` max iterations reached · `2` preflight error · `3` agent requested human help · `4` stalled (no progress for 3 iterations) · `5` integrity violation (a protected layer was modified).
 
 ## Layout
 
@@ -91,7 +91,7 @@ Exit codes of `ralph.sh`: `0` change complete · `1` max iterations reached · `
 | Skill | Use |
 |---|---|
 | `/spec-to-change` | Convert a slice of `spec/` into a validated OpenSpec change (the bridge) |
-| `/opsx:*` | OpenSpec lifecycle (propose, apply, verify, archive…) |
+| `/opsx:*` | OpenSpec lifecycle (propose, apply, sync, archive…) |
 | `grill-with-docs` | Stress-test a plan against CONTEXT.md + decisions/, update docs inline |
 | `tdd` | Red-green-refactor in vertical slices (the loop's testing discipline) |
 | `diagnose` | Debugging: build a repro loop first, never guess |

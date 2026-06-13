@@ -75,3 +75,5 @@
 ## [2026-06-13 18:05] ralph | substrate-hardening 5.1 | green | C12 GUIDE §2.7 local-PG-17 verify step before merge (verbatim rules.md recipe) + §8 cheatsheet pointer; renumber 2->5; FoundationsDocsTest 8/8, suite 254/254 SQLite, phpstan 0; docs-only; 2 files
 
 ## [2026-06-13 18:12] ralph | substrate-hardening 5.2 | green | 3 files (docs/development.md +RALPH_MODEL/.claude/PHP-floor 8.4->8.5; DevelopmentDocsTest 6/6; suite 254/254)
+
+## [2026-06-13 18:19] ralph | substrate-hardening 5.3 | green | 5 files: README C14 exit codes +2/+5, /opsx:verify→semantic-verify (GUIDE §2.7), skills verify→sync, php floor 8.4→8.5; suite 254/254 unchanged, phpstan 0, pint clean
