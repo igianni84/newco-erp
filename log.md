@@ -27,3 +27,5 @@
 ## [2026-06-13 10:05] ralph | foundations-money-i18n-flags 1.5 | green | 3 files (MoneyCast + Feature test + tasks/progress) | Section 1 Money VOs 5/5 complete; suite 183/183, phpstan 0, no composer churn
 
 ## [2026-06-13 10:14] ralph | foundations-money-i18n-flags 2.1 SupportedLocale | green | enum SSOT + config/i18n.php derives; isSupported/assertSupported; 196/196 (+13), phpstan 0 @ max; §2 i18n started; 4 new files
+
+## [2026-06-13 10:25] ralph | foundations-money-i18n-flags 2.2 | green | 9 files (6 lang/{locale}/welcome.php + docs/i18n.md + INDEX row + LocalizationTest) | PHP-array group files chosen over JSON, native per-key en fallback | suite 200/200, phpstan 0, composer diff empty
