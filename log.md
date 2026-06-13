@@ -53,3 +53,5 @@
 ## [2026-06-13 16:17] ralph | substrate-hardening 1.1 | green | C1 race fix: attempt() locked re-check + recordFailure() pending-guarded write; 2 TDD reflection guards; 245/245 SQLite+PG17
 
 ## [2026-06-13 16:36] ralph | substrate-hardening 1.2 | green | C3 dead-letter Log::warning/error + sweep Log::info summary; deliverDue->tally, AttemptOutcome enum; 248/248 SQLite+PG17, phpstan 0 max | 6 files
+
+## [2026-06-13 16:43] ralph | substrate-hardening 1.3 | green | 5 files | C2 sweep mutex TTL bounded to 2-min lease (withoutOverlapping(2)); 248/248 SQLite+PG17; section 1 complete 3/3

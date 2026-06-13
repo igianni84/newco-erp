@@ -288,5 +288,6 @@ it('schedules events:sweep every thirty seconds without overlapping', function (
         ->sole(fn (Event $event): bool => is_string($event->command) && str_contains($event->command, 'events:sweep'));
 
     expect($sweep->repeatSeconds)->toBe(30)             // everyThirtySeconds()
-        ->and($sweep->withoutOverlapping)->toBeTrue();   // the double-execution guard (design D6)
+        ->and($sweep->withoutOverlapping)->toBeTrue()    // the double-execution guard (design D6)
+        ->and($sweep->expiresAt)->toBe(2);               // bounded mutex lease: 2-min TTL, not the 24h default (C2, design D4)
 });
