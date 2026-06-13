@@ -21,3 +21,5 @@
 ## [2026-06-13 09:31] ralph | foundations-money-i18n-flags 1.2 Money | green | 2 files (app/Platform/Money/Money.php + MoneyTest 8/8); suite 166/166, phpstan 0 @ max, validate strict ok; no composer churn
 
 ## [2026-06-13 09:38] ralph | foundations-money-i18n-flags 1.3 | green | FxRate VO (decimal-string, no float, verbatim) + 5 tests | 2 files | suite 171/171, phpstan 0, pint clean
+
+## [2026-06-13 09:49] ralph | foundations-money-i18n-flags 1.4 | green | DualCurrencyAmount VO (D18 dual-record, DEC-169 payload) + 6 tests; suite 177/177 (+6), phpstan 0 @max, pint+validate-strict ok; no composer churn | 2 files
