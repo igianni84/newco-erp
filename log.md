@@ -43,3 +43,5 @@
 ## [2026-06-13 11:46] ralph | foundations-money-i18n-flags 5.1 | green | forward-ref cleanup (event-substrate.md + DomainEventRecorder docblock → present tense @App\Platform\Money) + GUIDE F1 3/3 + CONTEXT.md +8 glossary terms + 2 doc-pin test files; suite 243/243 (+10), phpstan 0, composer untouched | 6 files
 
 ## [2026-06-13 12:00] ralph | foundations-money-i18n-flags 5.2 | green | 0 files (verify-only) | 33/33 scenarios mapped, suite 243/243, phpstan 0, validate strict ok, composer Pennant-only, php ^8.3 unchanged | ALL 14 tasks done -> CHANGE_COMPLETE
+
+## [2026-06-13 12:08] ralph | foundations-money-i18n-flags final-pass | green | 0 files — 14/14 already done; re-verified 243 tests + phpstan 0 + pint + validate --strict; composer Pennant-only; no protected loop edits; CHANGE_COMPLETE re-emitted
