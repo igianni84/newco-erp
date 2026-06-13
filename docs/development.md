@@ -8,7 +8,7 @@ To build inside a module, follow [`module-template.md`](module-template.md) — 
 
 ## Prerequisites
 
-- **PHP ≥ 8.4** with `pdo_sqlite`/`sqlite3` (snapshot: 8.5.2) — the floor is enforced by `tests/Feature/PlatformRequirementsTest.php`
+- **PHP ≥ 8.5** with `pdo_sqlite`/`sqlite3` (snapshot: 8.5.2) — the floor is enforced by `tests/Feature/PlatformRequirementsTest.php`
 - **Composer 2.x** (snapshot: 2.9.2)
 - **Node ≥ 20** with npm — only for Vite assets and `composer dev`
 - For the ralph loop: **claude CLI**, **jq**, **openspec** (`npm install -g @fission-ai/openspec@latest`; `ralph.sh` falls back to `npx` if missing)
@@ -73,7 +73,7 @@ Tool specifics:
 
 The contract is pinned by `tests/Feature/CiWorkflowTest.php` (both job names, the `postgres:17` image, the `DB_CONNECTION: pgsql` switch, and that the lint/type_check gates appear exactly once). The ralph loop never pushes, so the `tests-pgsql` lane's **first live run is the human push after review** — treat that run as part of the change's acceptance; if it reds, fix it in a follow-up iteration before merge.
 
-**CI PHP pin:** both lanes pin `php-version: '8.5'` — the local minor at bootstrap time, satisfying the project floor of **PHP ≥ 8.4**. When the local PHP minor is upgraded, bump the workflow pin alongside it (and this page's snapshot); never drop below 8.4. The `tests-pgsql` lane additionally adds the `pdo_pgsql`/`pgsql` extensions to the setup-php list.
+**CI PHP pin:** both lanes pin `php-version: '8.5'` — the local minor at bootstrap time, satisfying the project floor of **PHP ≥ 8.5**. When the local PHP minor is upgraded, bump the workflow pin alongside it (and this page's snapshot); never drop below 8.5. The `tests-pgsql` lane additionally adds the `pdo_pgsql`/`pgsql` extensions to the setup-php list.
 
 ## The ralph loop (autonomous implementation)
 
@@ -90,8 +90,9 @@ The contract is pinned by `tests/Feature/CiWorkflowTest.php` (both job names, th
 
 Environment variables:
 
+- `RALPH_MODEL` — model per iteration (default: `claude-opus-4-8[1m]` — Opus 4.8, 1M context). Override per run, e.g. `RALPH_MODEL=claude-sonnet-4-6 ./ralph.sh`.
 - `RALPH_EFFORT` — reasoning effort per iteration: `low|medium|high|xhigh|max` (default: `max`).
-- `CLAUDE_FLAGS` — extra flags appended to the `claude` invocation. The script has no model option of its own, so the loop inherits the account-default model; pin one with e.g. `CLAUDE_FLAGS="--model opus" ./ralph.sh`.
+- `CLAUDE_FLAGS` — extra flags appended to the `claude` invocation, *after* the `--model`/`--effort` pins above; the later flag wins, so this still overrides the model, e.g. `CLAUDE_FLAGS="--model opus" ./ralph.sh`.
 
 ### Monitoring a run
 
@@ -110,7 +111,7 @@ The loop never pushes; humans push. On `CHANGE_COMPLETE` follow the closure ritu
 - **`AGENTS.md`** (root) is **generated** by Laravel Boost — never hand-edit. Regenerate with `php artisan boost:install --guidelines --no-interaction`; re-runs replace the `<laravel-boost-guidelines>` block in place.
 - The committed **`boost.json`** (agents: `claude_code`; packages: `filament/filament`) makes that command fully deterministic, and **`config/boost.php`** redirects the Claude Code guideline output to `AGENTS.md` — Boost's vendor default would append to the protected `CLAUDE.md`. `tests/Feature/AiToolingTest.php` guards both.
 - **Agent-facing Filament docs index: <https://filamentphp.com/docs/llms.txt>** — the entry point AI agents should use for Filament 5.x documentation lookups.
-- `laravel/boost` is a dev-only dependency; no MCP server or skills are installed (no `.mcp.json`, nothing under `.claude/`).
+- `laravel/boost` is a dev-only dependency; it installs no MCP server (`.mcp.json` is absent), but `.claude/` carries the loop's hooks, skills, and team memory.
 
 ## Installed versions (exact, snapshot 2026-06-11)
 
@@ -118,7 +119,7 @@ Majors are pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-t
 
 | Tool | Package | Version | Constraint |
 |---|---|---|---|
-| PHP | — | 8.5.2 | ≥ 8.4 (project floor) |
+| PHP | — | 8.5.2 | ≥ 8.5 (project floor) |
 | Composer | — | 2.9.2 | 2.x |
 | Laravel | `laravel/framework` | 13.15.0 | `^13.8` |
 | Filament | `filament/filament` | 5.6.7 | `^5.0` |
