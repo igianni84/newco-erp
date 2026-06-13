@@ -31,3 +31,5 @@
 ## [2026-06-13 10:25] ralph | foundations-money-i18n-flags 2.2 | green | 9 files (6 lang/{locale}/welcome.php + docs/i18n.md + INDEX row + LocalizationTest) | PHP-array group files chosen over JSON, native per-key en fallback | suite 200/200, phpstan 0, composer diff empty
 
 ## [2026-06-13 10:39] ralph | foundations-money-i18n-flags 2.3 | green | 4 files (TranslatableText VO + cast, 2 tests) | suite 212/212 +12, phpstan 0 @ max, pint clean, validate --strict valid; i18n 3/4, 8/14 tasks
+
+## [2026-06-13 10:52] ralph | foundations-money-i18n-flags 2.4 | green | 2 files (welcome.blade replaced→minimal localized placeholder; WelcomePageTest 3) | suite 215/215 +3, phpstan 0 max | §2 i18n 4/4 done; 9/14 tasks
