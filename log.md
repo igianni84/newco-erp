@@ -45,3 +45,5 @@
 ## [2026-06-13 12:00] ralph | foundations-money-i18n-flags 5.2 | green | 0 files (verify-only) | 33/33 scenarios mapped, suite 243/243, phpstan 0, validate strict ok, composer Pennant-only, php ^8.3 unchanged | ALL 14 tasks done -> CHANGE_COMPLETE
 
 ## [2026-06-13 12:08] ralph | foundations-money-i18n-flags final-pass | green | 0 files — 14/14 already done; re-verified 243 tests + phpstan 0 + pint + validate --strict; composer Pennant-only; no protected loop edits; CHANGE_COMPLETE re-emitted
+
+## [2026-06-13 12:31] close | foundations-money-i18n-flags | GUIDE 2.7 close: re-verified loop (243 tests/phpstan0/pint/validate-strict); semantic-verify 33/33 scenarios 0 CRITICAL; branch CI green SQLite+PG17; merged --no-ff main@1ee1e00; archived +10 reqs to openspec/specs; pushed main@8fe0ec4. F1 foundations complete 3/3.
