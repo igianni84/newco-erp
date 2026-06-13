@@ -57,3 +57,5 @@
 ## [2026-06-13 16:43] ralph | substrate-hardening 1.3 | green | 5 files | C2 sweep mutex TTL bounded to 2-min lease (withoutOverlapping(2)); 248/248 SQLite+PG17; section 1 complete 3/3
 
 ## [2026-06-13 16:51] ralph | substrate-hardening 2.1 | green | C4 PHP floor ^8.3->^8.5 + lock hash re-sync (no pkg upgrades) + PlatformRequirementsTest 80400->80500 + 2 falsified floor comments | 5 files | 248/248 SQLite
+
+## [2026-06-13 17:00] ralph | substrate-hardening 2.2 | green | 3 files | C5 .env.example EVENTS_SWEEP_* commented block (5/30/3600); boot+config read-back verified
