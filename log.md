@@ -49,3 +49,5 @@
 ## [2026-06-13 12:31] close | foundations-money-i18n-flags | GUIDE 2.7 close: re-verified loop (243 tests/phpstan0/pint/validate-strict); semantic-verify 33/33 scenarios 0 CRITICAL; branch CI green SQLite+PG17; merged --no-ff main@1ee1e00; archived +10 reqs to openspec/specs; pushed main@8fe0ec4. F1 foundations complete 3/3.
 
 ## [2026-06-13 16:04] author+approve | substrate-hardening | Authored OpenSpec change (proposal/design/specs-delta/tasks), validate --strict green, 17 tasks/6 groups. 2 ADDED reqs on event-substrate (C1 race-safety, C3 dead-letter obs); C7-C10 coverage-only. Created APPROVED + approve: commit on main.
+
+## [2026-06-13 16:17] ralph | substrate-hardening 1.1 | green | C1 race fix: attempt() locked re-check + recordFailure() pending-guarded write; 2 TDD reflection guards; 245/245 SQLite+PG17

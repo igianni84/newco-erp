@@ -34,9 +34,11 @@ use Throwable;
  * then recorded as a failure in a SEPARATE write: attempts+1, a fresh `available_at` backoff, the
  * truncated `last_error`, and status `failed` once attempts reach the configured maximum (dead-letter
  * in place). The try/catch is per delivery, so one consumer's failure never touches a sibling's row
- * nor the emitter's already-committed data (R4 mechanized). A `done` row is terminal by query
- * construction (the `status = pending` filter excludes it), so re-running the executor never
- * re-invokes a completed handler.
+ * nor the emitter's already-committed data (R4 mechanized). A `done` row is terminal: the due query
+ * excludes it for the single-runner re-run, and under inline-vs-sweep concurrency attempt() re-reads
+ * the row under a lock (skipping it if a sibling already won) while recordFailure() writes only when
+ * the row is still `pending` — so a completed delivery is never re-invoked nor resurrected to
+ * `pending`/`failed` by a contending runner (C1).
  *
  * Tunables come from `config/events.php` (`events.sweep.*`, task 4.2) read via Config::integer with
  * the design-D6 defaults baked into the fallbacks, so the executor stays correct even if a key is
@@ -118,12 +120,27 @@ class InlineDeliveryExecutor
     {
         try {
             DB::transaction(function () use ($delivery): void {
-                $consumer = $this->resolveConsumer($delivery->consumer);
-                $consumer->handle(DomainEvent::findOrFail($delivery->domain_event_id));
+                // Re-read the row under a row-level lock inside the delivery transaction. The inline
+                // hook and the scheduled sweep both run this ledger and can both pick up the same
+                // `pending` row before either flips it; lockForUpdate() serializes the winner (a real
+                // FOR UPDATE on PostgreSQL, a documented no-op on single-writer SQLite). If a sibling
+                // already won it — the row is gone or no longer `pending` — bail without invoking the
+                // handler: `done` is terminal and SHALL never re-execute (C1).
+                $locked = EventDelivery::query()
+                    ->whereKey($delivery->getKey())
+                    ->lockForUpdate()
+                    ->first();
 
-                $delivery->update([
+                if ($locked === null || $locked->status !== DeliveryStatus::Pending) {
+                    return;
+                }
+
+                $consumer = $this->resolveConsumer($locked->consumer);
+                $consumer->handle(DomainEvent::findOrFail($locked->domain_event_id));
+
+                $locked->update([
                     'status' => DeliveryStatus::Done,
-                    'attempts' => $delivery->attempts + 1,
+                    'attempts' => $locked->attempts + 1,
                 ]);
             });
         } catch (Throwable $exception) {
@@ -157,12 +174,23 @@ class InlineDeliveryExecutor
         $attempts = $delivery->attempts + 1;
         $maxAttempts = max(1, Config::integer('events.sweep.max_attempts', 5));
 
-        $delivery->update([
-            'attempts' => $attempts,
-            'status' => $attempts >= $maxAttempts ? DeliveryStatus::Failed : DeliveryStatus::Pending,
-            'available_at' => CarbonImmutable::now('UTC')->addSeconds($this->backoffSeconds($attempts)),
-            'last_error' => Str::limit($exception->getMessage(), 1000),
-        ]);
+        // Conditional, `status = pending`-guarded write (NOT a model update on $delivery): if a sibling
+        // runner completed this delivery `done` between the failed attempt and here, the predicate
+        // matches no row, so the terminal `done` is never resurrected to `pending`/`failed` (C1). On the
+        // ordinary path the row is still `pending` and the update applies exactly as before. Values are
+        // passed in their stored form — a query-builder update runs no model casts, so the enum is its
+        // backing string and the CarbonImmutable is formatted by the connection grammar to the same
+        // `Y-m-d H:i:s` the `immutable_datetime` cast would write (the column round-trips identically on
+        // both engines).
+        EventDelivery::query()
+            ->whereKey($delivery->getKey())
+            ->where('status', DeliveryStatus::Pending->value)
+            ->update([
+                'attempts' => $attempts,
+                'status' => ($attempts >= $maxAttempts ? DeliveryStatus::Failed : DeliveryStatus::Pending)->value,
+                'available_at' => CarbonImmutable::now('UTC')->addSeconds($this->backoffSeconds($attempts)),
+                'last_error' => Str::limit($exception->getMessage(), 1000),
+            ]);
     }
 
     /**
