@@ -97,6 +97,22 @@ Module D enum on POs: `PRODUCER` / `NEWCO` / `THIRD_PARTY`. Keys to the sale/shi
 **Dual-currency recording**:
 Every customer-facing financial event records the customer-currency amount AND the EUR amount with a locked FX rate; refunds settle at the original captured rate.
 
+**Money**:
+An amount as integer minor units plus an ISO 4217 currency code — never a float or a major-unit decimal (invariant 6). The platform money primitive that Club Credit, prices, refunds and Dual-currency recording are all built on. Negative values are valid (credits, reversals).
+_Avoid_: float, decimal amount, major units
+
+**Currency**:
+An ISO 4217 code with its minor-unit exponent. The launch set is exactly five: EUR (the base, exp 2), USD, GBP, CHF, JPY (exp 0). An unknown code is rejected (fail-closed), never assumed to be exp 2.
+_Avoid_: locale (a currency is not a locale), money (use Money)
+
+**FX Rate**:
+The exact decimal string locking a customer-currency↔EUR conversion — never a float (binary-rounding drift would break the exact-rate refund, invariant 5). Stored verbatim; well-formedness only — economic validity (positivity, bounds, snapshot timing) is Module E policy.
+_Avoid_: exchange rate as a float, conversion factor
+
+**Dual-Currency Amount**:
+The pure-representation bundle that realises Dual-currency recording: a customer-currency Money, its EUR-equivalent Money, the locked FX Rate and the rate's timestamp. Carries no FX policy (snapshot timing, buffers and per-leg lock moments are Module E).
+_Avoid_: converted amount, EUR-only amount
+
 ## Events & Audit
 
 **Domain Event**:
@@ -110,6 +126,24 @@ _Avoid_: log entry, history
 **Financial Event**:
 A domain event recording a monetary fact (Module E's catalogue, ~30 types at launch). Dual-currency recorded, immutable post-sync, corrections only via compensating events (credit notes), retained 10 years.
 _Avoid_: transaction (overloaded), ledger entry
+
+**Actor context**:
+The single seam that resolves the acting `actor_role` and actor id for the current context. It defaults to `system` (console, queue, unauthenticated) and reads NO authentication state — it stays on the safe side of the identity/auth gate until that ADR wires it to an authenticated principal. The one place an emitter obtains who is acting.
+_Avoid_: session, current user, auth guard
+
+## Platform Foundations
+
+**Supported locale**:
+One of the six launch locales — `en` (the fallback), `it`, `fr`, `de`, `ja`, `zh_Hans` — the closed set the registry validates against. A locale is a language plus an optional script in Laravel's underscore form (`zh_Hans` = Chinese, Simplified). All six are fixed at launch; adding one is configuration, not a migration.
+_Avoid_: language (`zh_Hans` is language + script), currency
+
+**Translatable text**:
+Per-row content held as i18n-keyed JSON (`{locale: text}`) with per-attribute English fallback — the mechanism for translatable entity attributes (PIM product copy, etc.). Distinct from the `lang/` files, which carry static UI chrome shared across rows.
+_Avoid_: lang/ string, label, caption
+
+**Feature flag / EXT-1**:
+A named gate an operator can toggle without a deploy. **EXT-1** (`nft-on-chain`) is the single launch flag — the one named gate for every on-chain surface (NFT mint/burn, custodial wallet, on-chain recovery, the Bottle-Page chain-link), shipped OFF. While it is off, the non-serialized (NS) path is the universal fallback; the per-bottle serialization workflow is never flagged (decoupled, not deferred).
+_Avoid_: config toggle, kill switch, NFT switch (it gates more than mint/burn)
 
 ## Operations & Integrations
 

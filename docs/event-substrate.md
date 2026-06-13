@@ -105,7 +105,7 @@ DB::transaction(function () use ($recorder): void {
 The substrate persists the `payload` array verbatim through the `jsonb` cast; it does **not** sanitize. Three rules every emitter follows:
 
 - **Money is integer minor units + an ISO 4217 currency code.** Never a float, never a major-unit decimal (invariant 6).
-- **FX rates are a decimal string**, e.g. `'1.0842'` — never a PHP float. Rationale (D18): every customer-facing financial event records the customer currency *and* EUR at a locked rate, and refunds settle at that **exact** original rate (invariant 5); a float would introduce binary-rounding drift that breaks exact-rate settlement. A test pins that a decimal string survives the JSON round-trip unchanged. (F1 3/3's value objects will make a float here unrepresentable.)
+- **FX rates are a decimal string**, e.g. `'1.0842'` — never a PHP float. Rationale (D18): every customer-facing financial event records the customer currency *and* EUR at a locked rate, and refunds settle at that **exact** original rate (invariant 5); a float would introduce binary-rounding drift that breaks exact-rate settlement. A test pins that a decimal string survives the JSON round-trip unchanged. Emitters build these payload fields with the `App\Platform\Money` value objects (`Money`, `FxRate`, `DualCurrencyAmount`), which make a float here unrepresentable.
 - **No PII in `payload`.** `domain_events` is PII-free **by design** — that is what earns it absolute immutability. Payloads carry ids, amounts, quantities, states and dates; names/emails/addresses live in module tables where Module K's overwrite-in-place GDPR erasure operates. GDPR erasure never touches the event log.
 
 ## 3. How to record an operator action (audit)

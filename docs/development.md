@@ -123,9 +123,12 @@ Majors are pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-t
 | Laravel | `laravel/framework` | 13.15.0 | `^13.8` |
 | Filament | `filament/filament` | 5.6.7 | `^5.0` |
 | Livewire | `livewire/livewire` | 4.3.1 | (transitive) |
+| Pennant | `laravel/pennant` | 1.23.0 | `^1.23` |
 | Laravel Boost (dev) | `laravel/boost` | 2.4.10 | `^2.4` |
 | Pest (dev) | `pestphp/pest` | 4.7.2 | `^4.7` |
 | Pest Laravel plugin (dev) | `pestphp/pest-plugin-laravel` | 4.1.0 | `^4.1` |
 | PHPStan (dev) | `phpstan/phpstan` | 2.2.2 | (via Larastan) |
 | Larastan (dev) | `larastan/larastan` | 3.10.0 | `^3.10` |
 | Pint (dev) | `laravel/pint` | 1.29.1 | `^1.27` |
+
+`laravel/pennant` was added 2026-06-13 by the `foundations-money-i18n-flags` change as the feature-flag infrastructure (design D5; gates the NFT/on-chain EXT-1 surfaces, off at launch). It is a first-party Laravel package adopted at its latest stable, so per the stack ADR's framework-conventional posture it needs **no standalone dependency ADR**. Its published `features` backing table migration (`database/migrations/*_create_features_table.php`) is Postgres-truthful / SQLite-compatible.

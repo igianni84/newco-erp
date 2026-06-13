@@ -10,23 +10,24 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (interactive — 360° audit + second-brain source fix).** Full read-only audit (5 parallel agents: OpenSpec/traceability, substrate code, tests/CI, second brain, workplan coverage) + quality gates. Second brain now self-enforces: new `scripts/memlog.sh` (real-clock timestamp + 280-char outcome cap) and `.claude/hooks/memory-health.sh` (Stop hook: warns on hot.md >550w / log.md >200KB / giant entry lines); rules updated in `.claude/CLAUDE.md` + `RALPH.md`; `log.md` rotated to `log-archive-2026-H1.md`, restarted slim. Minor doc fixes (removed the non-existent `/opsx:verify`, PHP floor text → 8.5, grill ADR-format override).
+**2026-06-13 (ralph iter — task 5.2 final traceability + quality sweep ✅ green; §5 now 2/2 → ALL 14 tasks done → `CHANGE_COMPLETE` emitted).** Verification-only LAST task — **no code/test change** (the scenario walk found no gap). Ran the five Quality Commands in CLAUDE.md table order, all green. Walked every `#### Scenario:` across the four delta specs (`openspec show … --json --deltas-only` = **deltaCount 10**; `grep -rc '^#### Scenario:'` = **33 scenarios** = money 15 / i18n 10 / feature-flags 5 / event-substrate 3) and recorded the **scenario→covering-test mapping table (33/33 covered, 0 gaps)** in `progress.md`. Confirmed `git diff main -- composer.json composer.lock` is **Pennant-only** (`laravel/pennant ^1.23` the sole require add; `php ^8.3` unchanged) and **no protected file modified by the loop** (the `ralph.sh`/`APPROVED`/`GUIDE.md` diff hits are, respectively: Giovanni's own `fix(ralph):` human commit `bfcd885`; the human-created marker swept into the task-1.1 commit by the `git add -A` preflight; and `GUIDE.md`, which is not on the protected list and was a task-5.1 edit).
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.x (^13.8) · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17.
-- `main`: suite **151/151** green (SQLite 602 assertions; PG 17 lane green) · phpstan 0 @ max · pint clean · `composer validate --strict` + `composer audit` clean. The second-brain fix touched no app/test code.
+- Stack: PHP 8.5.2 runtime · Laravel 13.15.0 (^13.8) · Filament 5.6.7 · Pennant v1.23.0 (^1.23) · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17. (`composer.json` still `php ^8.3` — bump staged in `substrate-hardening`.)
+- Branch `ralph/foundations-money-i18n-flags`: suite **243/243** green (860 assertions) · phpstan **0** @ max · pint clean · `pint --test` clean · `validate --strict` valid. `git diff main` composer = Pennant-only.
 
 ## Active Change & Next Task
-- **NO active change.** Phase-1 substrate (domain-events + audit) merged/archived.
-- **CORRECTED Next:** F1 3/3 **`foundations-money-i18n-flags`** was wrongly skipped — author via `/spec-to-change` (Money value objects, i18n 6 locales D2, Pennant flags D12, actor_role helper). THEN F2 = Module 0 + K, with the identity/auth ADR grilled before any K slice.
-- **Staged:** a `substrate-hardening` change (audit fixes below) — run via ralph after APPROVED.
+- **`foundations-money-i18n-flags` — 14 of 14 done → COMPLETE.** §1 Money 5/5 · §2 i18n 4/4 · §3 flags 2/2 · §4 ActorContext 1/1 · §5 docs/sweep 2/2. This iteration emitted **`<promise>CHANGE_COMPLETE</promise>`**.
+- **NEXT = HUMAN action, not a ralph task:** review the branch → merge → semantic-verify (GUIDE §2.7) → `openspec archive foundations-money-i18n-flags --yes`. The loop does NOT archive or merge. No unchecked tasks remain; re-running this change has nothing to do.
+- **After archive, the next change is the staged sibling `substrate-hardening`** (carries the `php ^8.3`→`^8.5` bump + any deferred composer churn) or the next Build-Workplan phase — author via `/spec-to-change`, human `APPROVED`, then `./ralph.sh`.
 
 ## Blockers & Decisions Needed
-- **Audit fixes (→ `substrate-hardening`):** executor inline-vs-sweep race (no row lock, `InlineDeliveryExecutor`); sweep `withoutOverlapping()` 24h TTL; silent dead-letters; CI no concurrency group; composer `php ^8.3`→`^8.5`; 4 test gaps (UUIDv7 pin, backoff cap, PG actor_role CHECK, mixed structural+redaction UPDATE).
-- **Open ADR gates:** identity/auth (first to fire — before Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
-- **Carry-overs:** queued-mode scenario wording (runtime) vs compile-time gate; bootstrap W1/W2/W3/S1/S3 (W2 seeder backdoor → fix with auth ADR). `openspec/specs` wording (Purpose TBD ×3, citations) rides future changes — no hand-edit.
+- None active. Founder default calls stand (design Open Questions 1–3).
+- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
+- **Staged sibling:** `substrate-hardening` (incl. `php ^8.3`→`^8.5`) — was kept out of THIS change (composer diff stays Pennant-only).
 
 ## Open Patterns
-- **Second brain self-enforces now:** append to log.md ONLY via `scripts/memlog.sh`; timestamps from the real clock; rotation by size (~200KB) not line count; `memory-health.sh` warns at Stop.
-- **Closing ritual includes a LOCAL PostgreSQL verify** (SQLite-green ≠ done): `docker run postgres:17` + `DB_CONNECTION=pgsql php artisan test`. Traps in `knowledge/testing/rules.md`.
-- **Substrate (`App\Platform`)**: boundary law (arch-test enforced); recorder rides caller's transaction; envelope UUIDv7 + minor-units + FX decimal-string; inline post-commit + `events:sweep` at-least-once; immutability via DB triggers (SQLite/PG parity); module identities cross as `string`.
+- **Read `progress.md` Codebase Patterns first** (12 consolidated patterns spanning VOs, casts, enums, lang/, Pennant, ActorContext, doc-pins).
+- **NEW (5.2):** a `final sweep` task's deliverable is the **scenario→test traceability table** (build via `grep -rc '^#### Scenario:'` + `openspec show --json --deltas-only` deltaCount + `grep -rEn "^\s*(it|test|describe)\("` for test names); verification-only → no code change unless a gap is found. **Protected-file audit:** `git diff main --name-only | grep -E '<globs>'` then `git log --oneline main..HEAD -- <path>` per hit — a human `fix(ralph):`/swept `APPROVED` is not a loop violation; only a `feat(<change>):` commit editing a protected glob is.
+- **Gotchas:** Pennant undefined feature → `false` (pair "off" asserts with `defined()`/`cases()`). HTTP/instance-method Feature tests use `Pest\Laravel\*` typed globals, never `$this->`. `config/` outside PHPStan → config-pin Feature test. `User::factory()->make()` = in-memory.
+- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB). Closing ritual includes a LOCAL PostgreSQL verify.

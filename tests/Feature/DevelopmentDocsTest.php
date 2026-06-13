@@ -65,6 +65,7 @@ it('records the exact installed versions from composer.lock, Boost included', fu
     $packages = [
         'laravel/framework',
         'filament/filament',
+        'laravel/pennant',
         'laravel/boost',
         'pestphp/pest',
         'pestphp/pest-plugin-laravel',
