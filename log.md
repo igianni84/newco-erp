@@ -63,3 +63,5 @@
 ## [2026-06-13 17:09] ralph | substrate-hardening 2.3 | green | 4 files | C6 pgsql timezone=UTC in config/database.php; suite 249/249 on SQLite+PG17 (PG proof: filter 2 asserts + tinker show-time-zone=UTC), phpstan 0, validate ok
 
 ## [2026-06-13 17:17] ralph | substrate-hardening 3.1 | green | C7 event_id pinned UUIDv7 (test-only, +1 assert at DomainEventRecorderTest:116); 249/249 SQLite+PG (880 asserts); phpstan 0 @max; pint clean; openspec valid; 7/17
+
+## [2026-06-13 17:26] ralph | substrate-hardening 3.2 | green | 3 files (SweepTest +cap test, tasks.md, progress.md); 250/250 889 asserts SQLite+PG17; non-vacuity via transient RED+revert; phpstan 0; openspec strict valid

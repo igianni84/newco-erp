@@ -117,6 +117,40 @@ it('applies exponential backoff and skips a row whose backoff has not yet elapse
         ->and($delivery->available_at?->greaterThan($t0->addSeconds(30)))->toBeTrue();   // window grew (exponential)
 });
 
+it('caps the exponential backoff window at the configured ceiling', function () {
+    // The cap is the one backoff property no existing test pins by value: the growth test above stays
+    // below it and the dead-letter test below advances by hours (always-due) but never asserts the
+    // ceiling. Set the base to 2000s (cap stays the 3600s default, max the 5 default) so the window
+    // crosses the cap between attempts — attempt 1's window = base·2^0 = 2000s (< 3600 → uncapped, proving
+    // the base path), attempt 2's raw window = base·2^1 = 4000s (> 3600 → clamped to exactly 3600s).
+    // (C8, design D7.) Engine-agnostic: the cap is PHP arithmetic in backoffSeconds() and `available_at`
+    // round-trips identically on both engines (proven by the growth test above on the PG lane).
+    Config::set('events.sweep.backoff_base_seconds', 2000);
+
+    $t0 = CarbonImmutable::parse('2026-06-12 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($t0);
+
+    $delivery = sweepSeedDelivery(FailingConsumer::class);
+
+    // Attempt 1 at T0: window = base (2000s), still under the 3600s cap → uncapped (the base·2^(N-1) path).
+    expect(Artisan::call('events:sweep'))->toBe(0);
+    $delivery->refresh();
+    expect($delivery->attempts)->toEqual(1)
+        ->and($delivery->status)->toBe(DeliveryStatus::Pending)
+        ->and($delivery->available_at?->equalTo($t0->addSeconds(2000)))->toBeTrue();   // base path, below the cap
+
+    // Advance to exactly the first window's end so the row is due again (available_at <= now). Attempt 2's
+    // raw window is base·2^1 = 4000s, which exceeds the 3600s cap, so the executor clamps it to 3600s.
+    $t1 = $t0->addSeconds(2000);
+    CarbonImmutable::setTestNow($t1);
+    expect(Artisan::call('events:sweep'))->toBe(0);
+    $delivery->refresh();
+    expect($delivery->attempts)->toEqual(2)
+        ->and($delivery->status)->toBe(DeliveryStatus::Pending)                         // 2 < max (5) → still retryable
+        ->and($delivery->available_at?->equalTo($t1->addSeconds(3600)))->toBeTrue()      // clamped to the ceiling…
+        ->and($delivery->available_at?->lessThan($t1->addSeconds(4000)))->toBeTrue();    // …below the raw base·2^1 = 4000s window
+});
+
 it('dead-letters a delivery at max attempts and never executes it again', function () {
     $t0 = CarbonImmutable::parse('2026-06-12 12:00:00', 'UTC');
     $maxAttempts = Config::integer('events.sweep.max_attempts');
