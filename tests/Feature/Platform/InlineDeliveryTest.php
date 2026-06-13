@@ -88,6 +88,20 @@ function seedPendingDelivery(string $consumerClass): EventDelivery
     });
 }
 
+/**
+ * Drive one of the executor's private per-delivery methods directly. C1's concurrency guards —
+ * attempt()'s locked status re-check and recordFailure()'s pending-guarded write — defend against an
+ * inline-vs-sweep interleave that a single-connection SQLite test DB cannot reproduce through the
+ * public deliver()/deliverDue() surface, so each guard test constructs the exact post-race row state
+ * and invokes the private method (design D2). Reflection, matching the established Money/FxRate test
+ * pattern, keeps PHPStan-max clean. Prefixed to avoid colliding with sibling files' global Pest helpers.
+ */
+function inlineInvokePrivate(string $method, mixed ...$args): mixed
+{
+    return (new ReflectionMethod(InlineDeliveryExecutor::class, $method))
+        ->invoke(app(InlineDeliveryExecutor::class), ...$args);
+}
+
 it('delivers inline after commit: the consumer runs and its delivery row reads done with attempts 1', function () {
     app(ConsumerRegistry::class)->register('InlineDeliveryProbe', RecordingConsumer::class);
 
@@ -151,6 +165,43 @@ it('never re-invokes a consumer whose delivery is already done (done is terminal
 
     expect(RecordingConsumer::$handled)->toBe([$event->id])     // still exactly one invocation
         ->and(EventDelivery::query()->where('domain_event_id', $event->id)->sole()->attempts)->toEqual(1);
+});
+
+it('never re-invokes the handler for a delivery a sibling already completed done (C1: locked status re-check)', function () {
+    // The inline-vs-sweep interleave: a sibling runner completed THIS delivery `done`/attempts 1 (committed)
+    // while we still hold the stale `pending` model the due-query handed us. attempt() must re-read the row
+    // under its lock and bail — done is terminal, so the handler never runs a second time.
+    $delivery = seedPendingDelivery(RecordingConsumer::class);
+    EventDelivery::query()->whereKey($delivery->id)->update([
+        'status' => DeliveryStatus::Done->value,
+        'attempts' => 1,
+    ]);
+    // $delivery is intentionally NOT refreshed — it stays the stale pending/attempts-0 model a racing runner carries in.
+
+    inlineInvokePrivate('attempt', $delivery);
+
+    $fresh = EventDelivery::query()->whereKey($delivery->id)->sole();
+    expect(RecordingConsumer::$handled)->toBe([])               // load-bearing: handler NOT re-invoked (without the re-check it runs again)
+        ->and($fresh->status)->toBe(DeliveryStatus::Done)        // row stays terminal…
+        ->and($fresh->attempts)->toEqual(1);                     // …and is not re-flipped
+});
+
+it('never resurrects a delivery a sibling completed done between the failed attempt and the failure write (C1: pending-guarded write)', function () {
+    // The failure-path half: our handler threw, but by the time we record the failure a sibling runner has
+    // completed THIS delivery `done`/attempts 1. attempt()'s catch refreshes to that committed state, so our
+    // model reads done — the conditional (status = pending) write must match no row and leave done terminal.
+    $delivery = seedPendingDelivery(RecordingConsumer::class);
+    EventDelivery::query()->whereKey($delivery->id)->update([
+        'status' => DeliveryStatus::Done->value,
+        'attempts' => 1,
+    ]);
+    $delivery->refresh();   // as attempt()'s pre-recordFailure refresh would: the model now reads done/attempts 1
+
+    inlineInvokePrivate('recordFailure', $delivery, new RuntimeException('late failure after a sibling won the row'));
+
+    $fresh = EventDelivery::query()->whereKey($delivery->id)->sole();
+    expect($fresh->status)->toBe(DeliveryStatus::Done)           // never flipped back (an unconditional write would set pending/attempts 2)
+        ->and($fresh->attempts)->toEqual(1);                     // and never re-counted — the conditional write matched no row
 });
 
 it('delivers events recorded in one transaction to a consumer in their id (causal) order', function () {

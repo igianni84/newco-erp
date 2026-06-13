@@ -49,3 +49,37 @@
 ## [2026-06-13 12:31] close | foundations-money-i18n-flags | GUIDE 2.7 close: re-verified loop (243 tests/phpstan0/pint/validate-strict); semantic-verify 33/33 scenarios 0 CRITICAL; branch CI green SQLite+PG17; merged --no-ff main@1ee1e00; archived +10 reqs to openspec/specs; pushed main@8fe0ec4. F1 foundations complete 3/3.
 
 ## [2026-06-13 16:04] author+approve | substrate-hardening | Authored OpenSpec change (proposal/design/specs-delta/tasks), validate --strict green, 17 tasks/6 groups. 2 ADDED reqs on event-substrate (C1 race-safety, C3 dead-letter obs); C7-C10 coverage-only. Created APPROVED + approve: commit on main.
+
+## [2026-06-13 16:17] ralph | substrate-hardening 1.1 | green | C1 race fix: attempt() locked re-check + recordFailure() pending-guarded write; 2 TDD reflection guards; 245/245 SQLite+PG17
+
+## [2026-06-13 16:36] ralph | substrate-hardening 1.2 | green | C3 dead-letter Log::warning/error + sweep Log::info summary; deliverDue->tally, AttemptOutcome enum; 248/248 SQLite+PG17, phpstan 0 max | 6 files
+
+## [2026-06-13 16:43] ralph | substrate-hardening 1.3 | green | 5 files | C2 sweep mutex TTL bounded to 2-min lease (withoutOverlapping(2)); 248/248 SQLite+PG17; section 1 complete 3/3
+
+## [2026-06-13 16:51] ralph | substrate-hardening 2.1 | green | C4 PHP floor ^8.3->^8.5 + lock hash re-sync (no pkg upgrades) + PlatformRequirementsTest 80400->80500 + 2 falsified floor comments | 5 files | 248/248 SQLite
+
+## [2026-06-13 17:00] ralph | substrate-hardening 2.2 | green | 3 files | C5 .env.example EVENTS_SWEEP_* commented block (5/30/3600); boot+config read-back verified
+
+## [2026-06-13 17:09] ralph | substrate-hardening 2.3 | green | 4 files | C6 pgsql timezone=UTC in config/database.php; suite 249/249 on SQLite+PG17 (PG proof: filter 2 asserts + tinker show-time-zone=UTC), phpstan 0, validate ok
+
+## [2026-06-13 17:17] ralph | substrate-hardening 3.1 | green | C7 event_id pinned UUIDv7 (test-only, +1 assert at DomainEventRecorderTest:116); 249/249 SQLite+PG (880 asserts); phpstan 0 @max; pint clean; openspec valid; 7/17
+
+## [2026-06-13 17:26] ralph | substrate-hardening 3.2 | green | 3 files (SweepTest +cap test, tasks.md, progress.md); 250/250 889 asserts SQLite+PG17; non-vacuity via transient RED+revert; phpstan 0; openspec strict valid
+
+## [2026-06-13 17:42] ralph | substrate-hardening 3.3 | green | C9 actor_role CHECK rejection: new ActorRoleConstraintTest (2 engine-guarded tests, 6 asserts), 252/252 both engines (895===895), pg sqlstate 23514 verified | 4 files
+
+## [2026-06-13 17:51] ralph | substrate-hardening 3.4 C10 | green | combined structural+before/after UPDATE rejected; ImmutabilityTest +1 test, 253/253 & 899 asserts on SQLite AND PG17 (899===899); test-only; transient-RED non-vacuity (2 RED, reverted) | 1 test +3 memory
+
+## [2026-06-13 17:56] ralph | substrate-hardening 4.1 | green | C11 workflow-level concurrency: group=ci-${{github.ref}} cancel-in-progress on ci.yml (governs both lanes) + CiWorkflowTest structural guards; 254/254 SQLite; 4 files
+
+## [2026-06-13 18:05] ralph | substrate-hardening 5.1 | green | C12 GUIDE §2.7 local-PG-17 verify step before merge (verbatim rules.md recipe) + §8 cheatsheet pointer; renumber 2->5; FoundationsDocsTest 8/8, suite 254/254 SQLite, phpstan 0; docs-only; 2 files
+
+## [2026-06-13 18:12] ralph | substrate-hardening 5.2 | green | 3 files (docs/development.md +RALPH_MODEL/.claude/PHP-floor 8.4->8.5; DevelopmentDocsTest 6/6; suite 254/254)
+
+## [2026-06-13 18:19] ralph | substrate-hardening 5.3 | green | 5 files: README C14 exit codes +2/+5, /opsx:verify→semantic-verify (GUIDE §2.7), skills verify→sync, php floor 8.4→8.5; suite 254/254 unchanged, phpstan 0, pint clean
+
+## [2026-06-13 18:28] ralph | substrate-hardening 5.4 | green | C15: 4 op/sec gates (secrets/observability/PCI/sec-review) registered in decisions/INDEX.md; suite 254/254 unchanged; 3 files
+
+## [2026-06-13 18:33] ralph | substrate-hardening 6.1 | green | cross-engine: SQLite 254/254 + PostgreSQL 17 254/254 (904 asserts each), pint/phpstan-max/openspec-strict clean | 2 files (tasks.md, progress.md)
+
+## [2026-06-13 23:11] close | substrate-hardening 6.2 | 6.2 done -> 17/17 openspec Complete; validate --strict valid; 5/5 delta scenarios -> named passing tests (InlineDeliveryTest:170,189; SweepTest:241,271,295); 2 patterns confirmed; doc-only. Loop exited early at iter16, completed 6.2 manually. CHANGE_COMPLETE.

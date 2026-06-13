@@ -96,6 +96,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // Pin the session timezone so the connector issues `SET TIME ZONE 'UTC'` on connect:
+            // timestamptz rendering is then deterministic regardless of the server's local zone,
+            // matching the substrate's app-set-UTC discipline (occurred_at / available_at).
+            'timezone' => 'UTC',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 

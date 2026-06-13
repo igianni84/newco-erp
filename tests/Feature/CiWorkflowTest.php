@@ -92,3 +92,20 @@ it('scopes the pgsql connection switch to the second lane', function () {
         ->and(ciGatePosition('tests-pgsql:'))
         ->toBeLessThan(ciGatePosition('DB_CONNECTION: pgsql'));
 });
+
+it('cancels superseded in-flight CI runs via one workflow-level concurrency group', function () {
+    // C11 (substrate-hardening design D9): a single top-level `concurrency:` block
+    // governs BOTH lanes, so a rapid re-push to the same ref cancels the stale
+    // in-flight run — most valuable for the tests-pgsql service-container lane —
+    // instead of letting a now-superseded run finish.
+    expect(ciWorkflow())
+        ->toContain('concurrency:')
+        ->toContain('group: ci-${{ github.ref }}')
+        ->toContain('cancel-in-progress: true');
+
+    // Workflow-level, not job-level: exactly ONE block, declared before `jobs:` so
+    // it spans both lanes. A job-scoped block (after `jobs:`, or duplicated per job)
+    // would not cancel across the quality + pgsql pair — these guards catch that.
+    expect(substr_count(ciWorkflow(), 'concurrency:'))->toBe(1);
+    expect(ciGatePosition('concurrency:'))->toBeLessThan(ciGatePosition('jobs:'));
+});

@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\Support\Platform\FailingConsumer;
 use Tests\Support\Platform\RecordingConsumer;
@@ -116,6 +117,40 @@ it('applies exponential backoff and skips a row whose backoff has not yet elapse
         ->and($delivery->available_at?->greaterThan($t0->addSeconds(30)))->toBeTrue();   // window grew (exponential)
 });
 
+it('caps the exponential backoff window at the configured ceiling', function () {
+    // The cap is the one backoff property no existing test pins by value: the growth test above stays
+    // below it and the dead-letter test below advances by hours (always-due) but never asserts the
+    // ceiling. Set the base to 2000s (cap stays the 3600s default, max the 5 default) so the window
+    // crosses the cap between attempts — attempt 1's window = base·2^0 = 2000s (< 3600 → uncapped, proving
+    // the base path), attempt 2's raw window = base·2^1 = 4000s (> 3600 → clamped to exactly 3600s).
+    // (C8, design D7.) Engine-agnostic: the cap is PHP arithmetic in backoffSeconds() and `available_at`
+    // round-trips identically on both engines (proven by the growth test above on the PG lane).
+    Config::set('events.sweep.backoff_base_seconds', 2000);
+
+    $t0 = CarbonImmutable::parse('2026-06-12 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($t0);
+
+    $delivery = sweepSeedDelivery(FailingConsumer::class);
+
+    // Attempt 1 at T0: window = base (2000s), still under the 3600s cap → uncapped (the base·2^(N-1) path).
+    expect(Artisan::call('events:sweep'))->toBe(0);
+    $delivery->refresh();
+    expect($delivery->attempts)->toEqual(1)
+        ->and($delivery->status)->toBe(DeliveryStatus::Pending)
+        ->and($delivery->available_at?->equalTo($t0->addSeconds(2000)))->toBeTrue();   // base path, below the cap
+
+    // Advance to exactly the first window's end so the row is due again (available_at <= now). Attempt 2's
+    // raw window is base·2^1 = 4000s, which exceeds the 3600s cap, so the executor clamps it to 3600s.
+    $t1 = $t0->addSeconds(2000);
+    CarbonImmutable::setTestNow($t1);
+    expect(Artisan::call('events:sweep'))->toBe(0);
+    $delivery->refresh();
+    expect($delivery->attempts)->toEqual(2)
+        ->and($delivery->status)->toBe(DeliveryStatus::Pending)                         // 2 < max (5) → still retryable
+        ->and($delivery->available_at?->equalTo($t1->addSeconds(3600)))->toBeTrue()      // clamped to the ceiling…
+        ->and($delivery->available_at?->lessThan($t1->addSeconds(4000)))->toBeTrue();    // …below the raw base·2^1 = 4000s window
+});
+
 it('dead-letters a delivery at max attempts and never executes it again', function () {
     $t0 = CarbonImmutable::parse('2026-06-12 12:00:00', 'UTC');
     $maxAttempts = Config::integer('events.sweep.max_attempts');
@@ -203,6 +238,79 @@ it('retries only the failed consumer to done and never re-runs the already-done 
         ->and($sibling->attempts)->toEqual(1);                                 // …never re-executed (FailingConsumer would have thrown)
 });
 
+it('logs a warning identifying a retryable delivery failure and leaves it pending (delivery failure observability)', function () {
+    // A single failing attempt below the configured maximum: the failure is retryable, so the executor
+    // surfaces it at WARNING (the error level is reserved for the dead-letter transition) carrying the
+    // delivery's identity and the handler's error — the operability floor for dead-letter-in-place (C3).
+    $delivery = sweepSeedDelivery(FailingConsumer::class);   // default max_attempts (5) → attempt 1 stays pending
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    // Level + identity, not wording: warning (not error), identifying the delivery (id, consumer) and error.
+    $log->shouldHaveReceived(
+        'warning',
+        /** @param array<string, mixed> $context */
+        function (string $message, array $context) use ($delivery): bool {
+            $error = $context['error'] ?? null;
+
+            return ($context['delivery_id'] ?? null) === $delivery->id
+                && ($context['consumer'] ?? null) === FailingConsumer::class
+                && is_string($error)
+                && str_contains($error, FailingConsumer::FAILURE_MESSAGE);
+        },
+    );
+    $log->shouldNotHaveReceived('error');   // a retryable failure is NOT dead-lettered
+
+    $delivery->refresh();
+    expect($delivery->status)->toBe(DeliveryStatus::Pending)   // still retryable
+        ->and($delivery->attempts)->toEqual(1);
+});
+
+it('logs an error when a delivery exhausts its attempts and is dead-lettered (delivery failure observability)', function () {
+    // Drive straight to the dead-letter transition with max_attempts = 1: the first failure already
+    // reaches the maximum, so the delivery becomes `failed` and the executor surfaces it at ERROR.
+    Config::set('events.sweep.max_attempts', 1);
+
+    $delivery = sweepSeedDelivery(FailingConsumer::class);
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    $log->shouldHaveReceived(
+        'error',
+        /** @param array<string, mixed> $context */
+        fn (string $message, array $context): bool => ($context['delivery_id'] ?? null) === $delivery->id
+            && ($context['consumer'] ?? null) === FailingConsumer::class,
+    );
+    $log->shouldNotHaveReceived('warning');   // it dead-lettered immediately — no retryable-warning level
+
+    $delivery->refresh();
+    expect($delivery->status)->toBe(DeliveryStatus::Failed)   // dead-lettered in place
+        ->and($delivery->attempts)->toEqual(1);
+});
+
+it('logs a run summary recording deliveries swept and failed (delivery failure observability)', function () {
+    // A mixed run: one delivery succeeds, one fails (retryable). The sweep emits one INFO summary
+    // tallying both — swept counts every delivery it ran (delivered + failed), failed the subset that did.
+    sweepSeedDelivery(RecordingConsumer::class, entityId: 'ok');     // delivers
+    sweepSeedDelivery(FailingConsumer::class, entityId: 'bad');      // fails (attempts 1 < max → stays pending)
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    // Level + counts, not wording: one info summary with swept = 2 (1 delivered + 1 failed), failed = 1.
+    $log->shouldHaveReceived(
+        'info',
+        /** @param array<string, mixed> $context */
+        fn (string $message, array $context): bool => ($context['swept'] ?? null) === 2
+            && ($context['failed'] ?? null) === 1,
+    );
+});
+
 it('schedules events:sweep every thirty seconds without overlapping', function () {
     // Bootstrapping the console kernel requires routes/console.php, registering the schedule entry on
     // the Schedule singleton (FoundationServiceProvider binds it shared, so this resolution and the
@@ -214,5 +322,6 @@ it('schedules events:sweep every thirty seconds without overlapping', function (
         ->sole(fn (Event $event): bool => is_string($event->command) && str_contains($event->command, 'events:sweep'));
 
     expect($sweep->repeatSeconds)->toBe(30)             // everyThirtySeconds()
-        ->and($sweep->withoutOverlapping)->toBeTrue();   // the double-execution guard (design D6)
+        ->and($sweep->withoutOverlapping)->toBeTrue()    // the double-execution guard (design D6)
+        ->and($sweep->expiresAt)->toBe(2);               // bounded mutex lease: 2-min TTL, not the 24h default (C2, design D4)
 });
