@@ -71,3 +71,5 @@
 ## [2026-06-13 17:51] ralph | substrate-hardening 3.4 C10 | green | combined structural+before/after UPDATE rejected; ImmutabilityTest +1 test, 253/253 & 899 asserts on SQLite AND PG17 (899===899); test-only; transient-RED non-vacuity (2 RED, reverted) | 1 test +3 memory
 
 ## [2026-06-13 17:56] ralph | substrate-hardening 4.1 | green | C11 workflow-level concurrency: group=ci-${{github.ref}} cancel-in-progress on ci.yml (governs both lanes) + CiWorkflowTest structural guards; 254/254 SQLite; 4 files
+
+## [2026-06-13 18:05] ralph | substrate-hardening 5.1 | green | C12 GUIDE §2.7 local-PG-17 verify step before merge (verbatim rules.md recipe) + §8 cheatsheet pointer; renumber 2->5; FoundationsDocsTest 8/8, suite 254/254 SQLite, phpstan 0; docs-only; 2 files

@@ -118,13 +118,19 @@ caffeinate -i ./ralph.sh --change <name> <N>     # N ≈ (n° task × 1.5) + 2
 git log --oneline main..ralph/<name>
 git diff main...ralph/<name> --stat              # e i file che ti interessano
 
-# 2. Merge e push
+# 2. Verifica locale su PostgreSQL 17 — il loop gira su SQLite, ma SQLite-verde è necessario,
+#    non sufficiente (knowledge/testing/rules.md): conferma il motore di produzione PRIMA del merge.
+docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17
+DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php artisan test
+docker rm -f pg
+
+# 3. Merge e push
 git checkout main && git merge --no-ff ralph/<name> -m "merge: <name>"
 git push
 git branch -d ralph/<name>
 ```
 
-**3. Verifica semantica** — nuova finestra Claude Code, incolla:
+**4. Verifica semantica** — nuova finestra Claude Code, incolla:
 
 > Verifica semantica del change `<name>` (già mergiato su main). Per ogni Requirement nei delta spec del change valuta: (1) **Completeness** — ogni task fatto, ogni requirement implementato, ogni scenario coperto da un test; (2) **Correctness** — il codice rispetta l'intento della spec, edge case inclusi; (3) **Coherence** — le decisioni di design.md si riflettono nel codice. Classifica ogni problema CRITICAL / WARNING / SUGGESTION. Solo report, non correggere nulla.
 
@@ -132,7 +138,7 @@ git branch -d ralph/<name>
 - Pulito (o solo WARNING/SUGGESTION accettati — i SUGGESTION buoni finiscono in `knowledge/` o in un change futuro) → avanti.
 
 ```bash
-# 4. Archive: i delta si fondono in openspec/specs/ (la documentazione vivente)
+# 5. Archive: i delta si fondono in openspec/specs/ (la documentazione vivente)
 openspec archive <name> --yes
 git add -A && git commit -m "archive: <name>" && git push
 ```
@@ -251,6 +257,7 @@ openspec list && openspec status --change <name>
 
 # ── Chiusura ──────────────────────────────────────────────────
 git log --oneline main..ralph/<name>
+#   → verifica locale su PostgreSQL 17 PRIMA del merge (recipe docker completa in §2.7)
 git checkout main && git merge --no-ff ralph/<name> -m "merge: <name>"
 git push && git branch -d ralph/<name>
 #   → verifica semantica in Claude Code (prompt in §2.7)
