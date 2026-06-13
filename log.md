@@ -37,3 +37,5 @@
 ## [2026-06-13 11:05] ralph | foundations-money-i18n-flags 3.1 | green | laravel/pennant v1.23.0 installed (latest stable, ^13 compat), features table SQLite-clean + container resolves; suite 218/218; composer.lock Pennant-only, php ^8.3 untouched; 7 files
 
 ## [2026-06-13 11:19] ralph | foundations-money-i18n-flags 3.2 | green | 6 files | EXT-1 nft-on-chain flag + FeatureFlag enum + Features accessor; AppServiceProvider boot reg; docs/feature-flags.md (NS fallback); suite 226/226, phpstan 0, no composer churn
+
+## [2026-06-13 11:30] ralph | foundations-money-i18n-flags 4.1 | green | ActorContext seam (singleton + runAs scoped override, gate-safe no-auth); demo refactored to read role via seam; suite 233/233 (+7), phpstan 0; 4 files

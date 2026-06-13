@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ConsumerRegistry;
 use App\Platform\Features\Features;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +19,11 @@ class AppServiceProvider extends ServiceProvider
         // pairs into it from boot(), and the delivery path resolves the SAME instance, so
         // it must be a container singleton.
         $this->app->singleton(ConsumerRegistry::class);
+
+        // The actor-context seam is shared process-wide (foundations-money-i18n-flags,
+        // design D6): a runAs() override must be observed by every emitter that resolves
+        // ActorContext within that scope, so the resolved instance must be the SAME one.
+        $this->app->singleton(ActorContext::class);
     }
 
     /**

@@ -4,7 +4,7 @@ namespace App\Platform\Events\Demo;
 
 use App\Platform\Audit\AuditRecord;
 use App\Platform\Audit\AuditRecorder;
-use App\Platform\Events\ActorRole;
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ConsumerRegistry;
 use App\Platform\Events\DomainEvent;
 use App\Platform\Events\DomainEventRecorder;
@@ -58,6 +58,7 @@ class DemoCommand extends Command
         DomainEventRecorder $recorder,
         AuditRecorder $auditRecorder,
         ConsumerRegistry $registry,
+        ActorContext $actorContext,
     ): int {
         // Register the demo consumer for the synthetic event on the shared registry singleton (the
         // same instance the recorder fans out against). Idempotent, so a re-run is a no-op.
@@ -66,7 +67,7 @@ class DemoCommand extends Command
         // 1. Atomic record: a state change + a domain event + an audit record, all in ONE transaction,
         //    so they commit or roll back together (the no-dual-write guarantee).
         /** @var array{event: DomainEvent, audit: AuditRecord} $recorded */
-        $recorded = DB::transaction(function () use ($recorder, $auditRecorder): array {
+        $recorded = DB::transaction(function () use ($recorder, $auditRecorder, $actorContext): array {
             // (a) the state change — an idempotent cache upsert (a platform table, design D9).
             DB::table('cache')->updateOrInsert(
                 ['key' => self::STATE_KEY],
@@ -78,8 +79,8 @@ class DemoCommand extends Command
             $event = $recorder->record(
                 name: self::EVENT_NAME,
                 module: 'platform',
-                actorRole: ActorRole::System,
-                actorId: null,
+                actorRole: $actorContext->role(),
+                actorId: $actorContext->actorId(),
                 entityType: self::ENTITY_TYPE,
                 entityId: self::ENTITY_ID,
                 payload: ['demo' => true, 'amount_minor' => 12000, 'currency' => 'EUR', 'fx_rate' => '1.0842'],
@@ -89,8 +90,8 @@ class DemoCommand extends Command
             $audit = $auditRecorder->record(
                 action: self::AUDIT_ACTION,
                 module: 'platform',
-                actorRole: ActorRole::System,
-                actorId: null,
+                actorRole: $actorContext->role(),
+                actorId: $actorContext->actorId(),
                 entityType: self::ENTITY_TYPE,
                 entityId: self::ENTITY_ID,
                 before: ['state' => 'absent'],
