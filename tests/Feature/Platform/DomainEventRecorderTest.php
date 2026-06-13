@@ -113,6 +113,7 @@ it('records a domain event and reads it back complete with its full envelope', f
 
     expect($read->event_id)->toBeString()
         ->and(Str::isUuid($read->event_id))->toBeTrue()        // a unique UUIDv7 public identity
+        ->and($read->event_id[14])->toBe('7')                  // UUIDv7 version nibble (Str::uuid7, not v4)
         ->and($read->name)->toBe('PlatformDemoRecorded')
         ->and($read->schema_version)->toBe(1)                  // default 1 (integer cast)
         ->and($read->module)->toBe('commerce')                 // stored as the string the emitter passed
