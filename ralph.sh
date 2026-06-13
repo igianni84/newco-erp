@@ -121,6 +121,22 @@ fi
 export RALPH_LOOP=1
 export RALPH_ACTIVE_CHANGE="$CHANGE"
 
+# Preflight: commit the active change's own artifacts BEFORE baselining.
+# proposal/design/tasks/delta-specs and the human APPROVED marker are the
+# already-approved inputs to this loop. If any are still untracked at launch,
+# iteration 1's `git add -A` sweeps them into a task commit, and the integrity
+# gate below then flags the swept-in APPROVED path as a protected-layer change
+# — benign, but it halts the loop on exit 5 (see lessons.md 2026-06-12 /
+# 2026-06-13, two occurrences of exactly this). Staging is scoped strictly to
+# $CHANGE_DIR (the change's own folder; .last-output is gitignored); the
+# immutable spec/ and openspec/specs/ layers are never auto-committed here.
+if [ -n "$(git status --porcelain -- "$CHANGE_DIR" 2>/dev/null)" ]; then
+  git add -- "$CHANGE_DIR" || fail "preflight: could not stage change artifacts under $CHANGE_DIR"
+  git commit -q -m "approve: $CHANGE (ralph preflight auto-stage of change artifacts)" \
+    || fail "preflight: could not commit change artifacts under $CHANGE_DIR"
+  echo "Preflight: committed untracked/modified artifacts under $CHANGE_DIR so the integrity baseline includes them."
+fi
+
 BASELINE_SHA="$(git rev-parse HEAD)"
 
 if [ -n "$(git status --porcelain -- spec/ openspec/specs/ 2>/dev/null)" ]; then

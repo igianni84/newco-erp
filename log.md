@@ -15,3 +15,5 @@
 ## [2026-06-13 09:02] ralph | foundations-money-i18n-flags 1.1 | green | Currency enum (5 ISO codes, fail-closed of(), match exponent) + 7 tests; suite 158/158, phpstan 0, no dep churn | 2 files
 
 ## [2026-06-13 09:14] ralph-recover | foundations-money-i18n-flags | Iter-1 halted exit-5: task-1.1 commit 866e92a swept untracked APPROVED into baseline..HEAD (benign, recurrence of 2026-06-12 audit-change trip). No revert (would kill green 1.1 work) — re-run safe, HEAD now tracks APPROVED. Lesson recidiva noted.
+
+## [2026-06-13 09:20] harden | ralph.sh | Preflight auto-stages the active change's untracked artifacts into an approve: commit before BASELINE_SHA — kills the recurring APPROVED-sweep exit-5. Scoped to CHANGE_DIR, idempotent. Verified: 3-case bash test + bash -n. Protected edit, Giovanni-OK'd.
