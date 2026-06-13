@@ -1,5 +1,5 @@
 # Quality gates per CLAUDE.md: lint (pint --test), type_check (phpstan analyse),
-# test (php artisan test). PHP minor matches local dev (8.5; repo floor is >= 8.4).
+# test (php artisan test). PHP minor matches local dev (8.5; repo floor is >= 8.5).
 # PHPStan memory comes from the committed phpstan-bootstrap.php — no flag needed.
 #
 # Two lanes (foundations-domain-events-audit design D8):

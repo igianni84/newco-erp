@@ -10,24 +10,25 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (ralph iter 3) — `substrate-hardening` 1.3 (C2) DONE, 3/17. Section 1 complete (3/3).** Bounded the `events:sweep` overlap mutex to a 2-min lease: `routes/console.php:16` `->withoutOverlapping()` → `->withoutOverlapping(2)`. Vendor-verified: `withoutOverlapping($expiresAt = 1440)` sets public `Event::$expiresAt` (default 24h); `CacheEventMutex` lock TTL = `expiresAt * 60` s, so `2` = 120 s. A crashed sweep self-heals in ~2 min instead of stalling every 30 s tick for the 24h default. Updated the inline comment + `SweepCommand` docblock describing the guard. Test pin `+->and($sweep->expiresAt)->toBe(2)` on the schedule test, RED ("1440 != 2") → GREEN. Pure config, engine-agnostic.
+**2026-06-13 (ralph iter 4) — `substrate-hardening` 2.1 (C4) DONE, 4/17.** Raised the PHP floor to match reality (runtime 8.5.2, CI 8.5, CLAUDE.md "PHP ≥ 8.5"). `composer.json:9` `^8.3`→`^8.5`; `composer update --lock` — verified the lock diff is **exactly** hash + `platform.php` mirror, **zero package upgrades**. `PlatformRequirementsTest.php` `80400`→`80500` + name/comment `>= 8.4`→`>= 8.5`. Also fixed 2 floor comments the bump *falsified* (no test pins them): `ci.yml:2` and the `PlatformRequirementsTest:4` header. The CI `php-version: '8.5'` pins (`ci.yml:34,107`, `CiWorkflowTest:36`) were already 8.5 → VERIFY-ONLY, untouched. Doc floor refs left for 5.2/5.3.
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15.0 · Filament 5.6.7 · Pennant v1.23.0 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17. (`composer.json` still `php ^8.3` — bump is the NEXT task, 2.1.)
-- **`ralph/substrate-hardening`**: suite **248/248** on SQLite (878 asserts) AND PostgreSQL 17 (877 — the one pre-existing engine-guarded delta) · phpstan 0 @ max · pint clean · `openspec validate substrate-hardening --strict` valid.
+- Stack: PHP 8.5.2 · Laravel 13.15.0 · Filament 5.6.7 · Pennant v1.23.0 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17. (`composer.json` now `php ^8.5` ✓.)
+- **`ralph/substrate-hardening`**: suite **248/248** on SQLite (878 asserts) · phpstan 0 @ max · pint clean · `composer validate` clean · `openspec validate … --strict` valid. (2.1 was non-DB → no PG run; `tests-pgsql` CI gate + task 6.1 cover cross-engine.)
 
 ## Active Change & Next Task
-- **ACTIVE = `substrate-hardening`** (APPROVED, 3/17). On branch `ralph/substrate-hardening`.
-- **NEXT = task 2.1 — C4 raise the PHP floor to 8.5** (design D5). `composer.json:9` `"php": "^8.3"` → `"^8.5"`, then `composer update --lock` to re-sync the lock content-hash (NO package upgrades — verify the diff is lock-hash-only). `tests/Feature/PlatformRequirementsTest.php:7-9`: `80400` → `80500`, description `>= 8.4` → `>= 8.5`. VERIFY-ONLY: `.github/workflows/ci.yml` + `CiWorkflowTest:36` already pin/assert 8.5. Run that requirement test green; `composer validate` clean. (DevelopmentDocsTest pins neither → safe.)
-- Then 2.2/2.3 config (.env sweep tunables · pgsql tz=UTC) · 3.x test gaps (uuidv7 · backoff cap · actor_role CHECK · combined immutable UPDATE) · 4.1 CI concurrency · 5.x docs (GUIDE/dev/README/INDEX) · 6.x cross-engine+validate+traceability.
+- **ACTIVE = `substrate-hardening`** (APPROVED, 4/17). On branch `ralph/substrate-hardening`. Section 1 (3/3) done; Section 2 = 1/3.
+- **NEXT = task 2.2 — C5 document the sweep tunables in `.env.example`** (design D6). Commented block after `QUEUE_CONNECTION=database` (~:38) with the three `EVENTS_SWEEP_*` keys VERBATIM from `config/events.php:25,28,31` (MAX_ATTEMPTS=5, BACKOFF_BASE_SECONDS=30, BACKOFF_CAP_SECONDS=3600), kept COMMENTED so the env stays on defaults. No test; verify `cp .env.example .env && php artisan key:generate` boots.
+- Then 2.3 (pgsql tz=UTC, DB-touching) · 3.x test gaps · 4.1 CI concurrency · 5.x docs · 6.x cross-engine + validate + traceability.
 
 ## Blockers & Decisions Needed
 - None active.
-- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). C15 (task 5.4) will register four currently-untracked gates: secrets · observability · PCI boundary · security review.
+- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). Task 5.4/C15 will register 4 more: secrets · observability · PCI boundary · security review.
 
 ## Open Patterns
-- **PG verification:** local `docker run postgres:17` (recipe `knowledge/testing/rules.md:9-13`, port 55432) per DB-touching task; five portability traps in rules.md. CI `tests-pgsql` is the standing gate. (1.3 engine-agnostic, still PG-verified per the acceptance.)
-- **Three consolidated patterns in `progress.md` Codebase Patterns** (read first each iteration): white-box concurrency-guard test via reflection; query-builder UPDATE skips casts + returns affected-row count; PHPStan-max-clean `Log::spy()` assertion (closure-as-2nd-arg context matcher, `is_string` not `(string)`).
-- **Doc-pin map (design.md D-notes):** edits to docs/CI have pinning tests — `DevelopmentDocsTest` (RALPH_EFFORT token + locked versions), `FoundationsDocsTest` (GUIDE F1 line), `CiWorkflowTest` (php 8.5 + gate order + concurrency), `PlatformRequirementsTest` (≥8.5). Update the pin in the SAME task.
+- **`composer update --lock` on a constraint change** touches only `content-hash` + the lock's `platform.*` mirror — `git diff composer.lock` MUST show zero `packages[]` bumps. Composer's "Nothing to modify… / Writing lock file" pairing is normal — trust the diff, not the message.
+- **Falsified-comment rule:** a config/dep bump that makes an existing comment factually wrong → fix that comment in the same task (not scope creep); leave unrelated refs to their own tasks.
+- **PG verification (DB-touching tasks only):** local `docker run postgres:17` (recipe + five traps in `knowledge/testing/rules.md`, port 55432). CI `tests-pgsql` is the standing gate.
+- **Three patterns in `progress.md` Codebase Patterns** (read first): white-box concurrency-guard via reflection; query-builder UPDATE skips casts + returns affected-row count; PHPStan-clean `Log::spy()` assertion.
+- **Doc-pin map:** `DevelopmentDocsTest` (RALPH_EFFORT + versions), `FoundationsDocsTest` (GUIDE F1), `CiWorkflowTest` (php 8.5 + gate order + concurrency), `PlatformRequirementsTest` (≥8.5). Update the pin in the SAME task.
 - **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB). hot.md ≤550 words.
-- **Archived patterns:** `openspec/changes/archive/2026-06-13-foundations-money-i18n-flags/progress.md` (12 patterns: VOs, casts, enums, lang/, Pennant, ActorContext, doc-pins).
