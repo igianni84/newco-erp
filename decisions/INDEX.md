@@ -13,4 +13,13 @@
 
 ## Open decisions (ADR required before the gate — see root CLAUDE.md)
 
+**Stack gates** — mirror root CLAUDE.md's "Open stack decisions" table (that table is the authoritative, protected copy; this line tracks the same gates here for the ADR index):
+
 Identity/auth · queue driver (requirements pre-set by the 2026-06-12 substrate ADR: at-least-once + per-job delay; gate = first `queued` consumer, expected F4–F6) · object storage · hosting (EU residency; founder direction registered 2026-06-12: probably hyperscaler EU region — non-binding) · consumer/producer frontend stack (founder direction: TanStack SPA — formal ADR at the Module S storefront gate).
+
+**Operational / security gates** — cross-cutting; surfaced by the 2026-06-13 substrate audit (C15) and tracked only here, since root CLAUDE.md's stack-gate table is protected and stack-scoped (this registry is their single home):
+
+- **Secrets management** — gate = staging environment / first stored production credential (DB, object storage, payment processor, Logilize). Covers credential storage, rotation, and CI/CD injection.
+- **Observability** — logging / metrics / alerting shape. Gate = staging environment / first production alerting need. The substrate-hardening C3 work left the dead-letter (`Log::warning`/`Log::error`) and sweep-summary (`Log::info`) channel as a deliberate placeholder pending this gate.
+- **PCI boundary** — gate = the first real payment-processor charge/capture integration (Module S order completion / Module E settlement). Fixes the cardholder-data boundary and SAQ scope (NewCo is Seller of Record, B2C).
+- **Architectural security review** — gate = before the first customer-facing release / production cutover. A formal threat model + review across the event/audit substrate, the compliance gates (KYC / sanctions / Hold), and the module boundaries.

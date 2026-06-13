@@ -77,3 +77,5 @@
 ## [2026-06-13 18:12] ralph | substrate-hardening 5.2 | green | 3 files (docs/development.md +RALPH_MODEL/.claude/PHP-floor 8.4->8.5; DevelopmentDocsTest 6/6; suite 254/254)
 
 ## [2026-06-13 18:19] ralph | substrate-hardening 5.3 | green | 5 files: README C14 exit codes +2/+5, /opsx:verify→semantic-verify (GUIDE §2.7), skills verify→sync, php floor 8.4→8.5; suite 254/254 unchanged, phpstan 0, pint clean
+
+## [2026-06-13 18:28] ralph | substrate-hardening 5.4 | green | C15: 4 op/sec gates (secrets/observability/PCI/sec-review) registered in decisions/INDEX.md; suite 254/254 unchanged; 3 files
