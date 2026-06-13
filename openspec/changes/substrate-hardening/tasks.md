@@ -38,5 +38,5 @@ Conventions for every task (see `design.md` for the full rationale, `proposal.md
 
 ## 6. Final verification & traceability
 
-- [ ] 6.1 **Cross-engine green** (global acceptance). On SQLite: `vendor/bin/pint --test` clean, `vendor/bin/phpstan analyse` 0 errors @ max, `php artisan test` all green. Then the PostgreSQL 17 lane locally (GUIDE §2.7 / `knowledge/testing/rules.md:9-13`): `docker run … postgres:17` + `DB_CONNECTION=pgsql … php artisan test` all green; `docker rm -f pg`.
+- [x] 6.1 **Cross-engine green** (global acceptance). On SQLite: `vendor/bin/pint --test` clean, `vendor/bin/phpstan analyse` 0 errors @ max, `php artisan test` all green. Then the PostgreSQL 17 lane locally (GUIDE §2.7 / `knowledge/testing/rules.md:9-13`): `docker run … postgres:17` + `DB_CONNECTION=pgsql … php artisan test` all green; `docker rm -f pg`.
 - [ ] 6.2 **Spec validation + traceability** (global acceptance). `openspec validate substrate-hardening --strict` green. Confirm each delta scenario maps to a test: *Concurrent Delivery Safety* ×2 → the 1.1 reflection tests; *Delivery Failure Observability* ×3 → the 1.2 `Log::fake` tests. Record the durable patterns in the change's `progress.md` Codebase Patterns (white-box concurrency-guard test via reflection; engine-guarded CHECK-constraint test).
