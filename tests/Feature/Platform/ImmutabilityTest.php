@@ -142,6 +142,34 @@ it('allows an UPDATE that changes ONLY before/after — the GDPR redaction seam 
         ->and(DB::table('audit_records')->where('id', $id)->value('actor_role'))->toEqual(ActorRole::NewcoOps->value);
 });
 
+it('rejects a combined structural + before/after UPDATE — a structural edit cannot ride inside a redaction', function () {
+    $redacted = json_encode(['email' => '[REDACTED]']);
+    $originalSnapshot = ['email' => 'user@example.com'];
+
+    $id = DB::table('audit_records')->insertGetId(immutabilityAuditRow());
+
+    // before/after-only is the sole permitted mutation (the test above). Bundling a structural change
+    // (action) with a legitimate-looking redaction must STILL be rejected: the trigger's guard is an OR
+    // over the structural columns ONLY (migration 000004 $auditStructuralColumns), evaluated independently
+    // of before/after — so a structural edit can never be smuggled in under cover of a redaction.
+    $message = captureImmutabilityError(
+        fn () => DB::table('audit_records')->where('id', $id)->update([
+            'action' => 'tampered.action',
+            'before' => $redacted,
+            'after' => $redacted,
+        ])
+    );
+
+    // The whole statement aborts atomically: the structural column is unchanged AND the bundled redaction
+    // never landed either (read before/after through the model cast — PostgreSQL jsonb normalises).
+    $record = AuditRecord::findOrFail($id);
+
+    expect($message)->toContain('immutable')
+        ->and(DB::table('audit_records')->where('id', $id)->value('action'))->toEqual('voucher.cancel')
+        ->and($record->before)->toBe($originalSnapshot)
+        ->and($record->after)->toBe($originalSnapshot);
+});
+
 it('rejects a DELETE against audit_records and the row remains', function () {
     $id = DB::table('audit_records')->insertGetId(immutabilityAuditRow());
 

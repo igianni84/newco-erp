@@ -67,3 +67,5 @@
 ## [2026-06-13 17:26] ralph | substrate-hardening 3.2 | green | 3 files (SweepTest +cap test, tasks.md, progress.md); 250/250 889 asserts SQLite+PG17; non-vacuity via transient RED+revert; phpstan 0; openspec strict valid
 
 ## [2026-06-13 17:42] ralph | substrate-hardening 3.3 | green | C9 actor_role CHECK rejection: new ActorRoleConstraintTest (2 engine-guarded tests, 6 asserts), 252/252 both engines (895===895), pg sqlstate 23514 verified | 4 files
+
+## [2026-06-13 17:51] ralph | substrate-hardening 3.4 C10 | green | combined structural+before/after UPDATE rejected; ImmutabilityTest +1 test, 253/253 & 899 asserts on SQLite AND PG17 (899===899); test-only; transient-RED non-vacuity (2 RED, reverted) | 1 test +3 memory
