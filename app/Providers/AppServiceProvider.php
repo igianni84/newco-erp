@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Platform\Events\ConsumerRegistry;
+use App\Platform\Features\Features;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register the platform's feature-flag definitions with Pennant (design D5).
+        // Defining only records in-memory resolvers, so this is safe before migrations.
+        Features::define();
     }
 }

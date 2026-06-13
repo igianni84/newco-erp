@@ -35,3 +35,5 @@
 ## [2026-06-13 10:52] ralph | foundations-money-i18n-flags 2.4 | green | 2 files (welcome.blade replaced→minimal localized placeholder; WelcomePageTest 3) | suite 215/215 +3, phpstan 0 max | §2 i18n 4/4 done; 9/14 tasks
 
 ## [2026-06-13 11:05] ralph | foundations-money-i18n-flags 3.1 | green | laravel/pennant v1.23.0 installed (latest stable, ^13 compat), features table SQLite-clean + container resolves; suite 218/218; composer.lock Pennant-only, php ^8.3 untouched; 7 files
+
+## [2026-06-13 11:19] ralph | foundations-money-i18n-flags 3.2 | green | 6 files | EXT-1 nft-on-chain flag + FeatureFlag enum + Features accessor; AppServiceProvider boot reg; docs/feature-flags.md (NS fallback); suite 226/226, phpstan 0, no composer churn
