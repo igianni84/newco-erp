@@ -20,6 +20,14 @@ on:
 permissions:
   contents: read
 
+# C11 (substrate-hardening design D9): cancel a superseded in-flight run when a
+# newer commit lands on the same ref. One workflow-level group governs BOTH lanes
+# (quality + tests-pgsql), so a rapid re-push frees the postgres service-container
+# lane instead of finishing a now-stale run. github.ref keys it per-branch / per-PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest

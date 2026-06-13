@@ -27,7 +27,7 @@ Conventions for every task (see `design.md` for the full rationale, `proposal.md
 
 ## 4. CI
 
-- [ ] 4.1 **C11 — workflow concurrency group** (design D9). `.github/workflows/ci.yml`: add a top-level `concurrency:` block after the `permissions:` block (~:21) — `group: ci-${{ github.ref }}` and `cancel-in-progress: true` (one workflow-level block governs both lanes). `tests/Feature/CiWorkflowTest.php`: add a test asserting `ciWorkflow()->toContain('concurrency:')->toContain('cancel-in-progress: true')` and the `ci-${{ github.ref }}` group. Run the suite green (CiWorkflowTest reads the file from disk).
+- [x] 4.1 **C11 — workflow concurrency group** (design D9). `.github/workflows/ci.yml`: add a top-level `concurrency:` block after the `permissions:` block (~:21) — `group: ci-${{ github.ref }}` and `cancel-in-progress: true` (one workflow-level block governs both lanes). `tests/Feature/CiWorkflowTest.php`: add a test asserting `ciWorkflow()->toContain('concurrency:')->toContain('cancel-in-progress: true')` and the `ci-${{ github.ref }}` group. Run the suite green (CiWorkflowTest reads the file from disk).
 
 ## 5. Docs (non-protected)
 
