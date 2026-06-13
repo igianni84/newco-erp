@@ -19,3 +19,5 @@
 ## [2026-06-13 09:20] harden | ralph.sh | Preflight auto-stages the active change's untracked artifacts into an approve: commit before BASELINE_SHA — kills the recurring APPROVED-sweep exit-5. Scoped to CHANGE_DIR, idempotent. Verified: 3-case bash test + bash -n. Protected edit, Giovanni-OK'd.
 
 ## [2026-06-13 09:31] ralph | foundations-money-i18n-flags 1.2 Money | green | 2 files (app/Platform/Money/Money.php + MoneyTest 8/8); suite 166/166, phpstan 0 @ max, validate strict ok; no composer churn
+
+## [2026-06-13 09:38] ralph | foundations-money-i18n-flags 1.3 | green | FxRate VO (decimal-string, no float, verbatim) + 5 tests | 2 files | suite 171/171, phpstan 0, pint clean
