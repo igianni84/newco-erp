@@ -3,6 +3,7 @@
 namespace App\Platform\Events;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The at-least-once delivery sweep (foundations-domain-events-audit, task 4.2; design D6) — the
@@ -28,7 +29,15 @@ class SweepCommand extends Command
 
     public function handle(InlineDeliveryExecutor $executor): int
     {
-        $executor->deliverDue();
+        $result = $executor->deliverDue();
+        $swept = $result['delivered'] + $result['failed'];
+
+        // The run summary: how many deliveries this sweep ran (delivered + failed) and how many failed —
+        // the dead-letter-in-place observability floor until an operator retry surface lands (C3, design D3).
+        Log::info(sprintf('events:sweep complete: swept=%d failed=%d', $swept, $result['failed']), [
+            'swept' => $swept,
+            'failed' => $result['failed'],
+        ]);
 
         return self::SUCCESS;
     }

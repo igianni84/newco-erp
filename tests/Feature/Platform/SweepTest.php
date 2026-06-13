@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\Support\Platform\FailingConsumer;
 use Tests\Support\Platform\RecordingConsumer;
@@ -201,6 +202,79 @@ it('retries only the failed consumer to done and never re-runs the already-done 
         ->and(RecordingConsumer::$handled)->toBe([$retrying->domain_event_id]) // only the retried consumer ran
         ->and($sibling->status)->toBe(DeliveryStatus::Done)                    // the already-done sibling stayed put…
         ->and($sibling->attempts)->toEqual(1);                                 // …never re-executed (FailingConsumer would have thrown)
+});
+
+it('logs a warning identifying a retryable delivery failure and leaves it pending (delivery failure observability)', function () {
+    // A single failing attempt below the configured maximum: the failure is retryable, so the executor
+    // surfaces it at WARNING (the error level is reserved for the dead-letter transition) carrying the
+    // delivery's identity and the handler's error — the operability floor for dead-letter-in-place (C3).
+    $delivery = sweepSeedDelivery(FailingConsumer::class);   // default max_attempts (5) → attempt 1 stays pending
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    // Level + identity, not wording: warning (not error), identifying the delivery (id, consumer) and error.
+    $log->shouldHaveReceived(
+        'warning',
+        /** @param array<string, mixed> $context */
+        function (string $message, array $context) use ($delivery): bool {
+            $error = $context['error'] ?? null;
+
+            return ($context['delivery_id'] ?? null) === $delivery->id
+                && ($context['consumer'] ?? null) === FailingConsumer::class
+                && is_string($error)
+                && str_contains($error, FailingConsumer::FAILURE_MESSAGE);
+        },
+    );
+    $log->shouldNotHaveReceived('error');   // a retryable failure is NOT dead-lettered
+
+    $delivery->refresh();
+    expect($delivery->status)->toBe(DeliveryStatus::Pending)   // still retryable
+        ->and($delivery->attempts)->toEqual(1);
+});
+
+it('logs an error when a delivery exhausts its attempts and is dead-lettered (delivery failure observability)', function () {
+    // Drive straight to the dead-letter transition with max_attempts = 1: the first failure already
+    // reaches the maximum, so the delivery becomes `failed` and the executor surfaces it at ERROR.
+    Config::set('events.sweep.max_attempts', 1);
+
+    $delivery = sweepSeedDelivery(FailingConsumer::class);
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    $log->shouldHaveReceived(
+        'error',
+        /** @param array<string, mixed> $context */
+        fn (string $message, array $context): bool => ($context['delivery_id'] ?? null) === $delivery->id
+            && ($context['consumer'] ?? null) === FailingConsumer::class,
+    );
+    $log->shouldNotHaveReceived('warning');   // it dead-lettered immediately — no retryable-warning level
+
+    $delivery->refresh();
+    expect($delivery->status)->toBe(DeliveryStatus::Failed)   // dead-lettered in place
+        ->and($delivery->attempts)->toEqual(1);
+});
+
+it('logs a run summary recording deliveries swept and failed (delivery failure observability)', function () {
+    // A mixed run: one delivery succeeds, one fails (retryable). The sweep emits one INFO summary
+    // tallying both — swept counts every delivery it ran (delivered + failed), failed the subset that did.
+    sweepSeedDelivery(RecordingConsumer::class, entityId: 'ok');     // delivers
+    sweepSeedDelivery(FailingConsumer::class, entityId: 'bad');      // fails (attempts 1 < max → stays pending)
+
+    $log = Log::spy();
+
+    expect(Artisan::call('events:sweep'))->toBe(0);
+
+    // Level + counts, not wording: one info summary with swept = 2 (1 delivered + 1 failed), failed = 1.
+    $log->shouldHaveReceived(
+        'info',
+        /** @param array<string, mixed> $context */
+        fn (string $message, array $context): bool => ($context['swept'] ?? null) === 2
+            && ($context['failed'] ?? null) === 1,
+    );
 });
 
 it('schedules events:sweep every thirty seconds without overlapping', function () {
