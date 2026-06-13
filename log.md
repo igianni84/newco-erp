@@ -65,3 +65,5 @@
 ## [2026-06-13 17:17] ralph | substrate-hardening 3.1 | green | C7 event_id pinned UUIDv7 (test-only, +1 assert at DomainEventRecorderTest:116); 249/249 SQLite+PG (880 asserts); phpstan 0 @max; pint clean; openspec valid; 7/17
 
 ## [2026-06-13 17:26] ralph | substrate-hardening 3.2 | green | 3 files (SweepTest +cap test, tasks.md, progress.md); 250/250 889 asserts SQLite+PG17; non-vacuity via transient RED+revert; phpstan 0; openspec strict valid
+
+## [2026-06-13 17:42] ralph | substrate-hardening 3.3 | green | C9 actor_role CHECK rejection: new ActorRoleConstraintTest (2 engine-guarded tests, 6 asserts), 252/252 both engines (895===895), pg sqlstate 23514 verified | 4 files
