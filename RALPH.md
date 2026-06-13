@@ -87,7 +87,7 @@ Output `<promise>HUMAN_NEEDED</promise>` plus a one-paragraph reason, after writ
 
 ## Progress Report Format
 
-APPEND to the change's `progress.md` (never replace):
+APPEND to the change's `progress.md` (never replace; timestamp from the real clock via `date`, never estimated):
 
 ```
 ## [YYYY-MM-DD HH:MM] — <task-id> <task title>
@@ -105,8 +105,8 @@ If you discovered a **reusable pattern**, consolidate it in the `## Codebase Pat
 
 ### ALWAYS (every iteration, success or failure):
 - The change's `progress.md` (format above; Codebase Patterns at top).
-- `log.md` — append exactly one line block: `## [YYYY-MM-DD HH:MM] ralph | <change> <task-id> | <outcome: green|blocked|human-needed> | <n> files`
-- `hot.md` — OVERWRITE completely (~300–500 words, not a journal): `Last Updated` / `Build & Quality Status` / `Active Change & Next Task` / `Blockers & Decisions Needed` / `Open Patterns`.
+- `log.md` — append exactly ONE line via `scripts/memlog.sh` (it stamps the real clock — NEVER hand-write or estimate the timestamp — and caps the outcome at 280 chars): `scripts/memlog.sh ralph "<change> <task-id>" "<green|blocked|human-needed> | <n> files"`. Rotate to `log-archive-YYYY-H{1,2}.md` past ~200KB (the memory-health Stop hook warns).
+- `hot.md` — OVERWRITE completely (~300–500 words, ≤550 hard ceiling — the memory-health Stop hook warns past it; it's a cache, not a journal): `Last Updated` / `Build & Quality Status` / `Active Change & Next Task` / `Blockers & Decisions Needed` / `Open Patterns`.
 
 ### WHEN APPROPRIATE:
 - `lessons.md` (root) — when you discover a mistake pattern future iterations must avoid (Mistake → Correction → Rule).

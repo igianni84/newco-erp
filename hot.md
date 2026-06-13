@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-12
+updated: 2026-06-13
 ---
 
 # Hot Cache
@@ -10,24 +10,23 @@ updated: 2026-06-12
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-12 (interactive — CI actions deprecation carry-over RESOLVED).** Bumped `.github/workflows/ci.yml` off the deprecated Node 20 runtime: `actions/checkout@v4 → @v6` and `actions/cache@v4 → @v5` on both lanes (Giovanni's standing preference: always latest stable). Verified on the tags' `action.yml`: checkout@v6 (latest stable v6.0.3) and cache@v5 both `runs.using: node24`; `shivammathur/setup-php@v2` was already node24 (left as-is). No app code touched — `CiWorkflowTest` stays green (8/8; it pins `actions/cache@` without a version and doesn't pin checkout). Committed + pushed to `origin/main`.
-Prior session (now history, see log.md): `foundations-domain-events-audit` merged + archived, both CI lanes green after 6 test-only engine-portability fixes on PostgreSQL 17.10.
+**2026-06-13 (interactive — 360° audit + second-brain source fix).** Full read-only audit (5 parallel agents: OpenSpec/traceability, substrate code, tests/CI, second brain, workplan coverage) + quality gates. Second brain now self-enforces: new `scripts/memlog.sh` (real-clock timestamp + 280-char outcome cap) and `.claude/hooks/memory-health.sh` (Stop hook: warns on hot.md >550w / log.md >200KB / giant entry lines); rules updated in `.claude/CLAUDE.md` + `RALPH.md`; `log.md` rotated to `log-archive-2026-H1.md`, restarted slim. Minor doc fixes (removed the non-existent `/opsx:verify`, PHP floor text → 8.5, grill ADR-format override).
 
 ## Build & Quality Status
-- Stack unchanged: PHP 8.5.2 · Laravel 13.x · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev; tests `:memory:`. Prod engine PostgreSQL 17 (ADR).
-- `main`: CI-actions bump is the new HEAD on top of `c6df3dd`. **No production/test code changed** — full suite still **151/151** (SQLite 602 assertions, PostgreSQL 17.10 601; the 1-assertion delta is the sqlite-only `:memory:` check) · phpstan 0 @ max · pint clean. composer.json/lock unchanged (zero new deps).
-- CI workflow now Node-24-clean on both lanes (checkout@v6, cache@v5, setup-php@v2). The pgsql lane (D8) remains proven green for real (last full run 27433178902); the next push re-runs both lanes against the bumped actions.
+- Stack: PHP 8.5.2 · Laravel 13.x (^13.8) · Filament v5 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17.
+- `main`: suite **151/151** green (SQLite 602 assertions; PG 17 lane green) · phpstan 0 @ max · pint clean · `composer validate --strict` + `composer audit` clean. The second-brain fix touched no app/test code.
 
 ## Active Change & Next Task
-- **NO active change.** `foundations-domain-events-audit` is merged, archived (`openspec/changes/archive/2026-06-12-foundations-domain-events-audit`), and its delta specs are now living truth: `openspec/specs/event-substrate/spec.md` (new, 8 requirements) + `openspec/specs/platform/spec.md` (updated). **Phase 1 (domain-events + audit substrate) CLOSED.**
-- **Next:** `/spec-to-change` from `spec/05-release/Build_Workplan_v0.3-MVP.md` for **F2+** — the first real module that emits real spec events on the substrate. Queue-driver ADR gate expected around F4–F6 (first `queued` consumer); the substrate is launch-ready for it (inline is the only registrable `DeliveryMode` until then).
+- **NO active change.** Phase-1 substrate (domain-events + audit) merged/archived.
+- **CORRECTED Next:** F1 3/3 **`foundations-money-i18n-flags`** was wrongly skipped — author via `/spec-to-change` (Money value objects, i18n 6 locales D2, Pennant flags D12, actor_role helper). THEN F2 = Module 0 + K, with the identity/auth ADR grilled before any K slice.
+- **Staged:** a `substrate-hardening` change (audit fixes below) — run via ralph after APPROVED.
 
 ## Blockers & Decisions Needed
-- **No blockers.** One non-blocking carry-over remains:
-  1. **Queued-gate WARNING** — the archived `event-substrate` spec's "Queued mode is gated" scenario describes a *runtime* rejection citing the queue ADR; the code gates `queued` at *compile-time* (single-case enum). Deliberate (D4), stronger, satisfies intent — but living-spec text and impl differ. Decide later whether to reconcile the scenario wording (tiny future change) or leave as-is.
-  - *(Resolved 2026-06-12: the CI-actions Node-20 deprecation carry-over — bumped to checkout@v6 + cache@v5.)*
-- Open ADR gates (unchanged): identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). Semantic-verify debts from bootstrap (W1/W2/W3/S1/S3) still pending Module K.
+- **Audit fixes (→ `substrate-hardening`):** executor inline-vs-sweep race (no row lock, `InlineDeliveryExecutor`); sweep `withoutOverlapping()` 24h TTL; silent dead-letters; CI no concurrency group; composer `php ^8.3`→`^8.5`; 4 test gaps (UUIDv7 pin, backoff cap, PG actor_role CHECK, mixed structural+redaction UPDATE).
+- **Open ADR gates:** identity/auth (first to fire — before Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
+- **Carry-overs:** queued-mode scenario wording (runtime) vs compile-time gate; bootstrap W1/W2/W3/S1/S3 (W2 seeder backdoor → fix with auth ADR). `openspec/specs` wording (Purpose TBD ×3, citations) rides future changes — no hand-edit.
 
 ## Open Patterns
-- **Closing ritual now includes a LOCAL PostgreSQL verify** before declaring done — the ralph loop can't run the pgsql lane, so SQLite-green ≠ done. `docker run postgres:17` on a spare port + `DB_CONNECTION=pgsql … php artisan test`. Full rule + the 5 PG-vs-SQLite traps in **`knowledge/testing/rules.md`** (NUL-truncated anonymous FQCNs; strict `uuid`; `jsonb` key-reorder; `timestamptz` `+00`; trigger-RAISE aborts the whole PG txn → savepoint-wrap).
-- **Substrate (`App\Platform`)**: boundary law (never import `App\Modules\**`, arch-test enforced); recorder rides the caller's transaction (`NotInTransactionException` at level 0); envelope = UUIDv7 + money minor-units + FX decimal-string (never float, D18); delivery inline post-commit + `events:sweep` at-least-once (backoff/dead-letter, `config/events.php`); immutability via DB triggers (SQLite/PG parity, token `immutable`; audit redaction-only). Module identities cross the boundary as `string` (`Module::X->value`), never the enum.
+- **Second brain self-enforces now:** append to log.md ONLY via `scripts/memlog.sh`; timestamps from the real clock; rotation by size (~200KB) not line count; `memory-health.sh` warns at Stop.
+- **Closing ritual includes a LOCAL PostgreSQL verify** (SQLite-green ≠ done): `docker run postgres:17` + `DB_CONNECTION=pgsql php artisan test`. Traps in `knowledge/testing/rules.md`.
+- **Substrate (`App\Platform`)**: boundary law (arch-test enforced); recorder rides caller's transaction; envelope UUIDv7 + minor-units + FX decimal-string; inline post-commit + `events:sweep` at-least-once; immutability via DB triggers (SQLite/PG parity); module identities cross as `string`.

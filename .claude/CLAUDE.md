@@ -42,7 +42,7 @@
 
 - `openspec/specs/` — how the system behaves TODAY. Read the relevant capability spec before touching a module. Never hand-edit: it changes only when a change is archived.
 - `openspec/changes/<name>/` — in-flight work: `proposal.md`, delta `specs/`, `design.md`, `tasks.md`, `progress.md`, optional `APPROVED` marker (human-created only).
-- Lifecycle: `/spec-to-change` (author) → human review → `APPROVED` → `./ralph.sh` (implement) → human review/merge → `/opsx:verify` → `openspec archive <name> --yes`.
+- Lifecycle: `/spec-to-change` (author) → human review → `APPROVED` → `./ralph.sh` (implement) → human review/merge → semantic-verify (GUIDE §2.7) → `openspec archive <name> --yes`.
 - Useful CLI: `openspec list`, `openspec status --change X --json`, `openspec validate X --strict`, `openspec show X`.
 - Interactive implementation of a single task is fine (follow RALPH.md discipline manually); keep one-task-per-session granularity.
 
@@ -54,8 +54,8 @@
 
 | Mechanism | Location | Scope | Purpose |
 |---|---|---|---|
-| **Hot Cache** | `hot.md` (root) | Repo state | ~500-word digest, OVERWRITTEN (never appended) on every significant operation. Injected at session start + post-compaction by hooks. Sections: Last Updated / Build & Quality Status / Active Change & Next Task / Blockers & Decisions Needed / Open Patterns. |
-| **Operations Log** | `log.md` (root) | Chronology | Append-only ledger: `## [YYYY-MM-DD HH:MM] {op} \| {target} \| {outcome}`. Rotate past ~5000 lines to `log-archive-YYYY.md`. |
+| **Hot Cache** | `hot.md` (root) | Repo state | ~500-word digest (≤550 hard ceiling — the `memory-health.sh` Stop hook warns past it), OVERWRITTEN (never appended) on every significant operation. Injected at session start + post-compaction by hooks. Sections: Last Updated / Build & Quality Status / Active Change & Next Task / Blockers & Decisions Needed / Open Patterns. |
+| **Operations Log** | `log.md` (root) | Chronology | Append-only ledger, one line per entry: `## [YYYY-MM-DD HH:MM] {op} \| {target} \| {outcome}`. **Append only via `scripts/memlog.sh`** — it stamps the real clock (timestamps are never estimated) and caps the outcome at 280 chars (narrative → progress.md). Rotate to `log-archive-YYYY-H{1,2}.md` past ~200KB. |
 | **Lessons** | `lessons.md` (root) | Corrections | Mistake → Correction → Rule. Updated after any correction; read at session start. |
 | **Knowledge System** | `knowledge/{domain}/` | Domain insights | Promotion lifecycle: observations → hypotheses (3 confirmations) → rules. |
 | **Decision Journal** | `decisions/` | Architecture | ADRs with supersede semantics. This is the repo's `docs/adr/` equivalent. |
@@ -101,4 +101,6 @@ superseded-by: (optional)
 
 ## Hot Cache & Log discipline
 - Any session (interactive or loop) that materially changes the repo MUST end with: `log.md` appended + `hot.md` overwritten. The Stop hook reminds you if you forget.
-- `hot.md` is a cache, not a journal: rewrite it from current state, don't accumulate history in it.
+- **Append to `log.md` only via `scripts/memlog.sh "<op>" "<target>" "<outcome>"`.** It stamps the timestamp from the real clock (timestamps are NEVER hand-written or estimated) and rejects an outcome over 280 chars — the ledger is a one-line summary; the narrative belongs in the change's `progress.md`. Any other dated note: read the clock (`date`), don't guess it.
+- `hot.md` is a cache, not a journal: rewrite it from current state (~500 words, ≤550 hard ceiling), don't accumulate history in it.
+- **Rotation is by size, not line count:** when `log.md` passes ~200KB, move it to `log-archive-YYYY-H{1,2}.md` (verbatim — append-only means archive, never rewrite) and start a fresh `log.md`. The `.claude/hooks/memory-health.sh` Stop hook warns when hot.md word count, log.md size, or an entry-line length drifts past its limit.

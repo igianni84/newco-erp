@@ -8,7 +8,7 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 
 ## Tech Stack and Tech Rules
 
-- **PHP ≥ 8.4** · **Laravel 13.x** (`^13.0`) · **Filament 5.x** (`^5.0`) for the operator panel — pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md`; exact installed versions recorded in `docs/development.md`.
+- **PHP ≥ 8.5** · **Laravel 13.x** (`^13.0`) · **Filament 5.x** (`^5.0`) for the operator panel — pinned per ADR `decisions/2026-06-11-stack-versions-and-filament-ai-tooling.md`; exact installed versions recorded in `docs/development.md`.
 - **Pest** for tests · **Larastan/PHPStan** for static analysis · **Pint** for format/lint.
 - Dev/test database: **SQLite** (`:memory:` in tests). Production engine: **PostgreSQL ≥ 17** (managed, EU) — ADR `decisions/2026-06-12-production-db-engine.md`. Migrations are Postgres-truthful, SQLite-compatible; no PG extensions at launch
 - Prefer framework conventions: Eloquent, FormRequests, Policies, Events, Jobs, Notifications. No new heavyweight dependency without an ADR in `decisions/`.
@@ -88,7 +88,7 @@ Until the `bootstrap-laravel-app` change completes, commands that don't exist ye
 
 ## Workflow & Where Things Live
 
-- **Work state machine:** `openspec/` — `specs/` is current truth (read it before touching a module), `changes/` is in-flight work, `changes/archive/` is history. Lifecycle: `/spec-to-change` → human review → `APPROVED` file → `./ralph.sh` → review/merge → `/opsx:verify` → `openspec archive`.
+- **Work state machine:** `openspec/` — `specs/` is current truth (read it before touching a module), `changes/` is in-flight work, `changes/archive/` is history. Lifecycle: `/spec-to-change` → human review → `APPROVED` file → `./ralph.sh` → review/merge → semantic-verify (GUIDE §2.7) → `openspec archive`.
 - **Memory:** `hot.md` (state cache, overwritten), `log.md` (append-only ledger), `lessons.md` (corrections), `knowledge/` (hypotheses→rules), `.claude/memory/` (team memory), `decisions/` (ADRs). Mechanics in `.claude/CLAUDE.md`.
 - **Loop:** `./ralph.sh` + `RALPH.md`. One task per iteration. Tests are never optional (`.claude/skills/references/acceptance-criteria.md`).
 

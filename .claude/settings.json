@@ -28,7 +28,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -d .git ] && [ -f hot.md ] && git diff --name-only HEAD 2>/dev/null | grep -qE '^(app/|src/|config/|database/|routes/|resources/|tests/|docs/|knowledge/|decisions/|openspec/|CONTEXT\\.md|log\\.md|lessons\\.md)' && echo 'HOT_CACHE_REMINDER: The repo was modified in this session but hot.md may be out of sync. If appropriate, update hot.md (overwrite completely, ~500 words, sections: Last Updated / Build & Quality Status / Active Change & Next Task / Blockers & Decisions Needed / Open Patterns) and append the operation to log.md before ending.' || true"
+            "command": "[ -d .git ] && [ -f hot.md ] && git diff --name-only HEAD 2>/dev/null | grep -qE '^(app/|src/|config/|database/|routes/|resources/|tests/|docs/|knowledge/|decisions/|openspec/|CONTEXT\\.md|log\\.md|lessons\\.md)' && echo 'HOT_CACHE_REMINDER: The repo was modified in this session but hot.md may be out of sync. If appropriate, update hot.md (overwrite completely, ~500 words, sections: Last Updated / Build & Quality Status / Active Change & Next Task / Blockers & Decisions Needed / Open Patterns) and append the operation to log.md via scripts/memlog.sh before ending.' || true"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-health.sh\""
           }
         ]
       }

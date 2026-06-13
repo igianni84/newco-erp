@@ -1,5 +1,7 @@
 # ADR Format
 
+> **NewCo ERP override:** in this repo, ADRs live in **`decisions/`** (not `docs/adr/`) and are **date-named** `YYYY-MM-DD-{topic}.md` — see `.claude/CLAUDE.md` → Decision Journal and `decisions/INDEX.md`. The generic `docs/adr/` + sequential-`NNNN` convention described below is the skill default; follow the repo override here (root CLAUDE.md: "the ADR home in this repo is `decisions/`").
+
 ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
 
 Create the `docs/adr/` directory lazily — only when the first ADR is needed.
