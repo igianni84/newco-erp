@@ -43,8 +43,8 @@ use Illuminate\Support\Str;
  * amounts as integer minor units + ISO 4217 currency code, FX rates as decimal strings (never
  * floats — invariants 5/6), entity ids and business data only — never PII (profile data lives in
  * module tables where GDPR erasure operates). The substrate persists the array verbatim through the
- * jsonb cast; a float in an FX field is a caller bug the F1 3/3 value objects will make
- * unrepresentable.
+ * jsonb cast; a float in an FX field is a caller bug the App\Platform\Money value objects (Money,
+ * FxRate, DualCurrencyAmount) make unrepresentable.
  */
 class DomainEventRecorder
 {

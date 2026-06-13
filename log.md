@@ -39,3 +39,5 @@
 ## [2026-06-13 11:19] ralph | foundations-money-i18n-flags 3.2 | green | 6 files | EXT-1 nft-on-chain flag + FeatureFlag enum + Features accessor; AppServiceProvider boot reg; docs/feature-flags.md (NS fallback); suite 226/226, phpstan 0, no composer churn
 
 ## [2026-06-13 11:30] ralph | foundations-money-i18n-flags 4.1 | green | ActorContext seam (singleton + runAs scoped override, gate-safe no-auth); demo refactored to read role via seam; suite 233/233 (+7), phpstan 0; 4 files
+
+## [2026-06-13 11:46] ralph | foundations-money-i18n-flags 5.1 | green | forward-ref cleanup (event-substrate.md + DomainEventRecorder docblock → present tense @App\Platform\Money) + GUIDE F1 3/3 + CONTEXT.md +8 glossary terms + 2 doc-pin test files; suite 243/243 (+10), phpstan 0, composer untouched | 6 files

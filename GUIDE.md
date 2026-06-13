@@ -171,7 +171,7 @@ L'ordine è il **Build Workplan** (`spec/05-release/Build_Workplan_v0.3-MVP.md`)
 | Fase | Cosa | Change indicativi | Gate/Note |
 |---|---|---|---|
 | **F0** | Smoke test | `bootstrap-laravel-app` | — ← sei qui |
-| **F1** | Foundations | `foundations-modules-skeleton` (app/Modules, boundaries, provider) · `foundations-domain-events-audit` (event base + log immutabile) · `foundations-money-i18n-flags` (Money, locales, Pennant, actor_role) | ADR 1+2 prima |
+| **F1** | Foundations | `foundations-modules-skeleton` ✅ (app/Modules, boundaries, provider) · `foundations-domain-events-audit` ✅ (event base + log immutabile) · `foundations-money-i18n-flags` ✅ (Money, locales, Pennant, actor_role) | ADR 1+2 ✅ · **F1 completata 3/3** |
 | **F2** | Module 0 + K | 0: spine prodotti → formats/case → lifecycle+approval → SKU sellable → console · K: parties core → club+membership (Hero invariant) → KYC/sanctions → Hold → club credit → GDPR/retention → console | ADR 3 prima di K |
 | **F3** | Module A + D | A: allocation+FSM+terms → sub-pool+L1 no-oversell → release primitive → publish+console · D: intent+PO → inbound 2-fase+discrepancy → consignment V2 → console | |
 | **F4** | Module S (il più grosso) | offer FSM → cart+checkout gate (KYC/Hold) → order FSM → voucher 7-state+cellar → INV1+OC 5% → storage+INV2/INV3 → refund+14gg → storefront → console | ADR 4–6 lungo il percorso |

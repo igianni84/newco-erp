@@ -28,6 +28,11 @@ function eventSubstrateDoc(): string
     return developerDoc('docs/event-substrate.md');
 }
 
+function domainEventRecorderSource(): string
+{
+    return developerDoc('app/Platform/Events/DomainEventRecorder.php');
+}
+
 it('ships the event-substrate doc', function () {
     expect(file_exists(base_path('docs/event-substrate.md')))->toBeTrue();
 });
@@ -45,6 +50,22 @@ it('documents the emit + audit recorder APIs and payload discipline', function (
         ->toContain('AuditRecorder')
         ->toContain('decimal string')   // FX rates as a decimal string (D18) — never a float
         ->toContain('minor units');
+});
+
+it('points payload discipline at the App\Platform\Money value objects in present tense', function () {
+    // F1 3/3 (this change) realised the value objects, so the doc's forward-reference is now
+    // a live present-tense pointer at App\Platform\Money — not "the F1 3/3 value objects will…".
+    $doc = eventSubstrateDoc();
+    expect($doc)->toContain('App\Platform\Money');
+    expect($doc)->not->toContain('F1 3/3');     // the forward-reference marker is gone
+});
+
+it('the DomainEventRecorder docblock names the value objects in present tense', function () {
+    // The same forward-reference lived in the recorder's class docblock (design D7); it now
+    // points at the App\Platform\Money value objects rather than deferring to "F1 3/3".
+    $source = domainEventRecorderSource();
+    expect($source)->toContain('App\Platform\Money');
+    expect($source)->not->toContain('F1 3/3');
 });
 
 it('documents the consumer contract, registration and the watermark obligation', function () {
