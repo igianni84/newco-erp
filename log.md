@@ -83,3 +83,5 @@
 ## [2026-06-13 18:33] ralph | substrate-hardening 6.1 | green | cross-engine: SQLite 254/254 + PostgreSQL 17 254/254 (904 asserts each), pint/phpstan-max/openspec-strict clean | 2 files (tasks.md, progress.md)
 
 ## [2026-06-13 23:11] close | substrate-hardening 6.2 | 6.2 done -> 17/17 openspec Complete; validate --strict valid; 5/5 delta scenarios -> named passing tests (InlineDeliveryTest:170,189; SweepTest:241,271,295); 2 patterns confirmed; doc-only. Loop exited early at iter16, completed 6.2 manually. CHANGE_COMPLETE.
+
+## [2026-06-13 23:25] close | substrate-hardening 2.7 | Closed 2.7 ritual: SQLite+PG17 254/254 re-verified; merged 0e2f3a5 + pushed; semantic-verify CLEAN (0 CRITICAL, 3 minor); archived ecead30 -> 2 reqs into specs/event-substrate; branch deleted. main==origin clean. Loop had exited early 16/17; 6.2 done interactively.
