@@ -59,3 +59,5 @@
 ## [2026-06-13 16:51] ralph | substrate-hardening 2.1 | green | C4 PHP floor ^8.3->^8.5 + lock hash re-sync (no pkg upgrades) + PlatformRequirementsTest 80400->80500 + 2 falsified floor comments | 5 files | 248/248 SQLite
 
 ## [2026-06-13 17:00] ralph | substrate-hardening 2.2 | green | 3 files | C5 .env.example EVENTS_SWEEP_* commented block (5/30/3600); boot+config read-back verified
+
+## [2026-06-13 17:09] ralph | substrate-hardening 2.3 | green | 4 files | C6 pgsql timezone=UTC in config/database.php; suite 249/249 on SQLite+PG17 (PG proof: filter 2 asserts + tinker show-time-zone=UTC), phpstan 0, validate ok

@@ -26,3 +26,18 @@ it('migrates the full schema on the test database', function () {
         ->and(Schema::hasTable('cache'))->toBeTrue()
         ->and(Schema::hasTable('jobs'))->toBeTrue();
 });
+
+it('pins the PostgreSQL session timezone to UTC', function () {
+    // Config-level pin (runs on BOTH lanes): the pgsql connection declares UTC, so the
+    // Postgres connector issues `SET TIME ZONE 'UTC'` on connect
+    // (PostgresConnector::configureTimezone). Dropping the key fails this loudly.
+    // substrate-hardening C6 / design D6.
+    expect(config('database.connections.pgsql.timezone'))->toBe('UTC');
+
+    // Behavioural proof on the production-faithful lane: when pgsql is the live engine the
+    // session actually reports UTC. SQLite has no session-timezone knob, so it is unaffected
+    // (the config pin above still runs there).
+    if (DB::getDriverName() === 'pgsql') {
+        expect(DB::scalar('show time zone'))->toBe('UTC');
+    }
+});
