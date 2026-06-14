@@ -214,6 +214,32 @@
   scan `toContain('ProductMasterWineAttributes')` — that exercises the anchoring (a regression to `/Wine/` turns it red),
   far stronger than a bare "saw some files". `array_filter` over a self-built `list<string>` (not the `Schema` facade)
   keeps a `fn (string $name)` closure phpstan-max-clean. NO DB → no PG run (test-only + docblocks).
+- **Full-chain integration test (task 5.3 — the substrate-wiring proof for a whole module spine).** When a slice
+  builds a CHAIN of entities, add ONE feature test that drives the chain end-to-end THROUGH THE ACTIONS (never the
+  factories — factories bypass the action, so they record no event and run no guard) and asserts the cross-cutting
+  invariants the per-entity tests can't see together. A reusable, PHPStan-max-clean shape: a single top-level helper
+  `function createXSpineChain(): array` with a precise `@return array{role: Model, …}` shape docblock (Larastan
+  resolves `app(CreateX::class)->handle()` to the action's return type, so the shape just lines up); call it from each
+  focused `it()`. The integration-level assertions worth making (each catches a class of regression the unit tests
+  miss): (1) the DISTINCT recorded event-name set === exactly the expected `*Created` families — `DomainEvent::query()
+  ->orderBy('name')->distinct()->pluck('name')->all()` `->toBe([…sorted…])` — proves all-types-exercised AND
+  nothing-extraneous (no stray `*Activated`/`*Retired`) in ONE assertion; (2) a `%Activated%`/`%Retired%` count===0
+  scope-guard sweep across the WHOLE chain; (3) every entity re-fetched (`Model::findOrFail($id)`) and asserted
+  `draft` — proves the PERSISTED (not in-memory) state; (4) a PII-free sweep — assert the one party-referencing
+  payload's key SET + that NO payload across all events carries a forbidden party/PII key
+  (`array_intersect($allKeys, $forbidden)` `->toBe([])`, order-independent); (5) the cross-entity GUARDS (the
+  Master's dedup, the producer-agnostic Composite) re-verified in the integrated flow, not just in isolation. Build a
+  Composite end-to-end with TWO distinct PRs → one upstream node (Format or Variant) is necessarily created twice
+  (PR identity is `(variant, format)`-unique) — pick the doubling that reads naturally (two bottle SIZES of one wine).
+- **Trap 3 also bites `array_keys($payload)->toBe([…])` — the KEY-LIST order is non-portable (task 5.3).** A sharpening
+  of knowledge/testing trap 3 caught by the PG17 gate: asserting a jsonb payload's KEY list in a fixed order
+  (`array_keys($payload))->toBe(['a','b',…])`) passes on SQLite (json stored as text → insertion order preserved) but
+  FAILS on PostgreSQL — `jsonb` reorders object keys by (length, then bytewise), so `product_master_id`/`name`/… come
+  back length-sorted, not `payload()` order. Trap 3 already forbids "`->toBe([…])` a whole payload array (order-sensitive)";
+  the key LIST is the same hazard. Fix = the codebase's getColumnListing idiom: `$keys = array_keys($payload); sort($keys);
+  expect($keys)->toBe([…alphabetical…])` — asserts the key SET order-independently, cross-engine stable. (jsonb preserves
+  ARRAY-element order, so a `payload['ordered_ids'])->toBe([1,2])` list IS portable — only OBJECT keys reorder.) This is
+  the textbook "SQLite-green is necessary, never sufficient" catch: 320/320 on SQLite, 1 red on PG, test-only fix.
 
 ---
 
@@ -600,4 +626,41 @@
     lint/format, no test, `openspec validate --strict`). Then 5.3 (full-chain integration Master→Variant→Format→Reference
     →Intrinsic SKU + Composite, asserting all `*Created` / zero `*Activated`/`*Retired`) carries the FINAL full-Catalog
     cross-engine PG17 close.
+---
+
+## [2026-06-14 21:44] — 5.3 Full-chain integration + cross-engine close (FINAL — change complete)
+- **What:** The substrate-wiring proof for the whole spine, and the final cross-engine gate (AC-0-J-4 creation half;
+  delta-spec "Spine Creation Events"; design D3/D7/D8). One new feature test `SpineCreationChainTest` drives the
+  entire chain END-TO-END through the seven `Create*` actions — Master → Variant → (two Formats) → two References →
+  an Intrinsic SKU + a Composite bundling both References (a gift bundle of one wine in two bottle sizes — the
+  minimal shape that exercises a Composite's N≥2 through the live flow). A single typed helper
+  `createCatalogSpineChain(): array{…}` builds it; five focused `it()` blocks assert: (1) the DISTINCT recorded
+  event-name set === exactly the seven category-neutral `*Created` families (UPPER-`SKU` for the two SKU events) +
+  per-type counts + `%Activated%`/`%Retired%`===0 + every event tagged `module=catalog`; (2) every entity re-fetched
+  and `draft`; (3) every payload PII-free (producer by bare id only — exact key set + an `array_intersect` forbidden-key
+  sweep across ALL events); (4) the BR-Identity-1 dedup rejection holds in the integrated flow (duplicate Master
+  rejected, exactly one persisted + one event); (5) the producer-agnostic Composite holds (a multi-producer set is
+  accepted — design D9 / BR-SKU-5). NO new production code, NO new DB — pure integration test over the existing spine.
+- **Files changed:** `tests/Feature/Modules/Catalog/SpineCreationChainTest.php` (new — 5 tests / 30 assertions),
+  `openspec/changes/catalog-product-spine/tasks.md` (5.3 checked → ALL 11 done), `progress.md` (2 Codebase Patterns +
+  this entry).
+- **Quality loop:** green — pint clean · SpineCreationChainTest 5/5 (30 assertions) · full suite **320/320** (1249
+  assertions, +5 tests vs the 315 baseline) · phpstan **0 @ max** · pint --test clean · `openspec validate
+  catalog-product-spine --strict` valid · `git diff main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2
+  (no amendment — the test imports only Catalog + Platform). **FINAL full-Catalog cross-engine close VERIFIED:
+  320/320 on `postgres:17`** (driver proof `DRIVER=pgsql SERVER=17.10`); container cleaned up.
+- **Learnings for future iterations:**
+  - **The PG17 gate earned its keep — caught a trap-3 regression SQLite hid.** First PG run was 319/320: the PII test
+    asserted `array_keys($payload))->toBe([…fixed order…])`, which passes on SQLite (json = insertion-ordered text)
+    but FAILS on PG (`jsonb` reorders object keys by length-then-bytewise). Fix = the getColumnListing idiom
+    (`sort($keys)` then compare the SET). Promoted to Codebase Patterns as a sharpening of trap 3 — the textbook
+    "SQLite-green is necessary, never sufficient." A jsonb ARRAY (ordered id list) IS portable; only OBJECT keys reorder.
+  - **The full-chain integration-test shape** (helper + 5 cross-cutting `it()`s: distinct-event-set, scope-guard
+    sweep, re-fetched-draft, PII-free sweep, integrated-flow guards) is promoted to Codebase Patterns — reusable as
+    the template for every future module's end-to-end creation test.
+  - **ALL 11 tasks of `catalog-product-spine` are now `- [x]`.** The seven spine entities exist with their `*Created`
+    events, §18 naming is mechanically enforced, the glossary + event-contract are documented, and the whole chain is
+    proven end-to-end on BOTH engines. Emitting `<promise>CHANGE_COMPLETE</promise>`. Humans do the review → merge →
+    semantic-verify → `openspec archive` (NOT the loop). The next slice `catalog-lifecycle-approval` (FSM + approval
+    workflow + the `*Activated`/`*Retired` events this change deliberately deferred) needs the Identity/auth ADR first.
 ---
