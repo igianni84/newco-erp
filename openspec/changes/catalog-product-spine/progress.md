@@ -96,6 +96,24 @@
   `string $type = ProductType::Wine->value` and validate `$t = ProductType::tryFrom($type); if ($t !==
   ProductType::Wine) throw …;` — fail-closed at the input boundary, testable BOTH ways (`'wine'` accepted,
   `'beer'` rejected), with the PG CHECK as the DB backstop. Guard runs BEFORE the tx (pure input validation).
+- **Within-module `belongsTo` (a child entity → its same-module parent — task 3.2, reused by 3.3/4.x).** The
+  parent is in the SAME module, so a `belongsTo` is allowed (NOT the cross-module ban — that bars OTHER modules'
+  tables). Mechanics: `/** @return BelongsTo<Parent, $this> */ public function master(): BelongsTo { return
+  $this->belongsTo(Parent::class, 'parent_id'); }` (`$this` for the declaring model — the modern Larastan idiom,
+  same as `HasOne`). Declare the dynamic prop `@property-read Parent|null $parent` (Larastan types a belongsTo
+  getResult as nullable, matching the `HasOne|null` convention). In TESTS resolve via the RELATION METHOD —
+  `$child->master()->sole()` returns a NON-NULL parent (PHPStan-happy + asserts exactly-one) — never the nullable
+  dynamic `->master` property. The factory sets the FK with `'parent_id' => Parent::factory()` (a within-module
+  nested factory — recursion-free because the parent factory never builds a child). The single scalar FK is the
+  STRUCTURAL single-parent enforcement (BR-Identity-2); SQLite enforces it too (`DB_FOREIGN_KEYS` defaults true).
+- **`Schema::getColumnListing()` loses its `list<string>` type through the FACADE (task 3.2 phpstan trap).** The
+  Builder method is `@return list<string>`, but Larastan resolves the `Schema` FACADE call to `mixed`-valued
+  elements — so `array_filter($cols, fn (string $c) => …)` FAILS at max (`array_filter` demands `callable(mixed)`;
+  a `string`-typed closure is contravariantly too narrow). Two clean idioms: (a) a `foreach ($cols as $col)`
+  passing `$col` only to `expect()` (mixed-accepting — the 3.1 absence-sweep), or (b) for an exact-set / single-FK
+  proof, `sort($cols); expect($cols)->toBe([...alphabetical...])` — order-independent and cross-engine stable (PG
+  & SQLite both list columns in creation/ordinal order; sorting removes the dependence). Do NOT call a string
+  builtin (`str_contains`) on a raw element, and do NOT cast `(string) $col` to silence it.
 - **Two phpstan-max scaffolding traps (task 3.1).** (1) Faker `randomElement()` and `unique()->method()`
   return **`mixed`** (`@method mixed` / UniqueGenerator `__call`) → `mixed . ' '` and `ucfirst(mixed)` fail at
   max; use `@method string` providers (`word`/`sentence`/`name`/`company`/`lastName`/`city`/`country`) — verify
@@ -242,4 +260,38 @@
     (`vintage_year` nullable, `non_vintage` bool, `tasting_notes` json cast); assert `vintage_year` NOT on the
     core (AC-0-GEN-3); `belongsTo` master within module. No dedup, no fail-closed type guard (those are
     Master-specific). 3.3 (Reference) returns to a single-table entity + a DB unique `(variant, format)`.
+---
+
+## [2026-06-14 20:29] — 3.2 Product Variant (multi-table entity + within-module belongsTo)
+- **What:** The second MULTI-TABLE spine entity — the 3.1 shape copied verbatim, minus the Master-specific
+  dedup + fail-closed type guard, plus a within-module `belongsTo` to the parent Master. Two migrations:
+  `catalog_product_variants` (neutral core: single-parent `product_master_id` FK within module, type-neutral
+  `variant_identifier`, `lifecycle_state` + SINGLE-source driver-guarded PG CHECK — no `product_type` on the
+  Variant, the type is fixed by the Master — `version`, `timestampsTz`) + `catalog_product_variant_wine_attributes`
+  (1:1; `vintage_year` nullable int, `non_vintage` bool default false, `tasting_notes` json via TranslatableTextCast;
+  short explicit FK name `catalog_pv_wine_attrs_variant_fk` — the auto-name overflows PG's 63-char limit). Models
+  `ProductVariant` (within-module `hasOne` wineAttributes + `belongsTo` master) + `ProductVariantWineAttributes`.
+  `ProductVariantCreated` event (core-only PII-free payload; parent Master by id). `CreateProductVariant` action
+  (one tx: insert core + wine attrs via relation + record event; NO dedup, NO type guard). Factory auto-attaches
+  the 1:1 wine attrs in `afterCreating`, parent Master via `ProductMaster::factory()` (within-module).
+- **Files changed:** 2 migrations (000005/000006), `Models/ProductVariant.php`, `Models/ProductVariantWineAttributes.php`,
+  `Events/ProductVariantCreated.php`, `Actions/CreateProductVariant.php`, `database/factories/Catalog/ProductVariantFactory.php`,
+  `tests/Feature/Modules/Catalog/ProductVariantTest.php` (8 tests / 54 assertions), `tasks.md` (3.2 checked).
+- **Quality loop:** green — pint clean · ProductVariantTest 8/8 (54 assertions) · full suite **284/284** (1095
+  assertions, +8 vs 276) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git diff
+  main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2 (no amendment). **PG17 cross-engine VERIFIED:
+  284/284 on `postgres:17`** (driver proof `DRIVER=pgsql SERVER=17.10`); container cleaned up.
+- **Learnings for future iterations:**
+  - The multi-table template held verbatim; the only NEW pieces (both promoted to Codebase Patterns): the
+    within-module `belongsTo` idiom (`BelongsTo<Parent, $this>`, resolve via `master()->sole()` in tests to dodge
+    the nullable-property phpstan error, factory FK via `Parent::factory()`), and the `getColumnListing` facade
+    type-loss trap (the facade returns `mixed`-valued elements, so `array_filter` with a `string` closure fails at
+    max — use a `sort()`+`toBe([...])` exact-set assertion or the per-element `expect()` foreach).
+  - The Variant CHECK is SINGLE-source (only `lifecycle_state`) — no `product_type` column on the Variant core
+    (the type is the Master's). Format/CaseConfiguration also single-source; only the Master is two-source.
+  - 3.3 (Product Reference) is the NEXT task and a SHAPE CHANGE: back to a SINGLE-table entity (no per-type attrs)
+    with TWO within-module FKs (`product_variant_id`, `format_id`) + a DB **unique `(product_variant_id, format_id)`**
+    + **no `case_configuration_id`** (BR-Identity-3 absence guard). Test the unique violation inside a nested
+    `DB::transaction` (savepoint — trap 5, so the verify-after-throw survives on PG). Two `belongsTo` (variant +
+    format) within module. No dedup join, no per-type table.
 ---
