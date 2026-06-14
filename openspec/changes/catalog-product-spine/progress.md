@@ -524,6 +524,46 @@
     event-contract note) and 5.3 (full-chain integration + final cross-engine close).
 ---
 
+## [2026-06-14 21:32] — 5.2 Docs (CONTEXT.md spine glossary + event-contract note)
+- **What:** Docs-only, DB-free. Extended root `CONTEXT.md` with a new **Product Catalog (PIM)** section (placed
+  FIRST among the domain sections — Module 0 is foundational; the PR is "the universal product key across
+  modules"). Eight glossary terms in the house `**Term**: … _Avoid_:` style — Product Master, Product Variant,
+  Product Reference (PR), Format, Case Configuration, Sellable SKU (one entry covering both the Intrinsic and
+  Composite shapes), Product Type, and the Naming cascade rule — each aliased term carrying its **wine-display
+  alias** ("Wine Master"/"Wine Variant"/"Bottle Reference (BR)") AND an `_Avoid_` line marking the alias as
+  "never a code/contract name" (the §18 canonical/alias distinction made explicit). Plus a **Catalog spine
+  creation events — payload contract** subsection: a 7-row table of every `*Created` event's `name`,
+  `entity_type`, and exact payload keys, prefaced with the same-transaction / PII-free / no-`*Activated`/
+  `*Retired` framing and the UPPER-`SKU`-event vs lower-`Sku`-model casing note.
+- **Files changed:** `CONTEXT.md` (root — new Product Catalog (PIM) section + event-contract subsection),
+  `openspec/changes/catalog-product-spine/tasks.md` (5.2 checked). NO code, NO test, NO schema.
+- **Quality loop:** green — pint clean · full suite **315/315** (1219 assertions, UNCHANGED — docs-only, no test
+  added by design per the task) · phpstan **0 @ max** · pint --test clean · `openspec validate
+  catalog-product-spine --strict` valid · `git diff main -- composer.{json,lock}` empty. NO PG run (no schema;
+  5.3 is the final cross-engine close).
+- **Learnings for future iterations:**
+  - **Ground-it-don't-guess paid off (the 4.1/4.2 discipline):** I read all seven `Events/*Created.php`
+    `payload()` methods directly before writing the contract table — the payload keys are NOT guessable
+    (`size_label`/`volume_ml` on Format; `variant_identifier` on Variant; `constituent_product_reference_ids` +
+    `constituent_count` on Composite; `commercial_name` but NOT `marketing_copy` on the SKU — the latter is
+    deliberately omitted as a lean snapshot). A future module consuming a Catalog event should read this table,
+    and the table's authority is the `payload()` method — keep them in lockstep if a payload ever changes.
+  - **CONTEXT.md preamble tension resolved by framing, not by editing the preamble:** the doc says "Definitions
+    only — no implementation details," yet the task requires payload keys. I framed the table as "the published
+    inter-module contract" (the field names ARE the wire API other modules code against — the same status the
+    existing "Domain Event" term already grants payloads), so it reads as contract, not implementation. Did NOT
+    touch the preamble.
+  - **One Sellable SKU entry, two shapes** (Intrinsic + Composite) matches the task's `[Intrinsic/Composite]`
+    bracket and keeps both bolded names searchable under one coherent definition; "Composite SKU" is still a
+    distinct §3.8 entity + `CompositeSKUCreated` event, so it's named prominently inside the entry.
+  - **NEXT: 5.3** — the FINAL task: full-chain integration test (`tests/Feature/Modules/Catalog/SpineCreationChainTest.php`)
+    driving Master→Variant→Format→Reference→Intrinsic SKU + Composite, asserting all seven `*Created` recorded /
+    zero `*Activated`/`*Retired` / every entity `draft` / payloads PII-free, plus the dedup rejection and the
+    producer-agnostic Composite in the integrated flow. This carries the **final full-Catalog cross-engine PG17
+    close** (`knowledge/testing/rules.md` command block) — SQLite-green is necessary, never sufficient. On its
+    green + checkbox, ALL 11 tasks are done → emit `<promise>CHANGE_COMPLETE</promise>`.
+---
+
 ## [2026-06-14 21:25] — 5.1 Naming-cascade guard (convention arch test + alias pinning)
 - **What:** A pure CONVENTION/architecture test (NO new DB) pinning the §18 naming cascade as the canonical Catalog
   code naming (design D7; AC-0-GEN-6; delta-spec "Naming Cascade" requirement). New file

@@ -105,3 +105,5 @@
 ## [2026-06-14 21:18] ralph | catalog-product-spine 4.2 | green | 9 files (2 migrations+model+event+exception+action+factory+lang+test) | Composite SKU: M:N join, N>=2 pre-tx, producer-agnostic | 312/312 SQLite + PG17
 
 ## [2026-06-14 21:27] ralph | catalog-product-spine 5.1 | green | 1 new test file (CatalogNamingCascadeTest 3/3), suite 315/315, phpstan 0@max; no DB/no prod-code change
+
+## [2026-06-14 21:34] ralph | catalog-product-spine 5.2 | green | 2 files (CONTEXT.md spine glossary + 7-event payload-contract note; docs-only, suite 315/315 unchanged)

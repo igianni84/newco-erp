@@ -2,6 +2,56 @@
 
 Glossary of record for the NewCo producer-club wine aggregator. Seeded from the v0.3-MVP spec; extended via grill-with-docs sessions as terms are resolved. Definitions only — no implementation details. Full semantics: the module PRDs in `spec/02-prd/`.
 
+## Product Catalog (PIM)
+
+The structural product spine of Module 0 — category-neutral by design (§16/§18): each entity has a neutral core with type-specific attributes held off it, so a future Product Type slots in additively without reshaping the core or the cross-module event contract. At launch the only Product Type is `WINE`. Spine entities are born `draft`; lifecycle transitions are out of scope until `catalog-lifecycle-approval`.
+
+**Product Master**:
+The top of the product hierarchy and the parent of every Product Variant. Its category-neutral core carries the product name, the Product Type, a producer reference **by id** (a plain identifier into Module K — never a cross-module relation, join or model import), lifecycle state and audit/version; its `WINE` attribute set holds appellation/region and the translatable winery story. For `WINE` a Master is unique on `producer + product name + appellation`; a creation colliding with a non-retired Master is rejected at creation. Wine-display alias: "Wine Master".
+_Avoid_: Wine Master (a display alias, never a code/contract name), product, SKU
+
+**Product Variant**:
+A release of a Product Master, belonging to **exactly one** Master (structurally enforced). Its variant axis is a type-neutral identifier on the core; for `WINE` the axis is **vintage** (a year or a non-vintage marker) held in the `WINE` attribute set, never as a core column. Wine-display alias: "Wine Variant".
+_Avoid_: Wine Variant (a display alias, never a code/contract name), vintage (that is the WINE axis, not the entity)
+
+**Product Reference (PR)**:
+The atomic product identity and the universal product key across modules, composed of **exactly two dimensions** — a Product Variant and a Format. A Case Configuration is **never** part of PR identity: the same Variant + Format resolves to the **same** PR whether later sold loose, in an OWC, or in a carton. The `(variant, format)` pair is unique and is the PR's identity (changing the composition is a new PR, not an in-place edit). Wine-display alias: "Bottle Reference (BR)".
+_Avoid_: Bottle Reference, BR (display aliases, never code/contract names), SKU, packaging
+
+**Format**:
+A standalone PIM reference entity (no parent) representing the physical size/measure of the atomic unit — for `WINE`, the bottle size. A Product Reference references exactly one Format. Name kept unchanged by the naming cascade.
+_Avoid_: bottle size (Format is category-neutral; bottle size is the WINE reading), packaging (that is Case Configuration)
+
+**Case Configuration**:
+A standalone PIM reference entity, distinct from Format, carrying packaging-form attributes only — units per case, packaging type, physical form — referenced **only** by a Sellable SKU (Intrinsic). It carries **no breakability flag**: whether a case may be split at sale is decided downstream (Module A Layer 2 / Module S Layer 3), never as a property here.
+_Avoid_: Format (a distinct entity), Case (the physical Case entity is Module B), breakability flag
+
+**Sellable SKU**:
+The commercial sellable unit, in two shapes. An **Intrinsic** SKU = one Product Reference + one Case Configuration + commercial attributes (commercial name, marketing copy); it is the **only** SKU shape that references a Case Configuration. A **Composite SKU** = a curated, ordered bundle of **N ≥ 2** constituent Product References, where one PR may recur across composites (many-to-many). PIM is **producer-agnostic** about a Composite's constituents — single-producer admissibility is a Module S Offer-publication rule, not a PIM rule. Both names kept unchanged by the naming cascade.
+_Avoid_: Offer (the published commercial proposition — Module S), Voucher (the per-bottle entitlement), bundle (use Composite SKU)
+
+**Product Type**:
+A first-class classifier on the Product Master; at launch the **only** value is `WINE`, and constructing a Master of any other type is rejected (fail-closed). It is the switch selecting, per product, the per-type attribute set, the variant-defining dimension and the type-defined identity key. Modelled as a backed enum (not EAV / a rules engine); a future type is a new enum case plus its attribute table(s).
+_Avoid_: category (overloaded), EAV, dynamic/configurable type
+
+**Naming cascade (category-neutral)**:
+The §18 rule that the category-neutral `Product*` names — Product Master, Product Variant, Product Reference, and the `ProductMaster*`/`ProductVariant*`/`ProductReference*` event families — are the canonical code and contract identifiers, while the former wine-specific names ("Wine Master", "Wine Variant", "Bottle Reference"/"BR") survive **only as wine-display aliases** (presentation/documentation), never as structural or event identifiers. Format, Case Configuration, Sellable SKU and Composite SKU keep their names unchanged.
+_Avoid_: WineMaster / WineVariant / BottleReference as code or event names
+
+### Catalog spine creation events — payload contract
+
+On creation, each spine entity records its `*Created` Domain Event through the platform `DomainEventRecorder`, in the **same transaction** as the write, tagged module `catalog`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **PII-free** payload (ids + non-PII business data only — a producer is referenced by id, never any party/personal data). No `*Activated`/`*Retired` event is recorded by this change (transitions are deferred to `catalog-lifecycle-approval`). The §14.1 event names keep `SKU` upper-case (`SellableSKUCreated`, `CompositeSKUCreated`) while the canonical model classes are `SellableSku`/`CompositeSku` (the cascade). The payload keys below are the published inter-module contract:
+
+| Event (`name`) | `entity_type` | Payload keys |
+|---|---|---|
+| `FormatCreated` | `Format` | `format_id`, `name`, `size_label`, `volume_ml`, `lifecycle_state` |
+| `CaseConfigurationCreated` | `CaseConfiguration` | `case_configuration_id`, `name`, `units_per_case`, `packaging_type`, `lifecycle_state` |
+| `ProductMasterCreated` | `ProductMaster` | `product_master_id`, `name`, `product_type`, `producer_id`, `lifecycle_state` |
+| `ProductVariantCreated` | `ProductVariant` | `product_variant_id`, `product_master_id`, `variant_identifier`, `lifecycle_state` |
+| `ProductReferenceCreated` | `ProductReference` | `product_reference_id`, `product_variant_id`, `format_id`, `lifecycle_state` |
+| `SellableSKUCreated` | `SellableSku` | `sellable_sku_id`, `product_reference_id`, `case_configuration_id`, `commercial_name`, `lifecycle_state` |
+| `CompositeSKUCreated` | `CompositeSku` | `composite_sku_id`, `constituent_product_reference_ids`, `constituent_count`, `lifecycle_state` |
+
 ## Commerce & Membership
 
 **Club**:
