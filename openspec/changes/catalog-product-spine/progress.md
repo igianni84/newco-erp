@@ -67,6 +67,42 @@
   the `*Created` payload omits the key (`expect($payload)->not->toHaveKey(...)`). The column-listing
   substring sweep is the strongest of the three (it catches a renamed-but-still-present attribute). Both
   `getColumnListing`/`hasColumn` are portable (verified on PG17). The absence IS the contract.
+- **Multi-table entity (neutral core + per-type 1:1 attribute table — task 3.1, reused by 3.2).** TWO
+  migrations: the core (`catalog_X`) + the per-type table (`catalog_X_wine_attributes`). The per-type table
+  is the entity's OWN extension, so a within-module FK + relation is allowed (NOT the cross-module ban). Key
+  mechanics: (a) the per-type table name is long — `->constrained(table: 'catalog_X', indexName: 'short_fk')`
+  and `->index('col', 'short_idx')` with SHORT explicit names, else the framework auto-name exceeds **PG's
+  63-char identifier limit** (silent truncation); (b) the core model gets a typed `hasOne`:
+  `/** @return HasOne<XWineAttributes, $this> */` (use `$this` for the declaring model — the modern Larastan
+  idiom; default keys work — FK `X_id`, local `id`); (c) the FACTORY auto-attaches the 1:1 in
+  `afterCreating(fn (X $x) => $x->wineAttributes()->doesntExist() && $x->wineAttributes()->create([...]))` —
+  the child takes the FK from the parent relation, never builds a parent ⇒ no recursion (so the per-type
+  table needs NO factory of its own); (d) the action writes the child via `$x->wineAttributes()->create([...])`
+  inside the same tx; (e) the `*Created` payload stays **core-only** (don't load the relation just to widen
+  it — a consumer needing a per-type attr reads it through a published contract). AC-0-GEN-2/3 absence guard
+  (schema-absence idiom above) proves the per-type column is NOT on the core but IS on the attrs table.
+- **Two-source enum CHECK (a table with ≥2 enum string columns — task 3.1).** In the single `if
+  (DB::getDriverName()==='pgsql')` block, emit ONE `ALTER TABLE … ADD CONSTRAINT catalog_X_<col>_check CHECK
+  (<col> IN (…))` per enum column, each value list built from its own `Enum::cases()` (so neither can drift).
+  Same layered idiom as `domain_events.actor_role`; the enum cast carries the floor on SQLite.
+- **Localized domain rejection (first used 3.1 — invariant 12).** A module exception with a static
+  constructor returning `new self((string) __('<group>.<key>', [...placeholders]))`. The `(string)` cast is
+  load-bearing — Larastan types `__($key, …)` as **`mixed`** (non-null key → `mixed` in the helper stub), and
+  the RuntimeException ctor wants `string`. Author ONLY the English baseline (`lang/en/<group>.php`, dotted
+  nested keys); the other 5 locales fall back per-key (welcome.php convention) — do NOT author 6 files. Identity
+  values in the message (name/appellation/producer id) are operator-facing, not PII.
+- **Fail-closed type guard at a string boundary (task 3.1 — single-case enum).** When an enum has exactly one
+  valid case (`ProductType::Wine`), a typed-enum param can't express the negative the spec wants rejected. Take
+  `string $type = ProductType::Wine->value` and validate `$t = ProductType::tryFrom($type); if ($t !==
+  ProductType::Wine) throw …;` — fail-closed at the input boundary, testable BOTH ways (`'wine'` accepted,
+  `'beer'` rejected), with the PG CHECK as the DB backstop. Guard runs BEFORE the tx (pure input validation).
+- **Two phpstan-max scaffolding traps (task 3.1).** (1) Faker `randomElement()` and `unique()->method()`
+  return **`mixed`** (`@method mixed` / UniqueGenerator `__call`) → `mixed . ' '` and `ucfirst(mixed)` fail at
+  max; use `@method string` providers (`word`/`sentence`/`name`/`company`/`lastName`/`city`/`country`) — verify
+  the `@method string` in `vendor/fakerphp/faker/src/Faker/Generator.php`. (2) Chaining MULTIPLE
+  `->not->toContain()` (or any matcher) on ONE `expect()` collapses the Expectation generic to `mixed` (the
+  first matcher returns a non-generic Expectation, breaking the second `->not`) → one matcher per statement
+  (nested `foreach`), or split with `->and($x)`.
 
 ---
 
@@ -169,4 +205,41 @@
   - `packaging_type` stays a plain string (no `PackagingType` enum) — only `ProductType` earned an enum
     (design D2, §16 anti-EAV); a packaging enum would be speculative. Factory uses coherent
     loose/owc/carton tuples that line up with the 4.1 SellableSku test hint (loose/OWC6/CARTON12).
+---
+
+## [2026-06-14 20:13] — 3.1 Product Master (multi-table entity + dedup gate)
+- **What:** The first MULTI-TABLE spine entity. Two migrations — `catalog_product_masters` (neutral core:
+  `name`, `product_type` string + `ProductType` cast + driver-guarded PG CHECK, `producer_id` plain
+  `unsignedBigInteger` **no FK/relation**, `lifecycle_state` + CHECK, `version`, `timestampsTz`, a
+  `(producer_id, name)` index) + `catalog_product_master_wine_attributes` (1:1; `product_master_id` FK
+  **within module** `->constrained(indexName: …)`, `appellation`, `region`, nullable `winery_story` json
+  via `TranslatableTextCast`, `appellation` index). Models `ProductMaster` (within-module `hasOne`
+  wineAttributes) + `ProductMasterWineAttributes`. `ProductMasterCreated` event (core-only PII-free
+  payload). Two new localized domain exceptions (`DuplicateProductMasterIdentity`, `UnsupportedProductType`)
+  + `lang/en/catalog.php` baseline. `CreateProductMaster` action: fail-closed non-WINE guard (string
+  boundary) **before** the tx, then in ONE tx the BR-Identity-1 dedup (non-retired collision on
+  producer+name+appellation via core⋈wine join → reject) then core+wine insert + record event. Factory
+  auto-attaches the 1:1 wine attrs in `afterCreating`.
+- **Files changed:** 2 migrations (000003/000004), `Models/ProductMaster.php`,
+  `Models/ProductMasterWineAttributes.php`, `Events/ProductMasterCreated.php`,
+  `Exceptions/{DuplicateProductMasterIdentity,UnsupportedProductType}.php`, `Actions/CreateProductMaster.php`,
+  `database/factories/Catalog/ProductMasterFactory.php`, `lang/en/catalog.php`,
+  `tests/Feature/Modules/Catalog/ProductMasterTest.php` (9 tests / 79 assertions), `tasks.md` (3.1 checked).
+- **Quality loop:** green — pint clean · ProductMasterTest 9/9 · full suite **276/276** (1041 assertions,
+  +9 vs 267) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git diff main
+  -- composer.{json,lock}` empty. **PG17 cross-engine VERIFIED: 276/276 on `postgres:17`** (driver proof
+  `DRIVER=pgsql / SERVER=17.10`).
+- **Learnings for future iterations:**
+  - **Two phpstan-max scaffolding traps** (both promoted to Codebase Patterns): Faker `randomElement()` and
+    `unique()->x()` return **`mixed`** (`@method mixed` / UniqueGenerator `__call`) → `mixed . ' '` fails;
+    use `@method string` providers (`lastName`/`city`/`country`/`sentence`). And chaining **multiple**
+    `->not->toContain()` on ONE `expect()` collapses the Expectation generic to `mixed` (the first
+    `toContain` returns a non-generic Expectation) → one `toContain` per statement (nested loop).
+  - The spine template held for the multi-table shape; the NEW pieces (per-type 1:1 table, two-source CHECK,
+    localized rejection, within-module relation) are now in Codebase Patterns for 3.2/3.3 to copy verbatim.
+  - 3.2 (Variant) is the SAME multi-table shape: copy 3.1 exactly — neutral `catalog_product_variants`
+    (+ `product_master_id` FK within module, `variant_identifier`) + `catalog_product_variant_wine_attributes`
+    (`vintage_year` nullable, `non_vintage` bool, `tasting_notes` json cast); assert `vintage_year` NOT on the
+    core (AC-0-GEN-3); `belongsTo` master within module. No dedup, no fail-closed type guard (those are
+    Master-specific). 3.3 (Reference) returns to a single-table entity + a DB unique `(variant, format)`.
 ---

@@ -93,3 +93,5 @@
 ## [2026-06-14 19:42] ralph | catalog-product-spine 2.1 Format | green | 6 files (catalog_formats migration + Format model + factory + FormatCreated event + CreateFormat action + FormatTest) | 262/262 SQLite & PG17, phpstan 0 @ max, pint clean, openspec --strict valid
 
 ## [2026-06-14 19:52] ralph | catalog-product-spine 2.2 Case Configuration | green | 6 new files (migration+model+event+action+factory+test) | suite 267/267 SQLite + PG17 (driver=pgsql) | phpstan 0 @ max | no breakability column (BR-RefData-2)
+
+## [2026-06-14 20:14] ralph | catalog-product-spine 3.1 Product Master | green | 276/276 SQLite + PG17(17.10) | 11 new (2 migr, ProductMaster+WineAttributes models, ProductMasterCreated, 2 exceptions, CreateProductMaster, factory, lang/en/catalog) + 9-test ProductMasterTest; multi-table core+per-type-attrs, dedup, fail-closed WINE
