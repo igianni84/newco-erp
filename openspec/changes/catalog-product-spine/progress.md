@@ -22,6 +22,42 @@
   enum exists so `catalog-lifecycle-approval` drives it without a migration.
 - **PSR-4:** `App\Modules\Catalog\Enums\X` → `app/Modules/Catalog/Enums/X.php`
   (`App\` → `app/`); `Write` creates parent dirs, no autoload edit needed.
+- **Spine DB-entity creation template (task 2.1 Format → repeated by 2.2–4.2).**
+  Each entity = `catalog_*` migration + `Models\X` + `Database\Factories\Catalog\XFactory`
+  + `Events\XCreated` + `Actions\CreateX`.
+  - **Migration:** `$table->id()`; entity cols; `lifecycle_state` string
+    `->default(LifecycleState::Draft->value)`; `version` `unsignedInteger()->default(1)`
+    (§4.8 floor); `timestampsTz()` (audit). After `Schema::create`, a **driver-guarded**
+    `lifecycle_state` CHECK (`if (DB::getDriverName()==='pgsql')`, values from
+    `LifecycleState::cases()`, constraint `catalog_X_lifecycle_state_check`) — mirrors the
+    `domain_events.actor_role` CHECK verbatim.
+  - **Model:** `$table='catalog_X'`; `$guarded=[]` (the action is the sole writer);
+    `casts(): ['lifecycle_state'=>LifecycleState::class,'version'=>'integer']`; full
+    `@property` block. **Wire the off-convention factory with a typed `newFactory(): XFactory`
+    override** — `protected static $factory` ALONE leaves Larastan inferring `mixed` on
+    `X::factory()->create()` (factory is under `Database\Factories\Catalog\`, off the
+    `App\Models` name convention); the explicit return type fixes static analysis.
+  - **Factory:** `protected $model = X::class` (authoritative — `Factory::modelName()` returns
+    it directly); coherent fixture tuples; born `LifecycleState::Draft`.
+  - **Event class:** `const NAME` (verbatim §14.1) + `const ENTITY_TYPE` + static
+    `payload(X): array` (PII-free; ids + non-PII business data). Repo has NO typed class
+    constants — keep them untyped. The event NAMES no caller (dependency runs action→event;
+    prose-reference the action, never `{@see}` it — Pint's `fully_qualified_strict_types` would
+    import it and create a use-cycle).
+  - **Action:** `class CreateX` with readonly-promoted `DomainEventRecorder` + `ActorContext`
+    ctor deps (container-resolved via `app(CreateX::class)`); one `handle(...)`; ONE
+    `DB::transaction` wrapping `X::create([...,'lifecycle_state'=>LifecycleState::Draft])` then
+    `recorder->record(name: XCreated::NAME, module: Module::Catalog->value,
+    actorRole: $actor->role(), actorId: $actor->actorId(), entityType: XCreated::ENTITY_TYPE,
+    entityId: (string)$x->id, payload: XCreated::payload($x))`. The recorder's
+    `NotInTransactionException` guard makes write+emit atomic.
+  - **Test:** `tests/Feature/Modules/Catalog/XTest.php`, `uses(RefreshDatabase::class)` — the
+    action opens its OWN tx, so the recorder's level-0 guard is satisfied by the savepoint under
+    the wrapper (no level-0 path to test here; that is the recorder's own test). Fetch the event
+    with `->sole()` (non-null for PHPStan AND asserts exactly-one in one call; `get()->first()`
+    is nullable → PHPStan `property.nonObject`). Assert payload BY KEY (trap 3). Scope-guard
+    assertion: `where('name','like','%Activated%')->count()===0` (+ Retired). A factory test
+    documents the factory as a pure fixture (bypasses the action → records NO event).
 
 ---
 
@@ -55,4 +91,39 @@
     PG17 cross-engine run becomes mandatory before "done". It also establishes the
     `Events/` one-class-per-event convention + the `Create*` action + transactional
     `*Created` recorder pattern that 2.2–4.2 all repeat.
+---
+
+## [2026-06-14 19:39] — 2.1 Format (catalog_formats + model + factory + event + action)
+- **What:** First DB-touching spine slice. The `catalog_formats` migration (id, name,
+  size_label, volume_ml, `lifecycle_state` + driver-guarded PG CHECK, `version`, `timestampsTz`)
+  + `Format` model + `FormatFactory` + `FormatCreated` event (const NAME/ENTITY_TYPE + static
+  PII-free `payload()`) + `CreateFormat` action (one `DB::transaction`: insert `draft` + record
+  `FormatCreated` via `DomainEventRecorder`, actor from `ActorContext`). Establishes the
+  `Events/`-class + `Create*`-action + transactional-recorder conventions for 2.2–4.2 (now in
+  Codebase Patterns).
+- **Files changed:**
+  - `database/migrations/2026_06_14_000001_create_catalog_formats_table.php` (new)
+  - `app/Modules/Catalog/Models/Format.php` (new)
+  - `app/Modules/Catalog/Events/FormatCreated.php` (new)
+  - `app/Modules/Catalog/Actions/CreateFormat.php` (new)
+  - `database/factories/Catalog/FormatFactory.php` (new)
+  - `tests/Feature/Modules/Catalog/FormatTest.php` (new — 4 tests)
+  - `openspec/changes/catalog-product-spine/tasks.md` (2.1 checked)
+- **Quality loop:** green — pint clean · FormatTest 4/4 · full suite **262/262** (930 assertions,
+  +4 vs the 258 baseline) · phpstan **0 @ max** · pint --test clean · `openspec validate
+  catalog-product-spine --strict` valid · `git diff main -- composer.{json,lock}` empty.
+  **PG17 cross-engine verified: 262/262 on `postgres:17`**, with a driver guard printing `pgsql`
+  first (proves the run hit real PG, not a silent SQLite fallback).
+- **Learnings for future iterations:**
+  - Off-convention factory (`Database\Factories\Catalog\`) needs the typed
+    `newFactory(): XFactory` override — `protected static $factory` alone left Larastan inferring
+    `mixed` on `X::factory()->create()` (12 phpstan errors). Promoted to Codebase Patterns.
+  - Pint's `fully_qualified_strict_types` rewrites docblock `{@see \FQCN}` into real `use`
+    imports. It made the event import its own action — cleaned by prose-referencing the action.
+    Rule: `{@see}` downward refs only; prose for upward/peer deps you don't want imported.
+  - `->sole()` is the clean event-row fetch: non-null (PHPStan-happy) AND asserts exactly-one in
+    a single call, replacing a nullable `get()->first()`.
+  - Under `RefreshDatabase` the action's own `DB::transaction` satisfies the recorder's level-0
+    guard via the savepoint; the `afterCommit` delivery hook never fires (outer tx rolls back) —
+    harmless here (no consumers registered for catalog `*Created` yet).
 ---
