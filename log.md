@@ -101,3 +101,5 @@
 ## [2026-06-14 20:44] ralph | catalog-product-spine 3.3 | green | Product Reference: single-table, 2 within-module FKs + DB unique(variant,format), no case_configuration_id; 6 files; SQLite 292/292 + PG17 292/292; phpstan 0@max; 6/11 done
 
 ## [2026-06-14 20:59] ralph | catalog-product-spine 4.1 | green | Sellable SKU (Intrinsic): catalog_sellable_skus + model + factory + SellableSKUCreated event + CreateSellableSku action; PR FK cascade/CaseConfig restrict; no DB unique; commercial cols plain (not i18n). suite 300/300, phpstan 0@max, PG17 300/300. 6 files
+
+## [2026-06-14 21:18] ralph | catalog-product-spine 4.2 | green | 9 files (2 migrations+model+event+exception+action+factory+lang+test) | Composite SKU: M:N join, N>=2 pre-tx, producer-agnostic | 312/312 SQLite + PG17

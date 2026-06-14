@@ -156,6 +156,46 @@
   Invariant 12 ("no hardcoded user-facing strings") governs CODE strings, not data-column shape — which columns
   are translatable is a spec-driven modelling choice, decided per the §8.1 list, not by how customer-facing a
   field feels. (Ground the column set in the PRD: §3.7 names exactly "commercial name, marketing copy".)
+- **M:N entity = parent table + pure link table + ordered `belongsToMany` (task 4.2).** When an entity's content
+  IS a many-to-many set (the Composite's constituents), split into the parent (`catalog_composite_skus` —
+  lifecycle + audit ONLY, no business columns; §3.8 "cheap at PIM, registration + lifecycle only") and a join
+  table (`catalog_composite_sku_constituents`): `owner_id` FK **cascade** (the link belongs to the parent) +
+  `referenced_id` FK **restrict** (the shared atomic key — FK onDelete asymmetry again) + `position`
+  (`unsignedInteger`) + a DB **`unique([owner_id, referenced_id], 'short')`** (the per-pair idiom from 3.3 — makes
+  the set distinct; the same referenced row may still recur across DIFFERENT owners). The join is a PURE link
+  table: **no surrogate `id()`, no timestamps** — a `belongsToMany` pivot needs neither, the natural key is the
+  unique pair, the audit lives on the parent + its `*Created` event. Index names: the long join-table name
+  overflows PG's 63-char limit on EVERY auto-name → abbreviate (`catalog_csc_*`). Relation:
+  `/** @return BelongsToMany<Related, $this> */` (2 generics — `TRelatedModel, TDeclaringModel`, verified in
+  vendor; same `$this` idiom as belongsTo) `belongsToMany(Related::class, 'join_table', 'owner_fk',
+  'related_fk')->withPivot('position')->orderByPivot('position')` (both `orderByPivot`/`withPivot` live on
+  `BelongsToMany`, not the Concerns trait — verified in vendor). Declare `@property-read
+  \Illuminate\Database\Eloquent\Collection<int, Related> $constituents` (a docblock-only import survives Pint —
+  the models already prove it with `CarbonInterface`). Factory attaches the set in `configure()->afterCreating`
+  with a `doesntExist()` guard (mirrors the 3.1 wine-attrs idiom): `attach([Related::factory()->create()->id =>
+  ['position' => 1], …])`. Action: dedupe+order the input (`array_values(array_unique($ids))`), then a single
+  keyed `attach([$id => ['position' => $i + 1], …])` inside the tx (one INSERT, contiguous 1..N positions).
+- **A cross-ROW count rule (N ≥ K) is a pre-tx localized rejection, NOT a DB constraint (task 4.2, N ≥ 2).** When
+  admissibility depends on COUNTING rows (the Composite needs ≥ 2 distinct constituents), it can't be a column
+  CHECK or a single-pair unique — it's an in-action guard like the Master's dedup, BUT it's PURE INPUT VALIDATION
+  (count the input array, no DB query) so it runs BEFORE `DB::transaction` (like the Master's fail-closed type
+  guard), leaving NO parent row + NO event on rejection (assert `Model::query()->count() === 0`). Count over the
+  DISTINCT set when a DB unique makes the relation a set (`count(array_unique($ids)) < 2`), so the guard aligns
+  with what actually persists — `[A, A]` is ONE constituent, rejected; `[A, A, B]` collapses to 2, accepted.
+  Throw a localized `RuntimeException` subclass (`InsufficientCompositeConstituents::forCount($n)` → `(string)
+  __('catalog.composite_sku.…', ['count' => $n])`; English baseline only, per-key fallback — the 3.1 idiom).
+- **A producer-agnostic non-check is a CONTRACT — test its ABSENCE (task 4.2, BR-SKU-5 / design D9).** The spec
+  REQUIRES that PIM not validate producer composition (single-producer admissibility is Module S's Offer rule).
+  A "helpful" producer-uniformity guard would be a boundary violation. Prove the absence: build constituents whose
+  Masters carry DIFFERENT `producer_id` (plain column — build the chain explicitly: `ProductMaster::factory()
+  ->create(['producer_id' => 1001])` → Variant override `['product_master_id' => …]` → PR override
+  `['product_variant_id' => …]`) and assert the Composite is ACCEPTED (creation succeeds, event recorded). The
+  succeeding-with-a-multi-producer-set IS the proof no producer guard ran.
+- **Event-vs-model name divergence held for the SECOND SKU (task 4.2 confirms 4.1).** `CompositeSKUCreated`
+  (UPPER-`SKU`, `const NAME` + class name verbatim §14.1 / delta-spec line 164) vs model `CompositeSku` (§18);
+  `ENTITY_TYPE = 'CompositeSku'` (model short name). The 5.1 naming-cascade guard `class_exists()`s the
+  UPPER-`SKU` EVENTS (`SellableSKUCreated`, `CompositeSKUCreated`) + lower-`Sku` MODELS (`SellableSku`,
+  `CompositeSku`) — both SKU pairs now exist to assert against.
 
 ---
 
@@ -419,4 +459,49 @@
     a DB constraint) and DELIBERATELY NOT validating producer composition (design D9 / BR-SKU-5 — a multi-producer
     set is ACCEPTED; do NOT add a single-producer guard, that's Module S). Test: <2 constituents rejected;
     multi-producer accepted; one PR in two Composites (M:N). Verify on PG17.
+---
+
+## [2026-06-14 21:15] — 4.2 Composite SKU (last entity + first M:N join table)
+- **What:** The seventh and LAST spine entity, and the spine's only many-to-many. TWO migrations:
+  `catalog_composite_skus` (parent — `lifecycle_state` + driver-guarded PG CHECK + `version` + `timestampsTz`,
+  and NOTHING else: §3.8 keeps the Composite "cheap at PIM, registration + lifecycle only" — confirmed no
+  commercial attrs via an Explore subagent over PRD §3.8, the 4.1 ground-it-don't-guess discipline) +
+  `catalog_composite_sku_constituents` (PURE link table — `composite_sku_id` FK **cascade**,
+  `product_reference_id` FK **restrict**, `position`, DB unique `(composite_sku_id, product_reference_id)`; NO
+  surrogate id, NO timestamps; abbreviated index names `catalog_csc_*` because the long join-table name overflows
+  PG's 63-char limit on every auto-name). Model `CompositeSku` (`constituents()` ordered `belongsToMany` over the
+  join with `withPivot('position')->orderByPivot('position')`). Event `CompositeSKUCreated` (UPPER-`SKU` verbatim
+  §14.1 / delta-spec line 164; `ENTITY_TYPE='CompositeSku'`; PII-free payload = id + ordered constituent PR ids +
+  count + state). Exception `InsufficientCompositeConstituents` (localized) + `catalog.composite_sku.*` lang key.
+  `CreateCompositeSku` action: dedupe+order input → **N ≥ 2 over the DISTINCT set, pre-tx** localized rejection →
+  in one tx insert parent (`draft`) + a single keyed `attach()` (contiguous 1..N positions) + record event.
+  **DELIBERATELY no producer check** (design D9 / BR-SKU-5). Factory attaches 2 constituents in
+  `configure()->afterCreating` (`doesntExist()` guard).
+- **Files changed:** 2 migrations (000009 parent / 000010 join), `Models/CompositeSku.php`,
+  `Events/CompositeSKUCreated.php`, `Exceptions/InsufficientCompositeConstituents.php`,
+  `Actions/CreateCompositeSku.php`, `database/factories/Catalog/CompositeSkuFactory.php`, `lang/en/catalog.php`
+  (+`composite_sku` group), `tests/Feature/Modules/Catalog/CompositeSkuTest.php` (12 tests / 40 assertions),
+  `tasks.md` (4.2 checked).
+- **Quality loop:** green — pint clean · CompositeSkuTest 12/12 (40 assertions) · full suite **312/312** (1211
+  assertions, +12 vs 300) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git
+  diff main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2 (no amendment — the join's two FKs are
+  within-module; no producer ref). **PG17 cross-engine VERIFIED: 312/312 on `postgres:17`** (driver proof
+  `DRIVER=pgsql SERVER=17.10`); container cleaned up.
+- **Learnings for future iterations:**
+  - Four patterns promoted to Codebase Patterns: (1) **M:N = parent + pure link table + ordered `belongsToMany`**
+    (link table needs no id/timestamps; `BelongsToMany<Related,$this>` 2-generic; `orderByPivot`/`withPivot` on
+    the relation; abbreviate index names); (2) **a cross-ROW count rule (N≥K) is a PRE-tx localized rejection**
+    (pure input validation → before the tx → no orphan row/event; count the DISTINCT set when a unique makes it a
+    set); (3) **a producer-agnostic non-check is a CONTRACT — test its ABSENCE** (multi-producer set accepted is
+    the proof); (4) the **event-vs-model name divergence** held for the second SKU (`CompositeSKUCreated` upper /
+    `CompositeSku` model).
+  - The §3.8/delta-spec tension (PRD silent on ordering + within-composite uniqueness, but the APPROVED change
+    requires `position` + the `(composite, PR)` unique) resolves in favour of the change artifacts (RALPH: "the
+    change artifacts ARE the plan"); silence ≠ prohibition, so the richer ordered-distinct-set model is faithful.
+  - **ALL 7 spine entities now exist.** 5.1 (naming-cascade guard) is NEXT — a convention/arch test, NO new DB:
+    `class_exists()` the 7 canonical models (`ProductMaster`, `ProductVariant`, `ProductReference`, `Format`,
+    `CaseConfiguration`, `SellableSku`, `CompositeSku`) + the 7 `*Created` events (mind the UPPER-`SKU` events
+    `SellableSKUCreated`/`CompositeSKUCreated`); assert NO Catalog class/event name matches `/Wine|BottleReference/`
+    as a structural identifier; add wine-display-alias docblocks. Then 5.2 (docs — CONTEXT.md glossary +
+    event-contract note) and 5.3 (full-chain integration + final cross-engine close).
 ---

@@ -17,4 +17,8 @@ return [
         // Fail-closed non-WINE rejection (design D2). :type is the rejected token.
         'unsupported_product_type' => 'Unsupported Product Type ":type". At launch the only supported Product Type is WINE.',
     ],
+    'composite_sku' => [
+        // N ≥ 2 rejection (design D9 / BR-SKU-2). :count is the number of distinct constituents provided.
+        'insufficient_constituents' => 'A Composite SKU requires at least two distinct constituent Product References; :count was provided.',
+    ],
 ];
