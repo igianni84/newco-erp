@@ -97,3 +97,5 @@
 ## [2026-06-14 20:14] ralph | catalog-product-spine 3.1 Product Master | green | 276/276 SQLite + PG17(17.10) | 11 new (2 migr, ProductMaster+WineAttributes models, ProductMasterCreated, 2 exceptions, CreateProductMaster, factory, lang/en/catalog) + 9-test ProductMasterTest; multi-table core+per-type-attrs, dedup, fail-closed WINE
 
 ## [2026-06-14 20:30] ralph | catalog-product-spine 3.2 Product Variant | green | 8 files | 284/284 SQLite + PG17 (DRIVER=pgsql 17.10) | phpstan 0@max | within-module belongsTo + getColumnListing facade trap
+
+## [2026-06-14 20:44] ralph | catalog-product-spine 3.3 | green | Product Reference: single-table, 2 within-module FKs + DB unique(variant,format), no case_configuration_id; 6 files; SQLite 292/292 + PG17 292/292; phpstan 0@max; 6/11 done

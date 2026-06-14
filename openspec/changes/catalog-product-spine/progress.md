@@ -106,6 +106,25 @@
   dynamic `->master` property. The factory sets the FK with `'parent_id' => Parent::factory()` (a within-module
   nested factory — recursion-free because the parent factory never builds a child). The single scalar FK is the
   STRUCTURAL single-parent enforcement (BR-Identity-2); SQLite enforces it too (`DB_FOREIGN_KEYS` defaults true).
+- **DB-enforced unique identity vs application dedup (task 3.3, reused by 4.2).** When an entity's identity is a
+  SINGLE-table tuple (the PR's `(product_variant_id, format_id)`; 4.2's `(composite_sku_id, product_reference_id)`),
+  enforce it with a DB `$table->unique([...cols], 'short_name')` and let the violation surface — NO application
+  check, NO localized exception (contrast the Master's dedup, which spans TWO tables and so MUST be an in-action
+  join check with a localized reason; a single-table tuple the DB can own outright). A duplicate insert throws
+  `Illuminate\Database\UniqueConstraintViolationException` (extends `QueryException`), mapped reliably on BOTH
+  engines (each connection implements `isUniqueConstraintError`; `Connection.php` throws the specific subclass).
+  Test it via the action's OWN `DB::transaction` — that IS the savepoint (trap 5), so on PG the violation rolls
+  back to the savepoint and the outer RefreshDatabase tx survives the follow-on assertions:
+  `expect(fn () => app(CreateX::class)->handle(dupePair))->toThrow(UniqueConstraintViolationException::class)`, then
+  assert `where(pair)->count() === 1` (resolves-to-one) AND that NO event was recorded (the insert aborts before
+  the recorder runs). Prove the unique is COMPOSITE not single-column: same-A+different-B and different-A+same-B
+  both succeed. The default unique-index auto-name runs ~62 chars (perilously near PG's 63 limit) → give a short
+  explicit name (same rule as the long FK names).
+- **FK onDelete asymmetry — owner cascades, shared reference restricts (task 3.3).** `cascadeOnDelete()` ONLY from
+  the OWNING parent in the identity subtree (the PR cascades from its Variant: Master→Variant→PR; the Variant from
+  its Master) — deleting a parent reaps its children. A SHARED reference dimension takes the framework DEFAULT
+  (restrict / NO ACTION): `format_id` has no `cascadeOnDelete()`, so a Format referenced by many PRs can't be
+  deleted out from under them. Decide per FK by ownership; never blanket-cascade.
 - **`Schema::getColumnListing()` loses its `list<string>` type through the FACADE (task 3.2 phpstan trap).** The
   Builder method is `@return list<string>`, but Larastan resolves the `Schema` FACADE call to `mixed`-valued
   elements — so `array_filter($cols, fn (string $c) => …)` FAILS at max (`array_filter` demands `callable(mixed)`;
@@ -294,4 +313,47 @@
     + **no `case_configuration_id`** (BR-Identity-3 absence guard). Test the unique violation inside a nested
     `DB::transaction` (savepoint — trap 5, so the verify-after-throw survives on PG). Two `belongsTo` (variant +
     format) within module. No dedup join, no per-type table.
+---
+
+## [2026-06-14 20:41] — 3.3 Product Reference (single-table entity + DB-unique identity)
+- **What:** The SHAPE CHANGE the prior iteration flagged — back to a SINGLE-table spine entity (no per-type
+  attribute table), but the FIRST entity whose identity is a DB-enforced composite UNIQUE. One migration
+  `catalog_product_references`: two WITHIN-module FKs (`product_variant_id` cascade-on-delete — the PR is in the
+  Variant's identity subtree; `format_id` restrict/default — Format is a shared reference dimension), a DB
+  `unique(['product_variant_id','format_id'], 'catalog_product_references_variant_format_unique')` (BR-Identity-3
+  — the two-dimension identity), **NO `case_configuration_id`**, `lifecycle_state` + single-source driver-guarded
+  PG CHECK, `version`, `timestampsTz`. All three explicit index names kept short (FKs `…_variant_fk`/`…_format_fk`,
+  the unique `…_variant_format_unique`) — the default unique auto-name runs ~62 chars, perilously near PG's 63
+  limit. Model `ProductReference` (two within-module `belongsTo`: variant + format). `ProductReferenceCreated`
+  event (PII-free: the two identity dimensions by id). `CreateProductReference` action — thin like the Variant's
+  (one tx: insert `draft` + record event), NO application dedup and NO localized exception: a duplicate pair is
+  rejected by the DB unique index, surfacing as `UniqueConstraintViolationException`. Factory builds both parents
+  via their within-module factories (recursion-free; no `afterCreating` — single table).
+- **Files changed:** migration `…000007_create_catalog_product_references_table.php`, `Models/ProductReference.php`,
+  `Events/ProductReferenceCreated.php`, `Actions/CreateProductReference.php`,
+  `database/factories/Catalog/ProductReferenceFactory.php`,
+  `tests/Feature/Modules/Catalog/ProductReferenceTest.php` (8 tests / 42 assertions), `tasks.md` (3.3 checked).
+- **Quality loop:** green — pint clean · ProductReferenceTest 8/8 (42 assertions) · full suite **292/292** (1137
+  assertions, +8 vs 284) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git diff
+  main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2 (no amendment). **PG17 cross-engine VERIFIED:
+  292/292 on `postgres:17`** (driver proof `DRIVER=pgsql SERVER=17.10`); container cleaned up.
+- **Learnings for future iterations:**
+  - The single-table template + two within-module `belongsTo` held with zero surprises (Format's single-table
+    shape + the Variant's `belongsTo` idiom, both already in Codebase Patterns). The genuinely NEW piece — promoted
+    to Codebase Patterns — is **DB-enforced unique identity vs application dedup**: a single-table identity tuple is
+    a DB `unique(...)` that throws `UniqueConstraintViolationException` (reliable on both engines), tested through
+    the action's own `DB::transaction` (the savepoint, trap 5), asserting resolves-to-one + no-event-recorded; and
+    the composite-not-single-column proof (same-A+diff-B and diff-A+same-B both succeed). Contrast: the Master's
+    identity spans TWO tables → an in-action join check with a localized reason. Pick by whether the tuple is
+    single-table (DB owns it) or cross-table (the action must).
+  - Also promoted: the **FK onDelete asymmetry** — cascade only from the owning parent (PR←Variant←Master),
+    restrict (default) for a shared reference (Format). Avoids a Format delete silently reaping PRs.
+  - Pint's `fully_qualified_strict_types` again pulled a docblock `{@see \FQCN}` into a real `use` import (here the
+    vendor `UniqueConstraintViolationException` — harmless, no use-cycle since it's not a peer/upward module class).
+  - 4.1 (Sellable SKU Intrinsic) is NEXT and the FIRST entity to reference BOTH a PR and a Case Configuration
+    (`product_reference_id` + `case_configuration_id` FKs + commercial attrs, e.g. `commercial_name`). Single-table,
+    two within-module `belongsTo`, no DB unique on identity (a Variant+Format+CaseConfig may yield many SKUs). Its
+    test completes the "Packaging does not change the PR" scenario: three Case Configs → three SKUs → assert all
+    three `product_reference_id` equal (the one PR from 3.3). 4.2 (Composite) then reuses the DB-unique idiom on the
+    constituents join + the N≥2 / producer-agnostic rules (design D9).
 ---
