@@ -103,3 +103,5 @@
 ## [2026-06-14 20:59] ralph | catalog-product-spine 4.1 | green | Sellable SKU (Intrinsic): catalog_sellable_skus + model + factory + SellableSKUCreated event + CreateSellableSku action; PR FK cascade/CaseConfig restrict; no DB unique; commercial cols plain (not i18n). suite 300/300, phpstan 0@max, PG17 300/300. 6 files
 
 ## [2026-06-14 21:18] ralph | catalog-product-spine 4.2 | green | 9 files (2 migrations+model+event+exception+action+factory+lang+test) | Composite SKU: M:N join, N>=2 pre-tx, producer-agnostic | 312/312 SQLite + PG17
+
+## [2026-06-14 21:27] ralph | catalog-product-spine 5.1 | green | 1 new test file (CatalogNamingCascadeTest 3/3), suite 315/315, phpstan 0@max; no DB/no prod-code change

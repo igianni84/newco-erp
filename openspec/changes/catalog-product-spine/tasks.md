@@ -44,7 +44,7 @@
 
 ## 5. Naming-cascade guard, docs & cross-engine integration
 
-- [ ] 5.1 **Naming-cascade guard** (design D7; §18 / AC-0-GEN-6) — a convention test asserting the canonical category-neutral identifiers are used and no `Wine*`/`BottleReference*` **structural or event** identifier exists in `app/Modules/Catalog`; add wine-display-alias docblocks ("Wine Master" / "Wine Variant" / "Bottle Reference (BR)") to the relevant model classes.
+- [x] 5.1 **Naming-cascade guard** (design D7; §18 / AC-0-GEN-6) — a convention test asserting the canonical category-neutral identifiers are used and no `Wine*`/`BottleReference*` **structural or event** identifier exists in `app/Modules/Catalog`; add wine-display-alias docblocks ("Wine Master" / "Wine Variant" / "Bottle Reference (BR)") to the relevant model classes.
   - Acceptance: the canonical model classes (`ProductMaster`, `ProductVariant`, `ProductReference`, `Format`, `CaseConfiguration`, `SellableSku`, `CompositeSku`) and the seven `*Created` event classes exist with the §18 names; no Catalog class or event name contains `Wine`/`BottleReference` as a structural identifier; quality commands green.
   - Test hint: `tests/Architecture/CatalogNamingCascadeTest.php` — scan `App\Modules\Catalog` class names + the `Events/` directory; assert none match `/Wine|BottleReference/` as a type/event name; assert each canonical class exists (`class_exists`). Aliases live only in docblocks/`CONTEXT.md`.
 

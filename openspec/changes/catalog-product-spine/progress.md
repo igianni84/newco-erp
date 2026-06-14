@@ -196,6 +196,24 @@
   `ENTITY_TYPE = 'CompositeSku'` (model short name). The 5.1 naming-cascade guard `class_exists()`s the
   UPPER-`SKU` EVENTS (`SellableSKUCreated`, `CompositeSKUCreated`) + lower-`Sku` MODELS (`SellableSku`,
   `CompositeSku`) — both SKU pairs now exist to assert against.
+- **Naming-cascade / category-neutral arch guard (task 5.1 — reusable for every module's §18 discipline).** A
+  convention test that pins a naming cascade has THREE legs, all boot-free (reflect `Module::X->namespace()` /
+  `->name`, no Laravel container — the `ModuleConformanceTest`/`ModulePersistenceConventionsTest` idiom): (1)
+  **positive existence** — `class_exists()` every canonical model + every `*Created` event FQCN (collect missing →
+  `toBe([])`); guard the SET SIZE too (`toHaveCount(7)`) so a silent drop from the list is caught not masked. (2)
+  **negative scan** — walk the module subtree (`RecursiveIteratorIterator` over the `Module::X->name` dir), collect
+  each `.php` `getBasename('.php')` (PSR-4: the FILENAME *is* the class short-name, so ONE sweep covers
+  Models/Events/Actions/Enums/Exceptions — "class OR event name"), then `array_filter` for the forbidden pattern →
+  `toBe([])`. (3) **alias-retention** — reflect `getDocComment()` on the aliased models and assert the display-alias
+  phrase is PRESENT (the spec's "retained ONLY as a wine-display alias": the negative scan bars it from code
+  identifiers, this pins its one legal home — the docblock; together they encode "only as a display alias"). **Anchor
+  the forbidden regex** (`/^(Wine|BottleReference)/`, NOT a loose `/Wine/` substring): a category-neutral core
+  legitimately carries per-type SUFFIX-qualified classes (`ProductMasterWineAttributes` / `ProductVariantWineAttributes`,
+  blessed by design D1's `catalog_*_wine_attributes` tables) that CONTAIN the category word — only a category-PREFIXED
+  spine rename (`WineMaster`, `BottleReference`) is forbidden. **Prove non-vacuity THROUGH the tricky case:** assert the
+  scan `toContain('ProductMasterWineAttributes')` — that exercises the anchoring (a regression to `/Wine/` turns it red),
+  far stronger than a bare "saw some files". `array_filter` over a self-built `list<string>` (not the `Schema` facade)
+  keeps a `fn (string $name)` closure phpstan-max-clean. NO DB → no PG run (test-only + docblocks).
 
 ---
 
@@ -504,4 +522,42 @@
     `SellableSKUCreated`/`CompositeSKUCreated`); assert NO Catalog class/event name matches `/Wine|BottleReference/`
     as a structural identifier; add wine-display-alias docblocks. Then 5.2 (docs — CONTEXT.md glossary +
     event-contract note) and 5.3 (full-chain integration + final cross-engine close).
+---
+
+## [2026-06-14 21:25] — 5.1 Naming-cascade guard (convention arch test + alias pinning)
+- **What:** A pure CONVENTION/architecture test (NO new DB) pinning the §18 naming cascade as the canonical Catalog
+  code naming (design D7; AC-0-GEN-6; delta-spec "Naming Cascade" requirement). New file
+  `tests/Architecture/CatalogNamingCascadeTest.php` — three boot-free legs (mirroring the
+  `ModuleConformanceTest`/`ModulePersistenceConventionsTest` reflection-rooted style): (1) **positive existence** —
+  `class_exists()` the 7 canonical models (`ProductMaster`, `ProductVariant`, `ProductReference`, `Format`,
+  `CaseConfiguration`, `SellableSku`, `CompositeSku`) + the 7 `*Created` events (minding the UPPER-`SKU` divergence:
+  `SellableSKUCreated`/`CompositeSKUCreated` events vs lower-`Sku` models), with `toHaveCount(7)` set-size guards; (2)
+  **negative scan** — a recursive walk of the Catalog subtree collecting every `.php` basename (PSR-4 short-name) and
+  `array_filter`ing for the forbidden category-PREFIX pattern `/^(Wine|BottleReference)/` → `toBe([])`, with
+  non-vacuity proven THROUGH the tricky case (`toContain('ProductMasterWineAttributes')` — the suffix-qualified
+  per-type class that CONTAINS "Wine" yet must stay legal); (3) **alias-retention** — reflect `getDocComment()` on the
+  3 aliased models and assert each carries its wine-display alias ("Wine Master"/"Wine Variant"/"Bottle Reference (BR)").
+  The docblock aliases were ALREADY present (added in 3.1–3.3), so this task adds no model edits — the test PINS them
+  (the negative scan bars the alias from code identifiers; the alias-retention leg fixes its one legal home, the
+  docblock — together encoding the spec's "retained ONLY as a wine-display alias").
+- **Files changed:** `tests/Architecture/CatalogNamingCascadeTest.php` (new — 3 tests / 8 assertions), `tasks.md`
+  (5.1 checked). NO production-code change (the model docblocks already carried their aliases).
+- **Quality loop:** green — pint clean · CatalogNamingCascadeTest 3/3 (8 assertions) · full suite **315/315** (1219
+  assertions, +3 tests vs 312) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git
+  diff main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2 (no amendment — test-only + docblocks). NO PG
+  run: this task adds no schema (the hot-cache plan — 5.1/5.2 are DB-free; 5.3 is the final cross-engine close).
+- **Learnings for future iterations:**
+  - The genuinely NEW, reusable thing (promoted to Codebase Patterns): the **naming-cascade / category-neutral arch
+    guard** — the 3-leg boot-free convention test (positive `class_exists`+count, negative basename scan, docblock
+    alias-retention). Two decisions worth keeping: **anchor the forbidden regex** (`/^(Wine|BottleReference)/`, not the
+    test-hint's loose `/Wine/`) because the category-neutral core legitimately carries per-type SUFFIX classes
+    (`ProductMasterWineAttributes`) that the loose form would wrongly flag — the spec's forbidden set is literally
+    `WineMaster*`/`WineVariant*`/`BottleReference*` (prefixes); and **prove non-vacuity through the tricky case**
+    (`toContain('ProductMasterWineAttributes')`) so a regression to the loose regex turns the test red.
+  - The implementation work was light because the prior tasks did the §18 naming RIGHT from the start (canonical
+    `Product*` models, verbatim §14.1 events, docblock aliases) — 5.1 just made the discipline mechanical/enforced.
+  - 5.2 (docs — CONTEXT.md spine glossary + the 7-event payload-contract note) is NEXT and also DB-free (docs-only — run
+    lint/format, no test, `openspec validate --strict`). Then 5.3 (full-chain integration Master→Variant→Format→Reference
+    →Intrinsic SKU + Composite, asserting all `*Created` / zero `*Activated`/`*Retired`) carries the FINAL full-Catalog
+    cross-engine PG17 close.
 ---
