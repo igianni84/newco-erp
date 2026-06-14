@@ -91,3 +91,5 @@
 ## [2026-06-14 19:24] ralph | catalog-product-spine 1.1 | green | 4 files: ProductType+LifecycleState enums (D2/D3) + Unit EnumsTest (4 tests). Suite 258/258, phpstan 0@max, strict-valid. No DB this task.
 
 ## [2026-06-14 19:42] ralph | catalog-product-spine 2.1 Format | green | 6 files (catalog_formats migration + Format model + factory + FormatCreated event + CreateFormat action + FormatTest) | 262/262 SQLite & PG17, phpstan 0 @ max, pint clean, openspec --strict valid
+
+## [2026-06-14 19:52] ralph | catalog-product-spine 2.2 Case Configuration | green | 6 new files (migration+model+event+action+factory+test) | suite 267/267 SQLite + PG17 (driver=pgsql) | phpstan 0 @ max | no breakability column (BR-RefData-2)

@@ -58,6 +58,15 @@
     is nullable → PHPStan `property.nonObject`). Assert payload BY KEY (trap 3). Scope-guard
     assertion: `where('name','like','%Activated%')->count()===0` (+ Retired). A factory test
     documents the factory as a pure fixture (bypasses the action → records NO event).
+- **Schema-absence guard (an attribute that must NOT exist — task 2.2, reused by 3.1/3.2/3.3).**
+  When a spec rule is "entity X carries no Y" (Case Configuration has no breakability — BR-RefData-2;
+  the neutral core holds no `appellation`/`vintage_year` — AC-0-GEN-2/3; a PR has no
+  `case_configuration_id` — BR-Identity-3), assert the absence three ways: `Schema::hasColumn($table,
+  $name)` is `false` for each forbidden name; `Schema::getColumnListing($table)` contains no column whose
+  name carries the forbidden concept as a substring (loop `expect($col)->not->toContain('break')`); and
+  the `*Created` payload omits the key (`expect($payload)->not->toHaveKey(...)`). The column-listing
+  substring sweep is the strongest of the three (it catches a renamed-but-still-present attribute). Both
+  `getColumnListing`/`hasColumn` are portable (verified on PG17). The absence IS the contract.
 
 ---
 
@@ -126,4 +135,38 @@
   - Under `RefreshDatabase` the action's own `DB::transaction` satisfies the recorder's level-0
     guard via the savepoint; the `afterCommit` delivery hook never fires (outer tx rolls back) —
     harmless here (no consumers registered for catalog `*Created` yet).
+---
+
+## [2026-06-14 19:50] — 2.2 Case Configuration (catalog_case_configurations + model + factory + event + action)
+- **What:** Second reference entity, applying the spine template verbatim. The
+  `catalog_case_configurations` migration (id, name, `units_per_case`, `packaging_type`,
+  `lifecycle_state` + driver-guarded PG CHECK, `version`, `timestampsTz`) **with no breakability column**
+  + `CaseConfiguration` model + `CaseConfigurationFactory` + `CaseConfigurationCreated` event (const
+  NAME/ENTITY_TYPE + static PII-free `payload()`) + `CreateCaseConfiguration` action (one `DB::transaction`:
+  insert `draft` + record `CaseConfigurationCreated`). Adds the §7-stays-downstream guard test
+  (BR-RefData-2 / AC-0-BR-RefData-2): the entity carries no breakability attribute or column.
+- **Files changed:**
+  - `database/migrations/2026_06_14_000002_create_catalog_case_configurations_table.php` (new)
+  - `app/Modules/Catalog/Models/CaseConfiguration.php` (new)
+  - `app/Modules/Catalog/Events/CaseConfigurationCreated.php` (new)
+  - `app/Modules/Catalog/Actions/CreateCaseConfiguration.php` (new)
+  - `database/factories/Catalog/CaseConfigurationFactory.php` (new)
+  - `tests/Feature/Modules/Catalog/CaseConfigurationTest.php` (new — 5 tests, 32 assertions)
+  - `openspec/changes/catalog-product-spine/tasks.md` (2.2 checked)
+- **Quality loop:** green — pint clean · CaseConfigurationTest 5/5 (32 assertions) · full suite **267/267**
+  (962 assertions, +5 vs the 262 baseline) · phpstan **0 @ max** · pint --test clean · `openspec validate
+  catalog-product-spine --strict` valid · `git diff main -- composer.{json,lock}` empty.
+  **PG17 cross-engine verified: 267/267 on `postgres:17`** (driver proof printed `DRIVER=pgsql` before the
+  run — confirms real PG, not a silent SQLite fallback).
+- **Learnings for future iterations:**
+  - The spine template held with zero surprises — only the entity-specific columns/payload changed. The
+    template (Codebase Patterns) is now proven twice; 3.1 (Master, the first multi-table + per-type-attrs
+    + dedup entity) is where it stretches.
+  - Added the **schema-absence guard** idiom to Codebase Patterns — the reusable shape for the
+    "entity carries no Y" rules that 3.1 (no `appellation` in core), 3.2 (no `vintage_year` in core), and
+    3.3 (no `case_configuration_id`) all repeat: `hasColumn` false + `getColumnListing` substring sweep +
+    payload-key absence. The substring sweep is the strongest leg (catches a renamed-but-present column).
+  - `packaging_type` stays a plain string (no `PackagingType` enum) — only `ProductType` earned an enum
+    (design D2, §16 anti-EAV); a packaging enum would be speculative. Factory uses coherent
+    loose/owc/carton tuples that line up with the 4.1 SellableSku test hint (loose/OWC6/CARTON12).
 ---
