@@ -140,6 +140,22 @@
   `->not->toContain()` (or any matcher) on ONE `expect()` collapses the Expectation generic to `mixed` (the
   first matcher returns a non-generic Expectation, breaking the second `->not`) → one matcher per statement
   (nested `foreach`), or split with `->and($x)`.
+- **Event-class name vs model-class name can DIVERGE (task 4.1, reused by 4.2 + the 5.1 guard).** The `*Created`
+  event class is named VERBATIM per §14.1 (design D7) — which for the SKUs keeps `SKU` UPPER-case: the events are
+  `SellableSKUCreated` / `CompositeSKUCreated` (the event class name AND `const NAME` both upper-`SKU`), while the
+  canonical MODEL classes are `SellableSku` / `CompositeSku` (§18 cascade, lower-`ku`). So `ENTITY_TYPE` (the
+  envelope `entity_type` = the model's short class name, by the established convention) is `'SellableSku'` even
+  though `NAME` is `'SellableSKUCreated'` — they legitimately differ in casing. The other five spine events
+  coincide (class == NAME) only because their §14.1 names are already PascalCase-clean. The naming-cascade guard
+  (5.1) must therefore `class_exists()` the UPPER-`SKU` EVENT names (`SellableSKUCreated`, `CompositeSKUCreated`)
+  and the lower-`Sku` MODEL names (`SellableSku`, `CompositeSku`) — do not assume event class == model class.
+- **Spec fidelity over the i18n reflex (task 4.1).** A customer-facing-SOUNDING text field is NOT automatically a
+  `TranslatableText` — check whether §8.1 actually scopes translatability to it. The SKU's `commercial_name` /
+  `marketing_copy` (§3.7) are PLAIN string/text columns because §8.1 places translatable content on
+  Master/Variant/PR only and is SILENT on the SKU; making them translatable would invent beyond the spec.
+  Invariant 12 ("no hardcoded user-facing strings") governs CODE strings, not data-column shape — which columns
+  are translatable is a spec-driven modelling choice, decided per the §8.1 list, not by how customer-facing a
+  field feels. (Ground the column set in the PRD: §3.7 names exactly "commercial name, marketing copy".)
 
 ---
 
@@ -356,4 +372,51 @@
     test completes the "Packaging does not change the PR" scenario: three Case Configs → three SKUs → assert all
     three `product_reference_id` equal (the one PR from 3.3). 4.2 (Composite) then reuses the DB-unique idiom on the
     constituents join + the N≥2 / producer-agnostic rules (design D9).
+---
+
+## [2026-06-14 20:58] — 4.1 Sellable SKU (Intrinsic)
+- **What:** The first entity to reference BOTH a Product Reference AND a Case Configuration — the single-table
+  template (Format's shape) + two within-module `belongsTo` (the PR's idiom), nothing structurally new. Migration
+  `catalog_sellable_skus`: `product_reference_id` FK **cascade-on-delete** (the SKU is a commercial composition
+  owned by its PR — same asymmetry as PR←Variant) + `case_configuration_id` FK **restrict/default** (Case
+  Configuration is a standalone SHARED reference, like Format), the §3.7 commercial attributes `commercial_name`
+  (required) + `marketing_copy` (nullable text) as PLAIN columns (NOT TranslatableText — §8.1 scopes
+  translatability to Master/Variant/PR, silent on the SKU), `lifecycle_state` + single-source driver-guarded PG
+  CHECK, `version`, `timestampsTz`, and deliberately **NO DB unique** on `(product_reference_id,
+  case_configuration_id)` (the spec defines no SKU uniqueness rule; packaging variants legitimately back many SKUs
+  over one PR). Model `SellableSku` (two within-module `belongsTo`: `reference()` + `caseConfiguration()`); event
+  `SellableSKUCreated` (verbatim §14.1 — UPPER-`SKU`; `NAME='SellableSKUCreated'`, `ENTITY_TYPE='SellableSku'`,
+  PII-free payload = ids + `commercial_name`, `marketing_copy` omitted as lean); `CreateSellableSku` action (thin
+  — one tx: insert `draft` + record event; NO dedup, NO type guard, NO activation-prereq — those are deferred).
+  Factory builds both parents via their within-module factories (recursion-free, no `afterCreating`).
+- **Files changed:** migration `…000008_create_catalog_sellable_skus_table.php`, `Models/SellableSku.php`,
+  `Events/SellableSKUCreated.php`, `Actions/CreateSellableSku.php`,
+  `database/factories/Catalog/SellableSkuFactory.php`,
+  `tests/Feature/Modules/Catalog/SellableSkuTest.php` (8 tests / 34 assertions), `tasks.md` (4.1 checked).
+- **Quality loop:** green — pint clean · SellableSkuTest 8/8 (34 assertions) · full suite **300/300** (1171
+  assertions, +8 vs 292) · phpstan **0 @ max** · pint --test clean · `openspec validate --strict` valid · `git diff
+  main -- composer.{json,lock}` empty · `ModuleBoundariesTest` 2/2 (no amendment — the SKU's two FKs are
+  within-module; no producer ref). **PG17 cross-engine VERIFIED: 300/300 on `postgres:17`** (driver proof
+  `DRIVER=pgsql SERVER=17.10`); container cleaned up.
+- **Learnings for future iterations:**
+  - Two patterns promoted to Codebase Patterns: (1) **event-class name vs model-class name can diverge** — the SKU
+    events are `SellableSKUCreated`/`CompositeSKUCreated` (UPPER-`SKU`, verbatim §14.1) while the model classes are
+    `SellableSku`/`CompositeSku` (§18); `ENTITY_TYPE` follows the model (`'SellableSku'`), `NAME` follows §14.1.
+    The 5.1 naming-cascade guard must `class_exists()` the UPPER-`SKU` events + lower-`Sku` models — don't assume
+    event class == model class. (2) **Spec fidelity over the i18n reflex** — `commercial_name`/`marketing_copy` are
+    plain columns, not TranslatableText, because §8.1 scopes translatability to Master/Variant/PR and is silent on
+    the SKU; grounded the exact column set in PRD §3.7 ("commercial name, marketing copy") via a subagent rather
+    than guessing.
+  - The "Packaging does not change the PR" scenario is now COMPLETE across 3.3 + 4.1: 3.3 proved the `(variant,
+    format)` pair is unique (one PR); 4.1 proved three Case Configurations over that one PR yield three SKUs all
+    sharing the one `product_reference_id` (PR count stays 1).
+  - 4.2 (Composite SKU) is NEXT — the LAST entity + a join table. TWO migrations: `catalog_composite_skus` (just
+    `lifecycle_state` + audit/version — no FKs on the parent) + `catalog_composite_sku_constituents`
+    (`composite_sku_id` FK cascade, `product_reference_id` FK restrict, `position`, **DB unique
+    `(composite_sku_id, product_reference_id)`** — reuse the 3.3 DB-unique idiom). Model `CompositeSku`
+    (constituents M:N ordered by `position`); event `CompositeSKUCreated` (UPPER-`SKU` again — see the new pattern);
+    `CreateCompositeSku` action enforcing **N ≥ 2** (a localized rejection like the Master's — cross-row count, not
+    a DB constraint) and DELIBERATELY NOT validating producer composition (design D9 / BR-SKU-5 — a multi-producer
+    set is ACCEPTED; do NOT add a single-producer guard, that's Module S). Test: <2 constituents rejected;
+    multi-producer accepted; one PR in two Composites (M:N). Verify on PG17.
 ---

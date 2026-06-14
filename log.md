@@ -99,3 +99,5 @@
 ## [2026-06-14 20:30] ralph | catalog-product-spine 3.2 Product Variant | green | 8 files | 284/284 SQLite + PG17 (DRIVER=pgsql 17.10) | phpstan 0@max | within-module belongsTo + getColumnListing facade trap
 
 ## [2026-06-14 20:44] ralph | catalog-product-spine 3.3 | green | Product Reference: single-table, 2 within-module FKs + DB unique(variant,format), no case_configuration_id; 6 files; SQLite 292/292 + PG17 292/292; phpstan 0@max; 6/11 done
+
+## [2026-06-14 20:59] ralph | catalog-product-spine 4.1 | green | Sellable SKU (Intrinsic): catalog_sellable_skus + model + factory + SellableSKUCreated event + CreateSellableSku action; PR FK cascade/CaseConfig restrict; no DB unique; commercial cols plain (not i18n). suite 300/300, phpstan 0@max, PG17 300/300. 6 files

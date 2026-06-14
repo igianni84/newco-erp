@@ -34,7 +34,7 @@
 
 ## 4. Sellable SKUs
 
-- [ ] 4.1 **Sellable SKU (Intrinsic)** (design D5) — migration `catalog_sellable_skus` (`product_reference_id` FK, `case_configuration_id` FK, commercial attrs e.g. `commercial_name`, `lifecycle_state`, audit/version); model `SellableSku`; factory; `SellableSkuCreated` event; `CreateSellableSku` action (transactional + event).
+- [x] 4.1 **Sellable SKU (Intrinsic)** (design D5) — migration `catalog_sellable_skus` (`product_reference_id` FK, `case_configuration_id` FK, commercial attrs e.g. `commercial_name`, `lifecycle_state`, audit/version); model `SellableSku`; factory; `SellableSkuCreated` event; `CreateSellableSku` action (transactional + event).
   - Acceptance: an Intrinsic SKU references exactly one PR + one Case Configuration + commercial attrs, born `draft`, records `SellableSkuCreated`; three SKUs for the same Variant+Format with different Case Configurations all reference the **one** same PR (completes spec scenario "Packaging does not change the PR"); spec scenario "An Intrinsic SKU composes PR + Case Configuration" passes; quality commands green; **verified on PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/SellableSkuTest.php` — build one Variant+Format → one PR; create three Case Configurations (loose/OWC6/CARTON12) and three SKUs; assert all three `product_reference_id` are equal; event asserted by key.
 
