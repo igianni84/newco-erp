@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-13
+updated: 2026-06-14
 ---
 
 # Hot Cache
@@ -10,26 +10,28 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (interactive close) — `substrate-hardening` MERGED + ARCHIVED. `main@ecead30`, in sync with origin, tree clean.** Full GUIDE §2.7 ritual executed end-to-end: re-verified SQLite (pint/phpstan-max/`254-254-904`) + local PostgreSQL 17.10 (`254-254-904`); `git merge --no-ff` (`0e2f3a5`) + push; **semantic verify CLEAN** (independent subagent that spun up its OWN pg17 container — 0 CRITICAL, 3 non-blocking SUGGESTIONs); `openspec archive` (`ecead30`) merged the 2 ADDED requirements (Concurrent Delivery Safety, Delivery Failure Observability) into `openspec/specs/event-substrate/spec.md`; branch `ralph/substrate-hardening` deleted. **NB:** the ralph loop had exited early at 16/17 (iter 16 did 6.1, never ran 6.2); 6.2 (pure-doc traceability) was completed interactively before the close — the ralph.sh "Next steps (human)" footer prints on EVERY exit and is NOT a completion signal.
+**2026-06-14 (ralph) — `catalog-product-spine` task 1.1 DONE (enums).** First implementation slice of Module 0 landed: `App\Modules\Catalog\Enums\ProductType` (sole `Wine='wine'`) + `LifecycleState` (`draft/reviewed/active/retired`), pure house-style case-list enums (D2/D3) + `tests/Unit/Modules/Catalog/Enums/EnumsTest.php` (4 tests). No DB this task. The first impl commit also folded the still-uncommitted authoring ADR (`decisions/2026-06-14-catalog-category-neutral-representation.md` + INDEX row) onto the branch. **1 of 11 tasks done.**
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15.0 · Filament 5.6.7 · Pennant 1.23.0 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17.
-- **`main@ecead30`**: suite **254/254 (904 asserts) on SQLite AND PostgreSQL 17.10** · phpstan 0 @ max · pint --test clean. Event substrate hardened (C1–C15); CI two-lane (quality SQLite + tests-pgsql PG17) + workflow-level concurrency cancel-in-progress.
+- Stack: PHP 8.5.2 · Laravel 13.15.0 · Filament 5.6.7 · Pennant 1.23.0 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PostgreSQL 17.
+- Branch `ralph/catalog-product-spine`: suite **258/258** (910 assertions) on SQLite · phpstan **0 @ max** · pint clean · `openspec validate catalog-product-spine --strict` valid · `git diff main -- composer.{json,lock}` empty.
+- No PG17 run this iteration (task 1.1 is enums-only, no DB) — PG17 cross-engine becomes mandatory from task 2.1 on.
 
 ## Active Change & Next Task
-- **No active change.** `openspec list` → "No active changes found." substrate-hardening fully closed.
-- **NEXT = author the next change** via `/spec-to-change` against `spec/05-release/Build_Workplan_v0.3-MVP.md`. F1 foundations complete (3/3) + substrate hardened. Pick the next Build Workplan slice with Giovanni; never two loops in parallel.
+- **Active change = `catalog-product-spine`** (implementing). 11 tasks, dependency-ordered. 1.1 ✓.
+- **NEXT TASK = 2.1 Format** — FIRST DB-touching task: migration `catalog_formats` (bigint id, name, physical-measure cols, `lifecycle_state` string + driver-guarded CHECK + cast default `draft`, audit/version) + `Format` model + `FormatFactory` + `FormatCreated` event (establishes the `Events/` one-class-per-event convention) + `CreateFormat` action (insert + record `FormatCreated` in one `DB::transaction`). Test `tests/Feature/Modules/Catalog/FormatTest.php` with `RefreshDatabase`. **Verify on PG17 before done.**
+- Then 2.2 CaseConfiguration → 3.1–3.3 Master/Variant/Reference → 4.1–4.2 SKUs → 5.1–5.3 guard/docs/integration.
 
-## Semantic-verify SUGGESTIONs (non-blocking; capture in knowledge/ or a future change if revisited)
-- `InlineDeliveryExecutor.php` ~:175 — `$delivery->refresh()` before `recordFailure()` isn't null-safe IF a delivery row were ever deleted; safe today (substrate never deletes deliveries). Defensive-only.
-- `SweepTest.php` ~:120 — backoff-cap test doesn't hit the exact `base*2^(n-1) == cap` equality boundary (`min()` handles it; theoretical).
-- `InlineDeliveryExecutor.php` ~:258 — backoff exponent `2**(attempts-1)` confirmed correct (no off-by-one); note only.
+## Implementation landmines (design.md D1–D9 + ADR — read design.md before every task)
+- **DomainEventRecorder::record(name, module, actorRole, actorId, entityType, entityId, payload, …)** MUST run inside an open `DB::transaction` (throws `NotInTransactionException` otherwise) — that's the atomicity guard. `Module::Catalog->value === 'catalog'`. PII-free payloads (ids only); actor from `ActorContext`/`ActorRole`.
+- **5 SQLite↔PG traps** (`knowledge/testing/rules.md`): driver-guard enum CHECK (`DB::getDriverName()==='pgsql'`, mirror the `domain_events` migration); assert json/TranslatableText by key (never byte-compare jsonb); named test doubles only. PG17 run mandatory per DB task.
+- **`producer_id` is a plain `unsignedBigInteger`** — NO DB FK, NO Eloquent relation, NO Parties import (boundary law; arch test must stay green unamended). Per-type attribute tables (`catalog_*_wine_attributes`, 1:1 within-module hasOne OK); `appellation` a real column; dedup at creation (in-tx join, BR-Identity-1).
+- **Composite is producer-agnostic** (D9) — do NOT add a single-producer check (Module S's job). **Scope guard:** entities born `draft`, NO FSM/transition/approval, only `*Created` events — NO `*Activated`/`*Retired`.
 
 ## Blockers & Decisions Needed
-- None active.
-- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). Plus 4 in decisions/INDEX.md: secrets · observability · PCI boundary · security review.
+- None for this slice (crosses NO open gate). Next slice `catalog-lifecycle-approval` (FSM+approval) will need the Identity/auth ADR — not this one.
+- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
 
 ## Open Patterns
-- **Codebase Patterns** now live in `openspec/changes/archive/2026-06-13-substrate-hardening/progress.md` (6 patterns: white-box concurrency-guard via reflection; query-builder UPDATE skips casts; connector-applied session-setting pin; PHPStan-clean `Log::spy()` closure matcher; engine-guarded DB-CHECK test; string-tested YAML → parse for real + pin STRUCTURE).
-- **Closing ritual:** `openspec list` + unchecked-task count are the truth, NOT the ralph.sh footer. Pause before main if the loop didn't finish all tasks. Cross-engine verify: local `docker run postgres:17` p55432, readiness via in-PHP PDO TCP loop (no sleep/pg_isready), `DB_CONNECTION=pgsql … php artisan test`, `docker rm -f pg`.
-- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB). hot.md ≤550 words.
+- **House enum style + enum test convention** now consolidated in the change `progress.md` Codebase Patterns — read it before 2.x.
+- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB); hot.md ≤550 words. Closing ritual: `openspec list` + unchecked-task count are truth, not the ralph.sh footer.

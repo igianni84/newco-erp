@@ -4,7 +4,7 @@
 
 ## 1. Catalog enums (prerequisite)
 
-- [ ] 1.1 `App\Modules\Catalog\Enums\ProductType` (backed string enum, sole case `Wine = 'wine'`) and `App\Modules\Catalog\Enums\LifecycleState` (backed string enum, cases `Draft='draft'`, `Reviewed='reviewed'`, `Active='active'`, `Retired='retired'`) — design D2/D3. No DB.
+- [x] 1.1 `App\Modules\Catalog\Enums\ProductType` (backed string enum, sole case `Wine = 'wine'`) and `App\Modules\Catalog\Enums\LifecycleState` (backed string enum, cases `Draft='draft'`, `Reviewed='reviewed'`, `Active='active'`, `Retired='retired'`) — design D2/D3. No DB.
   - Acceptance: `ProductType` has exactly the one `Wine` case; `LifecycleState` has exactly the four cases with those backing values; both type-clean at PHPStan max; quality commands green.
   - Test hint: `tests/Unit/Modules/Catalog/Enums/EnumsTest.php` — assert the case/value sets verbatim with `toBe` (order-sensitive), mirroring the platform `EnumsTest` style; assert `ProductType::cases()` is length 1 (the WINE-only-at-launch guard, AC-0-XM-9) and `LifecycleState::cases()` length 4.
 

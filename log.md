@@ -85,3 +85,7 @@
 ## [2026-06-13 23:11] close | substrate-hardening 6.2 | 6.2 done -> 17/17 openspec Complete; validate --strict valid; 5/5 delta scenarios -> named passing tests (InlineDeliveryTest:170,189; SweepTest:241,271,295); 2 patterns confirmed; doc-only. Loop exited early at iter16, completed 6.2 manually. CHANGE_COMPLETE.
 
 ## [2026-06-13 23:25] close | substrate-hardening 2.7 | Closed 2.7 ritual: SQLite+PG17 254/254 re-verified; merged 0e2f3a5 + pushed; semantic-verify CLEAN (0 CRITICAL, 3 minor); archived ecead30 -> 2 reqs into specs/event-substrate; branch deleted. main==origin clean. Loop had exited early 16/17; 6.2 done interactively.
+
+## [2026-06-14 19:17] spec-to-change | catalog-product-spine | Authored + strict-valid: Catalog Module 0 first slice (product spine — 7 entities, 11 reqs, 11 tasks) + ADR per-type-attr-tables (resolves DEC-073). Giovanni approved (verbal); awaiting human APPROVED marker -> ./ralph.sh.
+
+## [2026-06-14 19:24] ralph | catalog-product-spine 1.1 | green | 4 files: ProductType+LifecycleState enums (D2/D3) + Unit EnumsTest (4 tests). Suite 258/258, phpstan 0@max, strict-valid. No DB this task.
