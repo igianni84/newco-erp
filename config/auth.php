@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Modules\OperatorPanel\Models\Operator;
 
 return [
 
@@ -42,6 +43,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // The operator login principal authenticates here (operator-auth-foundation, design D2). Added
+        // ALONGSIDE `web`; the application default guard is repointed to `operator` at cleanup task 6.1.
+        'operator' => [
+            'driver' => 'session',
+            'provider' => 'operators',
+        ],
     ],
 
     /*
@@ -71,6 +79,13 @@ return [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+        // Resolves the Operator principal for the `operator` guard (operator-auth-foundation, design D2).
+        // The `users` provider above is removed at cleanup task 6.1, leaving `operators` as the sole provider.
+        'operators' => [
+            'driver' => 'eloquent',
+            'model' => env('AUTH_MODEL', Operator::class),
+        ],
     ],
 
     /*
@@ -96,6 +111,15 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        // Operator password-reset broker (operator-auth-foundation, design D2). Shares the generic
+        // `password_reset_tokens` table (retained at launch — a single authenticatable; design D1).
+        'operators' => [
+            'provider' => 'operators',
+            'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

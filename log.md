@@ -125,3 +125,5 @@
 ## [2026-06-15 11:32] ralph | operator-auth-foundation 2.2 | human-needed | spec mandates table 'operators' + model in OperatorPanel, but ModulePersistenceConventionsTest requires 'operator_panel_' prefix — irreconcilable, unanticipated. Fix=exempt auth principals+ADR (needs OK). 3 files in tree, not committed.
 
 ## [2026-06-15 13:26] unblock | operator-auth-foundation 2.2 | HUMAN_NEEDED resolved (Option A): auth-principal models (Authenticatable) exempt from module-prefix arch test (Operator->operators). Test skip + module-architecture MODIFIED delta + design D7 + ADR. Green SQLite+PG17 336/336, phpstan 0 @ max, pint. 2.3 next.
+
+## [2026-06-15 13:39] ralph | operator-auth-foundation 2.3 | green | 4 files | operator session guard+provider+broker in config/auth.php alongside web; OperatorGuardTest 7/20; 343/343 SQLite+PG17; phpstan0@max; pint; validate ok
