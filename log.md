@@ -149,3 +149,5 @@
 ## [2026-06-15 16:41] spec-to-change | parties-core | authored+validated (--strict) Module K 1st slice 'parties-core' (cap party-registry): 7 entities, 10 reqs/25 scenarios, 11 tasks, 5 *Created; marker-on-subtype per user (ADR=task1.1); Supplier/Account eventless; OC field-only. Awaiting human APPROVED
 
 ## [2026-06-15 16:51] ralph | parties-core 1.1 | green | ADR party-type-marker-on-subtype + INDEX row (docs-only); pint+lint+openspec validate --strict green | 4 files
+
+## [2026-06-15 16:56] ralph | parties-core 1.2 | green | 5 files (4 identity/account enums + EnumsTest); full suite 366 green, phpstan max 0 err, strict valid, composer diff empty; no DB (enum-only)

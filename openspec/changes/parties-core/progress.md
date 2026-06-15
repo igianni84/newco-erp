@@ -20,6 +20,17 @@
 ## Iterations
 (append one entry per loop iteration — narrative; promote durable patterns above)
 
+## [2026-06-15 16:54] — 1.2 Identity & account enums
+- Created the four identity/account backed string enums under `App\Modules\Parties\Enums\` (house style, mirroring `Catalog\Enums`): `PartyType` (`customer`/`supplier`/`third_party_owner` — the full BR-K-Identity-5 domain, all three declared now though only customer/supplier are produced this slice), `CustomerStatus` (`pending`/`active`/`suspended`/`closed`), `AccountStatus` (`active`/`suspended`/`closed`), `AccountType` (sole case `personal`). No DB. Each carries a docblock citing design D1/D2 + the spec § (§4.1/§4.5/§4.7, DEC-067/DEC-068) and the marker-on-subtype ADR.
+- Test `tests/Unit/Modules/Parties/Enums/EnumsTest.php` (mirrors the catalog EnumsTest, no `RefreshDatabase`): per enum a verbatim, order-sensitive `cases()`→`name=>value` `->toBe([...])` assertion + `->toHaveCount(n)` (the spec count rules — `AccountType`=1, `PartyType`=3), plus three `from()`→`ValueError` rejection guards.
+- Files changed: `app/Modules/Parties/Enums/{PartyType,CustomerStatus,AccountStatus,AccountType}.php` (new), `tests/Unit/Modules/Parties/Enums/EnumsTest.php` (new), `tasks.md` (1.2 checked), `progress.md` (this entry).
+- Quality loop: **green** — pint format ✅; filtered test ✅ (7 tests/11 assertions); full suite ✅ (366 tests/1358 assertions); phpstan max ✅ (0 errors); pint --test ✅; `openspec validate parties-core --strict` valid ✅; composer diff vs main empty ✅. No DB this task → no PG17 run needed (the gate applies to DB-touching tasks; first DB task is 2.1).
+- **Learnings for future iterations:**
+  - The remaining enums (task 1.3: `ProducerStatus`/`ClubStatus`/`ClubRegistrationFlowType`/`ProducerAgreementStatus`/`ProfileState`) **extend the same `EnumsTest.php`** (test hint) — keep the import block alphabetised and append `it(...)` blocks in the same verbatim+count shape. `ProfileState` is the length-9 spec rule and must include the terminal set `{rejected, cancelled, inactive}` referenced by the D8 partial index.
+  - House-style enum = one docblock (design ref + spec § + persisted-token note) then bare `case`s; values are persisted tokens (snake_case), not user-facing copy, so no i18n. `ThirdPartyOwner='third_party_owner'` is the snake_case backing for the PascalCase case name.
+  - The catalog `from()`→`ValueError` rejection test is the house convention for "value outside the domain"; keep one per enum that has a hard domain rule.
+---
+
 ## [2026-06-15 16:49] — 1.1 ADR: party-type marker on subtype
 - Wrote the one new decision this change introduces: `decisions/2026-06-15-party-type-marker-on-subtype.md` (status active, dated 2026-06-15), recording **marker-on-subtype** — an immutable `party_type` enum (`customer`/`supplier`/`third_party_owner`) on each distinct `parties_*` subtype table (Customer, Supplier), so BR-K-Identity-5 holds **by construction**; the unified `parties_parties` registry, the dormant `third_party_owner` entity and marker overlap are **deferred** to a future `parties-party-registry` slice (the enum declares all three markers now → no later enum migration); Producer carries no marker (§4.4 — not a Party). Standard ADR sections (Decision/Context/Alternatives/Reasoning/Trade-offs/References). Added the `decisions/INDEX.md` row as the newest entry.
 - Files changed: `decisions/2026-06-15-party-type-marker-on-subtype.md` (new), `decisions/INDEX.md` (row), `openspec/changes/parties-core/tasks.md` (1.1 checked), `progress.md` (this entry).
