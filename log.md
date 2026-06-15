@@ -145,3 +145,27 @@
 ## [2026-06-15 15:05] ralph | operator-auth-foundation 6.3 | green | cross-engine close: SQLite 359/359 + PG17 359/359 (live DRIVER=pgsql 17.10), phpstan 0@max, pint clean; spatie 8.0.0 recorded | CHANGE COMPLETE 12/12
 
 ## [2026-06-15 15:45] close | operator-auth-foundation | GUIDE §2.7: re-verified SQLite 359/359 + PG17 359/359 (live driver) + phpstan 0 + pint + semantic CLEAN → merged --no-ff (1e46082) + pushed + branch deleted + archived (d74c8fc) + pushed; main in sync w/ origin
+
+## [2026-06-15 16:41] spec-to-change | parties-core | authored+validated (--strict) Module K 1st slice 'parties-core' (cap party-registry): 7 entities, 10 reqs/25 scenarios, 11 tasks, 5 *Created; marker-on-subtype per user (ADR=task1.1); Supplier/Account eventless; OC field-only. Awaiting human APPROVED
+
+## [2026-06-15 16:51] ralph | parties-core 1.1 | green | ADR party-type-marker-on-subtype + INDEX row (docs-only); pint+lint+openspec validate --strict green | 4 files
+
+## [2026-06-15 16:56] ralph | parties-core 1.2 | green | 5 files (4 identity/account enums + EnumsTest); full suite 366 green, phpstan max 0 err, strict valid, composer diff empty; no DB (enum-only)
+
+## [2026-06-15 17:03] ralph | parties-core 1.3 | green | 6 files (5 registry/membership enums + extended EnumsTest, 18 tests); all 10 Parties enums exist; no DB
+
+## [2026-06-15 17:14] ralph | parties-core 2.1 Producer | green | first Parties DB entity (migration+model+factory+ProducerCreated+CreateProducer+test); 384/1408 green on SQLite AND PG17; phpstan max 0; 6 new files
+
+## [2026-06-15 17:26] ralph | parties-core 2.2 Supplier | green | 5 files (migration+model+factory+action+test); minimal entity (no status/version/event); full 389/1420 SQLite+PG17; party_type CHECK proven on PG
+
+## [2026-06-15 17:41] ralph | parties-core 3.1 Club | green | 8 new files (migration/model/factory/event/exception/action/test + lang/en/parties.php) | first FK + first Money field | 396/1460 SQLite+PG17 | CHECKs+FK proven on PG
+
+## [2026-06-15 17:52] ralph | parties-core 3.2 ProducerAgreement | green | 10 files (7 new + lang/tasks/progress) | 404/1504 SQLite & PG17; CHECK+2 FKs proven on PG; single-active not enforced (activation rule)
+
+## [2026-06-15 18:17] ralph | parties-core 4.1 Customer+Account | green | 10 new files (2 migrations, 2 models, 2 factories, CustomerCreated, DuplicateCustomerEmail, CreateCustomer, 2 tests) + lang; 416/1576 SQLite AND PG17; 7 PG constraints proven; 8/11 done
+
+## [2026-06-15 18:33] ralph | parties-core 5.1 Profile | green | 11 files | partial-unique index D8 RESOLVED (portable PG17+SQLite); 424/1618 SQLite, 47/47 Parties PG17; 9/11 done
+
+## [2026-06-15 18:41] ralph | parties-core 6.1 | green | docs-only: CONTEXT.md Parties spine glossary + 5 *Created payload-contract table (keys verified vs Events) + Supplier/Account event-silence; Club/OC enriched in place; 3 files; 10/11
+
+## [2026-06-15 18:52] ralph | parties-core 6.2 | green | 1 file (SpineCreationChainTest) | full 428/1649 SQLite+PG17, arch 3/154 PG17 unamended | CHANGE COMPLETE 11/11

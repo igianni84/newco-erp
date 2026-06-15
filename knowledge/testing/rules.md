@@ -12,6 +12,12 @@ DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_US
 docker rm -f pg
 ```
 
+**Two runner artifacts on the PG full-suite run (not test failures) — seen once the suite passed ~400 tests (`parties-core` 4.1, 416 tests):**
+- **`pest-plugin-arch` OOM.** The Arch tests parse every class's docblocks (`phpstan/phpdoc-parser`), which exhausts the **default 128 MB** CLI `memory_limit` on the heavier PG run (the code is engine-independent; PG's footprint just tips it over). Fatal: `Allowed memory size … exhausted in …/phpdoc-parser/…`. Fix: run the PG full suite with `php -d memory_limit=512M …`.
+- **`laravel/pao` stdout-teardown fatal.** `php artisan test` on PG throws at shutdown — `Laravel\Pao\Execution->restoreStdout()` → `stream_filter_remove(...)` → `NoTestCaseObjectOnCallStackException` — which **swallows the JSON summary** (it does NOT happen on SQLite; PG emits NOTICE output that collides with pao's stdout filter). Fix: run **`vendor/bin/pest` directly** (bypasses the artisan/pao wrapper) for a clean `{"result":"passed",…}` line.
+
+So the full cross-engine close at scale is `… php -d memory_limit=512M vendor/bin/pest`; for a focused per-task gate, `… php artisan test tests/Feature/Modules/<Module>` runs clean under both at default memory. Either way, **also prove the PG-only constraints directly** (`migrate:fresh` on PG → seed parents → attempt each forbidden insert via `docker exec pg psql -c …`, assert the named CHECK/FK/unique constraint rejects it) — the SQLite lane cannot enforce them, which is the gate's whole point.
+
 The five recurring SQLite-vs-PG portability traps — assert around them from the start:
 
 1. **No anonymous classes as PERSISTED identities.** A registered consumer FQCN (or any string a test writes into a column and reads back on PG) must be a NAMED class. An anonymous-class name is `class@anonymous\0<path>:<line>` — it carries a **NUL byte**; PostgreSQL `text`/`varchar` TRUNCATES a value at its first NUL, so two distinct anonymous instances collapse to the same stored string and collide on a unique index (a false `23505`). SQLite keeps the NUL, hiding the bug. Use named doubles under `Tests\Support\` (e.g. `InertConsumerA/B`). This SUPERSEDES the archived change's "two `new class` statements ⇒ two distinct FQCNs" pattern for anything PERSISTED — and is the production-faithful shape (real module consumers are always named).
