@@ -15,8 +15,11 @@ class RoleSeeder extends Seeder
      * permissions and NO role→capability map. The authority-tier policy that
      * grants capabilities (and the separation-of-duties floor) is deferred to
      * later changes — see design D4.
+     *
+     * Public so OperatorSeeder grants the bootstrap operator exactly the roles
+     * seeded here (design D6) — a single source of truth for the role set.
      */
-    private const ROLES = ['Creator', 'Reviewer', 'Approver'];
+    public const ROLES = ['Creator', 'Reviewer', 'Approver'];
 
     /**
      * Seed the operator roles on the `operator` guard, idempotently.

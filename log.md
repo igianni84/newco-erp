@@ -135,3 +135,5 @@
 ## [2026-06-15 14:10] ralph | operator-auth-foundation 4.2 | green | end-to-end recorder proof (test-only): operator session → ActorContext → DomainEventRecorder persists newco_ops + operator id; 349/349 SQLite + PG17; 3 files
 
 ## [2026-06-15 14:18] ralph | operator-auth-foundation 5.1 | green | RoleSeeder: 3 bare roles (Creator/Reviewer/Approver) on operator guard, idempotent firstOrCreate, no perms; 352/352 SQLite+PG17, phpstan 0@max; 2 new files
+
+## [2026-06-15 14:31] ralph | operator-auth-foundation 5.2 | green | 6 files — OperatorSeeder+DatabaseSeeder cut to Operator, bootstrap op gets all 3 roles; 356/356 SQLite+PG17, phpstan 0@max
