@@ -35,7 +35,7 @@
   - Acceptance: an operator-authenticated request resolves `newco_ops` + the operator id; console/unauthenticated resolves `system`/null; a run-as override beats an operator session and restores after; resolution is not memoised across requests; `ModuleBoundariesTest` green with no amendment; quality green; **verified on PG17**.
   - Test hint: **REWRITE** the gate-safe scenario in `tests/Feature/Platform/Events/ActorContextTest.php` — was `actingAs(User…)` → expect `system`; now `actingAs(Operator…, 'operator')` → `NewcoOps` + id; no-auth → `System`; `runAs(System, null, …)` inside an operator session → `System` then reverts to `NewcoOps`/id. (`app/Platform/Events/ActorContext.php` imports no OperatorPanel namespace — the arch test enforces it.)
 
-- [ ] 4.2 **End-to-end recorder proof** (design D5) — prove an operator-authenticated emission carries the right envelope through `DomainEventRecorder` + `ActorContext`.
+- [x] 4.2 **End-to-end recorder proof** (design D5) — prove an operator-authenticated emission carries the right envelope through `DomainEventRecorder` + `ActorContext`.
   - Acceptance: a domain event recorded inside an operator-authenticated context persists `actor_role = 'newco_ops'` and `actor_id =` the operator id; quality green; **verified on PG17**.
   - Test hint: `tests/Feature/Modules/OperatorPanel/OperatorActorContextWiringTest.php` — `actingAs(Operator…, 'operator')`; inside a `DB::transaction` call `DomainEventRecorder::record()` with the `ActorContext`-resolved role/id and a **synthetic** demo event name (reserve verbatim spec event names for module changes); assert the `domain_events` row's `actor_role`/`actor_id`.
 
