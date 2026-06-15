@@ -155,3 +155,5 @@
 ## [2026-06-15 17:03] ralph | parties-core 1.3 | green | 6 files (5 registry/membership enums + extended EnumsTest, 18 tests); all 10 Parties enums exist; no DB
 
 ## [2026-06-15 17:14] ralph | parties-core 2.1 Producer | green | first Parties DB entity (migration+model+factory+ProducerCreated+CreateProducer+test); 384/1408 green on SQLite AND PG17; phpstan max 0; 6 new files
+
+## [2026-06-15 17:26] ralph | parties-core 2.2 Supplier | green | 5 files (migration+model+factory+action+test); minimal entity (no status/version/event); full 389/1420 SQLite+PG17; party_type CHECK proven on PG
