@@ -129,3 +129,5 @@
 ## [2026-06-15 13:39] ralph | operator-auth-foundation 2.3 | green | 4 files | operator session guard+provider+broker in config/auth.php alongside web; OperatorGuardTest 7/20; 343/343 SQLite+PG17; phpstan0@max; pint; validate ok
 
 ## [2026-06-15 13:50] ralph | operator-auth-foundation 3.1 | green | 4 files | AdminPanelProvider→authGuard(operator)+passwordReset()+opt-in MFA(recoverable); OperatorPanelTest rewritten; 346/346 SQLite & PG17; phpstan 0@max
+
+## [2026-06-15 14:01] ralph | operator-auth-foundation 4.1 | green | 4 files | ActorContext→operator guard lazy per-call (override→NewcoOps/id→System); 347/347 SQLite+PG17; phpstan 0 max

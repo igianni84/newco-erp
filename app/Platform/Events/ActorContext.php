@@ -2,6 +2,8 @@
 
 namespace App\Platform\Events;
 
+use Illuminate\Support\Facades\Auth;
+
 /**
  * The canonical seam that supplies the actor provenance — `(actor_role, actor_id)` —
  * for the current execution context, so the domain-event and audit recorders obtain
@@ -9,45 +11,67 @@ namespace App\Platform\Events;
  * at every call site (foundations-money-i18n-flags, design D6; the event-substrate
  * "Actor Context Resolution" requirement).
  *
- * Launch behaviour: the default context is `(ActorRole::System, null)` — the role for
- * console, queue and unauthenticated work. {@see runAs()} applies an explicit role
- * (and optional actor id) for the duration of a callable and restores the PRIOR
- * context afterward (even if the callable throws), so overrides nest correctly.
+ * Resolution is LAZY and PER-CALL, in this precedence (operator-auth-foundation, design D5):
+ *   1. an explicit scoped {@see runAs()} override wins (console, queue, jobs, tests, system work);
+ *   2. else an operator authenticated on the `operator` session guard →
+ *      (`ActorRole::NewcoOps`, the operator id);
+ *   3. else (`ActorRole::System`, null) — unauthenticated / console / queue work.
  *
- * GATE-SAFE BY CONSTRUCTION: this seam reads NO authentication state and imports no
- * auth / Filament / module code, so it stays on the safe side of the identity/auth
- * ADR gate (which fires before Module K). Mapping an authenticated operator, producer
- * or customer to their `actor_role` is that ADR's responsibility (Module K); the auth
- * ADR will later wire the authenticated principal in HERE — to this one seam — with no
- * call-site churn. ActorContextTest pins the gate-safety both ways: an authenticated
- * session still resolves to System (behavioural), and an arch import assertion proves
- * no auth namespace is even referenced (structural).
+ * The operator guard is read BY NAME (`Auth::guard('operator')`); this seam imports NOTHING
+ * from `App\Modules\OperatorPanel` (no `Operator` model), so it stays boundary-clean platform
+ * code — `ModuleBoundariesTest` (App\Platform must not depend on App\Modules) pins that
+ * globally and `ActorContextTest` adds a localised structural guard. The customer and producer
+ * guards are NOT consulted yet: their identity changes (deferred) extend step 2.
  *
- * Shared process-wide as a container singleton (AppServiceProvider::register), so a
- * run-as override set on the resolved instance is observed by every consumer that
- * resolves it within that scope.
+ * {@see runAs()} applies an explicit role (and optional actor id) for the duration of a
+ * callable and restores the PRIOR override afterward (even if the callable throws), so
+ * overrides nest correctly.
+ *
+ * Shared process-wide as a container singleton (AppServiceProvider::register). The override
+ * is a NULLABLE field distinct from the default so that, with no override in force, the guard
+ * is consulted at `role()`/`actorId()` call time and NEVER memoised across a request or worker
+ * (correct regardless; matters under Octane). A non-null override role marks an override as
+ * present even when it overrides to (`System`, null) — which a defaulted field could not tell
+ * apart from "no override".
  */
 class ActorContext
 {
-    private ActorRole $role = ActorRole::System;
+    /**
+     * The role of an active {@see runAs()} override, or null when none is in force. Nullable BY
+     * DESIGN (not defaulted to a role): its null-ness signals "no override" so steps 2/3 resolve
+     * the guard lazily, and a non-null value records an override even when it targets
+     * (`System`, null).
+     */
+    private ?ActorRole $overrideRole = null;
 
-    private ?int $actorId = null;
+    private ?int $overrideActorId = null;
 
-    /** The acting role for the current context (default {@see ActorRole::System}). */
+    /** The acting role for the current context (override → operator guard → {@see ActorRole::System}). */
     public function role(): ActorRole
     {
-        return $this->role;
+        if ($this->overrideRole !== null) {
+            return $this->overrideRole;
+        }
+
+        return Auth::guard('operator')->check() ? ActorRole::NewcoOps : ActorRole::System;
     }
 
-    /** The acting principal's id for the current context, or null (the default). */
+    /** The acting principal's id for the current context (override → operator id → null). */
     public function actorId(): ?int
     {
-        return $this->actorId;
+        if ($this->overrideRole !== null) {
+            return $this->overrideActorId;
+        }
+
+        // Guard::id() is contract-typed int|string|null; coerce the operator's bigint key to int.
+        $id = Auth::guard('operator')->id();
+
+        return $id === null ? null : (int) $id;
     }
 
     /**
      * Run $callback with `($role, $actorId)` as the current context, restoring the
-     * prior context afterward — even if $callback throws. The runner is transparent:
+     * prior override afterward — even if $callback throws. The runner is transparent:
      * it returns the callback's own return value.
      *
      * @template TReturn
@@ -57,17 +81,17 @@ class ActorContext
      */
     public function runAs(ActorRole $role, ?int $actorId, callable $callback): mixed
     {
-        $priorRole = $this->role;
-        $priorActorId = $this->actorId;
+        $priorRole = $this->overrideRole;
+        $priorActorId = $this->overrideActorId;
 
-        $this->role = $role;
-        $this->actorId = $actorId;
+        $this->overrideRole = $role;
+        $this->overrideActorId = $actorId;
 
         try {
             return $callback();
         } finally {
-            $this->role = $priorRole;
-            $this->actorId = $priorActorId;
+            $this->overrideRole = $priorRole;
+            $this->overrideActorId = $priorActorId;
         }
     }
 }
