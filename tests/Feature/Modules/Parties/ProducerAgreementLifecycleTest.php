@@ -1,9 +1,12 @@
 <?php
 
 use App\Modules\Parties\Actions\ActivateProducerAgreement;
+use App\Modules\Parties\Actions\TerminateProducerAgreement;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ProducerAgreementActivated;
 use App\Modules\Parties\Events\ProducerAgreementSuperseded;
+use App\Modules\Parties\Events\ProducerAgreementTerminated;
 use App\Modules\Parties\Exceptions\IllegalProducerAgreementTransition;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
@@ -19,6 +22,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * `ProducerAgreement.status` for activation/supersession and the SINGLE writer of both
  * {@see ProducerAgreementActivated} and {@see ProducerAgreementSuperseded} — together with the scope-aware,
  * NULL-safe enforcement of BR-K-Agreement-1 (at most one active agreement per `(producer_id, club_id)` scope).
+ * It also covers the `active → terminated` transition via {@see TerminateProducerAgreement} — the SOLE writer of
+ * `ProducerAgreement.status` for termination and the SINGLE writer of {@see ProducerAgreementTerminated} — a pure
+ * standalone transition that records a root event, drives no derived event, and does NOT cascade to the
+ * Producer's state (§ 4.6.1).
  *
  * The supersession scope is the trap this test set exists to nail: a NULL `club_id` is the DISTINCT
  * Producer-wide scope, so the prior-active lookup must use `whereNull('club_id')` (not `where('club_id', null)`,
@@ -241,6 +248,88 @@ it('rejects activating a terminated agreement and records nothing', function () 
         ->toThrow(IllegalProducerAgreementTransition::class);
 
     // `terminated` is terminal — activation cannot resurrect it; the guard leaves the row untouched.
+    expect(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Terminated)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('terminates an active agreement without cascading — a root ProducerAgreementTerminated, the Producer unchanged', function () {
+    // Spec "Terminate an active agreement without cascading": an `active` agreement under an `active` Producer.
+    // The factory seeds both directly (bypassing the actions), so it records nothing — the termination is the
+    // only event, and the Producer stays `active` (termination does NOT cascade to Producer state — § 4.6.1).
+    $producer = Producer::factory()->create(['status' => ProducerStatus::Active]);
+    $agreement = ProducerAgreement::factory()->create([
+        'producer_id' => $producer->id,
+        'status' => ProducerAgreementStatus::Active,
+    ]);   // Producer-wide (club_id null)
+
+    $returned = app(TerminateProducerAgreement::class)->handle($agreement->id);
+
+    expect($returned->status)->toBe(ProducerAgreementStatus::Terminated)
+        ->and(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Terminated);
+
+    // NO cascade to Producer state (§ 4.6.1): the Producer FSM is independent of its agreements.
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active);
+
+    // Exactly one domain event — the termination; it drives no derived event and no cascade.
+    expect(DomainEvent::query()->count())->toBe(1);
+
+    $event = DomainEvent::query()->where('name', ProducerAgreementTerminated::NAME)->sole();
+
+    expect($event->module)->toBe('parties')                       // Module::Parties->value
+        ->and($event->entity_type)->toBe('ProducerAgreement')
+        ->and($event->entity_id)->toBe((string) $agreement->id)   // envelope entity_id is a string
+        ->and($event->actor_role)->toBe(ActorRole::System);       // the ActorContext seam default
+
+    // Payload asserted BY KEY (knowledge/testing trap 3 — never byte-compare PG jsonb): the four-key terminal
+    // shape (no linkage field — termination pairs with nothing), pinned so the PII-free contract cannot widen.
+    expect(array_keys($event->payload))
+        ->toEqualCanonicalizing(['producer_agreement_id', 'producer_id', 'club_id', 'status']);
+
+    expect($event->payload['producer_agreement_id'])->toBe($agreement->id)
+        ->and($event->payload['producer_id'])->toBe($producer->id)
+        ->and($event->payload['club_id'])->toBeNull()
+        ->and($event->payload['status'])->toBe('terminated');
+
+    // Transition-shaped subset: the creation snapshot fields are deliberately absent (the immutable creation
+    // record holds them).
+    expect($event->payload)->not->toHaveKey('term_start')
+        ->and($event->payload)->not->toHaveKey('settlement_cadence');
+
+    // Termination is a ROOT event: self-correlated, no cause (it is never part of a cascade).
+    expect($event->causation_id)->toBeNull()
+        ->and($event->correlation_id)->toBe($event->event_id);
+});
+
+it('rejects terminating an agreement still in draft and records nothing', function () {
+    $agreement = ProducerAgreement::factory()->create();   // born `draft`
+
+    expect(fn () => app(TerminateProducerAgreement::class)->handle($agreement->id))
+        ->toThrow(IllegalProducerAgreementTransition::class);
+
+    // The from-state guard fires before any write and the transaction rolls back: `draft` is not terminable
+    // (termination is reachable only from `active`), so the status is unchanged and no event was recorded.
+    expect(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Draft)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects terminating a superseded agreement and records nothing', function () {
+    $agreement = ProducerAgreement::factory()->create(['status' => ProducerAgreementStatus::Superseded]);
+
+    expect(fn () => app(TerminateProducerAgreement::class)->handle($agreement->id))
+        ->toThrow(IllegalProducerAgreementTransition::class);
+
+    // `superseded` is terminal — a replaced agreement cannot be terminated; the guard leaves the row untouched.
+    expect(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Superseded)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects terminating an already-terminated agreement and records nothing', function () {
+    $agreement = ProducerAgreement::factory()->create(['status' => ProducerAgreementStatus::Terminated]);
+
+    expect(fn () => app(TerminateProducerAgreement::class)->handle($agreement->id))
+        ->toThrow(IllegalProducerAgreementTransition::class);
+
+    // `terminated` is terminal — termination is idempotent-by-rejection; the guard leaves the row untouched.
     expect(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Terminated)
         ->and(DomainEvent::query()->count())->toBe(0);
 });
