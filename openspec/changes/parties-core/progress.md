@@ -20,4 +20,13 @@
 ## Iterations
 (append one entry per loop iteration — narrative; promote durable patterns above)
 
-_None yet — awaiting APPROVED + `./ralph.sh`._
+## [2026-06-15 16:49] — 1.1 ADR: party-type marker on subtype
+- Wrote the one new decision this change introduces: `decisions/2026-06-15-party-type-marker-on-subtype.md` (status active, dated 2026-06-15), recording **marker-on-subtype** — an immutable `party_type` enum (`customer`/`supplier`/`third_party_owner`) on each distinct `parties_*` subtype table (Customer, Supplier), so BR-K-Identity-5 holds **by construction**; the unified `parties_parties` registry, the dormant `third_party_owner` entity and marker overlap are **deferred** to a future `parties-party-registry` slice (the enum declares all three markers now → no later enum migration); Producer carries no marker (§4.4 — not a Party). Standard ADR sections (Decision/Context/Alternatives/Reasoning/Trade-offs/References). Added the `decisions/INDEX.md` row as the newest entry.
+- Files changed: `decisions/2026-06-15-party-type-marker-on-subtype.md` (new), `decisions/INDEX.md` (row), `openspec/changes/parties-core/tasks.md` (1.1 checked), `progress.md` (this entry).
+- Quality loop: **green** (docs-only per task acceptance — `vendor/bin/pint` passed, `vendor/bin/pint --test` passed, `openspec validate parties-core --strict` valid; no PHP touched so test/type_check have nothing to act on; composer.json/lock diff vs main empty).
+- **Learnings for future iterations:**
+  - Every spec citation in the ADR was verified firsthand before writing: DEC-067 (`spec/04-decisions/decisions.md:511` — "Party Registry with `party_type = SUPPLIER`"), DEC-073 (`:617` — representation delegated to dev team), Module K PRD §4.4 (`:223,235` — "Producer is NOT a Party subtype"), §4.5 (`:245,249` — "Supplier is a Party Registry subtype … the immutable party-type marker"), BR-K-Identity-5 (`:658` — marker immutable, Customer ≠ Supplier). The Module K PRD entity sections are `### §4.x`, not numeric markdown headers — grep `§4\.` not `^#+ 4\.`.
+  - The catalog ADR `decisions/2026-06-14-catalog-category-neutral-representation.md` is the exact format precedent (sibling DEC-073-delegated representation choice) — mirror its section set and depth.
+  - `PartyType` enum (built at task 1.2) must carry all three markers (`customer`,`supplier`,`third_party_owner`) per this ADR + BR-K-Identity-5, even though only two are produced this slice.
+  - The Producer↔Supplier overlap is Module D's `SupplierProducerLink` (DEC-067 / §4.5), **not** a Module-K marker — do not model it here.
+---

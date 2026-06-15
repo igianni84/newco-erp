@@ -145,3 +145,7 @@
 ## [2026-06-15 15:05] ralph | operator-auth-foundation 6.3 | green | cross-engine close: SQLite 359/359 + PG17 359/359 (live DRIVER=pgsql 17.10), phpstan 0@max, pint clean; spatie 8.0.0 recorded | CHANGE COMPLETE 12/12
 
 ## [2026-06-15 15:45] close | operator-auth-foundation | GUIDE §2.7: re-verified SQLite 359/359 + PG17 359/359 (live driver) + phpstan 0 + pint + semantic CLEAN → merged --no-ff (1e46082) + pushed + branch deleted + archived (d74c8fc) + pushed; main in sync w/ origin
+
+## [2026-06-15 16:41] spec-to-change | parties-core | authored+validated (--strict) Module K 1st slice 'parties-core' (cap party-registry): 7 entities, 10 reqs/25 scenarios, 11 tasks, 5 *Created; marker-on-subtype per user (ADR=task1.1); Supplier/Account eventless; OC field-only. Awaiting human APPROVED
+
+## [2026-06-15 16:51] ralph | parties-core 1.1 | green | ADR party-type-marker-on-subtype + INDEX row (docs-only); pint+lint+openspec validate --strict green | 4 files
