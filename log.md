@@ -169,3 +169,5 @@
 ## [2026-06-15 18:41] ralph | parties-core 6.1 | green | docs-only: CONTEXT.md Parties spine glossary + 5 *Created payload-contract table (keys verified vs Events) + Supplier/Account event-silence; Club/OC enriched in place; 3 files; 10/11
 
 ## [2026-06-15 18:52] ralph | parties-core 6.2 | green | 1 file (SpineCreationChainTest) | full 428/1649 SQLite+PG17, arch 3/154 PG17 unamended | CHANGE COMPLETE 11/11
+
+## [2026-06-15 20:28] close | parties-core | GUIDE 2.7: gates re-verified (428/1649 SQLite+PG17, phpstan max 0, openspec --strict); 3-lens semantic-verify 0 CRITICAL / 2 non-blocking WARN; merged --no-ff a51634f, archived 6db57aa (party-registry synced to specs), branch deleted, pushed
