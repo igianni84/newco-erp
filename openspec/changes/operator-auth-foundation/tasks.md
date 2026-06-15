@@ -10,7 +10,7 @@
 
 ## 2. Operator principal — built alongside the bootstrap `User`
 
-- [ ] 2.1 **`operators` table migration** (design D1/D3) — a **new** migration `…_create_operators_table` (do NOT touch the `users` table yet): bigint `id`; `name`; `email` unique; `email_verified_at` nullable (framework compat, unused); `password`; `app_authentication_secret` (text, nullable); `app_authentication_recovery_codes` (text, nullable); `rememberToken()`; `timestamps()`. Leave the existing `sessions` + `password_reset_tokens` tables intact (the default migration still creates them).
+- [x] 2.1 **`operators` table migration** (design D1/D3) — a **new** migration `…_create_operators_table` (do NOT touch the `users` table yet): bigint `id`; `name`; `email` unique; `email_verified_at` nullable (framework compat, unused); `password`; `app_authentication_secret` (text, nullable); `app_authentication_recovery_codes` (text, nullable); `rememberToken()`; `timestamps()`. Leave the existing `sessions` + `password_reset_tokens` tables intact (the default migration still creates them).
   - Acceptance: `operators` exists with those columns; the `users` table is still present (transient, alongside); `migrate:fresh` green on SQLite **and** PG17.
   - Test hint: `tests/Feature/Modules/OperatorPanel/OperatorsTableMigrationTest.php` — `Schema::hasColumn('operators', …)` for `email`/`password`/`app_authentication_secret`/`app_authentication_recovery_codes`. Confirm the Filament MFA contracts' expected column convention (`app_authentication_secret` / `app_authentication_recovery_codes`) in `vendor/` before naming. **Verified on PG17.**
 

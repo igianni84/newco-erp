@@ -119,3 +119,5 @@
 ## [2026-06-15 10:52] spec-to-change | operator-auth-foundation | authored+validated --strict, founder-APPROVED. NEW operator-identity (4 ADDED) + MODIFIED event-substrate (ActorContext->operator guard) + platform. 11 tasks/6 groups; User->Operator cutover; 2FA opt-in TOTP. Awaiting human APPROVED marker -> ralph.
 
 ## [2026-06-15 11:04] ralph | operator-auth-foundation 1.1 | green | spatie/laravel-permission 8.0.0 installed + config/migration published (teams off), 5 RBAC tables, migration phpstan-excluded, PG17-verified 324/324
+
+## [2026-06-15 11:10] ralph | operator-auth-foundation 2.1 | green | 2 files (operators migration + test) | 328/328 SQLite + PG17, phpstan 0 @ max, pint clean | 2 of 12 done
