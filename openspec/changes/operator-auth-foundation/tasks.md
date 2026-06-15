@@ -58,5 +58,5 @@
 - [x] 6.2 **Docs** — update `CONTEXT.md` → *Actor context* (the seam is now wired: an authenticated `operator` → `newco_ops`/`Operator.id`, `system` otherwise; customer/producer guards deferred — remove the "reads NO authentication state … until that ADR wires it" line); record in `docs/development.md` the pinned `spatie` version, the operator-auth wiring, and the operator credential env vars; mark the Identity/auth gate **built** on the `decisions/INDEX.md` open-decisions line. No code.
   - Acceptance: `CONTEXT.md` *Actor context* reflects the wired seam; `docs/development.md` records the spatie version + env vars; `decisions/INDEX.md` updated; `openspec validate operator-auth-foundation --strict` green; lint/format green.
 
-- [ ] 6.3 **Full cross-engine close** — run the **entire** Pest suite on SQLite **and** PostgreSQL 17 (print `DRIVER=pgsql`, remove the container); `phpstan analyse` 0 errors at max; `pint --test` clean.
+- [x] 6.3 **Full cross-engine close** — run the **entire** Pest suite on SQLite **and** PostgreSQL 17 (print `DRIVER=pgsql`, remove the container); `phpstan analyse` 0 errors at max; `pint --test` clean.
   - Acceptance: the full suite is green on both engines; phpstan max reports 0 errors; pint is clean; the PG17 run + the pinned spatie version are recorded in `progress.md`.

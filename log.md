@@ -141,3 +141,5 @@
 ## [2026-06-15 14:48] ralph | operator-auth-foundation 6.1 | green | removed orphaned User+UserFactory, dropped users-table block, config/auth.php->operator default; Laravel base-merge keeps inert web/users (new knowledge/laravel rule); 359/359 SQLite+PG17; new AuthDefaultsTest
 
 ## [2026-06-15 15:01] ralph | operator-auth-foundation 6.2 | green | docs-only, 4 files (CONTEXT.md Actor-context, docs/development.md spatie+wiring+env, decisions/INDEX.md built-marker, FoundationsDocsTest comment); 359/359 SQLite, phpstan max, validate strict; PG17 deferred to 6.3
+
+## [2026-06-15 15:05] ralph | operator-auth-foundation 6.3 | green | cross-engine close: SQLite 359/359 + PG17 359/359 (live DRIVER=pgsql 17.10), phpstan 0@max, pint clean; spatie 8.0.0 recorded | CHANGE COMPLETE 12/12
