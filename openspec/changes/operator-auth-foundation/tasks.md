@@ -51,7 +51,7 @@
 
 ## 6. Remove the bootstrap `User`, docs & cross-engine close
 
-- [ ] 6.1 **Remove the orphaned `User` + finish `config/auth.php`** (design D1) — delete `app/Models/User.php` + `database/factories/UserFactory.php`; edit the default migration to drop **only** its `users` table block (keep `password_reset_tokens` + `sessions`); remove the `users` provider from `config/auth.php` and repoint the app default guard (and `AUTH_MODEL` default) to `operator`/`Operator`. Everything already cut over in groups 3–5, so this stays green.
+- [x] 6.1 **Remove the orphaned `User` + finish `config/auth.php`** (design D1) — delete `app/Models/User.php` + `database/factories/UserFactory.php`; edit the default migration to drop **only** its `users` table block (keep `password_reset_tokens` + `sessions`); remove the `users` provider from `config/auth.php` and repoint the app default guard (and `AUTH_MODEL` default) to `operator`/`Operator`. Everything already cut over in groups 3–5, so this stays green.
   - Acceptance: `grep -rE 'App\\\\Models\\\\User|UserFactory' app config database tests` is empty; `Schema::hasTable('users')` is false while `sessions` + `password_reset_tokens` remain; `config('auth.defaults.guard') === 'operator'`; full suite green; **verified on PG17**.
   - Test hint: `tests/Feature/Modules/OperatorPanel/AuthDefaultsTest.php` — assert the default guard is `operator`, there is no `users` provider, and the table set is correct (`hasTable('operators')` true, `hasTable('users')` false, `hasTable('sessions')` + `hasTable('password_reset_tokens')` true).
 

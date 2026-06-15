@@ -137,3 +137,5 @@
 ## [2026-06-15 14:18] ralph | operator-auth-foundation 5.1 | green | RoleSeeder: 3 bare roles (Creator/Reviewer/Approver) on operator guard, idempotent firstOrCreate, no perms; 352/352 SQLite+PG17, phpstan 0@max; 2 new files
 
 ## [2026-06-15 14:31] ralph | operator-auth-foundation 5.2 | green | 6 files — OperatorSeeder+DatabaseSeeder cut to Operator, bootstrap op gets all 3 roles; 356/356 SQLite+PG17, phpstan 0@max
+
+## [2026-06-15 14:48] ralph | operator-auth-foundation 6.1 | green | removed orphaned User+UserFactory, dropped users-table block, config/auth.php->operator default; Laravel base-merge keeps inert web/users (new knowledge/laravel rule); 359/359 SQLite+PG17; new AuthDefaultsTest

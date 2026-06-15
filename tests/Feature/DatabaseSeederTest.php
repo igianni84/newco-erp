@@ -8,7 +8,6 @@ use App\Modules\OperatorPanel\Models\Operator;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-use function Pest\Laravel\assertDatabaseCount;
 use function Pest\Laravel\assertDatabaseMissing;
 use function Pest\Laravel\seed;
 
@@ -35,9 +34,8 @@ it('seeds roles before the operator so the bootstrap operator holds every role',
 it('no longer seeds the bootstrap Test User account', function () {
     seed(DatabaseSeeder::class);
 
-    // The dropped factory line created test@example.com on the (transient) users
-    // table; DatabaseSeeder now provisions only the operator. (users is removed
-    // wholesale at task 6.1, which retires this assertion.)
-    assertDatabaseCount('users', 0);
+    // The dropped factory line created test@example.com; DatabaseSeeder now provisions only the
+    // operator, so no Test User lands on the operators table. (The `users` table itself was removed
+    // wholesale at task 6.1 — AuthDefaultsTest pins its absence.)
     assertDatabaseMissing('operators', ['email' => 'test@example.com']);
 });

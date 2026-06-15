@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use App\Modules\OperatorPanel\Models\Operator;
 
 return [
@@ -17,8 +16,8 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
-        'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
+        'guard' => env('AUTH_GUARD', 'operator'),
+        'passwords' => env('AUTH_PASSWORD_BROKER', 'operators'),
     ],
 
     /*
@@ -39,13 +38,15 @@ return [
     */
 
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
-
-        // The operator login principal authenticates here (operator-auth-foundation, design D2). Added
-        // ALONGSIDE `web`; the application default guard is repointed to `operator` at cleanup task 6.1.
+        // The operator login principal authenticates here (operator-auth-foundation, design D2) and this is
+        // the application default guard (operator-auth-foundation 6.1) — the sole authenticatable at launch;
+        // the customer/producer guards are deferred to the Module S / TanStack gate.
+        //
+        // NOTE: Laravel deep-merges the framework's base config/auth.php UNDER this file for the `guards`,
+        // `providers` and `passwords` keys (Foundation\Bootstrap\LoadConfiguration::mergeableOptions), so the
+        // framework's default `web` guard + `users` provider/broker still appear in the merged config and
+        // cannot be removed from here. They are inert — the default guard is `operator` and no code resolves
+        // `web` — but a future guard slice should expect them when introspecting config('auth.*').
         'operator' => [
             'driver' => 'session',
             'provider' => 'operators',
@@ -70,18 +71,8 @@ return [
     */
 
     'providers' => [
-        'users' => [
-            'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
-        ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
-
         // Resolves the Operator principal for the `operator` guard (operator-auth-foundation, design D2).
-        // The `users` provider above is removed at cleanup task 6.1, leaving `operators` as the sole provider.
+        // The sole provider (operator-auth-foundation 6.1); `AUTH_MODEL` defaults to the Operator model.
         'operators' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', Operator::class),
@@ -108,15 +99,9 @@ return [
     */
 
     'passwords' => [
-        'users' => [
-            'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-
-        // Operator password-reset broker (operator-auth-foundation, design D2). Shares the generic
-        // `password_reset_tokens` table (retained at launch — a single authenticatable; design D1).
+        // Operator password-reset broker (operator-auth-foundation, design D2). The default broker
+        // (operator-auth-foundation 6.1). Uses the generic `password_reset_tokens` table (retained at
+        // launch — a single authenticatable; design D1).
         'operators' => [
             'provider' => 'operators',
             'table' => 'password_reset_tokens',

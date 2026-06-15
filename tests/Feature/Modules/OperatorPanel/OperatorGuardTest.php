@@ -1,12 +1,11 @@
 <?php
 
-// Task 2.3 (design D2) — the `operator` session guard is added to config/auth.php ALONGSIDE the bootstrap
-// `web`/`users` shell (removed at cleanup task 6.1). These assertions pin the guard/provider/password-broker
-// wiring, prove Auth::guard('operator') resolves the Operator provider and authenticates an Operator, and
-// confirm the additive change leaves the existing `web` guard and the application default guard untouched.
-// The cross-engine close (task 6.3) re-runs the suite on PostgreSQL 17.
+// Task 2.3 (design D2) — the `operator` session guard wiring in config/auth.php. These assertions pin the
+// guard/provider/password-broker config, prove Auth::guard('operator') resolves the Operator provider and
+// authenticates an Operator, and report a guest when none is. The application-default-guard end state (the
+// bootstrap `web`/`users` shell removed at task 6.1) is pinned by AuthDefaultsTest. The cross-engine close
+// (task 6.3) re-runs the suite on PostgreSQL 17.
 
-use App\Models\User;
 use App\Modules\OperatorPanel\Models\Operator;
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Auth\SessionGuard;
@@ -56,12 +55,4 @@ it('reports a guest on the operator guard when no operator is authenticated', fu
     expect(Auth::guard('operator')->check())->toBeFalse()
         ->and(Auth::guard('operator')->guest())->toBeTrue()
         ->and(Auth::guard('operator')->user())->toBeNull();
-});
-
-it('leaves the bootstrap web guard and the application default guard unchanged (cutover deferred to 6.1)', function () {
-    // Additive change: the existing shell is untouched until cleanup task 6.1 repoints the default guard.
-    expect(config('auth.defaults.guard'))->toBe('web')
-        ->and(config('auth.guards.web.driver'))->toBe('session')
-        ->and(config('auth.guards.web.provider'))->toBe('users')
-        ->and(config('auth.providers.users.model'))->toBe(User::class);
 });
