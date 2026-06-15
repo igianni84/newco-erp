@@ -115,3 +115,7 @@
 ## [2026-06-15 09:07] close | catalog-product-spine | GUIDE 2.7 close (interactive): PG17 suite 320/320 driver-proven pgsql 17.10 + semantic-verify CLEAN (0 CRITICAL) -> merge --no-ff main 5789f3a + push + branch deleted + openspec archive 0ef9539. main 320/320 SQLite, in sync w/ origin. No active changes.
 
 ## [2026-06-15 09:42] ADR | 2026-06-15-identity-auth (Module K gate) | Identity/auth gate CLOSED (grill, 5Q): first-party all actors (Fortify+Sanctum, EU-resident, no IdP); auth=foundation, principal refs party by id; multi-guard; spatie RBAC operator-scoped. CONTEXT.md +Identity&Access, INDEX updated. catalog-lifecycle-approval UNBLOCKED.
+
+## [2026-06-15 10:52] spec-to-change | operator-auth-foundation | authored+validated --strict, founder-APPROVED. NEW operator-identity (4 ADDED) + MODIFIED event-substrate (ActorContext->operator guard) + platform. 11 tasks/6 groups; User->Operator cutover; 2FA opt-in TOTP. Awaiting human APPROVED marker -> ralph.
+
+## [2026-06-15 11:04] ralph | operator-auth-foundation 1.1 | green | spatie/laravel-permission 8.0.0 installed + config/migration published (teams off), 5 RBAC tables, migration phpstan-excluded, PG17-verified 324/324

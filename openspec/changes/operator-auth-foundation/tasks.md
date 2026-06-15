@@ -4,7 +4,7 @@
 
 ## 1. Operator RBAC mechanism — spatie install
 
-- [ ] 1.1 **Install + configure `spatie/laravel-permission`** (design D4). `composer require spatie/laravel-permission` at the latest stable version (confirm on the real source per `prefer-latest-stable-versions`); publish its config (`config/permission.php`) and its migration; set **teams = false**; leave the model defaults. Record the pinned version in `docs/development.md` + `progress.md`.
+- [x] 1.1 **Install + configure `spatie/laravel-permission`** (design D4). `composer require spatie/laravel-permission` at the latest stable version (confirm on the real source per `prefer-latest-stable-versions`); publish its config (`config/permission.php`) and its migration; set **teams = false**; leave the model defaults. Record the pinned version in `docs/development.md` + `progress.md`.
   - Acceptance: the package is required at a pinned stable version; `config/permission.php` exists with teams disabled; the spatie migration is published and runs; quality commands green; `php artisan migrate:fresh` clean on SQLite **and** PostgreSQL 17.
   - Test hint: `tests/Feature/Modules/OperatorPanel/PermissionTablesMigrationTest.php` with `uses(RefreshDatabase::class)` — assert `Schema::hasTable('roles')`, `'permissions'`, `'model_has_roles'`, `'model_has_permissions'`, `'role_has_permissions'`. Verify the exact composer package name + `vendor:publish` provider/tag in `vendor/` before running. **Verified on PG17.**
 

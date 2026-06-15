@@ -10,6 +10,14 @@ parameters:
         - routes
         - tests
 
+    # spatie/laravel-permission's migration, published verbatim (task 1.1, design D4).
+    # It resolves its table/column names through Laravel's config() helper (typed `mixed`),
+    # which phpstan-max flags as offset-access-on-mixed. We publish it as-is and never
+    # hand-edit it (so it survives a re-publish/upgrade) — not our type debt. Scoped to the
+    # one file so our own migrations stay fully analysed.
+    excludePaths:
+        - database/migrations/*_create_permission_tables.php
+
     bootstrapFiles:
         - phpstan-bootstrap.php
 

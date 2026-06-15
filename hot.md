@@ -10,23 +10,25 @@ updated: 2026-06-15
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-15 (interactive ADR session) — Identity/auth gate CLOSED.** grill-with-docs, 5 questions all founder-confirmed → `decisions/2026-06-15-identity-auth.md` (active). Decision: **first-party for all actors**, no external IdP at launch (Laravel **Fortify + Sanctum**, EU-resident); **auth is a platform foundation** whose principal **references the Module K party by id** (Module K stays pure identity — a Customer is never a login); **multi-guard** (operator = Filament session; customer/producer = Sanctum SPA); ActorContext resolves `actor_role` + `actor_id` = party/operator id (substrate contract `{newco_ops|producer|customer|system}`); operator RBAC = **`spatie/laravel-permission`** (operator-scoped, DB-backed), the Creator→Reviewer→Approver separation-of-duties floor enforced as **module logic**, never a permission. Supabase explicitly evaluated + rejected (backend reading breaks PG + monolith ADRs + invariants; auth-only = strictly-worse external IdP). Deferred to the Module S / TanStack gate: SPA session mechanics (cookie vs token) + producer-portal login activation. CONTEXT.md += `## Identity & Access` (Operator, Authentication principal); INDEX.md updated. **No code changed — docs/ADR only.**
+**2026-06-15 (ralph iter — `operator-auth-foundation` task 1.1 GREEN).** Installed `spatie/laravel-permission:^8.0` (resolved **8.0.0**), the operator RBAC mechanism (design D4, authorised by the identity/auth ADR). Published `config/permission.php` (**teams off** — operator-scoping keys on `guard_name`) + the `create_permission_tables` migration; left `models.*` defaults. Added a 5-table migration-smoke test. Recorded the pin in `docs/development.md` (table + note + the cross-checked test list). 1.1 checkbox flipped; **11 tasks remain**.
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pennant 1.23 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PostgreSQL 17.
-- `main` @ `fe50776`: suite **320/320** green · phpstan **0 @ max** · pint clean · in sync with `origin/main`. Unchanged this session (ADR only — no migrations/code).
-- `spatie/laravel-permission` **not yet installed** — added at the `catalog-lifecycle-approval` implementation (pin version in `docs/development.md` per the stack-ADR discipline).
+- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pennant 1.23 · **spatie/laravel-permission 8.0.0 (NEW)** · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PostgreSQL 17.
+- Branch `ralph/operator-auth-foundation`: suite **324/324** green (SQLite) · **324/324 on PG17** (migrate:fresh clean, container removed) · phpstan **0 @ max** · pint clean. `openspec validate --strict` valid.
+- `composer.json`/`composer.lock` **changed** (the one authorised new dep — expected for this change). The published spatie migration is **excluded from phpstan** (`phpstan.neon` excludePaths, glob `*_create_permission_tables.php`) — it reads `config()` (mixed); vendor code, never hand-edited.
 
 ## Active Change & Next Task
-- **NO active change** (`openspec list` → none in flight).
-- **Identity/auth ADR DONE → `catalog-lifecycle-approval` is UNBLOCKED.** Next: `/spec-to-change` for it — Draft→Reviewed→Active→Retired FSM + approval workflow + the `*Activated`/`*Retired` events `catalog-product-spine` deferred. It consumes: operator auth, operator roles (spatie), and the no-self-approval floor as transition logic.
-- **Protected-file action pending (human):** Giovanni removes the `Identity/auth` row from CLAUDE.md "Open stack decisions" table by hand (exact line given in chat).
+- **ACTIVE: `operator-auth-foundation`** — 12 tasks / 6 groups; **1.1 done, 11 left**.
+- **Next: 2.1 — `operators` table migration.** Build it **alongside** the existing `users` table (cutover discipline D1): new `…_create_operators_table` with `app_authentication_secret` + `app_authentication_recovery_codes` (text, nullable) for the Filament MFA contracts; do NOT touch `users`/`User` until cleanup task 6.1. Verify column names against the Filament MFA contracts in `vendor/` first; **verify on PG17**.
+- Remaining order: 2.1 operators table → 2.2 `Operator` model+factory → 2.3 `operator` guard in `config/auth.php` → 3.1 panel cutover (authGuard/passwordReset/opt-in 2FA) → 4.1/4.2 ActorContext wiring (read guard BY NAME, no `Operator` import; arch test unchanged) → 5.1/5.2 RoleSeeder + OperatorSeeder → 6.1 remove `User` + finish config/auth → 6.2 docs → 6.3 cross-engine close.
 
 ## Blockers & Decisions Needed
-- **Identity/auth: RESOLVED** — no longer a blocker.
-- **Open ADR gates (do not step into):** queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack + SPA session mechanics + producer-portal login (Module S). Operational gates tracked in INDEX.md (secrets, observability, PCI, security review).
+- None blocking. Founder decisions standing: **2FA opt-in INCLUDED** (enforcement → security-review gate); **User→Operator replacement**; bootstrap operator holds all 3 roles.
+- **Open ADR gates (don't step in):** queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack + SPA session mechanics + customer/producer guards + Fortify/Sanctum (Module S). Authority-tier RBAC policy → `feedback_prd_rr_approval`. SoD-floor transition + Draft→Reviewed→Active→Retired FSM → `catalog-lifecycle-approval`. MFA enforcement → security review.
 
 ## Open Patterns
-- **grill-with-docs close:** resolved terms → CONTEXT.md inline (Operator, Authentication principal done); gate-closing ADR → `decisions/` + INDEX row + drop from open-decisions; the protected CLAUDE.md gate table is edited by the human, not the agent.
-- **Cross-engine discipline:** SQLite-green is necessary, NEVER sufficient — run the full suite on `postgres:17` for any DB/jsonb test; print `DRIVER=pgsql`; remove the container.
-- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB); hot.md ≤550 words.
+- **spatie publish tags:** `laravel-package-tools` strips the `laravel-` prefix → `permission-config` / `permission-migrations`.
+- **Vendor-published migration vs phpstan-max:** exclude the single file in `phpstan.neon`; never `@phpstan-ignore`/cast the vendor file.
+- **New dep → docs:** row + dated note in `docs/development.md` + add to `DevelopmentDocsTest` package list (pennant/spatie precedent).
+- **Cross-engine discipline:** SQLite-green necessary, NEVER sufficient — full suite on `postgres:17` for any DB task; print `DRIVER=pgsql`; remove the container.
+- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); hot.md ≤550 words.
