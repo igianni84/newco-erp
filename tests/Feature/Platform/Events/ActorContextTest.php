@@ -1,28 +1,28 @@
 <?php
 
-use App\Models\User;
+use App\Modules\OperatorPanel\Models\Operator;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 use function Pest\Laravel\actingAs;
 
+uses(RefreshDatabase::class);
+
 /**
- * Pins the Actor Context Resolution seam (foundations-money-i18n-flags, task 4.1;
- * design D6; event-substrate "Actor Context Resolution") — the canonical
- * `(actor_role, actor_id)` resolver the recorders consult instead of hardcoding a
- * role at each call site. The three delta scenarios: the default resolves to
- * `system`/null; a scoped run-as override applies then restores; and the resolver
- * ignores authentication (the gate-safe property that keeps it the safe side of the
- * identity/auth ADR gate).
+ * Pins the Actor Context Resolution seam (operator-auth-foundation task 4.1; design D5;
+ * event-substrate "Actor Context Resolution") — the canonical `(actor_role, actor_id)`
+ * resolver the recorders consult instead of hardcoding a role at each call site. Resolution
+ * is lazy and per-call in precedence: (1) a scoped run-as override; else (2) an operator
+ * authenticated on the `operator` guard → `newco_ops` + the operator id; else (3) `system`/null.
  *
- * Feature, not Unit: it resolves the container SINGLETON (proving a runAs override is
- * observed process-wide by an independent resolution) and uses actingAs() for the
- * gate-safe scenario — both need the application booted (Pest binds the Laravel
- * TestCase only ->in('Feature')). No RefreshDatabase: ActorContext is pure in-memory
- * state and the gate-safe user is built with make() (no persistence), so nothing
- * touches the database.
+ * Feature, not Unit: it resolves the container SINGLETON (proving a runAs override and the guard
+ * read are observed process-wide) and uses actingAs(…, 'operator') for the operator-authenticated
+ * scenarios — both need the application booted (Pest binds the Laravel TestCase only ->in('Feature')).
+ * RefreshDatabase: the operator principal is create()d so Auth::guard('operator')->id() returns a
+ * real bigint key.
  */
-it('resolves the default context to System with a null actor id', function () {
+it('resolves to System with a null actor id when no operator is authenticated', function () {
     $context = app(ActorContext::class);
 
     expect($context->role())->toBe(ActorRole::System)
@@ -31,6 +31,17 @@ it('resolves the default context to System with a null actor id', function () {
 
 it('is a process-wide container singleton', function () {
     expect(app(ActorContext::class))->toBe(app(ActorContext::class));
+});
+
+it('resolves an operator authenticated on the operator guard to NewcoOps and the operator id', function () {
+    $operator = Operator::factory()->create();
+
+    actingAs($operator, 'operator');
+
+    $context = app(ActorContext::class);
+
+    expect($context->role())->toBe(ActorRole::NewcoOps)
+        ->and($context->actorId())->toBe($operator->id);
 });
 
 it('applies a scoped run-as override for the callable and restores afterward', function () {
@@ -46,9 +57,27 @@ it('applies a scoped run-as override for the callable and restores afterward', f
     });
 
     expect($returned)->toBe('callable-result')
-        // …and the prior (default) context is restored afterward.
+        // …and the prior (System) context is restored afterward.
         ->and($context->role())->toBe(ActorRole::System)
         ->and($context->actorId())->toBeNull();
+});
+
+it('lets a run-as override beat an active operator session, then reverts to the guard', function () {
+    $operator = Operator::factory()->create();
+
+    actingAs($operator, 'operator');
+
+    $context = app(ActorContext::class);
+
+    // Precedence step 1 beats step 2: the override wins over the live operator guard…
+    $context->runAs(ActorRole::System, null, function () use ($context) {
+        expect($context->role())->toBe(ActorRole::System)
+            ->and($context->actorId())->toBeNull();
+    });
+
+    // …and afterward the guard is consulted AGAIN (resolution is per-call, never memoised).
+    expect($context->role())->toBe(ActorRole::NewcoOps)
+        ->and($context->actorId())->toBe($operator->id);
 });
 
 it('restores the prior context even when the callable throws', function () {
@@ -83,27 +112,14 @@ it('restores the prior override on exit, not just the default (overrides nest)',
         ->and($context->actorId())->toBeNull();
 });
 
-it('ignores authentication — an authenticated session still resolves to System (gate-safe)', function () {
-    // An authenticated principal exists, but the seam reads no auth state: until the
-    // identity/auth ADR (Module K gate) wires it, every context is still System.
-    actingAs(User::factory()->make());
-
-    $context = app(ActorContext::class);
-
-    expect($context->role())->toBe(ActorRole::System)
-        ->and($context->actorId())->toBeNull();
-});
-
-it('imports no auth, Filament or module code (gate-safe by construction)', function () {
-    // The structural half of the gate-safety guarantee: ActorContext cannot read auth
-    // because it references no auth namespace at all. This fails loudly the moment an
-    // edit reaches for authentication — which would step through the identity/auth gate.
+it('reads the operator guard by name and imports no module or Filament code', function () {
+    // Boundary-clean platform code: ActorContext resolves the operator principal through the
+    // named guard (Auth::guard('operator')) and imports neither the OperatorPanel Operator model
+    // nor any Filament/module symbol. ModuleBoundariesTest pins the App\Platform → App\Modules
+    // direction globally; this localises it to the seam that now reaches for authentication.
     expect('App\Platform\Events\ActorContext')
         ->not->toUse([
-            'Illuminate\Support\Facades\Auth',
-            'Illuminate\Auth',
-            'Illuminate\Contracts\Auth',
-            'Filament',
             'App\Modules',
+            'Filament',
         ]);
 });

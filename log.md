@@ -115,3 +115,31 @@
 ## [2026-06-15 09:07] close | catalog-product-spine | GUIDE 2.7 close (interactive): PG17 suite 320/320 driver-proven pgsql 17.10 + semantic-verify CLEAN (0 CRITICAL) -> merge --no-ff main 5789f3a + push + branch deleted + openspec archive 0ef9539. main 320/320 SQLite, in sync w/ origin. No active changes.
 
 ## [2026-06-15 09:42] ADR | 2026-06-15-identity-auth (Module K gate) | Identity/auth gate CLOSED (grill, 5Q): first-party all actors (Fortify+Sanctum, EU-resident, no IdP); auth=foundation, principal refs party by id; multi-guard; spatie RBAC operator-scoped. CONTEXT.md +Identity&Access, INDEX updated. catalog-lifecycle-approval UNBLOCKED.
+
+## [2026-06-15 10:52] spec-to-change | operator-auth-foundation | authored+validated --strict, founder-APPROVED. NEW operator-identity (4 ADDED) + MODIFIED event-substrate (ActorContext->operator guard) + platform. 11 tasks/6 groups; User->Operator cutover; 2FA opt-in TOTP. Awaiting human APPROVED marker -> ralph.
+
+## [2026-06-15 11:04] ralph | operator-auth-foundation 1.1 | green | spatie/laravel-permission 8.0.0 installed + config/migration published (teams off), 5 RBAC tables, migration phpstan-excluded, PG17-verified 324/324
+
+## [2026-06-15 11:10] ralph | operator-auth-foundation 2.1 | green | 2 files (operators migration + test) | 328/328 SQLite + PG17, phpstan 0 @ max, pint clean | 2 of 12 done
+
+## [2026-06-15 11:32] ralph | operator-auth-foundation 2.2 | human-needed | spec mandates table 'operators' + model in OperatorPanel, but ModulePersistenceConventionsTest requires 'operator_panel_' prefix — irreconcilable, unanticipated. Fix=exempt auth principals+ADR (needs OK). 3 files in tree, not committed.
+
+## [2026-06-15 13:26] unblock | operator-auth-foundation 2.2 | HUMAN_NEEDED resolved (Option A): auth-principal models (Authenticatable) exempt from module-prefix arch test (Operator->operators). Test skip + module-architecture MODIFIED delta + design D7 + ADR. Green SQLite+PG17 336/336, phpstan 0 @ max, pint. 2.3 next.
+
+## [2026-06-15 13:39] ralph | operator-auth-foundation 2.3 | green | 4 files | operator session guard+provider+broker in config/auth.php alongside web; OperatorGuardTest 7/20; 343/343 SQLite+PG17; phpstan0@max; pint; validate ok
+
+## [2026-06-15 13:50] ralph | operator-auth-foundation 3.1 | green | 4 files | AdminPanelProvider→authGuard(operator)+passwordReset()+opt-in MFA(recoverable); OperatorPanelTest rewritten; 346/346 SQLite & PG17; phpstan 0@max
+
+## [2026-06-15 14:01] ralph | operator-auth-foundation 4.1 | green | 4 files | ActorContext→operator guard lazy per-call (override→NewcoOps/id→System); 347/347 SQLite+PG17; phpstan 0 max
+
+## [2026-06-15 14:10] ralph | operator-auth-foundation 4.2 | green | end-to-end recorder proof (test-only): operator session → ActorContext → DomainEventRecorder persists newco_ops + operator id; 349/349 SQLite + PG17; 3 files
+
+## [2026-06-15 14:18] ralph | operator-auth-foundation 5.1 | green | RoleSeeder: 3 bare roles (Creator/Reviewer/Approver) on operator guard, idempotent firstOrCreate, no perms; 352/352 SQLite+PG17, phpstan 0@max; 2 new files
+
+## [2026-06-15 14:31] ralph | operator-auth-foundation 5.2 | green | 6 files — OperatorSeeder+DatabaseSeeder cut to Operator, bootstrap op gets all 3 roles; 356/356 SQLite+PG17, phpstan 0@max
+
+## [2026-06-15 14:48] ralph | operator-auth-foundation 6.1 | green | removed orphaned User+UserFactory, dropped users-table block, config/auth.php->operator default; Laravel base-merge keeps inert web/users (new knowledge/laravel rule); 359/359 SQLite+PG17; new AuthDefaultsTest
+
+## [2026-06-15 15:01] ralph | operator-auth-foundation 6.2 | green | docs-only, 4 files (CONTEXT.md Actor-context, docs/development.md spatie+wiring+env, decisions/INDEX.md built-marker, FoundationsDocsTest comment); 359/359 SQLite, phpstan max, validate strict; PG17 deferred to 6.3
+
+## [2026-06-15 15:05] ralph | operator-auth-foundation 6.3 | green | cross-engine close: SQLite 359/359 + PG17 359/359 (live DRIVER=pgsql 17.10), phpstan 0@max, pint clean; spatie 8.0.0 recorded | CHANGE COMPLETE 12/12

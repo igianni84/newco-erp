@@ -5,6 +5,7 @@
 | Domain | Folder | Status |
 |---|---|---|
 | architecture | `knowledge/architecture/` | 1 rule |
+| laravel | `knowledge/laravel/` | 1 rule |
 | testing | `knowledge/testing/` | 1 rule |
 
 Suggested domains as work begins: `architecture` · `data-model` · `laravel` · `filament` · `testing` · `integrations` · `module-{0,k,a,d,s,b,c,e}` (one per spec module).

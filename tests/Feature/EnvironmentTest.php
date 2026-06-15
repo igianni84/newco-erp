@@ -22,7 +22,9 @@ it('runs the test suite on the configured database engine', function () {
 });
 
 it('migrates the full schema on the test database', function () {
-    expect(Schema::hasTable('users'))->toBeTrue()
+    // `operators` is the operator login principal (operator-auth-foundation 6.1 replaced the bootstrap
+    // `users` table). cache + jobs are the retained framework tables.
+    expect(Schema::hasTable('operators'))->toBeTrue()
         ->and(Schema::hasTable('cache'))->toBeTrue()
         ->and(Schema::hasTable('jobs'))->toBeTrue();
 });

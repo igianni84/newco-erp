@@ -178,7 +178,7 @@ A domain event recording a monetary fact (Module E's catalogue, ~30 types at lau
 _Avoid_: transaction (overloaded), ledger entry
 
 **Actor context**:
-The single seam that resolves the acting `actor_role` and actor id for the current context. It defaults to `system` (console, queue, unauthenticated) and reads NO authentication state — it stays on the safe side of the identity/auth gate until that ADR wires it to an authenticated principal. The one place an emitter obtains who is acting.
+The single seam that resolves the acting `actor_role` and actor id for the current context — the one place an emitter obtains who is acting. An authenticated operator (read from the `operator` session guard) yields (`newco_ops`, the `Operator` id); console, queue, unauthenticated contexts — and the not-yet-wired customer/producer guards — yield (`system`, `null`); a scoped run-as override beats both. The customer and producer guards are a deferred seam that extends the same precedence.
 _Avoid_: session, current user, auth guard
 
 ## Platform Foundations

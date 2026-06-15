@@ -1,10 +1,11 @@
 <?php
 
 use App\Modules\Module;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 
 // Pins the module persistence convention (foundations-modules-skeleton, task 2.4;
-// design D6 — "persistence conventions"). Every Eloquent model under
+// design D6 — "persistence conventions"). Every domain Eloquent model under
 // App\Modules\** must declare an explicit $table whose name starts with its
 // owning module's snake_case prefix — the Module enum's backing value + '_'
 // (e.g. catalog_product_masters, parties_holds). Eloquent cannot guess a
@@ -12,6 +13,17 @@ use Illuminate\Database\Eloquent\Model;
 // in every query and migration, making invariant 10 (no cross-module DB access)
 // visible at the SQL layer. This is the forward edge of the boundary law for
 // the persistence dimension (delta-spec "Module Persistence Conventions").
+//
+// AUTH-PRINCIPAL EXEMPTION (operator-auth-foundation, design D7;
+// decisions/2026-06-15-auth-principal-table-naming.md): an authentication
+// principal — a model implementing Illuminate\Contracts\Auth\Authenticatable,
+// e.g. OperatorPanel's Operator mapped to the flat `operators` table — is a
+// platform-foundation login shell, not a domain aggregate. It deliberately
+// mirrors the framework's flat auth-table naming (users -> operators) and is
+// reached only through its named guard, never by a cross-module Eloquent query,
+// join or import — so invariant 10's substance is held by ModuleBoundariesTest +
+// guard-by-name access, and the cosmetic module-prefix does not apply. The scan
+// below skips principals; every non-principal module model still needs its prefix.
 //
 // FORWARD-BINDING / PROVEN-EMPTY: zero module models exist today, so the test
 // must pass by a scan that demonstrably RAN — never by a silent error or skip
@@ -74,6 +86,15 @@ it('requires every module Eloquent model to declare its module-prefixed table', 
 
             if (! $reflection->isSubclassOf(Model::class) || $reflection->isAbstract()) {
                 continue; // only concrete Eloquent models carry the table convention
+            }
+
+            // Auth-principal exemption (design D7; decisions/2026-06-15-auth-principal-table-naming.md):
+            // a login principal is a platform-foundation shell that mirrors the framework's flat auth-table
+            // naming (users -> operators) and is reached only via its named guard — never a cross-module
+            // Eloquent query/join/import — so the module-prefix convention does not apply. Narrow by
+            // construction: only login principals implement this contract; no domain model does.
+            if ($reflection->implementsInterface(Authenticatable::class)) {
+                continue;
             }
 
             $table = $reflection->getDefaultProperties()['table'] ?? null;
