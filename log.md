@@ -133,3 +133,5 @@
 ## [2026-06-15 14:01] ralph | operator-auth-foundation 4.1 | green | 4 files | ActorContext→operator guard lazy per-call (override→NewcoOps/id→System); 347/347 SQLite+PG17; phpstan 0 max
 
 ## [2026-06-15 14:10] ralph | operator-auth-foundation 4.2 | green | end-to-end recorder proof (test-only): operator session → ActorContext → DomainEventRecorder persists newco_ops + operator id; 349/349 SQLite + PG17; 3 files
+
+## [2026-06-15 14:18] ralph | operator-auth-foundation 5.1 | green | RoleSeeder: 3 bare roles (Creator/Reviewer/Approver) on operator guard, idempotent firstOrCreate, no perms; 352/352 SQLite+PG17, phpstan 0@max; 2 new files

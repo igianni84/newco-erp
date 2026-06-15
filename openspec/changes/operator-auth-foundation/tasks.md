@@ -41,7 +41,7 @@
 
 ## 5. Seeding cutover
 
-- [ ] 5.1 **`RoleSeeder`** (design D4) — seed `Creator`, `Reviewer`, `Approver` on guard `operator` as bare roles (`firstOrCreate`, **no permissions**), idempotent.
+- [x] 5.1 **`RoleSeeder`** (design D4) — seed `Creator`, `Reviewer`, `Approver` on guard `operator` as bare roles (`firstOrCreate`, **no permissions**), idempotent.
   - Acceptance: the three roles exist on guard `operator` with zero permissions each; a second run creates no duplicates; quality green; **verified on PG17**.
   - Test hint: `tests/Feature/Modules/OperatorPanel/RoleSeederTest.php` — run the seeder; assert `Role::where('guard_name','operator')->pluck('name')->sort()->values()->all() === ['Approver','Creator','Reviewer']`; assert every role's `permissions` is empty; re-run and assert `Role::count() === 3`. Confirm the spatie `Role` FQCN + `guard_name` usage in `vendor/`.
 
