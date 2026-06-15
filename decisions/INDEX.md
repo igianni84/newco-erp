@@ -4,6 +4,7 @@
 
 | Date | Decision | Status | File |
 |---|---|---|---|
+| 2026-06-14 | Catalog category-neutral representation: neutral core entities + per-type attribute tables (WINE `appellation` a real column; identity dedup at creation; a new Product Type adds its own attribute table — core/event-contract untouched). Resolves DEC-073's delegated representation choice for the product spine | active | [2026-06-14-catalog-category-neutral-representation.md](2026-06-14-catalog-category-neutral-representation.md) |
 | 2026-06-12 | Event substrate + audit/financial event store (closes BOTH gates): transactional outbox on app DB — append-only `domain_events` log IS outbox + 10-year audit + financial store; `audit_records` for operator before/after; per-consumer delivery ledger (inline at launch, queued post queue-ADR); trigger+REVOKE immutability; PII-free event payloads; no partitioning at launch | active | [2026-06-12-event-substrate-and-audit-store.md](2026-06-12-event-substrate-and-audit-store.md) |
 | 2026-06-12 | Production DB engine: PostgreSQL (floor 17, managed EU; C.UTF-8, zero extensions; Postgres-truthful migrations + pgsql CI lane) | active | [2026-06-12-production-db-engine.md](2026-06-12-production-db-engine.md) |
 | 2026-06-11 | Stack versions pinned (Laravel 13.x + Filament 5.x) + Filament AI tooling (Boost) | active | [2026-06-11-stack-versions-and-filament-ai-tooling.md](2026-06-11-stack-versions-and-filament-ai-tooling.md) |

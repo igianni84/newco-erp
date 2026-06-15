@@ -85,3 +85,29 @@
 ## [2026-06-13 23:11] close | substrate-hardening 6.2 | 6.2 done -> 17/17 openspec Complete; validate --strict valid; 5/5 delta scenarios -> named passing tests (InlineDeliveryTest:170,189; SweepTest:241,271,295); 2 patterns confirmed; doc-only. Loop exited early at iter16, completed 6.2 manually. CHANGE_COMPLETE.
 
 ## [2026-06-13 23:25] close | substrate-hardening 2.7 | Closed 2.7 ritual: SQLite+PG17 254/254 re-verified; merged 0e2f3a5 + pushed; semantic-verify CLEAN (0 CRITICAL, 3 minor); archived ecead30 -> 2 reqs into specs/event-substrate; branch deleted. main==origin clean. Loop had exited early 16/17; 6.2 done interactively.
+
+## [2026-06-14 19:17] spec-to-change | catalog-product-spine | Authored + strict-valid: Catalog Module 0 first slice (product spine — 7 entities, 11 reqs, 11 tasks) + ADR per-type-attr-tables (resolves DEC-073). Giovanni approved (verbal); awaiting human APPROVED marker -> ./ralph.sh.
+
+## [2026-06-14 19:24] ralph | catalog-product-spine 1.1 | green | 4 files: ProductType+LifecycleState enums (D2/D3) + Unit EnumsTest (4 tests). Suite 258/258, phpstan 0@max, strict-valid. No DB this task.
+
+## [2026-06-14 19:42] ralph | catalog-product-spine 2.1 Format | green | 6 files (catalog_formats migration + Format model + factory + FormatCreated event + CreateFormat action + FormatTest) | 262/262 SQLite & PG17, phpstan 0 @ max, pint clean, openspec --strict valid
+
+## [2026-06-14 19:52] ralph | catalog-product-spine 2.2 Case Configuration | green | 6 new files (migration+model+event+action+factory+test) | suite 267/267 SQLite + PG17 (driver=pgsql) | phpstan 0 @ max | no breakability column (BR-RefData-2)
+
+## [2026-06-14 20:14] ralph | catalog-product-spine 3.1 Product Master | green | 276/276 SQLite + PG17(17.10) | 11 new (2 migr, ProductMaster+WineAttributes models, ProductMasterCreated, 2 exceptions, CreateProductMaster, factory, lang/en/catalog) + 9-test ProductMasterTest; multi-table core+per-type-attrs, dedup, fail-closed WINE
+
+## [2026-06-14 20:30] ralph | catalog-product-spine 3.2 Product Variant | green | 8 files | 284/284 SQLite + PG17 (DRIVER=pgsql 17.10) | phpstan 0@max | within-module belongsTo + getColumnListing facade trap
+
+## [2026-06-14 20:44] ralph | catalog-product-spine 3.3 | green | Product Reference: single-table, 2 within-module FKs + DB unique(variant,format), no case_configuration_id; 6 files; SQLite 292/292 + PG17 292/292; phpstan 0@max; 6/11 done
+
+## [2026-06-14 20:59] ralph | catalog-product-spine 4.1 | green | Sellable SKU (Intrinsic): catalog_sellable_skus + model + factory + SellableSKUCreated event + CreateSellableSku action; PR FK cascade/CaseConfig restrict; no DB unique; commercial cols plain (not i18n). suite 300/300, phpstan 0@max, PG17 300/300. 6 files
+
+## [2026-06-14 21:18] ralph | catalog-product-spine 4.2 | green | 9 files (2 migrations+model+event+exception+action+factory+lang+test) | Composite SKU: M:N join, N>=2 pre-tx, producer-agnostic | 312/312 SQLite + PG17
+
+## [2026-06-14 21:27] ralph | catalog-product-spine 5.1 | green | 1 new test file (CatalogNamingCascadeTest 3/3), suite 315/315, phpstan 0@max; no DB/no prod-code change
+
+## [2026-06-14 21:34] ralph | catalog-product-spine 5.2 | green | 2 files (CONTEXT.md spine glossary + 7-event payload-contract note; docs-only, suite 315/315 unchanged)
+
+## [2026-06-14 21:46] ralph | catalog-product-spine 5.3 | green | full-chain integration test (5 tests/30 assert); suite 320/320 SQLite + PG17 (DRIVER=pgsql 17.10); trap-3 key-order fix; ALL 11 tasks done -> CHANGE_COMPLETE | 3 files
+
+## [2026-06-14 21:54] ralph | catalog-product-spine final-pass | green | re-verified: 320/320 SQLite, phpstan 0@max, pint clean, openspec --strict valid, no composer diff, PG17 record present — CHANGE_COMPLETE re-confirmed, awaiting human review/merge

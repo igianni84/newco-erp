@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-13
+updated: 2026-06-14
 ---
 
 # Hot Cache
@@ -10,26 +10,26 @@ updated: 2026-06-13
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-13 (interactive close) — `substrate-hardening` MERGED + ARCHIVED. `main@ecead30`, in sync with origin, tree clean.** Full GUIDE §2.7 ritual executed end-to-end: re-verified SQLite (pint/phpstan-max/`254-254-904`) + local PostgreSQL 17.10 (`254-254-904`); `git merge --no-ff` (`0e2f3a5`) + push; **semantic verify CLEAN** (independent subagent that spun up its OWN pg17 container — 0 CRITICAL, 3 non-blocking SUGGESTIONs); `openspec archive` (`ecead30`) merged the 2 ADDED requirements (Concurrent Delivery Safety, Delivery Failure Observability) into `openspec/specs/event-substrate/spec.md`; branch `ralph/substrate-hardening` deleted. **NB:** the ralph loop had exited early at 16/17 (iter 16 did 6.1, never ran 6.2); 6.2 (pure-doc traceability) was completed interactively before the close — the ralph.sh "Next steps (human)" footer prints on EVERY exit and is NOT a completion signal.
+**2026-06-14 (ralph) — `catalog-product-spine` FINAL-PASS RE-VERIFIED → `<promise>CHANGE_COMPLETE</promise>` re-confirmed.** This iteration found ALL 11 tasks already `- [x]` and the work committed (HEAD `dc74e4a`, tree clean). Per RALPH.md's "all tasks checked" stop condition I did NOT trust the cache — I re-ran the whole quality gate from scratch: full suite **320/320** (1249 assertions) on SQLite, phpstan **0 @ max**, pint clean, `openspec validate catalog-product-spine --strict` valid, `git diff main -- composer.{json,lock}` empty. Confirmed the PG17 cross-engine record is present in progress.md (task 5.3 = **320/320 on `postgres:17`**, `DRIVER=pgsql SERVER=17.10`, container cleaned up; that gate caught a trap-3 jsonb key-order regression SQLite had hidden). No code/test/doc change this iteration — pure verification + memory write.
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15.0 · Filament 5.6.7 · Pennant 1.23.0 · Pest 4.7.2 · PHPStan 2.2.2 · Larastan 3.10.0 · Pint 1.29.1. SQLite dev (`:memory:` tests); prod PostgreSQL 17.
-- **`main@ecead30`**: suite **254/254 (904 asserts) on SQLite AND PostgreSQL 17.10** · phpstan 0 @ max · pint --test clean. Event substrate hardened (C1–C15); CI two-lane (quality SQLite + tests-pgsql PG17) + workflow-level concurrency cancel-in-progress.
+- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pennant 1.23 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PostgreSQL 17.
+- Branch `ralph/catalog-product-spine`: suite **320/320** green on SQLite (re-run this iteration) AND previously on `postgres:17` · phpstan **0 @ max** · pint clean · `openspec validate … --strict` valid · composer diff vs main empty · `ModuleBoundariesTest` 2/2 (no amendment).
+- The whole Catalog spine is proven end-to-end on both engines. Nothing outstanding for this change.
 
 ## Active Change & Next Task
-- **No active change.** `openspec list` → "No active changes found." substrate-hardening fully closed.
-- **NEXT = author the next change** via `/spec-to-change` against `spec/05-release/Build_Workplan_v0.3-MVP.md`. F1 foundations complete (3/3) + substrate hardened. Pick the next Build Workplan slice with Giovanni; never two loops in parallel.
+- **`catalog-product-spine` is CODE-COMPLETE — ALL 11 tasks `- [x]`** (1.1 ✓, 2.x ✓, 3.x ✓, 4.x ✓, 5.1 ✓, 5.2 ✓, 5.3 ✓). 7 spine entities + their `*Created` events + §18 naming guard + glossary/event-contract docs + full-chain integration.
+- **NEXT (human, NOT the loop):** review → merge `ralph/catalog-product-spine` → semantic-verify (GUIDE §2.7) → `openspec archive catalog-product-spine --yes`. The loop does NOT archive or merge.
+- **After archive, next candidate slice:** `catalog-lifecycle-approval` (Draft→Reviewed→Active→Retired FSM + approval workflow + the `*Activated`/`*Retired` events this change DELIBERATELY deferred). **Blocked on the Identity/auth ADR** (operator principals for approval) — run `grill-with-docs` + write the ADR before kicking it off.
 
-## Semantic-verify SUGGESTIONs (non-blocking; capture in knowledge/ or a future change if revisited)
-- `InlineDeliveryExecutor.php` ~:175 — `$delivery->refresh()` before `recordFailure()` isn't null-safe IF a delivery row were ever deleted; safe today (substrate never deletes deliveries). Defensive-only.
-- `SweepTest.php` ~:120 — backoff-cap test doesn't hit the exact `base*2^(n-1) == cap` equality boundary (`min()` handles it; theoretical).
-- `InlineDeliveryExecutor.php` ~:258 — backoff exponent `2**(attempts-1)` confirmed correct (no off-by-one); note only.
+## Implementation landmines (read progress.md Codebase Patterns before every task)
+- **Full menu in progress.md Codebase Patterns** (20+ entries): spine DB-entity template · multi-table (neutral core + per-type 1:1) · single-table · M:N join · naming-cascade arch guard · DB-unique vs app-dedup · FK onDelete asymmetry · event-vs-model NAME divergence (UPPER-`SKU`) · spec-fidelity-over-i18n · cross-ROW-count pre-tx rejection · producer-agnostic non-check · getColumnListing facade trap · schema-absence guard · localized rejection · 2 phpstan-max traps · full-chain integration-test shape · trap-3 also bites `array_keys()->toBe([…])` (jsonb key order non-portable — sort first).
+- **Cross-engine discipline (the recurring win):** SQLite-green is necessary, NEVER sufficient — run the full suite on `postgres:17` for any DB/jsonb-touching test; print `DRIVER=pgsql` to prove it hit real PG; clean up the container. jsonb OBJECT keys reorder (sort before `toBe`); jsonb ARRAY element order is preserved.
 
 ## Blockers & Decisions Needed
-- None active.
-- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S). Plus 4 in decisions/INDEX.md: secrets · observability · PCI boundary · security review.
+- None for this change (it crossed NO open gate). The next slice needs the **Identity/auth ADR** (Module K gate).
+- **Open ADR gates (do not step into):** identity/auth (Module K) · queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack (Module S).
 
 ## Open Patterns
-- **Codebase Patterns** now live in `openspec/changes/archive/2026-06-13-substrate-hardening/progress.md` (6 patterns: white-box concurrency-guard via reflection; query-builder UPDATE skips casts; connector-applied session-setting pin; PHPStan-clean `Log::spy()` closure matcher; engine-guarded DB-CHECK test; string-tested YAML → parse for real + pin STRUCTURE).
-- **Closing ritual:** `openspec list` + unchecked-task count are the truth, NOT the ralph.sh footer. Pause before main if the loop didn't finish all tasks. Cross-engine verify: local `docker run postgres:17` p55432, readiness via in-PHP PDO TCP loop (no sleep/pg_isready), `DB_CONNECTION=pgsql … php artisan test`, `docker rm -f pg`.
-- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB). hot.md ≤550 words.
+- **Closing ritual:** `openspec list` + unchecked-task count are truth, not the ralph.sh footer.
+- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); rotate by size (~200KB); hot.md ≤550 words.
