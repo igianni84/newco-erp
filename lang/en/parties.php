@@ -20,4 +20,11 @@ return [
         // :producer is the operator-facing producer-id reference (not PII).
         'missing_producer' => 'Cannot create a ProducerAgreement: no Producer exists for reference :producer. A ProducerAgreement requires exactly one existing Producer.',
     ],
+    'customer' => [
+        // § 4.1 / BR-K-Identity-1 rejection (design D5): a Customer's email is globally unique. The reason
+        // names the rule and DELIBERATELY omits the email — an email is PII (GDPR) and this message can reach
+        // logs (unlike the producer-id references above, which are not PII). The operator supplied the value, so
+        // the rule alone is fully actionable.
+        'duplicate_email' => 'Cannot create a Customer: a Customer with this email address already exists. Each Customer email must be globally unique.',
+    ],
 ];
