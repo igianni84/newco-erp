@@ -157,3 +157,5 @@
 ## [2026-06-15 17:14] ralph | parties-core 2.1 Producer | green | first Parties DB entity (migration+model+factory+ProducerCreated+CreateProducer+test); 384/1408 green on SQLite AND PG17; phpstan max 0; 6 new files
 
 ## [2026-06-15 17:26] ralph | parties-core 2.2 Supplier | green | 5 files (migration+model+factory+action+test); minimal entity (no status/version/event); full 389/1420 SQLite+PG17; party_type CHECK proven on PG
+
+## [2026-06-15 17:41] ralph | parties-core 3.1 Club | green | 8 new files (migration/model/factory/event/exception/action/test + lang/en/parties.php) | first FK + first Money field | 396/1460 SQLite+PG17 | CHECKs+FK proven on PG
