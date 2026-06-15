@@ -15,4 +15,9 @@ return [
         // :producer is the operator-facing producer-id reference (not PII).
         'missing_producer' => 'Cannot create a Club: no operating Producer exists for reference :producer. A Club requires exactly one existing operating Producer.',
     ],
+    'producer_agreement' => [
+        // § 4.6 rejection (design D3/D4): a ProducerAgreement references exactly one EXISTING Producer.
+        // :producer is the operator-facing producer-id reference (not PII).
+        'missing_producer' => 'Cannot create a ProducerAgreement: no Producer exists for reference :producer. A ProducerAgreement requires exactly one existing Producer.',
+    ],
 ];

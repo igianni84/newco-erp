@@ -159,3 +159,5 @@
 ## [2026-06-15 17:26] ralph | parties-core 2.2 Supplier | green | 5 files (migration+model+factory+action+test); minimal entity (no status/version/event); full 389/1420 SQLite+PG17; party_type CHECK proven on PG
 
 ## [2026-06-15 17:41] ralph | parties-core 3.1 Club | green | 8 new files (migration/model/factory/event/exception/action/test + lang/en/parties.php) | first FK + first Money field | 396/1460 SQLite+PG17 | CHECKs+FK proven on PG
+
+## [2026-06-15 17:52] ralph | parties-core 3.2 ProducerAgreement | green | 10 files (7 new + lang/tasks/progress) | 404/1504 SQLite & PG17; CHECK+2 FKs proven on PG; single-active not enforced (activation rule)
