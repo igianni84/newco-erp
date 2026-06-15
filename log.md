@@ -175,3 +175,5 @@
 ## [2026-06-15 21:51] spec-to-change | parties-producer-lifecycle | authored + validated --strict: proposal/spec-delta/design/tasks. Slice 1 of K lifecycle = supply-side (Producer/Agreement/Club FSMs, 7 lifecycle events, retire->sunset cascade). 1 MODIFIED + 4 ADDED reqs, 17 scenarios, 10 tasks. Awaiting human APPROVED.
 
 ## [2026-06-15 22:08] ralph | parties-producer-lifecycle 1.1 | green | 5 files: 3 Illegal*Transition exceptions + parties.php lang (producer/club/agreement groups) + TransitionExceptionsTest (13 cases). Full 441/441 SQLite, phpstan max 0, pint clean, --strict ok. No DB touched -> no PG17; no migration/composer drift.
+
+## [2026-06-15 22:17] ralph | parties-producer-lifecycle 1.2 | green | 3 files (Producer.clubs() hasMany + Club docblock + ProducerLifecycleTest); 444/444 SQLite, 85/85 PG17, phpstan max 0, pint clean, openspec valid

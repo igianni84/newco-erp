@@ -9,8 +9,10 @@ use App\Platform\I18n\TranslatableText;
 use App\Platform\I18n\TranslatableTextCast;
 use Carbon\CarbonInterface;
 use Database\Factories\Parties\ProducerFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Producer — the winery identity registry, the source of the producer reference Module 0's Product Master
@@ -34,6 +36,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
+ * @property-read Collection<int, Club> $clubs
  */
 class Producer extends Model
 {
@@ -49,6 +52,20 @@ class Producer extends Model
      * @var list<string>
      */
     protected $guarded = [];
+
+    /**
+     * The Clubs this Producer operates — a WITHIN-module `hasMany` (both entities are Module K, so the
+     * cross-module relation ban does not apply), the inverse of {@see Club::producer()}. It is the read the
+     * retirement cascade walks (design L6): the `RetireProducer` Action (task 3.2) sunsets every `active` Club
+     * reachable here. No write surface is exposed — the Club↔Producer link is set once at Club creation and
+     * immutable thereafter (BR-K-Club-1/2).
+     *
+     * @return HasMany<Club, $this>
+     */
+    public function clubs(): HasMany
+    {
+        return $this->hasMany(Club::class, 'producer_id');
+    }
 
     /**
      * The factory lives outside the `Database\Factories\` convention (it is namespaced per module under
