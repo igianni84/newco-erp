@@ -111,3 +111,5 @@
 ## [2026-06-14 21:46] ralph | catalog-product-spine 5.3 | green | full-chain integration test (5 tests/30 assert); suite 320/320 SQLite + PG17 (DRIVER=pgsql 17.10); trap-3 key-order fix; ALL 11 tasks done -> CHANGE_COMPLETE | 3 files
 
 ## [2026-06-14 21:54] ralph | catalog-product-spine final-pass | green | re-verified: 320/320 SQLite, phpstan 0@max, pint clean, openspec --strict valid, no composer diff, PG17 record present — CHANGE_COMPLETE re-confirmed, awaiting human review/merge
+
+## [2026-06-15 09:07] close | catalog-product-spine | GUIDE 2.7 close (interactive): PG17 suite 320/320 driver-proven pgsql 17.10 + semantic-verify CLEAN (0 CRITICAL) -> merge --no-ff main 5789f3a + push + branch deleted + openspec archive 0ef9539. main 320/320 SQLite, in sync w/ origin. No active changes.
