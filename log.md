@@ -165,3 +165,5 @@
 ## [2026-06-15 18:17] ralph | parties-core 4.1 Customer+Account | green | 10 new files (2 migrations, 2 models, 2 factories, CustomerCreated, DuplicateCustomerEmail, CreateCustomer, 2 tests) + lang; 416/1576 SQLite AND PG17; 7 PG constraints proven; 8/11 done
 
 ## [2026-06-15 18:33] ralph | parties-core 5.1 Profile | green | 11 files | partial-unique index D8 RESOLVED (portable PG17+SQLite); 424/1618 SQLite, 47/47 Parties PG17; 9/11 done
+
+## [2026-06-15 18:41] ralph | parties-core 6.1 | green | docs-only: CONTEXT.md Parties spine glossary + 5 *Created payload-contract table (keys verified vs Events) + Supplier/Account event-silence; Club/OC enriched in place; 3 files; 10/11
