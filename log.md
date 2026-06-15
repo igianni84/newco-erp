@@ -189,3 +189,5 @@
 ## [2026-06-15 23:13] ralph | parties-producer-lifecycle 4.1 | green | 4 files: ActivateProducerAgreement + ProducerAgreementActivated/Superseded + test. NULL-safe (producer_id,club_id) supersession (BR-K-Agreement-1); inline derived source. 466/466 SQLite, 107/107 PG17, phpstan 0, pint clean
 
 ## [2026-06-15 23:21] ralph | parties-producer-lifecycle 4.2 | green | 3 files (TerminateProducerAgreement + ProducerAgreementTerminated + test); 470/470 SQLite, PG17 111/111, phpstan 0, pint clean; FSM complete; 8/10
+
+## [2026-06-15 23:31] ralph | parties-producer-lifecycle 5.1 | green | 2 files (CONTEXT.md docs +30/-5, tasks.md checkbox); supply-side lifecycle terms + 7-event PII-free contract table + 2 deferred seams; suite 470/470, phpstan 0, openspec strict ok; docs-only no PG17

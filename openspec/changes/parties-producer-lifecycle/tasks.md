@@ -44,7 +44,7 @@ Read `proposal.md`, `design.md` (L1–L9) and the spec delta `specs/party-regist
 
 ## 5. Integration, docs & cross-engine close
 
-- [ ] 5.1 **Docs — CONTEXT.md terms + Parties lifecycle contract note** (proposal "What Changes"/Impact) — extend `CONTEXT.md` with the resolved supply-side lifecycle terms (Club sunset/close, Producer retire, agreement supersede, the `(producer_id, club_id)` agreement scope) and add a Parties contract note documenting the seven lifecycle event payloads (PII-free) and the two deferred seams (KYC-on-activation → `parties-compliance`; all-members-gone-on-close → demand-side). No code.
+- [x] 5.1 **Docs — CONTEXT.md terms + Parties lifecycle contract note** (proposal "What Changes"/Impact) — extend `CONTEXT.md` with the resolved supply-side lifecycle terms (Club sunset/close, Producer retire, agreement supersede, the `(producer_id, club_id)` agreement scope) and add a Parties contract note documenting the seven lifecycle event payloads (PII-free) and the two deferred seams (KYC-on-activation → `parties-compliance`; all-members-gone-on-close → demand-side). No code.
   - Acceptance: `CONTEXT.md` carries the new terms with verbatim spec anchors; the contract note lists the seven events + payload shapes + the two seams; no canonical-term drift from `CONTEXT.md`/CLAUDE.md; quality commands green.
   - Test hint: docs-only — no test; verify by `openspec validate parties-producer-lifecycle --strict` and a terminology re-read against the spec.
 
