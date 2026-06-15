@@ -163,3 +163,5 @@
 ## [2026-06-15 17:52] ralph | parties-core 3.2 ProducerAgreement | green | 10 files (7 new + lang/tasks/progress) | 404/1504 SQLite & PG17; CHECK+2 FKs proven on PG; single-active not enforced (activation rule)
 
 ## [2026-06-15 18:17] ralph | parties-core 4.1 Customer+Account | green | 10 new files (2 migrations, 2 models, 2 factories, CustomerCreated, DuplicateCustomerEmail, CreateCustomer, 2 tests) + lang; 416/1576 SQLite AND PG17; 7 PG constraints proven; 8/11 done
+
+## [2026-06-15 18:33] ralph | parties-core 5.1 Profile | green | 11 files | partial-unique index D8 RESOLVED (portable PG17+SQLite); 424/1618 SQLite, 47/47 Parties PG17; 9/11 done

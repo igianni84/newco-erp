@@ -27,4 +27,11 @@ return [
         // the rule alone is fully actionable.
         'duplicate_email' => 'Cannot create a Customer: a Customer with this email address already exists. Each Customer email must be globally unique.',
     ],
+    'profile' => [
+        // BR-K-Identity-2 rejection (design D8): a Customer holds at most one NON-TERMINAL Profile per Club, so
+        // a second live Profile for a (Customer, Club) pair is rejected. :customer / :club are operator-facing
+        // id references (not PII), so they are interpolated to make the reason self-documenting (unlike the
+        // duplicate_email reason, which omits the PII email).
+        'duplicate_for_club' => 'Cannot create a Profile: Customer :customer already has a live Profile in Club :club. A Customer may hold at most one non-terminal Profile per Club.',
+    ],
 ];
