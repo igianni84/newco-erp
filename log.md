@@ -171,3 +171,7 @@
 ## [2026-06-15 18:52] ralph | parties-core 6.2 | green | 1 file (SpineCreationChainTest) | full 428/1649 SQLite+PG17, arch 3/154 PG17 unamended | CHANGE COMPLETE 11/11
 
 ## [2026-06-15 20:28] close | parties-core | GUIDE 2.7: gates re-verified (428/1649 SQLite+PG17, phpstan max 0, openspec --strict); 3-lens semantic-verify 0 CRITICAL / 2 non-blocking WARN; merged --no-ff a51634f, archived 6db57aa (party-registry synced to specs), branch deleted, pushed
+
+## [2026-06-15 21:51] spec-to-change | parties-producer-lifecycle | authored + validated --strict: proposal/spec-delta/design/tasks. Slice 1 of K lifecycle = supply-side (Producer/Agreement/Club FSMs, 7 lifecycle events, retire->sunset cascade). 1 MODIFIED + 4 ADDED reqs, 17 scenarios, 10 tasks. Awaiting human APPROVED.
+
+## [2026-06-15 22:08] ralph | parties-producer-lifecycle 1.1 | green | 5 files: 3 Illegal*Transition exceptions + parties.php lang (producer/club/agreement groups) + TransitionExceptionsTest (13 cases). Full 441/441 SQLite, phpstan max 0, pint clean, --strict ok. No DB touched -> no PG17; no migration/composer drift.
