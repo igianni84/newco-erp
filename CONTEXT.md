@@ -195,6 +195,16 @@ _Avoid_: lang/ string, label, caption
 A named gate an operator can toggle without a deploy. **EXT-1** (`nft-on-chain`) is the single launch flag — the one named gate for every on-chain surface (NFT mint/burn, custodial wallet, on-chain recovery, the Bottle-Page chain-link), shipped OFF. While it is off, the non-serialized (NS) path is the universal fallback; the per-bottle serialization workflow is never flagged (decoupled, not deferred).
 _Avoid_: config toggle, kill switch, NFT switch (it gates more than mint/burn)
 
+## Identity & Access
+
+**Operator**:
+A NewCo staff principal who authenticates to the Admin Panel. Carries one or more operator roles; every action it drives records `actor_role: newco_ops`. **Not** a Module K party — operators have no Customer/Producer/Supplier row, so for an Operator the login principal and the acting identity are one and the same record. Owned by the OperatorPanel module.
+_Avoid_: user (overloaded), admin (a role, not the principal), Customer/Producer (those are parties, not staff)
+
+**Authentication principal**:
+The thin, first-party login record (credentials only) that authenticates an actor — a platform-foundation concern, never a business module's. For a Customer or Producer it **references the Module K party by id** and holds no business identity of its own (the party stays authoritative — a Customer is identity+eligibility, never a login); for an Operator the principal *is* the identity. The Actor context resolves `actor_role` + `actor_id` from the authenticated principal, where `actor_id` is the party/operator id — never the principal's own id. No external IdP at launch (EU-resident, first-party); social/SSO is a deferred seam.
+_Avoid_: User, account (the Module K Account is a billing container), password-on-the-Customer
+
 ## Operations & Integrations
 
 **Vinlock**:

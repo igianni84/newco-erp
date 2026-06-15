@@ -19,7 +19,6 @@ Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-cl
 
 | Open decision | Decide before (gate) |
 |---|---|
-| Identity/auth (first-party vs external IdP; customer vs operator auth) | Module K |
 | Queue driver (Redis + Horizon vs database; substrate ADR pre-set: at-least-once + per-job delay) | first `queued` consumer (expected F4–F6) |
 | Object storage for documents (invoices, statements) | INV1 issuance |
 | Hosting/infra (EU data-residency is mandatory) | staging environment |
