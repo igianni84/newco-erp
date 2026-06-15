@@ -20,6 +20,8 @@
 
 Queue driver (requirements pre-set by the 2026-06-12 substrate ADR: at-least-once + per-job delay; gate = first `queued` consumer, expected F4–F6) · object storage · hosting (EU residency; founder direction registered 2026-06-12: probably hyperscaler EU region — non-binding) · consumer/producer frontend stack (founder direction: TanStack SPA — formal ADR at the Module S storefront gate).
 
+_Identity/auth — **built** 2026-06-15:_ decided by the ADR above and now implemented (operator slice) by the `operator-auth-foundation` change — the `Operator` principal + `operators` table, the `operator` session guard as the application default, Filament `/admin` auth (login + password reset + opt-in TOTP 2FA), `spatie/laravel-permission` RBAC (Creator/Reviewer/Approver seeded as bare roles), and `ActorContext` resolving an authenticated operator → `newco_ops`/`Operator.id`. Still deferred: the **customer/producer guards** (Sanctum SPA) fold into the consumer/producer frontend-stack gate above; **authority-tier RBAC** → `feedback_prd_rr_approval`; the **separation-of-duties floor** → `catalog-lifecycle-approval`; **MFA enforcement** → the Architectural Security Review gate below.
+
 **Operational / security gates** — cross-cutting; surfaced by the 2026-06-13 substrate audit (C15) and tracked only here, since root CLAUDE.md's stack-gate table is protected and stack-scoped (this registry is their single home):
 
 - **Secrets management** — gate = staging environment / first stored production credential (DB, object storage, payment processor, Logilize). Covers credential storage, rotation, and CI/CD injection.

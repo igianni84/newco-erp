@@ -53,7 +53,7 @@ it('CONTEXT.md money terms carry their _Avoid_ disambiguations (house format)', 
     // The house format pairs a confusable term with an _Avoid_ line; the money primitives add one.
     expect(glossaryDoc())
         ->toContain('_Avoid_: float, decimal amount, major units')
-        ->toContain('_Avoid_: session, current user, auth guard');  // Actor context reads no auth
+        ->toContain('_Avoid_: session, current user, auth guard');  // the seam is distinct from the auth guard it reads
 });
 
 it('feature-flags doc documents the NS path as the universal fallback (and serialization stays ungated)', function () {

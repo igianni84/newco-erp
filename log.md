@@ -139,3 +139,5 @@
 ## [2026-06-15 14:31] ralph | operator-auth-foundation 5.2 | green | 6 files — OperatorSeeder+DatabaseSeeder cut to Operator, bootstrap op gets all 3 roles; 356/356 SQLite+PG17, phpstan 0@max
 
 ## [2026-06-15 14:48] ralph | operator-auth-foundation 6.1 | green | removed orphaned User+UserFactory, dropped users-table block, config/auth.php->operator default; Laravel base-merge keeps inert web/users (new knowledge/laravel rule); 359/359 SQLite+PG17; new AuthDefaultsTest
+
+## [2026-06-15 15:01] ralph | operator-auth-foundation 6.2 | green | docs-only, 4 files (CONTEXT.md Actor-context, docs/development.md spatie+wiring+env, decisions/INDEX.md built-marker, FoundationsDocsTest comment); 359/359 SQLite, phpstan max, validate strict; PG17 deferred to 6.3

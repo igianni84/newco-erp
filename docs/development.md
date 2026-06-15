@@ -35,14 +35,26 @@ Alternatives: `composer setup` is the skeleton's one-shot equivalent (install �
 
 ### Operator panel account
 
-The Filament panel at `/admin` has no self-registration. Seed the single operator from env vars (documented in `.env.example`, never committed with real values):
+The Filament panel at `/admin` has no self-registration — operators are provisioned by seeding. Seed the bootstrap operator from env vars (documented in `.env.example`, never committed with real values):
 
 ```bash
 # in .env: OPERATOR_NAME, OPERATOR_EMAIL, OPERATOR_PASSWORD (all required)
-php artisan db:seed --class=OperatorSeeder
+php artisan db:seed                      # DatabaseSeeder → RoleSeeder then OperatorSeeder
 ```
 
-The seeder is standalone (deliberately not wired into `DatabaseSeeder`), idempotent (`updateOrCreate` keyed on email), and throws a `RuntimeException` naming any missing variable — an empty `OPERATOR_PASSWORD` is the usual culprit.
+`DatabaseSeeder` runs `RoleSeeder` (the Creator / Reviewer / Approver roles on the `operator` guard) **then** `OperatorSeeder`, which `updateOrCreate`s the operator (idempotent, keyed on email) and grants it all three roles. The order matters: `OperatorSeeder` assigns roles, so running `php artisan db:seed --class=OperatorSeeder` alone fails unless `RoleSeeder` has already run. `OperatorSeeder` throws a `RuntimeException` naming any missing variable — an empty `OPERATOR_PASSWORD` is the usual culprit.
+
+### Operator authentication & RBAC
+
+Operator auth is wired by the `operator-auth-foundation` change — the operator slice of `decisions/2026-06-15-identity-auth.md`:
+
+- **Principal** — `App\Modules\OperatorPanel\Models\Operator` (table `operators`) is the **sole** authenticatable; the bootstrap `App\Models\User` / `users` table were removed. An operator has no Module K party row — its login principal *is* the acting identity.
+- **Guard** — the `operator` **session guard** (`config/auth.php`) is the **application default guard**; its provider is the `Operator` model and its password-reset broker (`operators`) uses the generic `password_reset_tokens` table.
+- **Panel** — `AdminPanelProvider` authenticates `/admin` against the `operator` guard with `->login()`, `->passwordReset()`, and **opt-in TOTP 2FA** (`->multiFactorAuthentication([AppAuthentication::make()->recoverable()], isRequired: false)` — enrolment optional, recovery codes on; MFA *enforcement* is deferred to the Architectural Security Review gate). No self-registration, no email verification.
+- **RBAC** — `spatie/laravel-permission` (operator-scoped via `guard_name = 'operator'`, teams off — see *Installed versions* below for the pinned version). The `Operator` model uses `HasRoles`; `RoleSeeder` seeds **Creator / Reviewer / Approver** as **bare roles** (mechanism only — no permission grants and no role→capability policy yet; the authority-tier policy and the separation-of-duties floor are deferred to `feedback_prd_rr_approval` / `catalog-lifecycle-approval`).
+- **Actor context** — `app/Platform/Events/ActorContext.php` reads the operator guard **by name** (no cross-module import): an authenticated operator resolves to (`newco_ops`, the operator id), console / queue / unauthenticated to (`system`, `null`), and a scoped run-as override wins over both — so every operator-driven domain event and audit record carries a real `actor_role`. The customer/producer guards extend the same precedence when they ship (Module S / TanStack gate).
+
+The auth-principal table `operators` keeps its flat (non-module-prefixed) name by `decisions/2026-06-15-auth-principal-table-naming.md`.
 
 ## Quality Commands
 
