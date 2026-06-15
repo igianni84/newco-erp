@@ -151,3 +151,5 @@
 ## [2026-06-15 16:51] ralph | parties-core 1.1 | green | ADR party-type-marker-on-subtype + INDEX row (docs-only); pint+lint+openspec validate --strict green | 4 files
 
 ## [2026-06-15 16:56] ralph | parties-core 1.2 | green | 5 files (4 identity/account enums + EnumsTest); full suite 366 green, phpstan max 0 err, strict valid, composer diff empty; no DB (enum-only)
+
+## [2026-06-15 17:03] ralph | parties-core 1.3 | green | 6 files (5 registry/membership enums + extended EnumsTest, 18 tests); all 10 Parties enums exist; no DB
