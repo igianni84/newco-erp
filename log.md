@@ -121,3 +121,7 @@
 ## [2026-06-15 11:04] ralph | operator-auth-foundation 1.1 | green | spatie/laravel-permission 8.0.0 installed + config/migration published (teams off), 5 RBAC tables, migration phpstan-excluded, PG17-verified 324/324
 
 ## [2026-06-15 11:10] ralph | operator-auth-foundation 2.1 | green | 2 files (operators migration + test) | 328/328 SQLite + PG17, phpstan 0 @ max, pint clean | 2 of 12 done
+
+## [2026-06-15 11:32] ralph | operator-auth-foundation 2.2 | human-needed | spec mandates table 'operators' + model in OperatorPanel, but ModulePersistenceConventionsTest requires 'operator_panel_' prefix — irreconcilable, unanticipated. Fix=exempt auth principals+ADR (needs OK). 3 files in tree, not committed.
+
+## [2026-06-15 13:26] unblock | operator-auth-foundation 2.2 | HUMAN_NEEDED resolved (Option A): auth-principal models (Authenticatable) exempt from module-prefix arch test (Operator->operators). Test skip + module-architecture MODIFIED delta + design D7 + ADR. Green SQLite+PG17 336/336, phpstan 0 @ max, pint. 2.3 next.

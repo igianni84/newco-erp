@@ -10,25 +10,26 @@ updated: 2026-06-15
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-15 (ralph iter — `operator-auth-foundation` task 2.1 GREEN).** Added the `operators` table migration (`2026_06_15_100000_create_operators_table.php`) — the operator login principal, built **alongside** the bootstrap `users` table (cutover discipline D1; `users` removed only at cleanup 6.1). Columns: `id`, `name`, `email` unique, `email_verified_at` nullable (framework-compat/unused), `password`, `app_authentication_secret` (text, null), `app_authentication_recovery_codes` (text, null), `rememberToken()`, `timestamps()`. 2FA column names verified against Filament's MFA concern traits in `vendor/` first. Default 0001 migration (`users`/`password_reset_tokens`/`sessions`) left intact. New 4-test smoke test. 2.1 flipped; **10 tasks remain**.
+**2026-06-15 13:23 (interactive — resolved the `operator-auth-foundation` task 2.2 HUMAN_NEEDED blocker, committed).** Founder chose **Option A**: auth-principal models are exempt from the module-table-prefix arch convention. Built the resolution (test skip + truth-spec MODIFIED delta + design D7 + new ADR), proved it green on **both engines**, flipped 2.2, committed. The loop is **stopped** and ready to relaunch from a clean green state.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pennant 1.23 · spatie/laravel-permission 8.0.0 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PostgreSQL 17.
-- Branch `ralph/operator-auth-foundation`: suite **328/328** green (SQLite) · **328/328 on PG17** (migrate:fresh clean, `operators` column listing confirmed, container removed) · phpstan **0 @ max** · pint clean. `openspec validate --strict` valid.
-- `composer` unchanged this iter (authorised dep landed in 1.1). Published spatie migration stays phpstan-excluded (`phpstan.neon` glob); the new `operators` migration IS analysed (clean — plain auth table).
+- Branch `ralph/operator-auth-foundation`: **full suite 336/336 on SQLite AND 336/336 on PostgreSQL 17** (DRIVER=pgsql printed, container removed). phpstan **0 @ max**, pint clean, `openspec validate --strict` valid.
+- Last commit: **2.2** (`feat(operator-auth-foundation): 2.2 Operator model + factory + auth-principal table-naming carve-out`). 1.1 + 2.1 + 2.2 done (**3 of 12**); 2.3 next.
 
 ## Active Change & Next Task
-- **ACTIVE: `operator-auth-foundation`** — 12 tasks / 6 groups; **1.1 + 2.1 done, 10 left**.
-- **Next: 2.2 — `Operator` model + factory.** `App\Modules\OperatorPanel\Models\Operator extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery`; `use HasRoles, Notifiable`; `casts()`: `password=>hashed`, `email_verified_at=>datetime`, `app_authentication_secret=>encrypted`, `app_authentication_recovery_codes=>encrypted:array`; the four MFA accessors + `getAppAuthenticationHolderName()`; `canAccessPanel()` → `true`. Add `OperatorFactory`. Do NOT remove `User`/`UserFactory` yet. Contract signatures confirmed in `vendor/.../MultiFactor/App/Contracts/`; the `Concerns/InteractsWith*` traits satisfy both contracts + merge the encrypted casts (model may `use` them — see Open Patterns).
-- Remaining: 2.2 model+factory → 2.3 `operator` guard → 3.1 panel cutover (authGuard/passwordReset/2FA) → 4.1/4.2 ActorContext wiring (guard BY NAME, no `Operator` import; arch test unchanged) → 5.1/5.2 RoleSeeder+OperatorSeeder → 6.1 remove `User`/finish config/auth → 6.2 docs → 6.3 cross-engine close.
+- **ACTIVE: `operator-auth-foundation`** — 12 tasks; **3 done, 9 remain, no blocker.**
+- **Next: 2.3** — `config/auth.php`: add the `operator` session guard alongside `web` (provider = `Operator`; `operators` password broker), keep `web`/`users`/`User` + the app default guard unchanged until cleanup 6.1. Safe to relaunch `./ralph.sh`.
 
 ## Blockers & Decisions Needed
-- None blocking. Founder decisions standing: **2FA opt-in INCLUDED** (enforcement → security-review gate); **User→Operator replacement**; bootstrap operator holds all 3 roles.
-- **Open ADR gates (don't step in):** queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack + SPA session mechanics + customer/producer guards + Fortify/Sanctum (Module S). Authority-tier RBAC policy → `feedback_prd_rr_approval`. SoD-floor transition + Draft→Reviewed→Active→Retired FSM → `catalog-lifecycle-approval`. MFA enforcement → security review.
+- **None.** The 2.2 spec-vs-arch-invariant collision is resolved (Option A, founder-authorised 2026-06-15): a model implementing `Illuminate\Contracts\Auth\Authenticatable` is exempt from the `operator_panel_`-prefix rule in `ModulePersistenceConventionsTest`. Recorded in ADR `decisions/2026-06-15-auth-principal-table-naming.md`, design D7, and the `module-architecture` MODIFIED delta (truth spec updates on archive). Invariant 10 substance intact (`ModuleBoundariesTest` unchanged).
+- Standing founder decisions: 2FA opt-in INCLUDED (enforcement→security review); User→Operator replacement; bootstrap operator holds all 3 roles.
+- **Open ADR gates (don't step in):** queue driver (F4–F6) · object storage (INV1) · hosting EU (staging) · frontend TanStack/SPA/Fortify-Sanctum (Module S) · authority-tier RBAC (`feedback_prd_rr_approval`) · SoD floor + lifecycle FSM (`catalog-lifecycle-approval`) · MFA enforcement (security review).
 
 ## Open Patterns
-- **2FA column names are fixed by Filament** — `Concerns/InteractsWith*`: `app_authentication_secret` (cast `encrypted`) + `app_authentication_recovery_codes` (cast `encrypted:array`), both merge-hidden; the concern traits satisfy the contracts.
-- **Pint pulls `{@see \FQCN}` docblock refs into real `use` imports** and keeps them; phpstan-max does NOT flag docblock-only imports.
-- **Vendor-published migration vs phpstan-max:** exclude the single file in `phpstan.neon`; never `@phpstan-ignore`/cast the vendor file.
-- **Cross-engine discipline:** SQLite-green necessary, NEVER sufficient — full suite on `postgres:17` for any DB task; print `DRIVER=pgsql`; busy-poll `pg_isready` (no foreground `sleep`); remove container.
-- **Second brain:** append to log.md ONLY via `scripts/memlog.sh` (real clock); hot.md ≤550 words.
+- **NEW PATTERN (now an ADR):** auth-principal models (`Authenticatable`) keep the framework's flat auth-table name (`Operator`→`operators`) and are skipped by the module-prefix arch test — but **every non-principal module model still needs its module prefix**. Forward-binds future `customer-identity`/`producer-identity` principals.
+- **2FA column names fixed by Filament** concern traits: `app_authentication_secret` (`encrypted`) + `app_authentication_recovery_codes` (`encrypted:array`), both merge-hidden. Hand-rolled accessors match vendor signatures (`#[SensitiveParameter]`, `save()` in setters).
+- **larastan + `encrypted:array`:** add `@property array<string>|null` or it infers the schema `string` and the `?array` return mismatches at max.
+- **Pint `fully_qualified_strict_types`** pulls `{@see \FQCN}` into real `use` imports — for a soon-deleted class (`App\Models\User`) use plain backtick text, not `{@see}`, or task 6.1's grep + the import linger.
+- **Cross-engine discipline:** SQLite-green necessary, never sufficient — full suite on `postgres:17` for DB tasks; `pg_isready` busy-poll; remove container.
+- **log.md:** append ONLY via `scripts/memlog.sh`; hot.md ≤550 words.
