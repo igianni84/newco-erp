@@ -167,3 +167,5 @@
 ## [2026-06-15 18:33] ralph | parties-core 5.1 Profile | green | 11 files | partial-unique index D8 RESOLVED (portable PG17+SQLite); 424/1618 SQLite, 47/47 Parties PG17; 9/11 done
 
 ## [2026-06-15 18:41] ralph | parties-core 6.1 | green | docs-only: CONTEXT.md Parties spine glossary + 5 *Created payload-contract table (keys verified vs Events) + Supplier/Account event-silence; Club/OC enriched in place; 3 files; 10/11
+
+## [2026-06-15 18:52] ralph | parties-core 6.2 | green | 1 file (SpineCreationChainTest) | full 428/1649 SQLite+PG17, arch 3/154 PG17 unamended | CHANGE COMPLETE 11/11
