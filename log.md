@@ -181,3 +181,5 @@
 ## [2026-06-15 22:26] ralph | parties-producer-lifecycle 2.1 | green | 3 files (SunsetClub + ClubSunset + ClubLifecycleTest) | 448/448 SQLite, 89/89 PG17, phpstan 0, pint clean, openspec valid
 
 ## [2026-06-15 22:34] ralph | parties-producer-lifecycle 2.2 | green | CloseClub+ClubClosed (sunset→closed, Club FSM complete); 451/451 SQLite, PG17 92/92, phpstan 0, validate strict; 3 files; no migration/composer drift
+
+## [2026-06-15 22:43] ralph | parties-producer-lifecycle 3.1 | green | 3 files (ActivateProducer + ProducerActivated + ProducerLifecycleTest) | 455/455 SQLite, 96/96 PG17, phpstan 0, pint clean
