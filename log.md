@@ -185,3 +185,5 @@
 ## [2026-06-15 22:43] ralph | parties-producer-lifecycle 3.1 | green | 3 files (ActivateProducer + ProducerActivated + ProducerLifecycleTest) | 455/455 SQLite, 96/96 PG17, phpstan 0, pint clean
 
 ## [2026-06-15 22:58] ralph | parties-producer-lifecycle 3.2 | green | RetireProducer + ProducerRetired + active->retired cascade to SunsetClub (root threads id/correlation); 459/459 SQLite +4, PHPStan max 0, PG17 100/100; 3 files (event, action, test)
+
+## [2026-06-15 23:13] ralph | parties-producer-lifecycle 4.1 | green | 4 files: ActivateProducerAgreement + ProducerAgreementActivated/Superseded + test. NULL-safe (producer_id,club_id) supersession (BR-K-Agreement-1); inline derived source. 466/466 SQLite, 107/107 PG17, phpstan 0, pint clean
