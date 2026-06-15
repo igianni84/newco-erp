@@ -153,3 +153,5 @@
 ## [2026-06-15 16:56] ralph | parties-core 1.2 | green | 5 files (4 identity/account enums + EnumsTest); full suite 366 green, phpstan max 0 err, strict valid, composer diff empty; no DB (enum-only)
 
 ## [2026-06-15 17:03] ralph | parties-core 1.3 | green | 6 files (5 registry/membership enums + extended EnumsTest, 18 tests); all 10 Parties enums exist; no DB
+
+## [2026-06-15 17:14] ralph | parties-core 2.1 Producer | green | first Parties DB entity (migration+model+factory+ProducerCreated+CreateProducer+test); 384/1408 green on SQLite AND PG17; phpstan max 0; 6 new files
