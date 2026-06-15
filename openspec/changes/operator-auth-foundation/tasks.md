@@ -25,7 +25,7 @@
 
 ## 3. Panel authentication cutover
 
-- [ ] 3.1 **`AdminPanelProvider` → operator guard + reset + opt-in 2FA** (design D2/D3) — `->authGuard('operator')`; keep `->login()`; add `->passwordReset()`; add `->multiFactorAuthentication([AppAuthentication::make()…], isRequired: false)` with recovery codes (verify the exact recovery/`isRequired` builder in `vendor/`). Do **not** add `->registration()` or `->emailVerification()`.
+- [x] 3.1 **`AdminPanelProvider` → operator guard + reset + opt-in 2FA** (design D2/D3) — `->authGuard('operator')`; keep `->login()`; add `->passwordReset()`; add `->multiFactorAuthentication([AppAuthentication::make()…], isRequired: false)` with recovery codes (verify the exact recovery/`isRequired` builder in `vendor/`). Do **not** add `->registration()` or `->emailVerification()`.
   - Acceptance: an unauthenticated `/admin` request redirects to the operator login; an `Operator` authenticated on the `operator` guard reaches the dashboard; the 2FA enrolment surface is present; no registration route exists; quality green; **verified on PG17**.
   - Test hint: **MODIFY** `tests/Feature/OperatorPanelTest.php` — `actingAs(Operator::factory()->create(), 'operator')` (was `User::factory()`); assert the guest redirect and authenticated dashboard access; assert the panel registration route is absent. Verify `AppAuthentication` FQCN (`Filament\Auth\MultiFactor\App\AppAuthentication`) + the panel method names in `vendor/` first.
 

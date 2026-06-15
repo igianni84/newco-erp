@@ -127,3 +127,5 @@
 ## [2026-06-15 13:26] unblock | operator-auth-foundation 2.2 | HUMAN_NEEDED resolved (Option A): auth-principal models (Authenticatable) exempt from module-prefix arch test (Operator->operators). Test skip + module-architecture MODIFIED delta + design D7 + ADR. Green SQLite+PG17 336/336, phpstan 0 @ max, pint. 2.3 next.
 
 ## [2026-06-15 13:39] ralph | operator-auth-foundation 2.3 | green | 4 files | operator session guard+provider+broker in config/auth.php alongside web; OperatorGuardTest 7/20; 343/343 SQLite+PG17; phpstan0@max; pint; validate ok
+
+## [2026-06-15 13:50] ralph | operator-auth-foundation 3.1 | green | 4 files | AdminPanelProvider→authGuard(operator)+passwordReset()+opt-in MFA(recoverable); OperatorPanelTest rewritten; 346/346 SQLite & PG17; phpstan 0@max

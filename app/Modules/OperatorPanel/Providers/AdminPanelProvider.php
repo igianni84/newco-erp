@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Providers;
 
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -27,7 +28,13 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->authGuard('operator')
             ->login()
+            ->passwordReset()
+            ->multiFactorAuthentication(
+                [AppAuthentication::make()->recoverable()],
+                isRequired: false,
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
