@@ -199,3 +199,5 @@
 ## [2026-06-16 09:20] push | main->origin | Pushed main -> origin (human-OK'd) + deleted merged branch ralph/parties-producer-lifecycle. parties-producer-lifecycle close fully finalized; repo synced, no active change (next deferred).
 
 ## [2026-06-16 10:36] spec-to-change | catalog-lifecycle-approval | Authored Module 0 lifecycle change (8 deltas: 7 ADDED + 1 MODIFIED on product-catalog; 17 tasks); openspec validate --strict GREEN; approved by Giovanni; APPROVED marker + ralph launch pending.
+
+## [2026-06-16 10:48] ralph | catalog-lifecycle-approval 1.1 | green | 5 files — catalog_producer_states projection (enum+model+migration) + tests; full suite 481/481 SQLite, 77/77 Catalog+arch on PG17; CHECK+unique proven; phpstan 0, pint clean
