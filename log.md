@@ -249,3 +249,5 @@
 ## [2026-06-16 22:21] dreaming-apply | dreams/2026-06-16 Proposed + Phase-2 routine | Branch dream/2026-06-16-apply-proposed: +5 rules +3 hypotheses (testing/architecture/laravel/data-model); new data-model domain (enum-CHECK relocated from laravel); localized-exc re-graded hyp->rule. Wired weekly Opus 4.8 1M dreaming cloud routine + ADR. Knowledge-only, PR open.
 
 ## [2026-06-16 22:34] merge | dreaming PR #2 | Specialized-agent review: 0 blockers, clean PASS (localized-exc hyp->rule verified vs 4 archives; counts honest; enum-CHECK relocated verbatim; INDEX matches). CI green 613/613 PG+SQLite. Merged --no-ff main a6fc85f + pushed + branch deleted. Knowledge/docs-only.
+
+## [2026-06-16 22:41] fix | knowledge date consistency | Standardize catalog-product-spine confirmations on archive-dir date 06-15 (convention=dir-date, cf parties-producer-lifecycle 5/5 at 06-16). Fixed 2 PR#1-era outliers citing 06-14 (laravel use-cycle, data-model enum-CHECK). All 8 citations now 06-15.

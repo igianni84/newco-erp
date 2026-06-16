@@ -6,7 +6,7 @@
 
 **Rule.** A constraint only PostgreSQL can express (an enum-column `CHECK`, etc.) belongs in an `if (DB::getDriverName() === 'pgsql')` migration branch; the SQLite floor is the Eloquent enum **cast** (migrations stay Postgres-truthful, SQLite-compatible). **Derive the CHECK's allowed values from the backing enum's `::cases()`** (never a hand-typed `IN (...)` list) so the DB constraint can never drift from the PHP enum — one source of truth, two enforcers. Prove it engine-guarded: assert the named constraint **rejects** the bad insert on PG (assert the constraint NAME, never an engine SQLSTATE), wrapping the forbidden DML in a nested `DB::transaction()` (savepoint) so the verify-after-throw survives PG's aborted-transaction state.
 
-**Confirmations (dated, cross-change).** 2026-06-12 `foundations-domain-events-audit` (`domain_events.actor_role`); 2026-06-14 `catalog-product-spine` (`lifecycle_state`); 2026-06-15 `parties-core` (per enum column; `party_type` proven on PG); 2026-06-16 `catalog-lifecycle-approval`. The engine-guarded CHECK-*test* idiom: 2026-06-13 `substrate-hardening`.
+**Confirmations (dated, cross-change).** 2026-06-12 `foundations-domain-events-audit` (`domain_events.actor_role`); 2026-06-15 `catalog-product-spine` (`lifecycle_state`); 2026-06-15 `parties-core` (per enum column; `party_type` proven on PG); 2026-06-16 `catalog-lifecycle-approval`. The engine-guarded CHECK-*test* idiom: 2026-06-13 `substrate-hardening`.
 
 **Applies to.** Every migration introducing an enum-backed column. Pairs with the cross-engine portability rule in `knowledge/testing/rules.md`. *(Relocated 2026-06-16 from `knowledge/laravel/rules.md` — this is a DDL/migration pattern, so it lives here now.)*
 
