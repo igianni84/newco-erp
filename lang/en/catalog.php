@@ -48,4 +48,12 @@ return [
         'self_approval_reviewer' => 'Separation of duties on this :entity: its reviewer may not also approve it.',
         'insufficient_separation' => 'Separation of duties on this :entity: the three-step approval requires three distinct operators (creator, reviewer, approver), but its creator and reviewer were the same operator.',
     ],
+    'gate' => [
+        // The Producer activation gate (design D6; Module 0 PRD § 5.4, BR-Producer-1). A Product Master may
+        // reach `active` only while its linked Producer is `active` in Catalog's own producer-state
+        // projection — a hard gate rejected at the workflow level; an absent or `retired` projection blocks
+        // it. :entity is the entity-type name (e.g. ProductMaster) — NOT PII; the producer is referenced by
+        // id only and never named in the copy (invariant 10, PII-free discipline).
+        'producer_not_active' => 'Cannot activate this :entity: its linked Producer is not active. A Product Master may activate only while its linked Producer is active.',
+    ],
 ];

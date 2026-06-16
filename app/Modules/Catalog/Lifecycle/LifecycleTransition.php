@@ -8,6 +8,8 @@ use App\Modules\Catalog\Exceptions\IllegalLifecycleTransition;
 use App\Modules\Module;
 use App\Platform\Audit\AuditRecorder;
 use App\Platform\Events\ActorContext;
+use App\Platform\Events\DomainEventRecorder;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -48,8 +50,21 @@ use LogicException;
  * write (the recorder's open-transaction guard makes write + audit atomic), with the before/after
  * `{lifecycle_state}` snapshot and the acting principal resolved from the {@see ActorContext} seam. The
  * `draft → reviewed` and `retired → reviewed` checkpoints are audit-ONLY (no domain event, Module 0 PRD
- * § 14.2). One seam still layers on in task 3.x: a domain event recorded on Activate/Retire, and the
- * per-entity activation gate evaluated before the write.
+ * § 14.2).
+ *
+ * Two per-transition seams the activation/retirement Actions plug into {@see transition()} (design D6/D7/D9;
+ * catalog-lifecycle-approval task 3.2, extended per-entity by 4.x/5.x):
+ *   - the optional `$gate` closure — an activation precondition (the Producer gate for a Product Master via
+ *     {@see ProducerActivationGate}; the parent-active cascade for a child) evaluated AFTER the governance
+ *     guard and BEFORE the write; it throws a localized exception to reject, so a gated-out activation
+ *     records nothing. Only activation Actions pass it (submit/retire/reopen pass null);
+ *   - the optional `$event` closure — the transition's verbatim `*Activated`/`*Retired` domain-event intent
+ *     (name + PII-free payload), recorded through the platform {@see DomainEventRecorder} AFTER the state
+ *     write, inside this same transaction (§14.1 / invariant 4 — the transactional outbox), so its payload
+ *     reflects the to-state. The audit-only checkpoints pass null.
+ * The mechanism owns the event envelope (module `catalog`, the {@see ActorContext} principal, the entity
+ * type/id resolved once) so the envelope can never drift between the audit row and the event, and the Action
+ * stays thin and magic-string-free (it supplies only its entity-specific gate + event class).
  */
 class LifecycleTransition
 {
@@ -67,24 +82,33 @@ class LifecycleTransition
         private readonly AuditRecorder $auditRecorder,
         private readonly ActorContext $actor,
         private readonly ApprovalGovernance $governance,
+        private readonly DomainEventRecorder $eventRecorder,
     ) {}
 
     /**
-     * Drive $model through $type, recording the step in the audit trail; returns the transitioned model
-     * (re-read under the row lock, reflecting the to-state).
+     * Drive $model through $type, recording the step in the audit trail (and, on Activate/Retire, the
+     * supplied domain event); returns the transitioned model (re-read under the row lock, reflecting the
+     * to-state).
      *
      * @template TModel of Model&HasLifecycleState
      *
      * @param  TModel  $model  the spine entity to transition (this mechanism is its sole `lifecycle_state` writer)
-     * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) for the audit record + the rejection
+     * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) for the audit/event record + the rejection
+     * @param  (Closure(TModel): void)|null  $gate  an activation precondition (design D6/D7) evaluated after the governance guard, before the write — it throws a localized exception to reject (the Producer gate for a Master; the parent-active cascade for a child). Null for transitions with no gate (submit/retire/reopen, standalone activations).
+     * @param  (Closure(TModel): array{name: string, payload: array<string, mixed>})|null  $event  the transition's domain-event intent (design D9), recorded AFTER the state write inside this transaction so the payload reflects the to-state. Null for the audit-only checkpoints (submit/reopen).
      * @return TModel
      *
      * @throws IllegalLifecycleTransition when the locked row is not in the transition's required from-state
      * @throws ApprovalGovernanceViolation when a commercial-impact step fails the approval governance
      */
-    public function transition(Model&HasLifecycleState $model, LifecycleTransitionType $type, string $entity): Model&HasLifecycleState
-    {
-        return DB::transaction(function () use ($model, $type, $entity) {
+    public function transition(
+        Model&HasLifecycleState $model,
+        LifecycleTransitionType $type,
+        string $entity,
+        ?Closure $gate = null,
+        ?Closure $event = null,
+    ): Model&HasLifecycleState {
+        return DB::transaction(function () use ($model, $type, $entity, $gate, $event) {
             $this->lockAndRefresh($model);
             $entityId = $this->entityId($model);
 
@@ -102,6 +126,13 @@ class LifecycleTransition
                 $this->governance->guard($type, $entity, $entityId);
             }
 
+            // Activation precondition gate (design D6/D7): the Producer gate for a Master, the parent-active
+            // cascade for a child. Evaluated after governance and before the write, so a gated-out activation
+            // records neither audit nor event. Only activation Actions pass a gate; the others pass null.
+            if ($gate !== null) {
+                $gate($model);
+            }
+
             $to = $type->to();
             $model->update(['lifecycle_state' => $to]);
 
@@ -113,6 +144,23 @@ class LifecycleTransition
                 ['lifecycle_state' => $from->value],
                 ['lifecycle_state' => $to->value],
             );
+
+            // Domain event (design D9; § 14.1 / invariant 4 — the transactional outbox), recorded AFTER the
+            // state write inside this same transaction so the payload reflects the to-state. Activate records
+            // the entity's *Activated, Retire its *Retired; the audit-only checkpoints pass null.
+            if ($event !== null) {
+                $intent = $event($model);
+
+                $this->eventRecorder->record(
+                    name: $intent['name'],
+                    module: Module::Catalog->value,
+                    actorRole: $this->actor->role(),
+                    actorId: $this->actor->actorId(),
+                    entityType: $entity,
+                    entityId: $entityId,
+                    payload: $intent['payload'],
+                );
+            }
 
             return $model;
         });
