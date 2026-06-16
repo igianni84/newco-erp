@@ -10,19 +10,18 @@ updated: 2026-06-16
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-16 (interactive — GUIDE §2.7 close of `parties-producer-lifecycle`).** Ran the full closing ritual: independent re-verify GREEN on BOTH engines, merged `ralph/parties-producer-lifecycle` → `main` `--no-ff` (`d5dab8b`), semantic-verify CLEAN (3 parallel audit agents, §2.7 rubric), archived (`3f6ae08`) → truth spec `party-registry` absorbed **+4 ADDED / ~1 MODIFIED** requirements. **`main` is ahead of `origin/main` by 13 commits — NOT pushed (awaiting human OK on the outward-facing push).**
+**2026-06-16 (interactive — GUIDE §2.7 close of `parties-producer-lifecycle` — FULLY FINALIZED).** Ran the full closing ritual: independent re-verify GREEN on BOTH engines, merged `ralph/parties-producer-lifecycle` → `main` `--no-ff` (`d5dab8b`), semantic-verify CLEAN (3 parallel audit agents, §2.7 rubric), archived (`3f6ae08`) → truth spec `party-registry` absorbed **+4 ADDED / ~1 MODIFIED** requirements. **`main` pushed to `origin/main` (human-OK'd) and the merged branch `ralph/parties-producer-lifecycle` deleted. Repo synced; clean slate.**
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PG17.
 - **Full suite 475/475 on SQLite AND on PostgreSQL 17** (1952 assertions), **phpstan max 0**, **pint --test clean**, truth spec `openspec validate party-registry --strict` valid. No migration / no composer drift in the merged change.
 
 ## Active Change & Next Task
-- **No active change.** `parties-producer-lifecycle` merged + archived (`openspec/changes/archive/2026-06-16-parties-producer-lifecycle/`).
-- **Immediate:** decide the `git push` of `main` → `origin` (held pending human OK; GitHub is the backup per GUIDE line 220). Optional local cleanup: `git branch -d ralph/parties-producer-lifecycle` (fully merged into main).
-- **Next change (pick one):** `catalog-lifecycle-approval` (Module 0 now consumes the emitted `ProducerActivated`/`ProducerRetired` to gate Product Master activation, AC-K-XM-2) — now unblocked; OR the **demand-side** Parties slice (Customer/Account/Profile FSMs, Originating-Club lock, Hero capacity, segment view) — mirror this change's shape. Use `/spec-to-change`.
+- **No active change.** `parties-producer-lifecycle` merged, archived, and pushed to origin. Working tree clean; `main` == `origin/main`.
+- **Next change deferred** — Giovanni decides later (chose "stop" at close). When resumed, pick one via `/spec-to-change`: `catalog-lifecycle-approval` (Module 0 now consumes the emitted `ProducerActivated`/`ProducerRetired` to gate Product Master activation, AC-K-XM-2 — now unblocked); OR the **demand-side** Parties slice (Customer/Account/Profile FSMs, Originating-Club lock, Hero capacity, segment view) — mirror this change's shape.
 
 ## Blockers & Decisions Needed
-- **Push pending human OK** — `main` ahead of origin by 13.
+- **None.** Close fully finalized (merged + archived + pushed + branch cleaned).
 - Two **non-blocking** semantic-verify SUGGESTIONs to fold into a future change (not defects): (1) stale docblock `app/Modules/Parties/Enums/ProducerAgreementStatus.php:16-17` still says supersession is "deferred to parties-membership-lifecycle" though this change now implements it; (2) no test forcing a mid-cascade `SunsetClub` failure to exercise partial-cascade rollback (correct by construction via nested `DB::transaction`).
 
 ## Open Patterns
