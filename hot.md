@@ -10,23 +10,23 @@ updated: 2026-06-16
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-16 (interactive — Dreaming memory-curation skill built + first curation merged via PR #1).** New `/dreaming` skill (`.claude/skills/dreaming/`, propose-only, `disable-model-invocation`): a scheduled curation pass over the memory system that promotes confirmed cross-change patterns to `knowledge/` rules, extracts lessons, and flags stale memory — applied on a `dream/<date>` branch + PR, never `main`. PR #1 (reviewed by an adversarial sub-agent → 0 blockers, 2 one-line fixes applied) merged `--no-ff` → `main` (`37f413a`), branch deleted, pushed. First run promoted **3 cross-change rules** (Pint `{@see \FQCN}` auto-import, PG enum-`CHECK` from `::cases()`, Pest global-helper namespace) + a **6th SQLite/PG portability trap**; 6 further candidates + a proposed `knowledge/data-model` domain are parked in `dreams/2026-06-16.md`.
+**2026-06-16 (interactive — Dreaming Phase 2 wired + dream-2026-06-16 Proposed curations applied).** On branch `dream/2026-06-16-apply-proposed` (PR open, pending review). (1) **Scheduled Dreaming:** a weekly claude.ai cloud routine (`trig_0178e8Bv8K5p1zfvcjPg76W5`, Mondays 06:00 UTC = 08:00 Rome, first auto-run 2026-06-22) runs `/dreaming` on **Opus 4.8 1M**, propose-only via a `dream/<date>` PR — ADR `decisions/2026-06-16-scheduled-memory-dreaming.md`. (2) **Applied the Proposed curations** from `dreams/2026-06-16.md`, each re-verified against archived `progress.md`: every pattern met/exceeded its claimed count.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PG17.
-- **Green on `main`: full suite 613/613 SQLite AND 613/613 PostgreSQL 17** (last code change at the catalog-lifecycle-approval close). The Dreaming PR is docs/knowledge-only — no code touched, CI green (4/4).
+- **Green on `main`: 613/613 SQLite AND 613/613 PostgreSQL 17** (last code change = catalog-lifecycle-approval close). This branch is **knowledge/docs-only — no code touched.**
 
 ## Active Change & Next Task
 - **NONE active** (ERP build). `openspec list` → "No active changes found."
 - **Next (ERP):** `/spec-to-change` for the next Build_Workplan slice. Deferred follow-ons: `catalog-operator-console`, `parties-compliance`, Phase-3 cross-module referencers (D8).
-- **Next (Dreaming, Phase 2):** wire a scheduled cloud routine (`/schedule`, weekly) that runs `/dreaming`, + write ADR `decisions/2026-06-16-scheduled-memory-dreaming.md` (mechanism = cloud, propose-only-via-PR, cadence, cost). Optionally apply the 6 Proposed curations from `dreams/2026-06-16.md`.
+- **Dreaming Phase 2: DONE.** Routine live; pending only: review/merge the follow-up PR — then the weekly routine carries the cadence.
 
 ## Blockers & Decisions Needed
-- **None.**
+- **None.** (Open item: merge the `dream/2026-06-16-apply-proposed` PR.)
 
 ## Open Patterns
-- **Dreaming is now the memory-curation actor.** The hypotheses→rules promotion lifecycle (previously best-effort — all three `hypotheses.md` were empty while patterns piled up in archived `progress.md`) now runs on a cadence. Promotion bar: **≥3 dated cross-change confirmations → rule-grade** (direct to `rules.md`).
+- **`knowledge/` now: architecture 2 · data-model 2+1 · laravel 3+1 · testing 4+1.** New `data-model` domain owns DDL: enum-`CHECK` (relocated from laravel) + 63-char index naming + the spine-template hypothesis. Promotion bar: **≥3 dated cross-change confirmations → rule-grade**.
+- **Dreaming is the scheduled memory-curation actor.** Mechanical drift → `memory-health.sh` Stop hook; semantic curation → the weekly routine. Both propose-only, both via PR/warning, never auto-`main`.
 - **Full suite = `php -d memory_limit=512M vendor/bin/pest`** (NOT `php artisan test` — 128M OOMs in the arch plugin).
 - **PG17 gate** before a DB task is done: `docker run -d --name pg … postgres:17`; run with `DB_CONNECTION=pgsql … -p 55432`; `docker rm -f pg`.
-- **GUIDE §2.7 close** ritual for ralph changes; Dreaming PRs follow the same `merge --no-ff` + delete-branch + memory-close flow.
-- **Heredoc `cat <<EOF` mentioning "spec" trips the git-guardrails Bash hook** — append memory via Edit/Write or `scripts/memlog.sh`, never a shell redirect.
+- **Heredoc `cat <<EOF` mentioning "spec" trips the git-guardrails Bash hook** — write memory via Edit/Write or `scripts/memlog.sh`, never a shell redirect.
