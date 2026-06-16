@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Modules\Catalog\Actions;
+
+use App\Modules\Catalog\Events\CompositeSKURetired;
+use App\Modules\Catalog\Exceptions\ApprovalGovernanceViolation;
+use App\Modules\Catalog\Exceptions\IllegalLifecycleTransition;
+use App\Modules\Catalog\Lifecycle\LifecycleTransition;
+use App\Modules\Catalog\Lifecycle\LifecycleTransitionType;
+use App\Modules\Catalog\Models\CompositeSku;
+
+/**
+ * Retires a Composite SKU (`active → retired`) through the shared {@see LifecycleTransition} mechanism
+ * (catalog-lifecycle-approval task 4.6; design D1/D9; product-catalog — Requirements: Product Lifecycle
+ * State Machine, Product Lifecycle Events).
+ *
+ * Retire is a commercial-impact step: the mechanism enforces the from-state guard (valid only from `active`,
+ * else {@see IllegalLifecycleTransition}) and the operator-principal floor (a `system`/null actor cannot
+ * retire, else {@see ApprovalGovernanceViolation}) before it writes; on success it records ONE
+ * `audit_records` row (`catalog.composite_sku.retired`) AND the {@see CompositeSKURetired} domain event — the
+ * PII-free `*Retired` payload — in that same transaction (§ 14.1 / invariant 4 — the transactional outbox).
+ * No activation gate applies to a retire (it passes no `$gate`).
+ *
+ * Scope (design D8): this is the SINGLE-entity retire — a Composite SKU is a LEAF in the catalog hierarchy
+ * (nothing within catalog references it), so it carries no within-catalog reference-integrity guard; the
+ * operator-driven parent-before-child cascade (its `*Retired` recorded last, under the Master's cascade) and
+ * the cross-module downstream-reference leg (Allocations/Offers — Phase 3) land in task 5.2. A thin
+ * per-entity wrapper: the entity label is {@see CompositeSKURetired::ENTITY_TYPE}; the model stays
+ * persistence-only.
+ */
+class RetireCompositeSku
+{
+    public function __construct(private readonly LifecycleTransition $lifecycle) {}
+
+    /**
+     * @throws IllegalLifecycleTransition when the SKU is not in `active`
+     * @throws ApprovalGovernanceViolation when there is no authenticated operator principal
+     */
+    public function handle(CompositeSku $compositeSku): CompositeSku
+    {
+        return $this->lifecycle->transition(
+            $compositeSku,
+            LifecycleTransitionType::Retire,
+            CompositeSKURetired::ENTITY_TYPE,
+            event: fn (CompositeSku $sku) => ['name' => CompositeSKURetired::NAME, 'payload' => CompositeSKURetired::payload($sku)],
+        );
+    }
+}

@@ -18,7 +18,9 @@ use App\Modules\Catalog\Models\CaseConfiguration;
  *   - {@see ENTITY_TYPE} — the envelope `entity_type` for a Case Configuration;
  *   - {@see payload()} — the PII-free creation payload (ids + non-PII business data only).
  *
- * No `*Activated`/`*Retired` sibling exists in this change (design D3 scope guard).
+ * Its `*Activated`/`*Retired` lifecycle siblings ({@see CaseConfigurationActivated},
+ * {@see CaseConfigurationRetired}) record the later `reviewed → active` / `active → retired` transitions
+ * (catalog-lifecycle-approval, design D9).
  */
 final class CaseConfigurationCreated
 {

@@ -18,7 +18,8 @@ use App\Modules\Catalog\Models\Format;
  *   - {@see ENTITY_TYPE} — the envelope `entity_type` for a Format;
  *   - {@see payload()} — the PII-free creation payload (ids + non-PII business data only).
  *
- * No `*Activated`/`*Retired` sibling exists in this change (design D3 scope guard).
+ * Its `*Activated`/`*Retired` lifecycle siblings ({@see FormatActivated}, {@see FormatRetired}) record the
+ * later `reviewed → active` / `active → retired` transitions (catalog-lifecycle-approval, design D9).
  */
 final class FormatCreated
 {

@@ -5,6 +5,7 @@ namespace App\Modules\Catalog\Models;
 use App\Modules\Catalog\Actions\CreateSellableSku;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Events\SellableSKUCreated;
+use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\SellableSkuFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,9 +30,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * entities), so they are allowed — distinct from the forbidden cross-module producer relation (invariant 10).
  * Persistence-only by design (D8): the {@see CreateSellableSku} action is the sole writer — it inserts the row
  * and records {@see SellableSKUCreated} in one transaction — so `$guarded = []` carries no
- * mass-assignment-from-request risk. Born `draft`; this change defines no transition out of it (the §3.7
- * activation prerequisite — PR + Case Configuration both `active` — is deferred to catalog-lifecycle-approval,
- * design D3).
+ * mass-assignment-from-request risk. Born `draft`; its lifecycle transitions are driven by the shared
+ * `LifecycleTransition` mechanism — the {@see HasLifecycleState} marker opts this entity in (a CHILD entity
+ * with TWO within-module parents: its activation is additionally gated on BOTH its referenced Product
+ * Reference AND its referenced Case Configuration being `active`, the §3.7 prerequisite / BR-Lifecycle-3,
+ * design D7) — which stays the sole `lifecycle_state` writer, so the model remains persistence-only
+ * (design D1/D2).
  *
  * @property int $id
  * @property int $product_reference_id
@@ -45,7 +49,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read ProductReference|null $reference
  * @property-read CaseConfiguration|null $caseConfiguration
  */
-class SellableSku extends Model
+class SellableSku extends Model implements HasLifecycleState
 {
     /** @use HasFactory<SellableSkuFactory> */
     use HasFactory;
@@ -90,6 +94,16 @@ class SellableSku extends Model
     public function caseConfiguration(): BelongsTo
     {
         return $this->belongsTo(CaseConfiguration::class, 'case_configuration_id');
+    }
+
+    /**
+     * The {@see HasLifecycleState} read contract: report the current `lifecycle_state` so the shared
+     * lifecycle mechanism reads it generically. A pure accessor — the mechanism, never this model, writes
+     * the state (design D1).
+     */
+    public function lifecycleState(): LifecycleState
+    {
+        return $this->lifecycle_state;
     }
 
     /**

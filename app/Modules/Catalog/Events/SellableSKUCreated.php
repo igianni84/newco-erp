@@ -19,7 +19,8 @@ use App\Modules\Catalog\Models\SellableSku;
  *   - {@see ENTITY_TYPE} — the envelope `entity_type` for a Sellable SKU;
  *   - {@see payload()} — the PII-free creation payload (ids + non-PII business data only).
  *
- * No `*Activated`/`*Retired` sibling exists in this change (design D3 scope guard).
+ * Its `*Activated`/`*Retired` lifecycle siblings ({@see SellableSKUActivated}, {@see SellableSKURetired})
+ * record the later `reviewed → active` / `active → retired` transitions (catalog-lifecycle-approval, design D9).
  */
 final class SellableSKUCreated
 {

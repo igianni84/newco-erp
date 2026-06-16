@@ -199,3 +199,41 @@
 ## [2026-06-16 09:20] push | main->origin | Pushed main -> origin (human-OK'd) + deleted merged branch ralph/parties-producer-lifecycle. parties-producer-lifecycle close fully finalized; repo synced, no active change (next deferred).
 
 ## [2026-06-16 10:36] spec-to-change | catalog-lifecycle-approval | Authored Module 0 lifecycle change (8 deltas: 7 ADDED + 1 MODIFIED on product-catalog; 17 tasks); openspec validate --strict GREEN; approved by Giovanni; APPROVED marker + ralph launch pending.
+
+## [2026-06-16 10:48] ralph | catalog-lifecycle-approval 1.1 | green | 5 files — catalog_producer_states projection (enum+model+migration) + tests; full suite 481/481 SQLite, 77/77 Catalog+arch on PG17; CHECK+unique proven; phpstan 0, pint clean
+
+## [2026-06-16 11:03] ralph | catalog-lifecycle-approval 1.2 | green | 3 files | ProducerLifecycleProjector consumer + boot() registration; watermark upsert; 487/487 SQLite, 83/83 PG17, phpstan 0
+
+## [2026-06-16 11:11] ralph | catalog-lifecycle-approval 2.1 | green | 3 files (IllegalLifecycleTransition + lang/en/catalog.php lifecycle group + unit test) | suite 496/496, phpstan 0, pint clean | no DB so no PG run
+
+## [2026-06-16 11:43] ralph | catalog-lifecycle-approval 2.2 | green | shared LifecycleTransition mechanism (HasLifecycleState+TransitionType+service) + Submit/Reopen ProductMaster (audit-only, no event); 7 files; SQLite 502/502, PG17 98/98
+
+## [2026-06-16 12:11] ralph | catalog-lifecycle-approval 2.3 | green | approval governance (Creator→Reviewer→Approver SoD + role-count config + reject) on shared mechanism; 510/510 SQLite, PG17 106/106; 5 edited + 4 new files
+
+## [2026-06-16 12:20] ralph | catalog-lifecycle-approval 3.1 | green | 4 files (2 events + 1 test + 1 docblock fix) | suite 514/514, phpstan 0, pint clean | pure event classes, no PG needed
+
+## [2026-06-16 12:56] ralph | catalog-lifecycle-approval 3.2 | green | 7 files (4 new: ActivateProductMaster, RetireProductMaster, ProducerActivationGate, ProducerActivationGateViolation) | suite 522 SQLite, PG17 118 | Producer gate + *Activated/*Retired wired
+
+## [2026-06-16 13:09] ralph | catalog-lifecycle-approval 4.1 | green | 11 files (9 new, 2 edit) | Format lifecycle standalone; 534/534 SQLite, PG17 130/130, phpstan 0
+
+## [2026-06-16 13:19] ralph | catalog-lifecycle-approval 4.2 | green | 11 files (9 new, 2 edit): CaseConfiguration lifecycle (standalone, no gate) — 2 events + 5 Actions + model opt-in + 2 tests. SQLite 546/546 (+12), phpstan 0, PG17 142/142. 9/17 tasks.
+
+## [2026-06-16 13:41] ralph | catalog-lifecycle-approval 4.3 | green | 14 files (11 new, 3 edited) — Product Variant lifecycle + the FIRST within-module activation-cascade gate (ActivationCascadeGate + ActivationCascadeViolation); 559/559 SQLite, 155/155 PG17, phpstan 0
+
+## [2026-06-16 13:55] ralph | catalog-lifecycle-approval 4.4 | green | 11 files (9 new, 2 edited) | PR lifecycle + first multi-parent cascade gate (Variant AND Format); 573/573 sqlite, 169/169 PG17
+
+## [2026-06-16 14:10] ralph | catalog-lifecycle-approval 4.5 | green | 11 files (9 new, 2 edited): Sellable SKU lifecycle + two-parent gate (PR AND Case Config); 587/587 SQLite, 183/183 PG17
+
+## [2026-06-16 14:31] ralph | catalog-lifecycle-approval 4.6 | green | 11 files (9 new, 2 edited) | Composite SKU lifecycle + N-constituent gate (loops assertParentActive over junction); 600/600 SQLite, 196/196 PG17; all 7 spine entities now have lifecycle; 13/17 tasks
+
+## [2026-06-16 14:44] ralph | catalog-lifecycle-approval 5.1 | green | 1 file (ActivationCascadeTest, 2 tests/21 assert) | full 602/602 SQLite, PG17 198/198, phpstan 0, pint ok | test-only, no glue (activation ordering emergent)
+
+## [2026-06-16 14:55] ralph | catalog-lifecycle-approval 5.2 | human-needed | 0 files | task bullets 1(block-on-active-children) vs 3(preserve-active-children) mutually exclusive for Master->Variant; within-catalog block contradicts immutable PRD 4.5/BR-Lifecycle-4. See progress.md 14:54, options A/B/C (rec B)
+
+## [2026-06-16 15:17] resolve | catalog-lifecycle-approval 5.2 HUMAN_NEEDED | Founder chose Option B: within-catalog retire block scoped to terminal sellable edge (PR/CaseConfig<-active SKU); hierarchy parents preserve children. ADR 2026-06-16 written; delta spec/design D8/tasks/proposal updated; validate --strict OK. No code; 5.2 ready to implement.
+
+## [2026-06-16 15:53] ralph | catalog-lifecycle-approval 5.2 | green | 10 files (5 new: cascade+gate+exception+test; 6.1 docs next) | SQLite 611/611, PG17 207/207, phpstan 0
+
+## [2026-06-16 16:03] ralph | catalog-lifecycle-approval 6.1 | green | docs-only CONTEXT.md (+64/-2): 8 lifecycle/approval glossary terms + spine lifecycle-events contract note (2 consumed + 14 emitted payloads + 2 seams); suite 611/611, phpstan 0, validate --strict ✓; 1 file
+
+## [2026-06-16 16:19] ralph | catalog-lifecycle-approval 6.2 | green | 1 file (e2e CatalogLifecycleChainTest); SQLite 613/613, PG17 209/209; CHANGE COMPLETE 17/17
