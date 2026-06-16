@@ -1,0 +1,314 @@
+<?php
+
+use App\Modules\Parties\Actions\ActivateProducer;
+use App\Modules\Parties\Actions\ActivateProducerAgreement;
+use App\Modules\Parties\Actions\CloseClub;
+use App\Modules\Parties\Actions\CreateClub;
+use App\Modules\Parties\Actions\CreateProducer;
+use App\Modules\Parties\Actions\CreateProducerAgreement;
+use App\Modules\Parties\Actions\RetireProducer;
+use App\Modules\Parties\Actions\SunsetClub;
+use App\Modules\Parties\Actions\TerminateProducerAgreement;
+use App\Modules\Parties\Enums\ClubRegistrationFlowType;
+use App\Modules\Parties\Enums\ClubStatus;
+use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\ProducerStatus;
+use App\Modules\Parties\Events\ClubClosed;
+use App\Modules\Parties\Events\ClubCreated;
+use App\Modules\Parties\Events\ClubSunset;
+use App\Modules\Parties\Events\ProducerActivated;
+use App\Modules\Parties\Events\ProducerAgreementActivated;
+use App\Modules\Parties\Events\ProducerAgreementCreated;
+use App\Modules\Parties\Events\ProducerAgreementSuperseded;
+use App\Modules\Parties\Events\ProducerAgreementTerminated;
+use App\Modules\Parties\Events\ProducerCreated;
+use App\Modules\Parties\Events\ProducerRetired;
+use App\Modules\Parties\Models\Club;
+use App\Modules\Parties\Models\Producer;
+use App\Modules\Parties\Models\ProducerAgreement;
+use App\Platform\Events\ActorRole;
+use App\Platform\Events\DomainEvent;
+use App\Platform\Money\Currency;
+use App\Platform\Money\Money;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+/**
+ * The full-chain integration proof for the Parties SUPPLY-SIDE lifecycle (parties-producer-lifecycle task 5.2;
+ * party-registry — Requirements: Producer Lifecycle, ProducerAgreement Lifecycle, Club Lifecycle, Supply-Side
+ * Lifecycle Events, and the MODIFIED "Birth States Recorded, Lifecycle Transitions Deferred"). Where every other
+ * lifecycle test in this directory pins ONE transition in isolation, this one drives the WHOLE supply side through
+ * its real Actions — create (via the spine Create* seams) → activate the Producer → activate an agreement, renew
+ * it (superseding the original), terminate the renewal → sunset + close one Club → retire the Producer (cascading
+ * sunset onto the still-active Club) — and asserts the emergent contract of the slice as a whole:
+ *   - EXACTLY the seven verbatim § 15.3/15.4/15.5 supply-side events are recorded (ProducerActivated,
+ *     ProducerRetired, ProducerAgreementActivated, ProducerAgreementSuperseded, ProducerAgreementTerminated,
+ *     ClubSunset, ClubClosed), each with its expected count for this chain, layered atop the five spine *Created
+ *     events the Create* seams emit — and NO other name (the distinct name set is pinned);
+ *   - the two DERIVED chains are causally threaded (design L5): the cascade ClubSunset on the still-active Club
+ *     carries the ProducerRetired event's id as its causation_id and shares its correlation_id; the
+ *     ProducerAgreementSuperseded carries the renewal-activation event's id as its causation_id and shares its
+ *     correlation_id — while the STANDALONE ClubSunset and the original's own activation are roots;
+ *   - the DEMAND SIDE stays inert: no CustomerActivated / ProfileActivated / OriginatingClubLocked /
+ *     CustomerSegmentChanged (none of those event classes even exists yet), and — reflecting the Actions namespace
+ *     — the only non-Create Actions are the six supply-side transitions, so Customer / Account / Profile expose no
+ *     transition operation and `originating_club_id` has no mutation surface (the proposal slice boundary).
+ *
+ * The companion SpineCreationChainTest (which asserts the CREATION chain emits no lifecycle event) and the two
+ * architecture tests (ModuleBoundariesTest, ModulePersistenceConventionsTest) stay GREEN UNAMENDED — every
+ * reference here is within Module K, and this change adds no model.
+ *
+ * This is the cross-engine gate: this file and the whole Parties suite are verified green on SQLite AND on a local
+ * PostgreSQL 17 before the change is declared complete (knowledge/testing/rules.md). Portability: the event set is
+ * asserted BY NAME and payloads BY KEY (never a byte-compare of stored jsonb — PG reorders keys, trap 3); the
+ * causation_id (int) / correlation_id (string) envelope columns are observed through the model so they round-trip
+ * on both engines. RefreshDatabase per the directory convention; each Action opens its OWN DB::transaction, so the
+ * recorder's `transactionLevel() === 0` guard is satisfied by the savepoint under the wrapper.
+ */
+uses(RefreshDatabase::class);
+
+/**
+ * Drives the ENTIRE supply-side lifecycle through the real Create* + transition Actions in dependency order and
+ * returns the created entities by key. Every leg goes through the genuine Action (its own DB::transaction +
+ * recorder), exactly as production would — so every assertion below observes real substrate behaviour, never a
+ * factory shortcut (factories bypass the Actions and record no event).
+ *
+ * End states the chain reaches: Producer `retired`; the standalone Club `closed`; the cascade Club `sunset`; the
+ * original agreement `superseded`; the renewal agreement `terminated`.
+ *
+ * @return array{
+ *     producer: Producer,
+ *     clubStandalone: Club,
+ *     clubCascade: Club,
+ *     agreementOriginal: ProducerAgreement,
+ *     agreementRenewal: ProducerAgreement,
+ * }
+ */
+function runSupplyLifecycleChain(): array
+{
+    // 1. Onboard the Producer (born `draft`) and activate it (`draft → active`) — ProducerActivated (root).
+    $producer = app(CreateProducer::class)->handle(
+        name: 'Chateau Margaux',
+        region: 'Bordeaux',
+        country: 'France',
+    );
+    app(ActivateProducer::class)->handle($producer->id);
+
+    // 2. The Producer operates two Clubs (both born `active`): one wound down standalone, one left active to be
+    //    swept by the retirement cascade.
+    $clubStandalone = app(CreateClub::class)->handle(
+        displayName: 'Margaux Cellar Club',
+        producerId: $producer->id,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
+        fee: Money::of(25000, Currency::EUR),
+    );
+    $clubCascade = app(CreateClub::class)->handle(
+        displayName: 'Margaux Reserve Club',
+        producerId: $producer->id,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
+        fee: Money::of(50000, Currency::EUR),
+    );
+
+    // 3. Activate a Producer-wide agreement (club_id null), then a renewal in the SAME scope that supersedes it
+    //    (ProducerAgreementActivated → ProducerAgreementSuperseded), then terminate the renewal. This walks the
+    //    full agreement FSM draft → active → {superseded | terminated} in one scope.
+    $agreementOriginal = app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: null,
+        termStart: CarbonImmutable::parse('2026-01-01'),
+        termEnd: CarbonImmutable::parse('2026-12-31'),
+        settlementCadence: 'monthly',
+    );
+    app(ActivateProducerAgreement::class)->handle($agreementOriginal->id);   // root activation, supersedes nothing
+
+    $agreementRenewal = app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: null,
+        termStart: CarbonImmutable::parse('2027-01-01'),
+        termEnd: CarbonImmutable::parse('2027-12-31'),
+        settlementCadence: 'monthly',
+    );
+    app(ActivateProducerAgreement::class)->handle($agreementRenewal->id);    // supersedes the original (same scope)
+    app(TerminateProducerAgreement::class)->handle($agreementRenewal->id);
+
+    // 4. Wind down the standalone Club through its full FSM (`active → sunset → closed`).
+    app(SunsetClub::class)->handle($clubStandalone->id);
+    app(CloseClub::class)->handle($clubStandalone->id);
+
+    // 5. Retire the Producer (`active → retired`) — ProducerRetired (cascade root), cascading sunset onto the
+    //    still-active Club (the closed one is skipped — the cascade is idempotent over already-transitioned Clubs).
+    app(RetireProducer::class)->handle($producer->id);
+
+    return [
+        'producer' => $producer,
+        'clubStandalone' => $clubStandalone,
+        'clubCascade' => $clubCascade,
+        'agreementOriginal' => $agreementOriginal,
+        'agreementRenewal' => $agreementRenewal,
+    ];
+}
+
+it('drives every supply-side entity to its terminal state through the real transition Actions', function () {
+    $chain = runSupplyLifecycleChain();
+
+    // Re-fetch through the models so the assertions exercise the hydration casts, not the in-memory create()
+    // values. The chain reached every terminal/derived state in all three FSMs.
+    expect(Producer::findOrFail($chain['producer']->id)->status)->toBe(ProducerStatus::Retired)
+        ->and(Club::findOrFail($chain['clubStandalone']->id)->status)->toBe(ClubStatus::Closed)
+        ->and(Club::findOrFail($chain['clubCascade']->id)->status)->toBe(ClubStatus::Sunset)
+        ->and(ProducerAgreement::findOrFail($chain['agreementOriginal']->id)->status)->toBe(ProducerAgreementStatus::Superseded)
+        ->and(ProducerAgreement::findOrFail($chain['agreementRenewal']->id)->status)->toBe(ProducerAgreementStatus::Terminated);
+});
+
+it('records exactly the seven supply-side lifecycle events with the expected counts, atop the spine creation events', function () {
+    runSupplyLifecycleChain();
+
+    // The seven verbatim supply-side lifecycle events (§ 15.3/15.4/15.5), each with its expected count for this
+    // chain — asserted BY NAME (knowledge/testing trap 3: never byte-compare PG jsonb).
+    $expected = [
+        ProducerActivated::NAME => 1,
+        ProducerRetired::NAME => 1,
+        ProducerAgreementActivated::NAME => 2,    // the original + the renewal
+        ProducerAgreementSuperseded::NAME => 1,   // the original, superseded by the renewal
+        ProducerAgreementTerminated::NAME => 1,   // the renewal
+        ClubSunset::NAME => 2,                    // the standalone sunset + the retirement-cascade sunset
+        ClubClosed::NAME => 1,
+    ];
+    foreach ($expected as $name => $count) {
+        expect(DomainEvent::query()->where('name', $name)->count())->toBe($count);
+    }
+
+    // The chain is built through the Create* seams, so the five spine *Created events are recorded too (one
+    // Producer, two Clubs, two ProducerAgreements). They are CREATION events, not lifecycle transitions — present
+    // by construction, and pinned here so the chain's shape can't drift.
+    expect(DomainEvent::query()->where('name', ProducerCreated::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', ClubCreated::NAME)->count())->toBe(2)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(2);
+
+    // Exactly these ten distinct names and NO other — pinned so no surprise lifecycle event (and crucially no
+    // demand-side event) can slip in. 5 creation + 9 lifecycle = 14 rows total.
+    expect(DomainEvent::query()->pluck('name')->unique()->values()->all())->toEqualCanonicalizing([
+        ProducerCreated::NAME, ClubCreated::NAME, ProducerAgreementCreated::NAME,
+        ProducerActivated::NAME, ProducerRetired::NAME,
+        ProducerAgreementActivated::NAME, ProducerAgreementSuperseded::NAME, ProducerAgreementTerminated::NAME,
+        ClubSunset::NAME, ClubClosed::NAME,
+    ]);
+    expect(DomainEvent::query()->count())->toBe(14);
+
+    // Every event is tagged module `parties` and resolved to the System actor (the ActorContext seam default — no
+    // operator is authenticated in the test context).
+    expect(DomainEvent::query()->where('module', 'parties')->count())->toBe(14)
+        ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
+});
+
+it('threads the two derived chains and leaves the standalone transitions as root events', function () {
+    $chain = runSupplyLifecycleChain();
+
+    // --- Cascade chain (design L5; spec "Cascade events are causally linked to the retirement") ---
+    // ProducerRetired is the cascade ROOT: no cause, self-correlated.
+    $retired = DomainEvent::query()->where('name', ProducerRetired::NAME)->sole();
+    expect($retired->causation_id)->toBeNull()
+        ->and($retired->correlation_id)->toBe($retired->event_id);
+
+    // The cascade ClubSunset (on the still-active Club) carries the retirement's id and shares its correlation.
+    $cascadeSunset = DomainEvent::query()
+        ->where('name', ClubSunset::NAME)
+        ->where('entity_id', (string) $chain['clubCascade']->id)
+        ->sole();
+    expect($cascadeSunset->causation_id)->toBe($retired->id)
+        ->and($cascadeSunset->correlation_id)->toBe($retired->correlation_id);
+
+    // The STANDALONE ClubSunset (operator-driven, before the retirement) is a ROOT — it is NOT part of the
+    // cascade, so it carries no cause and is self-correlated. This is what distinguishes the single ClubSunset
+    // writer's two invocation modes (design L6).
+    $standaloneSunset = DomainEvent::query()
+        ->where('name', ClubSunset::NAME)
+        ->where('entity_id', (string) $chain['clubStandalone']->id)
+        ->sole();
+    expect($standaloneSunset->causation_id)->toBeNull()
+        ->and($standaloneSunset->correlation_id)->toBe($standaloneSunset->event_id);
+
+    // --- Supersession chain (design L5; spec "Supersession events pair old and new") ---
+    // The renewal's activation is the root of the supersession; the original's supersession is caused by it.
+    $renewalActivated = DomainEvent::query()
+        ->where('name', ProducerAgreementActivated::NAME)
+        ->where('entity_id', (string) $chain['agreementRenewal']->id)
+        ->sole();
+    $superseded = DomainEvent::query()->where('name', ProducerAgreementSuperseded::NAME)->sole();
+
+    expect($superseded->entity_id)->toBe((string) $chain['agreementOriginal']->id)   // the supersession is ABOUT the original
+        ->and($superseded->causation_id)->toBe($renewalActivated->id)
+        ->and($superseded->correlation_id)->toBe($renewalActivated->correlation_id);
+
+    // The pair references old + new in payload: the activation points new → old, the supersession points old → new.
+    expect($renewalActivated->payload['supersedes'])->toBe($chain['agreementOriginal']->id)
+        ->and($superseded->payload['superseded_by'])->toBe($chain['agreementRenewal']->id);
+
+    // The original's OWN activation was a ROOT (it superseded nothing in its then-empty scope).
+    $originalActivated = DomainEvent::query()
+        ->where('name', ProducerAgreementActivated::NAME)
+        ->where('entity_id', (string) $chain['agreementOriginal']->id)
+        ->sole();
+    expect($originalActivated->payload['supersedes'])->toBeNull()
+        ->and($originalActivated->causation_id)->toBeNull()
+        ->and($originalActivated->correlation_id)->toBe($originalActivated->event_id);
+});
+
+it('records zero demand-side lifecycle events — the demand side stays inert through the whole supply-side chain', function () {
+    runSupplyLifecycleChain();
+
+    // No demand-side lifecycle / state-change event is recorded by the entire supply-side chain (party-registry
+    // MODIFIED — the demand-side change owns these). Asserted by EXACT name, NOT `like '%Activated%'` (which would
+    // match the legitimate Producer/Agreement activations).
+    foreach ([
+        'CustomerActivated', 'AccountActivated', 'ProfileActivated', 'ProfileApproved',
+        'OriginatingClubLocked', 'CustomerSegmentChanged',
+    ] as $name) {
+        expect(DomainEvent::query()->where('name', $name)->count())->toBe(0);
+    }
+
+    // The supply side never touches a Customer / Account / Profile, so no event carries those entity types.
+    expect(DomainEvent::query()->whereIn('entity_type', ['Customer', 'Account', 'Profile'])->count())->toBe(0);
+});
+
+it('exposes only the six supply-side transition Actions — no Customer/Account/Profile transition and no demand-side event type (the scope guard)', function () {
+    // Reflect the Parties Actions namespace: every Action is a flat class file directly under Actions/.
+    $files = glob(app_path('Modules/Parties/Actions/*.php')) ?: [];
+    expect($files)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
+
+    $actions = array_map(static fn (string $file): string => basename($file, '.php'), $files);
+
+    // Each file maps to a real class in the Actions namespace (genuine reflection of the namespace, not a
+    // string-only scan).
+    foreach ($actions as $name) {
+        expect(class_exists('App\\Modules\\Parties\\Actions\\'.$name))->toBeTrue();
+    }
+
+    // The six supply-side transition Actions this change shipped all exist...
+    $supplySideTransitions = [
+        'ActivateProducer', 'RetireProducer',
+        'ActivateProducerAgreement', 'TerminateProducerAgreement',
+        'SunsetClub', 'CloseClub',
+    ];
+    foreach ($supplySideTransitions as $transition) {
+        expect($actions)->toContain($transition);
+    }
+
+    // ...and the ONLY non-Create (transition) Actions are exactly those six. There is no ActivateCustomer /
+    // SuspendAccount / ApproveProfile / LockOriginatingClub — Customer / Account / Profile expose no transition
+    // operation, and `originating_club_id` has no mutation surface (party-registry MODIFIED — "Supply-side
+    // transitions exist; demand-side transitions do not"). If a demand-side transition Action were ever added
+    // here, it would appear in this set and fail the assertion.
+    $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
+    expect($transitions)->toEqualCanonicalizing($supplySideTransitions);
+
+    // Reflect the Events namespace the same way: none of the demand-side lifecycle event types even EXISTS in
+    // this change — they are not recordable (the demand-side change introduces them). This complements the runtime
+    // "zero demand-side events" assertion: not merely unrecorded, but un-recordable.
+    $eventFiles = glob(app_path('Modules/Parties/Events/*.php')) ?: [];
+    $events = array_map(static fn (string $file): string => basename($file, '.php'), $eventFiles);
+    expect($events)->not->toBeEmpty();
+    foreach (['CustomerActivated', 'AccountActivated', 'ProfileActivated', 'ProfileApproved', 'OriginatingClubLocked', 'CustomerSegmentChanged'] as $demandSideEvent) {
+        expect($events)->not->toContain($demandSideEvent);
+    }
+});

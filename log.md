@@ -171,3 +171,25 @@
 ## [2026-06-15 18:52] ralph | parties-core 6.2 | green | 1 file (SpineCreationChainTest) | full 428/1649 SQLite+PG17, arch 3/154 PG17 unamended | CHANGE COMPLETE 11/11
 
 ## [2026-06-15 20:28] close | parties-core | GUIDE 2.7: gates re-verified (428/1649 SQLite+PG17, phpstan max 0, openspec --strict); 3-lens semantic-verify 0 CRITICAL / 2 non-blocking WARN; merged --no-ff a51634f, archived 6db57aa (party-registry synced to specs), branch deleted, pushed
+
+## [2026-06-15 21:51] spec-to-change | parties-producer-lifecycle | authored + validated --strict: proposal/spec-delta/design/tasks. Slice 1 of K lifecycle = supply-side (Producer/Agreement/Club FSMs, 7 lifecycle events, retire->sunset cascade). 1 MODIFIED + 4 ADDED reqs, 17 scenarios, 10 tasks. Awaiting human APPROVED.
+
+## [2026-06-15 22:08] ralph | parties-producer-lifecycle 1.1 | green | 5 files: 3 Illegal*Transition exceptions + parties.php lang (producer/club/agreement groups) + TransitionExceptionsTest (13 cases). Full 441/441 SQLite, phpstan max 0, pint clean, --strict ok. No DB touched -> no PG17; no migration/composer drift.
+
+## [2026-06-15 22:17] ralph | parties-producer-lifecycle 1.2 | green | 3 files (Producer.clubs() hasMany + Club docblock + ProducerLifecycleTest); 444/444 SQLite, 85/85 PG17, phpstan max 0, pint clean, openspec valid
+
+## [2026-06-15 22:26] ralph | parties-producer-lifecycle 2.1 | green | 3 files (SunsetClub + ClubSunset + ClubLifecycleTest) | 448/448 SQLite, 89/89 PG17, phpstan 0, pint clean, openspec valid
+
+## [2026-06-15 22:34] ralph | parties-producer-lifecycle 2.2 | green | CloseClub+ClubClosed (sunset→closed, Club FSM complete); 451/451 SQLite, PG17 92/92, phpstan 0, validate strict; 3 files; no migration/composer drift
+
+## [2026-06-15 22:43] ralph | parties-producer-lifecycle 3.1 | green | 3 files (ActivateProducer + ProducerActivated + ProducerLifecycleTest) | 455/455 SQLite, 96/96 PG17, phpstan 0, pint clean
+
+## [2026-06-15 22:58] ralph | parties-producer-lifecycle 3.2 | green | RetireProducer + ProducerRetired + active->retired cascade to SunsetClub (root threads id/correlation); 459/459 SQLite +4, PHPStan max 0, PG17 100/100; 3 files (event, action, test)
+
+## [2026-06-15 23:13] ralph | parties-producer-lifecycle 4.1 | green | 4 files: ActivateProducerAgreement + ProducerAgreementActivated/Superseded + test. NULL-safe (producer_id,club_id) supersession (BR-K-Agreement-1); inline derived source. 466/466 SQLite, 107/107 PG17, phpstan 0, pint clean
+
+## [2026-06-15 23:21] ralph | parties-producer-lifecycle 4.2 | green | 3 files (TerminateProducerAgreement + ProducerAgreementTerminated + test); 470/470 SQLite, PG17 111/111, phpstan 0, pint clean; FSM complete; 8/10
+
+## [2026-06-15 23:31] ralph | parties-producer-lifecycle 5.1 | green | 2 files (CONTEXT.md docs +30/-5, tasks.md checkbox); supply-side lifecycle terms + 7-event PII-free contract table + 2 deferred seams; suite 470/470, phpstan 0, openspec strict ok; docs-only no PG17
+
+## [2026-06-15 23:46] ralph | parties-producer-lifecycle 5.2 | green | 1 file (SupplyLifecycleChainTest, 5 cases/67 assertions); 475/475 SQLite, 119/119 PG17; CHANGE COMPLETE (10/10)

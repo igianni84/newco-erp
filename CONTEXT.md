@@ -54,7 +54,7 @@ On creation, each spine entity records its `*Created` Domain Event through the p
 
 ## Parties (Party Registry)
 
-The system-of-record of **Module K** — who NewCo deals with: the natural persons it sells to (Customer), the counterparts it procures from (Supplier), the wine Producers and their commercial agreements, and each Customer's Club memberships (Profile). Built spine-first like the Catalog: entities are born in their birth state and **lifecycle transitions are out of scope** until `parties-membership-lifecycle`. Every reference in this spine is **within Module K** (Account→Customer, Club→Producer, ProducerAgreement→Producer/Club, Profile→Customer/Club, Customer→originating Club) — ordinary Eloquent relations and DB foreign keys, never a cross-module reference. **Club** and its **Originating-Club** field are defined under *Commerce & Membership*.
+The system-of-record of **Module K** — who NewCo deals with: the natural persons it sells to (Customer), the counterparts it procures from (Supplier), the wine Producers and their commercial agreements, and each Customer's Club memberships (Profile). Built spine-first like the Catalog: entities are born in their birth state. The **supply-side** lifecycle transitions (Producer, ProducerAgreement, Club) are implemented by `parties-producer-lifecycle`; the **demand-side** lifecycle (Customer / Account / Profile transitions, the Originating-Club lock) remains deferred. Every reference in this spine is **within Module K** (Account→Customer, Club→Producer, ProducerAgreement→Producer/Club, Profile→Customer/Club, Customer→originating Club) — ordinary Eloquent relations and DB foreign keys, never a cross-module reference. **Club** and its **Originating-Club** field are defined under *Commerce & Membership*.
 
 **Party / party-type marker**:
 The registry abstraction for an entity NewCo has a commercial relationship with. At launch there are two concrete subtypes, each a distinct `parties_*` table — **Customer** and **Supplier** — stamped with an **immutable party-type marker** (`party_type`, one of `customer` / `supplier` / `third_party_owner`). The marker lives **on the subtype** ("marker-on-subtype"; ADR `2026-06-15-party-type-marker-on-subtype`), so BR-K-Identity-5 ("a Customer can never become a Supplier") holds **by construction** — distinct strongly-typed entities, not rows discriminated in one shared table. The unified `parties_parties` registry, the `third_party_owner` subtype and any marker overlap are **deferred** (none exercised at launch). A **Producer is not a Party** (§4.4) and carries no marker.
@@ -73,12 +73,16 @@ A **minimal Party subtype** — a commercial counterpart NewCo procures from, ke
 _Avoid_: Producer (a distinct entity with a distinct marker), a lifecycle/status on the Supplier
 
 **Producer**:
-The wine producer — root of the supply-side registry and the parent of Clubs and ProducerAgreements; referenced across modules **by id** (Catalog's Product Master, Module D). Born `draft`; carries a translatable `description` (English fallback). A Producer is **not a Party** (§4.4); creating one never auto-creates a Supplier (BR-K-Producer-3).
+The wine producer — root of the supply-side registry and the parent of Clubs and ProducerAgreements; referenced across modules **by id** (Catalog's Product Master, Module D). Born `draft`; carries a translatable `description` (English fallback). Its lifecycle is `draft → active → retired` (§4.4); **retiring** a Producer **cascades** — every `active` Club it operates is **sunset** as part of the offboarding (§10.2), while the per-Profile leg of that cascade is demand-side (deferred). A Producer is **not a Party** (§4.4); creating one never auto-creates a Supplier (BR-K-Producer-3).
 _Avoid_: Supplier (distinct entity/marker), winery (display copy, not the entity name)
 
 **ProducerAgreement**:
-The NewCo↔Producer commercial agreement — settlement cadence and optional term dates, optionally narrowed to a single Club; born `draft`. A NewCo net-new entity (DEC-070). The "single active agreement per scope" rule is an **activation-time** rule and is **not** enforced at creation — drafts are created freely.
+The NewCo↔Producer commercial agreement — settlement cadence and optional term dates, optionally narrowed to a single Club; born `draft`. Its lifecycle is `draft → active → superseded | terminated` (§4.6.1): activating a replacement in the same scope **supersedes** the prior `active` agreement (`active → superseded`), pairing old + new in audit history (BR-K-Agreement-3); **terminating** (`active → terminated`) is a permanent end that does **not** cascade to Producer state (§4.6.1). A NewCo net-new entity (DEC-070). The "single active agreement per scope" rule is an **activation-time** rule and is **not** enforced at creation — drafts are created freely.
 _Avoid_: contract (overloaded), a Supplier agreement (a different counterpart)
+
+**Agreement scope**:
+The partition within which BR-K-Agreement-1 holds — **at most one `active` ProducerAgreement per scope** (§14.6 BR-K-Agreement-1). Scope is the `(producer_id, club_id)` tuple, where a `NULL` `club_id` denotes the **distinct Producer-wide scope**: a Producer-wide agreement and a Club-narrowed one occupy different scopes and may both be `active` at once, while the single-active rule binds two agreements only *within* the same scope (§4.6.1). Resolved by founder decision (2026-06-15).
+_Avoid_: a single per-Producer active-agreement uniqueness (Producer-wide and per-Club are distinct scopes; a `NULL` `club_id` is its own scope, not a wildcard)
 
 **Profile**:
 A Customer's **membership in one Club** — the Netflix-style model where one Customer holds **many Profiles**, one per Club, with **no separate Membership entity** (the Profile *is* the membership). Born `applied`; carries a `state` (the nine-state §4.2.1 machine, transitions deferred), nullable `tier` / `role`, and an `invited_by_customer_id` referral seam (a non-FK id). Uniqueness is **"one non-terminal Profile per (Customer, Club)"** — enforced by a partial unique index over non-terminal states, so a `rejected` / `cancelled` / `inactive` Profile never blocks a fresh one.
@@ -86,7 +90,7 @@ _Avoid_: Membership (no such entity — the Profile is it), subscription, the Ac
 
 ### Parties spine creation events — payload contract
 
-On creation, each evented spine entity records its `*Created` Domain Event through the platform `DomainEventRecorder`, in the **same transaction** as the write, tagged module `parties`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **PII-free** payload (ids + non-PII business data only — parties are referenced by id, never by personal data; a Producer/Club/Agreement is an organisation or program, not a natural person). **Two entities are deliberately event-silent — Supplier and Account record no `*Created`** (the PRD §15 names none; symmetry is not a spec source — an invented `SupplierCreated`/`AccountCreated` would breach fidelity). No `*Activated`/lifecycle/`OriginatingClubLocked` event is recorded by this change (transitions deferred to `parties-membership-lifecycle`). `CustomerCreated` is the **strict** case — the Customer is a natural person, so its payload **omits** name/email/phone/date_of_birth (those live on the module table, where GDPR erasure operates). `ClubCreated` serialises the fee through `Money::toPayload()` to `{minor_units, currency}` (integer minor units + ISO 4217, never a float — invariant 6). The payload keys below are the published inter-module contract:
+On creation, each evented spine entity records its `*Created` Domain Event through the platform `DomainEventRecorder`, in the **same transaction** as the write, tagged module `parties`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **PII-free** payload (ids + non-PII business data only — parties are referenced by id, never by personal data; a Producer/Club/Agreement is an organisation or program, not a natural person). **Two entities are deliberately event-silent — Supplier and Account record no `*Created`** (the PRD §15 names none; symmetry is not a spec source — an invented `SupplierCreated`/`AccountCreated` would breach fidelity). No `*Activated`/lifecycle/`OriginatingClubLocked` event is recorded at creation — supply-side lifecycle events are recorded by the transition Actions (see *Parties supply-side lifecycle events — payload contract* below), while the demand-side lifecycle events and `OriginatingClubLocked` remain deferred to the demand-side change(s). `CustomerCreated` is the **strict** case — the Customer is a natural person, so its payload **omits** name/email/phone/date_of_birth (those live on the module table, where GDPR erasure operates). `ClubCreated` serialises the fee through `Money::toPayload()` to `{minor_units, currency}` (integer minor units + ISO 4217, never a float — invariant 6). The payload keys below are the published inter-module contract:
 
 | Event (`name`) | `entity_type` | Payload keys |
 |---|---|---|
@@ -98,10 +102,31 @@ On creation, each evented spine entity records its `*Created` Domain Event throu
 
 **Event-silent (no `*Created`):** `Supplier`, `Account`.
 
+### Parties supply-side lifecycle events — payload contract
+
+The supply-side transitions (Producer, ProducerAgreement, Club — implemented by `parties-producer-lifecycle`) each record a **verbatim** Module K lifecycle event (§15.3 / §15.4 / §15.5) through the platform `DomainEventRecorder`, in the **same transaction** as the state write, tagged module `parties`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **strictly PII-free** payload (these three entities carry no personal data; other parties appear by id only — invariants 4 & 10). The two **derived** chains are causally linked: each cascade `ClubSunset` carries the `ProducerRetired` event's `id` as its `causation_id` and shares that event's `correlation_id`; the `ProducerAgreementSuperseded` recorded during an activation carries the `ProducerAgreementActivated` event's `id` as its `causation_id` and shares its `correlation_id`. The payload keys below are the published inter-module contract:
+
+| Event (`name`) | `entity_type` | Payload keys |
+|---|---|---|
+| `ProducerActivated` | `Producer` | `producer_id`, `status` |
+| `ProducerRetired` | `Producer` | `producer_id`, `status` |
+| `ClubSunset` | `Club` | `club_id`, `producer_id`, `status` |
+| `ClubClosed` | `Club` | `club_id`, `producer_id`, `status` |
+| `ProducerAgreementActivated` | `ProducerAgreement` | `producer_agreement_id`, `producer_id`, `club_id`, `status`, `supersedes` (the superseded agreement id, or null) |
+| `ProducerAgreementSuperseded` | `ProducerAgreement` | `producer_agreement_id`, `producer_id`, `club_id`, `status`, `superseded_by` (the superseding agreement id) |
+| `ProducerAgreementTerminated` | `ProducerAgreement` | `producer_agreement_id`, `producer_id`, `club_id`, `status` |
+
+**Key-naming note.** The three ProducerAgreement *transition* events use the fully-qualified id key **`producer_agreement_id`** (matching `producer_id` / `club_id`), which deliberately diverges from the *creation* event `ProducerAgreementCreated`'s shorter `agreement_id` (an archived `parties-core` choice, left unchanged). If a future change wants one family-wide key, normalise it there — do not silently rename the creation event.
+
+**Two deferred seams** — spec-faithful preconditions this slice ships **ungated**, each tightened by a named future change:
+
+- **KYC-on-activation** → `parties-compliance`. `ActivateProducer` enforces **no** KYC-verified gate yet (the §4.4 precondition). The KYC four-state lifecycle and its fields are owned by `parties-compliance` (DEC-071 — sanctions/KYC fields nullable, added additively), which tightens the gate.
+- **All-members-gone-on-close** → the demand-side change. `CloseClub` enforces **no** all-members-migrated/expired gate yet (the §4.3 precondition reads Profile state, absent in this slice — vacuously satisfiable today, since no Profile can be `Active` without the demand-side transitions). The demand-side change tightens it when Profile lifecycle lands.
+
 ## Commerce & Membership
 
 **Club**:
-A Producer-operated membership community — a **Module K (Parties)** registry entity (`parties_clubs`), born `active`, owned by exactly one Producer through a **required and immutable** link. Members pay an annual `fee` (a `Money` — integer minor units + ISO 4217, never a float) equal to that year's Hero Package price. A `registration_flow_type` classifier (`open_registration` / `application_with_approval` / `invitation_only` / `link_onboarding`) governs how members join; `generates_credit` and `invite_only` are launch flags. Status domain is `active` / `sunset` / `closed` (transitions deferred).
+A Producer-operated membership community — a **Module K (Parties)** registry entity (`parties_clubs`), born `active`, owned by exactly one Producer through a **required and immutable** link. Members pay an annual `fee` (a `Money` — integer minor units + ISO 4217, never a float) equal to that year's Hero Package price. A `registration_flow_type` classifier (`open_registration` / `application_with_approval` / `invitation_only` / `link_onboarding`) governs how members join; `generates_credit` and `invite_only` are launch flags. Its lifecycle is `active → sunset → closed` (§4.3): **sunset** (`active → sunset`) blocks new memberships and new offers while preserving existing Profiles, and is also the per-Club step of the Producer-retirement cascade (§10.2); **close** (`sunset → closed`) is terminal (supply-side transitions implemented by `parties-producer-lifecycle`).
 _Avoid_: subscription, tier
 
 **Hero Package**:

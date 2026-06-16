@@ -60,7 +60,8 @@ class Club extends Model
     /**
      * The operating Producer — a WITHIN-module `belongsTo` (both entities are Module K, so the cross-module
      * relation ban does not apply). The link is required (a non-nullable FK) and immutable once set
-     * (BR-K-Club-1/2); there is no inverse `hasMany` exposed in this slice.
+     * (BR-K-Club-1/2). Its inverse is {@see Producer::clubs()}, the `hasMany` the retirement cascade walks
+     * (parties-producer-lifecycle, design L6).
      *
      * @return BelongsTo<Producer, $this>
      */
