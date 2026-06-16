@@ -209,3 +209,5 @@
 ## [2026-06-16 11:43] ralph | catalog-lifecycle-approval 2.2 | green | shared LifecycleTransition mechanism (HasLifecycleState+TransitionType+service) + Submit/Reopen ProductMaster (audit-only, no event); 7 files; SQLite 502/502, PG17 98/98
 
 ## [2026-06-16 12:11] ralph | catalog-lifecycle-approval 2.3 | green | approval governance (Creator→Reviewer→Approver SoD + role-count config + reject) on shared mechanism; 510/510 SQLite, PG17 106/106; 5 edited + 4 new files
+
+## [2026-06-16 12:20] ralph | catalog-lifecycle-approval 3.1 | green | 4 files (2 events + 1 test + 1 docblock fix) | suite 514/514, phpstan 0, pint clean | pure event classes, no PG needed

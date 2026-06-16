@@ -28,7 +28,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
 
 ## 3. Product Master activation + the cross-module Producer gate
 
-- [ ] 3.1 **`ProductMasterActivated` + `ProductMasterRetired` events** (design D9; spec — Requirement: Product Lifecycle Events) — `App\Modules\Catalog\Events\ProductMasterActivated` (`NAME='ProductMasterActivated'`, `ENTITY_TYPE='ProductMaster'`, static `payload(ProductMaster)` → `{product_master_id, producer_id, lifecycle_state}`) and `ProductMasterRetired` (same shape, `NAME='ProductMasterRetired'`) — `final` classes mirroring `ProductMasterCreated`.
+- [x] 3.1 **`ProductMasterActivated` + `ProductMasterRetired` events** (design D9; spec — Requirement: Product Lifecycle Events) — `App\Modules\Catalog\Events\ProductMasterActivated` (`NAME='ProductMasterActivated'`, `ENTITY_TYPE='ProductMaster'`, static `payload(ProductMaster)` → `{product_master_id, producer_id, lifecycle_state}`) and `ProductMasterRetired` (same shape, `NAME='ProductMasterRetired'`) — `final` classes mirroring `ProductMasterCreated`.
   - Acceptance: both classes expose the three contract facets; payloads are PII-free (producer by id only); `Naming Cascade` holds (category-neutral names, never `WineMaster*`); quality commands green.
   - Test hint: `tests/Unit/Modules/Catalog/Events/ProductMasterLifecycleEventsTest.php` — assert `NAME`/`ENTITY_TYPE` and that `payload()` over a Master returns exactly `['product_master_id','producer_id','lifecycle_state']` with no PII keys.
 
