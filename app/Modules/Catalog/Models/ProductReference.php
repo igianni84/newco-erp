@@ -5,6 +5,7 @@ namespace App\Modules\Catalog\Models;
 use App\Modules\Catalog\Actions\CreateProductReference;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Events\ProductReferenceCreated;
+use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductReferenceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,7 +30,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * are allowed — distinct from the forbidden cross-module producer relation (invariant 10). Persistence-only by
  * design (D8): the {@see CreateProductReference} action is the sole writer — it inserts the row and records
  * {@see ProductReferenceCreated} in one transaction — so `$guarded = []` carries no mass-assignment-from-request
- * risk. Born `draft`; this change defines no transition out of it (design D3).
+ * risk. Born `draft`; its lifecycle transitions are driven by the shared `LifecycleTransition` mechanism — the
+ * {@see HasLifecycleState} marker opts this entity in (a CHILD entity: its activation is additionally gated on
+ * BOTH its parents — the Product Variant AND the Format — being `active`, design D7) — which stays the sole
+ * `lifecycle_state` writer, so the model remains persistence-only (design D1/D2).
  *
  * @property int $id
  * @property int $product_variant_id
@@ -41,7 +45,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read ProductVariant|null $variant
  * @property-read Format|null $format
  */
-class ProductReference extends Model
+class ProductReference extends Model implements HasLifecycleState
 {
     /** @use HasFactory<ProductReferenceFactory> */
     use HasFactory;
@@ -86,6 +90,16 @@ class ProductReference extends Model
     public function format(): BelongsTo
     {
         return $this->belongsTo(Format::class, 'format_id');
+    }
+
+    /**
+     * The {@see HasLifecycleState} read contract: report the current `lifecycle_state` so the shared
+     * lifecycle mechanism reads it generically. A pure accessor — the mechanism, never this model, writes
+     * the state (design D1).
+     */
+    public function lifecycleState(): LifecycleState
+    {
+        return $this->lifecycle_state;
     }
 
     /**

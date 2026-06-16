@@ -51,7 +51,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
   - Acceptance: a Variant under a non-`active` Master cannot activate (**AC-0-FSM-10**); under an `active` Master it activates + records `ProductVariantActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/ProductVariantLifecycleTest.php` — Master `reviewed` → Variant approve rejected; Master `active` (full chain incl. producer projection) → Variant approve succeeds.
 
-- [ ] 4.4 **Product Reference lifecycle + gate (Variant active AND Format active)** — `ProductReferenceActivated`/`Retired`; the five Actions; **gate**: activation requires both the `ProductVariant` (`product_variant_id`) and the `Format` (`format_id`) to be `active`.
+- [x] 4.4 **Product Reference lifecycle + gate (Variant active AND Format active)** — `ProductReferenceActivated`/`Retired`; the five Actions; **gate**: activation requires both the `ProductVariant` (`product_variant_id`) and the `Format` (`format_id`) to be `active`.
   - Acceptance: a PR cannot activate unless **both** parents are `active` (assert each missing-parent path); both `active` → activates + `ProductReferenceActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/ProductReferenceLifecycleTest.php` — three cases: Variant inactive, Format inactive, both active.
 
