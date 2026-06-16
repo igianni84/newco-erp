@@ -227,3 +227,9 @@
 ## [2026-06-16 14:31] ralph | catalog-lifecycle-approval 4.6 | green | 11 files (9 new, 2 edited) | Composite SKU lifecycle + N-constituent gate (loops assertParentActive over junction); 600/600 SQLite, 196/196 PG17; all 7 spine entities now have lifecycle; 13/17 tasks
 
 ## [2026-06-16 14:44] ralph | catalog-lifecycle-approval 5.1 | green | 1 file (ActivationCascadeTest, 2 tests/21 assert) | full 602/602 SQLite, PG17 198/198, phpstan 0, pint ok | test-only, no glue (activation ordering emergent)
+
+## [2026-06-16 14:55] ralph | catalog-lifecycle-approval 5.2 | human-needed | 0 files | task bullets 1(block-on-active-children) vs 3(preserve-active-children) mutually exclusive for Master->Variant; within-catalog block contradicts immutable PRD 4.5/BR-Lifecycle-4. See progress.md 14:54, options A/B/C (rec B)
+
+## [2026-06-16 15:17] resolve | catalog-lifecycle-approval 5.2 HUMAN_NEEDED | Founder chose Option B: within-catalog retire block scoped to terminal sellable edge (PR/CaseConfig<-active SKU); hierarchy parents preserve children. ADR 2026-06-16 written; delta spec/design D8/tasks/proposal updated; validate --strict OK. No code; 5.2 ready to implement.
+
+## [2026-06-16 15:53] ralph | catalog-lifecycle-approval 5.2 | green | 10 files (5 new: cascade+gate+exception+test; 6.1 docs next) | SQLite 611/611, PG17 207/207, phpstan 0

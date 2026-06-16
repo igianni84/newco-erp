@@ -64,4 +64,18 @@ return [
         // parent, a Master's Producer).
         'parent_not_active' => 'Cannot activate this :entity: its :parent is not active. A child entity may activate only once every entity it depends on is active (the activation cascade).',
     ],
+    'retirement' => [
+        // The within-catalog reference-integrity guard on a SINGLE-entity retire (design D8; Module 0 PRD
+        // § 4.6, BR-Lifecycle-5 — the within-catalog subset; scoped to the terminal sellable edge per
+        // decisions/2026-06-16-catalog-retirement-reference-integrity-scope.md, Option B). A Product Reference
+        // referenced by an `active` Sellable / Composite SKU, or a Case Configuration referenced by an
+        // `active` Sellable SKU, SHALL NOT be retired out from under the still-`active` terminal sellable
+        // object — the open references are surfaced so the operator can close them, or retire the parent
+        // together with its descendants via the operator-driven cascade. A hierarchy parent (a Master with
+        // `active` Variants, a Variant with `active` PRs) is NOT blocked — its single-entity retire succeeds
+        // and preserves its children (§ 4.5). :entity is the entity-type name and :references the surfaced open
+        // referencers (entity-type + id tokens, e.g. "SellableSku#5, CompositeSku#9") — NEITHER is PII (the
+        // cross-module downstream-reference leg — Allocations / vouchers / Offers — is a documented Phase-3 seam).
+        'blocked_by_active_references' => 'Cannot retire this :entity while it is still referenced by active within-catalog sellable objects (:references). Close those references first, or retire the parent together with its descendants via the operator-driven cascade.',
+    ],
 ];

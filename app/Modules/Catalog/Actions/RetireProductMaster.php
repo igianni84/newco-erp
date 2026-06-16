@@ -21,10 +21,14 @@ use App\Modules\Catalog\Models\ProductMaster;
  * the PII-free `*Retired` payload — in that same transaction (§ 14.1 / invariant 4 — the transactional
  * outbox). No activation gate applies to a retire (it passes no `$gate`).
  *
- * Scope (design D8): this is the SINGLE-entity retire. The within-catalog reference-integrity guard (reject
- * a retire while the Master has `active` child references — BR-Lifecycle-5) and the operator-driven
- * parent-before-child cascade ({@see ProductMasterRetired} recorded in `id` order) land in task 5.2; the
- * cross-module downstream-reference leg stays a documented Phase-3 seam. A thin per-entity wrapper: the
+ * Scope (design D8; `decisions/2026-06-16-catalog-retirement-reference-integrity-scope.md`, Option B): this
+ * is the SINGLE-entity retire, and a Product Master is a HIERARCHY PARENT, so it carries NO reference-integrity
+ * guard (it passes no `$gate`) — retiring a Master with `active` Variants SUCCEEDS and PRESERVES them (they stay
+ * `active`; only new activation under the now-`retired` Master is prevented — § 4.5 / BR-Lifecycle-4). The
+ * within-catalog reference-integrity guard is scoped to the terminal sellable edge and lives only on
+ * {@see RetireProductReference} / {@see RetireCaseConfiguration}. To retire a Master together with its
+ * descendants in parent-before-child order use the operator-driven {@see RetireProductMasterCascade} (§ 4.7).
+ * The cross-module downstream-reference leg stays a documented Phase-3 seam. A thin per-entity wrapper: the
  * entity label is {@see ProductMasterRetired::ENTITY_TYPE}; the model stays persistence-only.
  */
 class RetireProductMaster

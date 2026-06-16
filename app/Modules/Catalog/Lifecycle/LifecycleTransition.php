@@ -54,10 +54,12 @@ use LogicException;
  *
  * Two per-transition seams the activation/retirement Actions plug into {@see transition()} (design D6/D7/D9;
  * catalog-lifecycle-approval task 3.2, extended per-entity by 4.x/5.x):
- *   - the optional `$gate` closure — an activation precondition (the Producer gate for a Product Master via
- *     {@see ProducerActivationGate}; the parent-active cascade for a child) evaluated AFTER the governance
- *     guard and BEFORE the write; it throws a localized exception to reject, so a gated-out activation
- *     records nothing. Only activation Actions pass it (submit/retire/reopen pass null);
+ *   - the optional `$gate` closure — a transition precondition evaluated AFTER the governance guard and
+ *     BEFORE the write; it throws a localized exception to reject, so a gated-out transition records nothing.
+ *     Two uses: an ACTIVATION gate (the Producer gate for a Product Master via {@see ProducerActivationGate};
+ *     the parent-active cascade for a child) and the RETIREMENT reference-integrity guard (design D8 — reject
+ *     a single-entity retire of a Product Reference / Case Configuration still referenced by an `active` SKU).
+ *     Submit/reopen, the standalone activations and the guard-free operator-driven cascade retire pass null;
  *   - the optional `$event` closure — the transition's verbatim `*Activated`/`*Retired` domain-event intent
  *     (name + PII-free payload), recorded through the platform {@see DomainEventRecorder} AFTER the state
  *     write, inside this same transaction (§14.1 / invariant 4 — the transactional outbox), so its payload
@@ -94,7 +96,7 @@ class LifecycleTransition
      *
      * @param  TModel  $model  the spine entity to transition (this mechanism is its sole `lifecycle_state` writer)
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) for the audit/event record + the rejection
-     * @param  (Closure(TModel): void)|null  $gate  an activation precondition (design D6/D7) evaluated after the governance guard, before the write — it throws a localized exception to reject (the Producer gate for a Master; the parent-active cascade for a child). Null for transitions with no gate (submit/retire/reopen, standalone activations).
+     * @param  (Closure(TModel): void)|null  $gate  a transition precondition (design D6/D7/D8) evaluated after the governance guard, before the write — it throws a localized exception to reject. Two uses: an activation gate (the Producer gate for a Master; the parent-active cascade for a child) and the retirement reference-integrity guard (a PR / Case Configuration referenced by an `active` SKU). Null for transitions with no gate (submit/reopen, standalone activations, the guard-free cascade retire).
      * @param  (Closure(TModel): array{name: string, payload: array<string, mixed>})|null  $event  the transition's domain-event intent (design D9), recorded AFTER the state write inside this transaction so the payload reflects the to-state. Null for the audit-only checkpoints (submit/reopen).
      * @return TModel
      *

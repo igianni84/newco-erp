@@ -21,12 +21,16 @@ use App\Modules\Catalog\Models\ProductVariant;
  * the PII-free `*Retired` payload — in that same transaction (§ 14.1 / invariant 4 — the transactional
  * outbox). No activation gate applies to a retire (it passes no `$gate`).
  *
- * Scope (design D8): this is the SINGLE-entity retire. A Product Variant OWNS child Product References, so the
- * within-catalog reference-integrity guard (reject a retire while the Variant has `active` PRs —
- * BR-Lifecycle-5) and the operator-driven parent-before-child cascade (`RetireProductVariant`'s `*Retired`
- * recorded in `id` order under the Master's cascade) land in task 5.2; the cross-module downstream-reference
- * leg stays a documented Phase-3 seam. A thin per-entity wrapper: the entity label is
- * {@see ProductVariantRetired::ENTITY_TYPE}; the model stays persistence-only.
+ * Scope (design D8; `decisions/2026-06-16-catalog-retirement-reference-integrity-scope.md`, Option B): this
+ * is the SINGLE-entity retire, and a Product Variant is a HIERARCHY PARENT (it owns child Product References),
+ * so it carries NO reference-integrity guard (it passes no `$gate`) — retiring a Variant with `active` PRs
+ * SUCCEEDS and PRESERVES them (they stay `active`; only new activation under the now-`retired` Variant is
+ * prevented — § 4.5 / BR-Lifecycle-4). The within-catalog reference-integrity guard is scoped to the terminal
+ * sellable edge and lives only on `RetireProductReference` / `RetireCaseConfiguration`. The operator-driven
+ * parent-before-child cascade ({@see RetireProductMasterCascade}, § 4.7) records this `*Retired` in `id` order
+ * under the Master's cascade. The cross-module downstream-reference leg stays a documented Phase-3 seam. A thin
+ * per-entity wrapper: the entity label is {@see ProductVariantRetired::ENTITY_TYPE}; the model stays
+ * persistence-only.
  */
 class RetireProductVariant
 {
