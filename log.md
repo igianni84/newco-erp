@@ -221,3 +221,5 @@
 ## [2026-06-16 13:41] ralph | catalog-lifecycle-approval 4.3 | green | 14 files (11 new, 3 edited) — Product Variant lifecycle + the FIRST within-module activation-cascade gate (ActivationCascadeGate + ActivationCascadeViolation); 559/559 SQLite, 155/155 PG17, phpstan 0
 
 ## [2026-06-16 13:55] ralph | catalog-lifecycle-approval 4.4 | green | 11 files (9 new, 2 edited) | PR lifecycle + first multi-parent cascade gate (Variant AND Format); 573/573 sqlite, 169/169 PG17
+
+## [2026-06-16 14:10] ralph | catalog-lifecycle-approval 4.5 | green | 11 files (9 new, 2 edited): Sellable SKU lifecycle + two-parent gate (PR AND Case Config); 587/587 SQLite, 183/183 PG17

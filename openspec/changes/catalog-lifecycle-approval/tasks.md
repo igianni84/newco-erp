@@ -55,7 +55,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
   - Acceptance: a PR cannot activate unless **both** parents are `active` (assert each missing-parent path); both `active` → activates + `ProductReferenceActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/ProductReferenceLifecycleTest.php` — three cases: Variant inactive, Format inactive, both active.
 
-- [ ] 4.5 **Sellable SKU lifecycle + gate (PR active AND Case Configuration active)** — `SellableSKUActivated`/`SellableSKURetired`; the five Actions; **gate**: activation requires both the `ProductReference` (`product_reference_id`) and the `CaseConfiguration` (`case_configuration_id`) to be `active`.
+- [x] 4.5 **Sellable SKU lifecycle + gate (PR active AND Case Configuration active)** — `SellableSKUActivated`/`SellableSKURetired`; the five Actions; **gate**: activation requires both the `ProductReference` (`product_reference_id`) and the `CaseConfiguration` (`case_configuration_id`) to be `active`.
   - Acceptance: a Sellable SKU cannot activate unless **both** referenced entities are `active` (**AC-0-BR-Lifecycle-3**); both `active` → activates + `SellableSKUActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/SellableSkuLifecycleTest.php` — PR inactive / Case Config inactive / both active.
 
