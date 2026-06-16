@@ -5,6 +5,7 @@ namespace App\Modules\Catalog\Models;
 use App\Modules\Catalog\Actions\CreateCompositeSku;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Events\CompositeSKUCreated;
+use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\CompositeSkuFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -29,8 +30,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * multi-producer bundle is accepted, and single-producer admissibility is a Module S Offer-publication rule,
  * never a PIM check. Persistence-only by design (D8): the {@see CreateCompositeSku} action is the sole writer —
  * it inserts the parent + constituent links and records {@see CompositeSKUCreated} in one transaction — so
- * `$guarded = []` carries no mass-assignment-from-request risk. Born `draft`; this change defines no transition
- * out of it (the §3.8 immutability-after-active-Offer rule and atomicity-at-sale are deferred — design D3).
+ * `$guarded = []` carries no mass-assignment-from-request risk. Born `draft`; its lifecycle transitions are
+ * driven by the shared `LifecycleTransition` mechanism — the {@see HasLifecycleState} marker opts this entity
+ * in (an N-constituent CHILD: its activation is additionally gated on EVERY constituent Product Reference of
+ * the bundle being `active`, the §4.4 activation cascade / BR-Lifecycle-3, design D7) — which stays the sole
+ * `lifecycle_state` writer, so the model remains persistence-only (design D1/D2). The §3.8
+ * immutability-after-active-Offer and atomicity-at-sale rules stay deferred (design D3).
  *
  * @property int $id
  * @property LifecycleState $lifecycle_state
@@ -39,7 +44,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property CarbonInterface $updated_at
  * @property-read Collection<int, ProductReference> $constituents
  */
-class CompositeSku extends Model
+class CompositeSku extends Model implements HasLifecycleState
 {
     /** @use HasFactory<CompositeSkuFactory> */
     use HasFactory;
@@ -81,6 +86,16 @@ class CompositeSku extends Model
             'composite_sku_id',
             'product_reference_id',
         )->withPivot('position')->orderByPivot('position');
+    }
+
+    /**
+     * The {@see HasLifecycleState} read contract: report the current `lifecycle_state` so the shared
+     * lifecycle mechanism reads it generically. A pure accessor — the mechanism, never this model, writes
+     * the state (design D1).
+     */
+    public function lifecycleState(): LifecycleState
+    {
+        return $this->lifecycle_state;
     }
 
     /**

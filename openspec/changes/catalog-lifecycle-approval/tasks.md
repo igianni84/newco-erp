@@ -59,7 +59,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
   - Acceptance: a Sellable SKU cannot activate unless **both** referenced entities are `active` (**AC-0-BR-Lifecycle-3**); both `active` → activates + `SellableSKUActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/SellableSkuLifecycleTest.php` — PR inactive / Case Config inactive / both active.
 
-- [ ] 4.6 **Composite SKU lifecycle + gate (every constituent PR active)** — `CompositeSKUActivated`/`CompositeSKURetired`; the five Actions; **gate**: activation requires **every** constituent `ProductReference` (via the `catalog_composite_sku_constituents` junction) to be `active`.
+- [x] 4.6 **Composite SKU lifecycle + gate (every constituent PR active)** — `CompositeSKUActivated`/`CompositeSKURetired`; the five Actions; **gate**: activation requires **every** constituent `ProductReference` (via the `catalog_composite_sku_constituents` junction) to be `active`.
   - Acceptance: a Composite SKU with any non-`active` constituent PR cannot activate; all constituents `active` → activates + `CompositeSKUActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/CompositeSkuLifecycleTest.php` — two-constituent Composite: one PR inactive → rejected; both PRs `active` → activates.
 
