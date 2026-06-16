@@ -27,7 +27,7 @@ Steps:
    - recent `openspec/changes/**/progress.md` → `## Codebase Patterns` (active + recently archived)
    - `lessons.md` — what's already captured (avoid duplicates)
    - `hot.md` — Open Patterns (stale check only)
-3. **Decide** the curations (four actions below).
+3. **Decide** the curations (five actions below).
 4. **Apply** only the safe, unambiguous curations as edits on the branch; everything
    judgment-heavy goes to the report as a *proposal*, unedited. **Cap the diff:** on a
    first run or any large backlog, APPLY at most the ~3–5 highest-confidence curations
