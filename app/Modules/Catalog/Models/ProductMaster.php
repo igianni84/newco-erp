@@ -6,6 +6,7 @@ use App\Modules\Catalog\Actions\CreateProductMaster;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Enums\ProductType;
 use App\Modules\Catalog\Events\ProductMasterCreated;
+use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductMasterFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,7 +29,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * 10). Persistence-only by design (D8): the {@see CreateProductMaster} action is the sole writer — it runs
  * the BR-Identity-1 dedup, inserts the core + wine attribute set, and records {@see ProductMasterCreated},
  * all in one transaction — so `$guarded = []` carries no mass-assignment-from-request risk. Born `draft`;
- * this change defines no transition out of it (design D3).
+ * its lifecycle transitions are driven by the shared `LifecycleTransition` mechanism — the {@see HasLifecycleState}
+ * marker opts this entity in — which stays the sole `lifecycle_state` writer, so the model remains
+ * persistence-only (design D1/D2).
  *
  * @property int $id
  * @property string $name
@@ -40,7 +43,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface $updated_at
  * @property-read ProductMasterWineAttributes|null $wineAttributes
  */
-class ProductMaster extends Model
+class ProductMaster extends Model implements HasLifecycleState
 {
     /** @use HasFactory<ProductMasterFactory> */
     use HasFactory;
@@ -75,6 +78,16 @@ class ProductMaster extends Model
     public function wineAttributes(): HasOne
     {
         return $this->hasOne(ProductMasterWineAttributes::class);
+    }
+
+    /**
+     * The {@see HasLifecycleState} read contract: report the current `lifecycle_state` so the shared
+     * lifecycle mechanism reads it generically. A pure accessor — the mechanism, never this model, writes
+     * the state (design D1).
+     */
+    public function lifecycleState(): LifecycleState
+    {
+        return $this->lifecycle_state;
     }
 
     /**

@@ -205,3 +205,5 @@
 ## [2026-06-16 11:03] ralph | catalog-lifecycle-approval 1.2 | green | 3 files | ProducerLifecycleProjector consumer + boot() registration; watermark upsert; 487/487 SQLite, 83/83 PG17, phpstan 0
 
 ## [2026-06-16 11:11] ralph | catalog-lifecycle-approval 2.1 | green | 3 files (IllegalLifecycleTransition + lang/en/catalog.php lifecycle group + unit test) | suite 496/496, phpstan 0, pint clean | no DB so no PG run
+
+## [2026-06-16 11:43] ralph | catalog-lifecycle-approval 2.2 | green | shared LifecycleTransition mechanism (HasLifecycleState+TransitionType+service) + Submit/Reopen ProductMaster (audit-only, no event); 7 files; SQLite 502/502, PG17 98/98
