@@ -239,3 +239,7 @@
 ## [2026-06-16 16:19] ralph | catalog-lifecycle-approval 6.2 | green | 1 file (e2e CatalogLifecycleChainTest); SQLite 613/613, PG17 209/209; CHANGE COMPLETE 17/17
 
 ## [2026-06-16 16:37] close | catalog-lifecycle-approval | GUIDE 2.7 close: PG17 full-suite 613/613 both engines + 4-agent semantic verify (0 CRITICAL/0 WARN) -> merge --no-ff 0fa2fb6 -> push -> branch deleted -> openspec archive (7 ADDED/1 MOD into product-catalog) 5308dc3 -> push. No active changes.
+
+## [2026-06-16 20:21] skill | dreaming | created propose-only memory-curation skill (Phase 1, disable-model-invocation); Phase 2 cloud routine + ADR pending
+
+## [2026-06-16 21:17] dreaming | first-run full scan | 3 rules promoted (Pint{@see}, Pest-globals, enum-CHECK) + testing trap#6 + Pint-lesson cross-link + INDEX counts; 6 further curations left Proposed in the dream PR
