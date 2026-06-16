@@ -19,7 +19,8 @@ use App\Modules\Catalog\Models\ProductVariant;
  *   - {@see ENTITY_TYPE} — the envelope `entity_type` for a Product Variant;
  *   - {@see payload()} — the PII-free creation payload (the neutral core; the parent Master by id).
  *
- * No `*Activated`/`*Retired` sibling exists in this change (design D3 scope guard).
+ * Its `*Activated`/`*Retired` lifecycle siblings ({@see ProductVariantActivated}, {@see ProductVariantRetired})
+ * record the later `reviewed → active` / `active → retired` transitions (catalog-lifecycle-approval, design D9).
  */
 final class ProductVariantCreated
 {

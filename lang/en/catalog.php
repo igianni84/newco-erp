@@ -55,5 +55,13 @@ return [
         // it. :entity is the entity-type name (e.g. ProductMaster) — NOT PII; the producer is referenced by
         // id only and never named in the copy (invariant 10, PII-free discipline).
         'producer_not_active' => 'Cannot activate this :entity: its linked Producer is not active. A Product Master may activate only while its linked Producer is active.',
+        // The within-catalog activation cascade (design D7; Module 0 PRD § 4.4, BR-Lifecycle-3). A CHILD spine
+        // entity may reach `active` only once every parent it depends on is `active` (Variant ← Master;
+        // Reference ← Variant + Format; Sellable SKU ← Reference + Case Configuration; Composite SKU ← every
+        // constituent Reference) — a hard gate rejected at the workflow level. :entity is the child's
+        // entity-type name and :parent the parent it is waiting on (e.g. ProductVariant / ProductMaster) —
+        // NEITHER is PII. The within-catalog sibling of producer_not_active (which gates the one cross-module
+        // parent, a Master's Producer).
+        'parent_not_active' => 'Cannot activate this :entity: its :parent is not active. A child entity may activate only once every entity it depends on is active (the activation cascade).',
     ],
 ];

@@ -47,7 +47,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
 - [x] 4.2 **Case Configuration lifecycle** (standalone — no parent gate) — `CaseConfigurationActivated`/`Retired` events; the five Actions; activation subject only to governance.
   - Acceptance/Test hint: as 4.1 in `CaseConfigurationLifecycleTest.php` (assert `CaseConfigurationActivated`).
 
-- [ ] 4.3 **Product Variant lifecycle + gate (Master active)** — `ProductVariantActivated`/`Retired`; the five Actions; **gate**: activation requires the parent `ProductMaster` (`product_master_id`) to be `active`, else rejected.
+- [x] 4.3 **Product Variant lifecycle + gate (Master active)** — `ProductVariantActivated`/`Retired`; the five Actions; **gate**: activation requires the parent `ProductMaster` (`product_master_id`) to be `active`, else rejected.
   - Acceptance: a Variant under a non-`active` Master cannot activate (**AC-0-FSM-10**); under an `active` Master it activates + records `ProductVariantActivated`; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/ProductVariantLifecycleTest.php` — Master `reviewed` → Variant approve rejected; Master `active` (full chain incl. producer projection) → Variant approve succeeds.
 

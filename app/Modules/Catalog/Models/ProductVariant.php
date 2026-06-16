@@ -5,6 +5,7 @@ namespace App\Modules\Catalog\Models;
 use App\Modules\Catalog\Actions\CreateProductVariant;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Events\ProductVariantCreated;
+use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +31,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * structurally enforces BR-Identity-2 (a Variant belongs to exactly one Master). Persistence-only by design
  * (D8): the {@see CreateProductVariant} action is the sole writer — it inserts the core + the wine attribute
  * set and records {@see ProductVariantCreated} in one transaction — so `$guarded = []` carries no
- * mass-assignment-from-request risk. Born `draft`; this change defines no transition out of it (design D3).
+ * mass-assignment-from-request risk. Born `draft`; its lifecycle transitions are driven by the shared
+ * `LifecycleTransition` mechanism — the {@see HasLifecycleState} marker opts this entity in (a CHILD entity:
+ * its activation is additionally gated on the parent Product Master being `active`, design D7) — which stays
+ * the sole `lifecycle_state` writer, so the model remains persistence-only (design D1/D2).
  *
  * @property int $id
  * @property int $product_master_id
@@ -42,7 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read ProductMaster|null $master
  * @property-read ProductVariantWineAttributes|null $wineAttributes
  */
-class ProductVariant extends Model
+class ProductVariant extends Model implements HasLifecycleState
 {
     /** @use HasFactory<ProductVariantFactory> */
     use HasFactory;
@@ -88,6 +92,16 @@ class ProductVariant extends Model
     public function wineAttributes(): HasOne
     {
         return $this->hasOne(ProductVariantWineAttributes::class);
+    }
+
+    /**
+     * The {@see HasLifecycleState} read contract: report the current `lifecycle_state` so the shared
+     * lifecycle mechanism reads it generically. A pure accessor — the mechanism, never this model, writes
+     * the state (design D1).
+     */
+    public function lifecycleState(): LifecycleState
+    {
+        return $this->lifecycle_state;
     }
 
     /**

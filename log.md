@@ -217,3 +217,5 @@
 ## [2026-06-16 13:09] ralph | catalog-lifecycle-approval 4.1 | green | 11 files (9 new, 2 edit) | Format lifecycle standalone; 534/534 SQLite, PG17 130/130, phpstan 0
 
 ## [2026-06-16 13:19] ralph | catalog-lifecycle-approval 4.2 | green | 11 files (9 new, 2 edit): CaseConfiguration lifecycle (standalone, no gate) — 2 events + 5 Actions + model opt-in + 2 tests. SQLite 546/546 (+12), phpstan 0, PG17 142/142. 9/17 tasks.
+
+## [2026-06-16 13:41] ralph | catalog-lifecycle-approval 4.3 | green | 14 files (11 new, 3 edited) — Product Variant lifecycle + the FIRST within-module activation-cascade gate (ActivationCascadeGate + ActivationCascadeViolation); 559/559 SQLite, 155/155 PG17, phpstan 0
