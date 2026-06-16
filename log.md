@@ -213,3 +213,5 @@
 ## [2026-06-16 12:20] ralph | catalog-lifecycle-approval 3.1 | green | 4 files (2 events + 1 test + 1 docblock fix) | suite 514/514, phpstan 0, pint clean | pure event classes, no PG needed
 
 ## [2026-06-16 12:56] ralph | catalog-lifecycle-approval 3.2 | green | 7 files (4 new: ActivateProductMaster, RetireProductMaster, ProducerActivationGate, ProducerActivationGateViolation) | suite 522 SQLite, PG17 118 | Producer gate + *Activated/*Retired wired
+
+## [2026-06-16 13:09] ralph | catalog-lifecycle-approval 4.1 | green | 11 files (9 new, 2 edit) | Format lifecycle standalone; 534/534 SQLite, PG17 130/130, phpstan 0

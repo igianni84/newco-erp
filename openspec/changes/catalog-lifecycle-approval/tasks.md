@@ -40,7 +40,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
 
 > Each task adds the entity's `*Activated`/`*Retired` events (mirroring 3.1), its submit/reopen/reject/retire transitions through the shared mechanism, and its **activation-cascade gate** (design D7; spec — Requirement: Activation Cascade). All parent reads are within-module. Tests use `DatabaseMigrations` + distinct operators; each asserts the gate's negative path (parent not `active` → activation rejected, no event) and positive path (all parents `active` → `active` + the `*Activated` event), plus the from-state guard. **Verified on PG17.**
 
-- [ ] 4.1 **Format lifecycle** (standalone — no parent gate) — `FormatActivated`/`FormatRetired` events; `Submit/Activate/Retire/Reopen/RejectFormat` Actions via the shared mechanism; activation subject only to approval governance.
+- [x] 4.1 **Format lifecycle** (standalone — no parent gate) — `FormatActivated`/`FormatRetired` events; `Submit/Activate/Retire/Reopen/RejectFormat` Actions via the shared mechanism; activation subject only to approval governance.
   - Acceptance: a Format activates with no parent gate (only governance); records `FormatActivated`/`Retired`; from-state guarded; quality commands green; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/FormatLifecycleTest.php` — submit+approve (distinct actors) → `active` + `FormatActivated`; illegal transition throws.
 
