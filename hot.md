@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-15
+updated: 2026-06-16
 ---
 
 # Hot Cache
@@ -10,22 +10,22 @@ updated: 2026-06-15
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-15 23:44 (ralph — `parties-producer-lifecycle` task 5.2 GREEN; CHANGE COMPLETE).** Shipped the final task: `tests/Feature/Modules/Parties/SupplyLifecycleChainTest.php` (new, 5 cases / 67 assertions) — the full-chain integration proof driving the whole supply side through its real Actions + the cross-engine PG17 close. **No production code touched** (all Actions/Events shipped in 2.x–4.x); pure integration test. All 10 tasks now `- [x]`.
+**2026-06-16 (interactive — GUIDE §2.7 close of `parties-producer-lifecycle`).** Ran the full closing ritual: independent re-verify GREEN on BOTH engines, merged `ralph/parties-producer-lifecycle` → `main` `--no-ff` (`d5dab8b`), semantic-verify CLEAN (3 parallel audit agents, §2.7 rubric), archived (`3f6ae08`) → truth spec `party-registry` absorbed **+4 ADDED / ~1 MODIFIED** requirements. **`main` is ahead of `origin/main` by 13 commits — NOT pushed (awaiting human OK on the outward-facing push).**
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PG17.
-- **Full suite 475/475 SQLite** (+5 vs 470), **phpstan max 0**, **pint --test clean**, `openspec validate parties-producer-lifecycle --strict` ok. **PG17 verified**: Parties feature+unit + `ModuleBoundariesTest` + `ModulePersistenceConventionsTest` = **119/119 on `postgres:17`** (`:55432`, 512M pest runner). No migration, no composer/migration drift (`git diff main -- composer.json composer.lock database/migrations/` empty), arch tests unamended.
+- **Full suite 475/475 on SQLite AND on PostgreSQL 17** (1952 assertions), **phpstan max 0**, **pint --test clean**, truth spec `openspec validate party-registry --strict` valid. No migration / no composer drift in the merged change.
 
 ## Active Change & Next Task
-- **ACTIVE: `parties-producer-lifecycle`** (APPROVED, branch `ralph/parties-producer-lifecycle`). **10 of 10 done — COMPLETE.** Emitted `<promise>CHANGE_COMPLETE</promise>`.
-- **NEXT = human review → merge → semantic-verify → `openspec archive parties-producer-lifecycle --yes`** (GUIDE §2.7; do NOT self-archive/merge). After archive, the truth spec `openspec/specs/party-registry` absorbs the four ADDED requirements + the MODIFIED Birth-States narrowing.
-- **Unblocked downstream:** `catalog-lifecycle-approval` (Module 0 consumes the now-emitted `ProducerActivated`/`ProducerRetired` to gate Product Master activation, AC-K-XM-2). The **demand-side** slice (Customer/Account/Profile FSMs, Originating-Club lock, Hero capacity, segment view) is the natural follow-on — mirror this change's shape.
+- **No active change.** `parties-producer-lifecycle` merged + archived (`openspec/changes/archive/2026-06-16-parties-producer-lifecycle/`).
+- **Immediate:** decide the `git push` of `main` → `origin` (held pending human OK; GitHub is the backup per GUIDE line 220). Optional local cleanup: `git branch -d ralph/parties-producer-lifecycle` (fully merged into main).
+- **Next change (pick one):** `catalog-lifecycle-approval` (Module 0 now consumes the emitted `ProducerActivated`/`ProducerRetired` to gate Product Master activation, AC-K-XM-2) — now unblocked; OR the **demand-side** Parties slice (Customer/Account/Profile FSMs, Originating-Club lock, Hero capacity, segment view) — mirror this change's shape. Use `/spec-to-change`.
 
 ## Blockers & Decisions Needed
-- **None.** Scope guard held end-to-end (supply-side only; demand-side proven inert by reflection). Two deferred seams remain documented: KYC-on-activation → `parties-compliance` (DEC-071); all-members-gone-on-close → demand-side.
+- **Push pending human OK** — `main` ahead of origin by 13.
+- Two **non-blocking** semantic-verify SUGGESTIONs to fold into a future change (not defects): (1) stale docblock `app/Modules/Parties/Enums/ProducerAgreementStatus.php:16-17` still says supersession is "deferred to parties-membership-lifecycle" though this change now implements it; (2) no test forcing a mid-cascade `SunsetClub` failure to exercise partial-cascade rollback (correct by construction via nested `DB::transaction`).
 
 ## Open Patterns
 - **Full suite = `php -d memory_limit=512M vendor/bin/pest`** (NOT `php artisan test` — 128M OOMs in arch plugin; misleading `NoTestCaseObjectOnCallStack` trace). PHPStan/Pint fine at default mem.
-- **PG17 gate** (DB tasks): `docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17`; bounded `docker exec pg pg_isready -q` loop with in-container `docker exec pg sleep 1` (NO host sleep — blocked); run with the `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 …` env prefix; `docker rm -f pg`. Traps in `knowledge/testing/rules.md`.
-- **Full-chain integration-proof + reflection scope-guard** (5.2, now in progress.md Codebase Patterns): helper runs every leg via `app(Action)->handle()` (never factories); assert events BY NAME / payloads BY KEY; pin the distinct name-set with `pluck('name')->unique()->values()->all()`+`toEqualCanonicalizing`. **PHPStan-max test traps:** `glob(...) ?: []` (glob is `list<string>|false`); never `class_exists('<hardcoded absent FQCN>')` (flagged `impossibleType`) — reflect the dir listing + `not->toContain`. Demand-side negatives use EXACT names, never `like '%Activated%'`.
-- log.md via `memlog.sh`; hot.md ≤550 words; APPROVED = human-only; never `git push`.
+- **PG17 gate** (DB tasks / close): `docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17`; bounded `docker exec pg pg_isready -q` loop with in-container `docker exec pg sleep 1` (NO host sleep — blocked); env prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 …`; `docker rm -f pg`. Traps in `knowledge/testing/rules.md`.
+- **GUIDE §2.7 close** = verify both engines → merge `--no-ff` → semantic-verify (delegate to parallel audit agents) → `openspec archive --yes` + commit → push (human-gated). log.md via `memlog.sh`; hot.md ≤550 words; APPROVED = human-only; **never `git push` without explicit human OK.**

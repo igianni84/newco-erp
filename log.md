@@ -193,3 +193,5 @@
 ## [2026-06-15 23:31] ralph | parties-producer-lifecycle 5.1 | green | 2 files (CONTEXT.md docs +30/-5, tasks.md checkbox); supply-side lifecycle terms + 7-event PII-free contract table + 2 deferred seams; suite 470/470, phpstan 0, openspec strict ok; docs-only no PG17
 
 ## [2026-06-15 23:46] ralph | parties-producer-lifecycle 5.2 | green | 1 file (SupplyLifecycleChainTest, 5 cases/67 assertions); 475/475 SQLite, 119/119 PG17; CHANGE COMPLETE (10/10)
+
+## [2026-06-16 09:16] close | parties-producer-lifecycle | GUIDE §2.7 close: re-verified GREEN both engines (475/475 SQLite + PG17), merged --no-ff to main (d5dab8b), semantic-verify CLEAN (3 agents, 2 non-blocking suggestions), archived (3f6ae08) -> party-registry +4/~1 req. Push to origin held for human OK.
