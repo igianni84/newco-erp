@@ -14,7 +14,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
 
 ## 2. Lifecycle foundation — the shared mechanism, established on Product Master
 
-- [ ] 2.1 **`IllegalLifecycleTransition` + localized copy** (design D2; spec — Requirement: Product Lifecycle State Machine) — `App\Modules\Catalog\Exceptions\IllegalLifecycleTransition extends RuntimeException` with named factories (`::cannotSubmit(LifecycleState $from, string $entity)`, `::cannotActivate(...)`, `::cannotRetire(...)`, `::cannotReopen(...)`), each resolving a localized reason. Add a `lifecycle` group to a new `lang/en/catalog.php` with dotted keys + `:state` / `:entity` placeholders (neither is PII).
+- [x] 2.1 **`IllegalLifecycleTransition` + localized copy** (design D2; spec — Requirement: Product Lifecycle State Machine) — `App\Modules\Catalog\Exceptions\IllegalLifecycleTransition extends RuntimeException` with named factories (`::cannotSubmit(LifecycleState $from, string $entity)`, `::cannotActivate(...)`, `::cannotRetire(...)`, `::cannotReopen(...)`), each resolving a localized reason. Add a `lifecycle` group to a new `lang/en/catalog.php` with dotted keys + `:state` / `:entity` placeholders (neither is PII).
   - Acceptance: each factory builds an exception whose message names the rule, the offending `:state`, and the `:entity`; copy lives in `lang/en/catalog.php` (no hardcoded strings — invariant 12); quality commands green.
   - Test hint: `tests/Unit/Modules/Catalog/Exceptions/IllegalLifecycleTransitionTest.php` (no `RefreshDatabase`) — assert each factory returns the class and a non-empty resolved message containing the state + entity tokens; assert `__('catalog.lifecycle.cannot_activate', ['state' => 'draft', 'entity' => 'ProductMaster'])` resolves.
 
