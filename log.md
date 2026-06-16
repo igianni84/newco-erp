@@ -251,3 +251,5 @@
 ## [2026-06-16 22:34] merge | dreaming PR #2 | Specialized-agent review: 0 blockers, clean PASS (localized-exc hyp->rule verified vs 4 archives; counts honest; enum-CHECK relocated verbatim; INDEX matches). CI green 613/613 PG+SQLite. Merged --no-ff main a6fc85f + pushed + branch deleted. Knowledge/docs-only.
 
 ## [2026-06-16 22:41] fix | knowledge date consistency | Standardize catalog-product-spine confirmations on archive-dir date 06-15 (convention=dir-date, cf parties-producer-lifecycle 5/5 at 06-16). Fixed 2 PR#1-era outliers citing 06-14 (laravel use-cycle, data-model enum-CHECK). All 8 citations now 06-15.
+
+## [2026-06-16 22:47] convention | knowledge confirmation dating | Codified: confirmations cite the change's archive-dir date, not progress.md's work-timestamp. Rule added to .claude/CLAUDE.md Knowledge System + lessons.md (Mistake->Correction->Rule). Prevents split confirmation counts in future dreaming/curation runs.

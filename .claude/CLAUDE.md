@@ -74,6 +74,7 @@
 - Before a task: review `knowledge/{domain}/rules.md` (apply by default) and `hypotheses.md` (test when possible) for relevant domains
 - After a task: extract insights into the right domain folder; update `knowledge/INDEX.md` when creating a domain
 - Promotion: hypothesis confirmed **3×** (dated confirmations) → move to `rules.md`. Rule contradicted → demote back to hypothesis
+- **Confirmation date = the change's archive-directory date** (`openspec/changes/archive/YYYY-MM-DD-<name>/`), NOT the `progress.md` internal work-timestamp — the two can differ (e.g. `2026-06-15-catalog-product-spine` was worked on 06-14). One change → one date across every domain, so a confirmation count is never split by a date mismatch.
 - Suggested domains: `architecture`, `data-model`, `laravel`, `filament`, `testing`, `integrations`, plus one per spec module as work begins (`module-a`, `module-b`, …)
 
 ## Decision Journal
