@@ -247,3 +247,5 @@
 ## [2026-06-16 21:48] merge | dreaming PR #1 | adversarial review (0 blockers, 2 fixes) -> merged --no-ff main 37f413a + pushed + branch deleted; /dreaming skill + 3 rules + trap#6 live; Phase 2 routine+ADR pending
 
 ## [2026-06-16 22:21] dreaming-apply | dreams/2026-06-16 Proposed + Phase-2 routine | Branch dream/2026-06-16-apply-proposed: +5 rules +3 hypotheses (testing/architecture/laravel/data-model); new data-model domain (enum-CHECK relocated from laravel); localized-exc re-graded hyp->rule. Wired weekly Opus 4.8 1M dreaming cloud routine + ADR. Knowledge-only, PR open.
+
+## [2026-06-16 22:34] merge | dreaming PR #2 | Specialized-agent review: 0 blockers, clean PASS (localized-exc hyp->rule verified vs 4 archives; counts honest; enum-CHECK relocated verbatim; INDEX matches). CI green 613/613 PG+SQLite. Merged --no-ff main a6fc85f + pushed + branch deleted. Knowledge/docs-only.
