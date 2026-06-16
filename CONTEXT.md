@@ -4,7 +4,7 @@ Glossary of record for the NewCo producer-club wine aggregator. Seeded from the 
 
 ## Product Catalog (PIM)
 
-The structural product spine of Module 0 — category-neutral by design (§16/§18): each entity has a neutral core with type-specific attributes held off it, so a future Product Type slots in additively without reshaping the core or the cross-module event contract. At launch the only Product Type is `WINE`. Spine entities are born `draft`; lifecycle transitions are out of scope until `catalog-lifecycle-approval`.
+The structural product spine of Module 0 — category-neutral by design (§16/§18): each entity has a neutral core with type-specific attributes held off it, so a future Product Type slots in additively without reshaping the core or the cross-module event contract. At launch the only Product Type is `WINE`. Spine entities are born `draft`; their **lifecycle transitions**, the **Creator → Reviewer → Approver approval governance** and the **Producer-activation gate** are implemented by `catalog-lifecycle-approval` (the spine recorded the `lifecycle_state` but deferred every transition — see *Product lifecycle* below).
 
 **Product Master**:
 The top of the product hierarchy and the parent of every Product Variant. Its category-neutral core carries the product name, the Product Type, a producer reference **by id** (a plain identifier into Module K — never a cross-module relation, join or model import), lifecycle state and audit/version; its `WINE` attribute set holds appellation/region and the translatable winery story. For `WINE` a Master is unique on `producer + product name + appellation`; a creation colliding with a non-retired Master is rejected at creation. Wine-display alias: "Wine Master".
@@ -38,9 +38,41 @@ _Avoid_: category (overloaded), EAV, dynamic/configurable type
 The §18 rule that the category-neutral `Product*` names — Product Master, Product Variant, Product Reference, and the `ProductMaster*`/`ProductVariant*`/`ProductReference*` event families — are the canonical code and contract identifiers, while the former wine-specific names ("Wine Master", "Wine Variant", "Bottle Reference"/"BR") survive **only as wine-display aliases** (presentation/documentation), never as structural or event identifiers. Format, Case Configuration, Sellable SKU and Composite SKU keep their names unchanged.
 _Avoid_: WineMaster / WineVariant / BottleReference as code or event names
 
+**Product lifecycle (the four-state FSM)**:
+The uniform `draft → reviewed → active → retired` state machine every spine entity carries (§4.1, BR-Lifecycle-2), driven by explicit operator Actions that are the **sole writers** of `lifecycle_state` (the immutability discipline of the `Create*` seam, extended to state — the Models stay persistence-only). Four transitions: **submit for review** (`draft → reviewed`), **activate** (`reviewed → active`), **retire** (`active → retired`), **reopen** (`retired → reviewed`). Each is **from-state guarded** against a transaction-locked re-read — an out-of-state call is rejected with a localized `IllegalLifecycleTransition`, leaving state, audit and event logs unchanged. Implemented by `catalog-lifecycle-approval` (the spine recorded the state but deferred the transitions).
+_Avoid_: status (the column is `lifecycle_state`), a transition method on the Model (the Action is the sole writer)
+
+**Review checkpoint**:
+The `draft → reviewed` transition — an internal-to-PIM checkpoint, **audit-only and event-silent**: it records an audit record but **no** domain event, and **no `*Reviewed` event exists** anywhere in the catalog surface (§4.2, AC-0-FSM-8). The next domain event in an entity's lifecycle after its `*Created` is its `*Activated`.
+_Avoid_: ProductMasterReviewed / any `*Reviewed` event (none is ever recorded)
+
+**Reopen**:
+The `retired → reviewed` transition that returns a retired entity to the approval flow; **audit-only, no domain event**. Re-activation therefore flows `retired → reviewed → active`, and the `reviewed → active` step **re-checks** the activation gate and the approval governance afresh (AC-0-J-10) — re-activation is never exempt.
+_Avoid_: un-retire / restore (it re-enters review, it does not jump straight back to `active`)
+
+**Approval governance (Creator → Reviewer → Approver)**:
+The separation-of-duties workflow over every commercial-impact transition (`reviewed → active`, `active → retired`, `retired → reviewed`): the actors performing the configured steps **must be distinct people — self-approval is never allowed** (the SoD floor, §4.2, BR-Lifecycle-1). The **role count** is operational configuration (`config('catalog.approval.role_count')` ∈ {2, 3}, default **3** — the full Creator → Reviewer → Approver, or a lighter two-step Creator → Approver; `feedback_prd_rr_approval`); the floor holds at any depth. A governance step **requires an authenticated operator** (`newco_ops` + non-null `actor_id`); a `system`/null actor is rejected. The **append-only audit trail is the system of record** for who performed each step (no per-entity governance columns); **rejection** keeps the entity in `reviewed` (actor + notes + decision recorded, edited in place, **no revert to `draft`** — §4.3, BR-Lifecycle-6), and "rejection-pending" is **derived** from the latest governance audit action.
+_Avoid_: maker-checker (use Creator → Reviewer → Approver), `created_by`/`approved_by` columns (the audit trail is the SoR), revert-to-draft (rejection stays in `reviewed`)
+
+**Producer activation gate**:
+The hard cross-module gate (§5.4, BR-Producer-1): a **Product Master** cannot reach `active` unless its **linked Producer is `active`**, checked at the `reviewed → active` moment against the **producer-state projection** — never a Module K table (invariant 10). A `producer_id` with no projection row (never activated / unknown to Catalog) is **fail-closed** (not gated open). The PRD's "and KYC-verified" conjunct is satisfied **transitively upstream** (`parties-compliance` tightens `ActivateProducer`) — a documented seam, so the KYC bit never enters Module 0's gate or the cross-module event contract.
+_Avoid_: a KYC gate inside Module 0 (KYC is upstream), querying `parties_producers` (read the projection)
+
+**Producer-state projection**:
+Catalog's **first cross-module read model** — `catalog_producer_states` (`producer_id`, `status` ∈ {`active`, `retired`}, a per-producer `last_event_id` watermark) that the *Producer activation gate* reads. Maintained by the codebase's **first registered `DomainEventConsumer`**, which consumes Module K's `ProducerActivated`/`ProducerRetired` (§14.5) **idempotently and order-tolerantly** (latest-wins on the watermark). Consuming `ProducerRetired` is **block-new, never cascade-retire** (existing `active` Masters are preserved); consuming `ProducerActivated` **never auto-activates** a queued Master (re-submission is operator-initiated).
+_Avoid_: a Producer mirror table (it holds only the gate-relevant `active`/`retired` state, by id — not the Producer), a cross-module query at gate time
+
+**Activation cascade**:
+The parent-before-child hard gate evaluated at the child's `reviewed → active` moment (§4.4, BR-Lifecycle-3): a child cannot activate while a parent it composes is not `active` — a **Product Variant** requires its **Product Master** `active`; a **Product Reference** its **Product Variant** `active` **and** its **Format** `active`; a **Sellable SKU** its **Product Reference** `active` **and** its **Case Configuration** `active`; a **Composite SKU** **every** constituent **Product Reference** `active`. **Format** and **Case Configuration** are standalone (no parent gate). Parent reads are **within-module** (the lone cross-module parent, Master → Producer, goes through the projection); because a child can never precede its parent, `*Activated` events fall out **parent-before-child** (§14.3).
+_Avoid_: a denormalized "parent active" flag (read the parent's own `lifecycle_state`)
+
+**Retirement cascade**:
+Retiring a parent **preserves** existing `active` children (no retroactive invalidation — they run to natural completion) and only **blocks new** activation under the now-`retired` parent (§4.5, BR-Lifecycle-4). An **operator-driven cascade** (§4.7) retires a Master + descendants in one transaction, **parent-before-child** (Master → Variants → PRs → SKUs), recording each `*Retired` in that order. A **single-entity** retire is **blocked only** while the entity is referenced by an `active` terminal sellable SKU — a **Product Reference** ← `active` Sellable/Composite SKU, or a **Case Configuration** ← `active` Sellable SKU (the within-catalog subset of BR-Lifecycle-5, surfaced not silently cascaded); a **hierarchy parent is not blocked** on its children. The cross-module downstream-reference leg is a deferred seam (the Phase-3 referencers).
+_Avoid_: blocking a hierarchy parent on its `active` children (parents preserve; only the terminal sellable edge blocks), auto-cascading a single-entity retire to descendants
+
 ### Catalog spine creation events — payload contract
 
-On creation, each spine entity records its `*Created` Domain Event through the platform `DomainEventRecorder`, in the **same transaction** as the write, tagged module `catalog`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **PII-free** payload (ids + non-PII business data only — a producer is referenced by id, never any party/personal data). No `*Activated`/`*Retired` event is recorded by this change (transitions are deferred to `catalog-lifecycle-approval`). The §14.1 event names keep `SKU` upper-case (`SellableSKUCreated`, `CompositeSKUCreated`) while the canonical model classes are `SellableSku`/`CompositeSku` (the cascade). The payload keys below are the published inter-module contract:
+On creation, each spine entity records its `*Created` Domain Event through the platform `DomainEventRecorder`, in the **same transaction** as the write, tagged module `catalog`, with the `ActorContext`-resolved `actor_role`, the entity type + id, and a **PII-free** payload (ids + non-PII business data only — a producer is referenced by id, never any party/personal data). Creation records **only** the `*Created` event — the `*Activated`/`*Retired` lifecycle events are recorded later by the transition Actions (see *Catalog spine lifecycle events — payload contract* below). The §14.1 event names keep `SKU` upper-case (`SellableSKUCreated`, `CompositeSKUCreated`) while the canonical model classes are `SellableSku`/`CompositeSku` (the cascade). The payload keys below are the published inter-module contract:
 
 | Event (`name`) | `entity_type` | Payload keys |
 |---|---|---|
@@ -51,6 +83,36 @@ On creation, each spine entity records its `*Created` Domain Event through the p
 | `ProductReferenceCreated` | `ProductReference` | `product_reference_id`, `product_variant_id`, `format_id`, `lifecycle_state` |
 | `SellableSKUCreated` | `SellableSku` | `sellable_sku_id`, `product_reference_id`, `case_configuration_id`, `commercial_name`, `lifecycle_state` |
 | `CompositeSKUCreated` | `CompositeSku` | `composite_sku_id`, `constituent_product_reference_ids`, `constituent_count`, `lifecycle_state` |
+
+### Catalog spine lifecycle events — payload contract
+
+On each `reviewed → active` **activation** and `active → retired` **retirement**, a spine entity records its **verbatim** Module 0 lifecycle event (§14.1, category-neutral per §18) through the platform `DomainEventRecorder`, in the **same transaction** as the `lifecycle_state` write, tagged module `catalog`, with the `ActorContext`-resolved `actor_role` + `actor_id`, the entity type + id, and a **PII-free** payload (entity ids + lifecycle/enum values only — a producer or parent entity is referenced **by id**, never by personal data). The `draft → reviewed` review checkpoint and the `retired → reviewed` reopen are **audit-only — they record no domain event, and no `*Reviewed` event exists** (§14.2, AC-0-FSM-8). In an activation chain or the operator-driven retirement cascade the events are recorded **parent-before-child**, so `domain_events.id` order encodes the hierarchy (§14.3). As with the creation events, the §14.1 names keep `SKU` upper-case (`SellableSKUActivated`/`…Retired`, `CompositeSKUActivated`/`…Retired`) while the `entity_type` is the canonical model class `SellableSku`/`CompositeSku` (the §18 cascade). Each `*Activated` and its paired `*Retired` carry the **identical** payload shape — only the recorded `lifecycle_state` value differs (`active` vs `retired`). The fourteen payload contracts (seven entities × {`*Activated`, `*Retired`}) are the published inter-module contract:
+
+| Event (`name`) | `entity_type` | Payload keys |
+|---|---|---|
+| `ProductMasterActivated` | `ProductMaster` | `product_master_id`, `producer_id`, `lifecycle_state` |
+| `ProductMasterRetired` | `ProductMaster` | `product_master_id`, `producer_id`, `lifecycle_state` |
+| `ProductVariantActivated` | `ProductVariant` | `product_variant_id`, `product_master_id`, `lifecycle_state` |
+| `ProductVariantRetired` | `ProductVariant` | `product_variant_id`, `product_master_id`, `lifecycle_state` |
+| `ProductReferenceActivated` | `ProductReference` | `product_reference_id`, `product_variant_id`, `format_id`, `lifecycle_state` |
+| `ProductReferenceRetired` | `ProductReference` | `product_reference_id`, `product_variant_id`, `format_id`, `lifecycle_state` |
+| `FormatActivated` | `Format` | `format_id`, `lifecycle_state` |
+| `FormatRetired` | `Format` | `format_id`, `lifecycle_state` |
+| `CaseConfigurationActivated` | `CaseConfiguration` | `case_configuration_id`, `lifecycle_state` |
+| `CaseConfigurationRetired` | `CaseConfiguration` | `case_configuration_id`, `lifecycle_state` |
+| `SellableSKUActivated` | `SellableSku` | `sellable_sku_id`, `product_reference_id`, `case_configuration_id`, `lifecycle_state` |
+| `SellableSKURetired` | `SellableSku` | `sellable_sku_id`, `product_reference_id`, `case_configuration_id`, `lifecycle_state` |
+| `CompositeSKUActivated` | `CompositeSku` | `composite_sku_id`, `constituent_product_reference_ids`, `lifecycle_state` |
+| `CompositeSKURetired` | `CompositeSku` | `composite_sku_id`, `constituent_product_reference_ids`, `lifecycle_state` |
+
+The Composite payload's `constituent_product_reference_ids` is the ordered `list<int>` of constituent Product Reference ids; the `constituent_count` that `CompositeSKUCreated` carries is **omitted** from the transition events (trivially derivable, and no transition event carries a derived enrichment).
+
+**Two consumed events (the cross-module gate seam).** This change is the codebase's **first cross-module domain-event consumer**. A registered `DomainEventConsumer` consumes Module K's two supply-side events — **`ProducerActivated`** and **`ProducerRetired`** (payload `{producer_id, status}`, see *Parties supply-side lifecycle events — payload contract* below) — into the Catalog-owned **producer-state projection** (`catalog_producer_states`), which the *Producer activation gate* reads. `ProducerActivated` projects the producer `active` (**enabling** Product Master activation against it); `ProducerRetired` projects `retired` (**blocking new** activations, never cascade-retiring existing actives). The consumer reads only the payload `producer_id`/`status` — it imports and queries **no** Module K model or table (invariant 10).
+
+**Two deferred seams** — spec-faithful preconditions this slice ships scoped, each completed by a named future change:
+
+- **KYC-on-activation** → `parties-compliance`. The §5.4 gate's "linked Producer `active` **and** KYC-verified" conjunct is satisfied **transitively upstream**: Module 0 gates on producer-`active` only, and `parties-compliance` tightens `ActivateProducer` (DEC-071 — KYC fields nullable, added additively) so a Producer cannot reach `active` un-KYC'd — with **no change to Module 0's gate** when it lands. The KYC bit never enters the cross-module event contract.
+- **Cross-module retirement-blocking references** → the Phase-3 referencer changes (Module A / B / S). BR-Lifecycle-5's downstream-reference leg (active Allocations, issued vouchers, in-flight orders, SKUs on live Offers) is enforced here over **within-catalog** references only (a Product Reference ← `active` Sellable/Composite SKU; a Case Configuration ← `active` Sellable SKU); those cross-module referencers do not exist yet, and the changes that introduce them extend the guard.
 
 ## Parties (Party Registry)
 

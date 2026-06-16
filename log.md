@@ -233,3 +233,5 @@
 ## [2026-06-16 15:17] resolve | catalog-lifecycle-approval 5.2 HUMAN_NEEDED | Founder chose Option B: within-catalog retire block scoped to terminal sellable edge (PR/CaseConfig<-active SKU); hierarchy parents preserve children. ADR 2026-06-16 written; delta spec/design D8/tasks/proposal updated; validate --strict OK. No code; 5.2 ready to implement.
 
 ## [2026-06-16 15:53] ralph | catalog-lifecycle-approval 5.2 | green | 10 files (5 new: cascade+gate+exception+test; 6.1 docs next) | SQLite 611/611, PG17 207/207, phpstan 0
+
+## [2026-06-16 16:03] ralph | catalog-lifecycle-approval 6.1 | green | docs-only CONTEXT.md (+64/-2): 8 lifecycle/approval glossary terms + spine lifecycle-events contract note (2 consumed + 14 emitted payloads + 2 seams); suite 611/611, phpstan 0, validate --strict ✓; 1 file
