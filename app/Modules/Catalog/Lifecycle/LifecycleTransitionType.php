@@ -64,6 +64,22 @@ enum LifecycleTransitionType
         };
     }
 
+    /**
+     * Whether this transition is a COMMERCIAL-IMPACT step subject to approval governance (design D5;
+     * Module 0 PRD § 4.2): activate (`reviewed → active`), retire (`active → retired`) and reopen
+     * (`retired → reviewed`) all require an authenticated operator principal, and the approval step
+     * additionally carries the separation-of-duties distinctness (evaluated by {@see ApprovalGovernance}).
+     * Submit (`draft → reviewed`) is the internal-to-PIM, audit-only checkpoint (§ 4.2) and is NOT governed
+     * — so the creator may submit their own draft; the distinct-actor floor is enforced at approval.
+     */
+    public function requiresApprovalGovernance(): bool
+    {
+        return match ($this) {
+            self::Submit => false,
+            self::Activate, self::Retire, self::Reopen => true,
+        };
+    }
+
     /** The localized rejection for an out-of-state call of this transition (design D2). */
     public function rejection(LifecycleState $from, string $entity): IllegalLifecycleTransition
     {

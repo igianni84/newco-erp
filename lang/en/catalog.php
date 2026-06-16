@@ -33,5 +33,19 @@ return [
         'cannot_activate' => 'Cannot activate this :entity from state :state. A :entity activates only from reviewed.',
         'cannot_retire' => 'Cannot retire this :entity from state :state. A :entity retires only from active.',
         'cannot_reopen' => 'Cannot reopen this :entity from state :state. A :entity reopens to reviewed only from retired.',
+        // Rejection (§ 4.3) is a reviewed → reviewed decision (no state change), so it is valid only from
+        // reviewed; an out-of-state reject surfaces this through the same single parameterized exception.
+        'cannot_reject' => 'Cannot reject this :entity from state :state. A :entity may be rejected for review only while in reviewed.',
+    ],
+    'approval' => [
+        // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition
+        // (design D5; Module 0 PRD § 4.2). The audit trail is the system of record for which actor performed
+        // each step; these reasons surface a rejected governance step. :entity is the entity-type name (e.g.
+        // ProductMaster) — NOT PII. The acting principal is never named in the copy (the audit row carries the
+        // actor_role / actor_id); the reason names only the violated rule.
+        'requires_operator' => 'An approval or rejection step on this :entity requires an authenticated operator principal; a system actor cannot satisfy the separation-of-duties floor.',
+        'self_approval_creator' => 'Separation of duties on this :entity: its creator may not also approve it.',
+        'self_approval_reviewer' => 'Separation of duties on this :entity: its reviewer may not also approve it.',
+        'insufficient_separation' => 'Separation of duties on this :entity: the three-step approval requires three distinct operators (creator, reviewer, approver), but its creator and reviewer were the same operator.',
     ],
 ];

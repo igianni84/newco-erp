@@ -12,7 +12,8 @@ use RuntimeException;
  * Every spine entity shares the IDENTICAL four-state FSM `draft → reviewed → active → retired`,
  * plus the `retired → reviewed` reopen (Module 0 PRD § 4.1). The transition map is uniform — submit
  * is valid only from `draft`, activate only from `reviewed`, retire only from `active`, reopen only
- * from `retired` — so a SINGLE parameterized exception serves all seven entities (design D2): the
+ * from `retired`, and a review rejection (a `reviewed → reviewed` decision, § 4.3) only from `reviewed`
+ * — so a SINGLE parameterized exception serves all seven entities (design D2): the
  * entity name is a factory parameter, not a class-per-entity (this is the faithful analogue of
  * Module K's `IllegalProducerTransition`, which needs distinct classes only because its three FSMs
  * genuinely differ). The shared transition mechanism is the SOLE writer of `lifecycle_state`; it
@@ -22,7 +23,7 @@ use RuntimeException;
  *
  * The reason is localized through Laravel's translator (CLAUDE.md invariant 12 — no hardcoded
  * user-facing strings): the English baseline lives in the `lifecycle` group of `lang/en/catalog.php`
- * (keys `cannot_submit` / `cannot_activate` / `cannot_retire` / `cannot_reopen`), with `:state` and
+ * (keys `cannot_submit` / `cannot_activate` / `cannot_retire` / `cannot_reopen` / `cannot_reject`), with `:state` and
  * `:entity` placeholders. The offending state token (`$from->value`) is a business enum value and the
  * entity name (`$entity`, e.g. `ProductMaster`) is an entity-type label — NEITHER is PII — so both are
  * interpolated to make the reason self-documenting. `(string)` coerces the translator return (typed
@@ -48,6 +49,11 @@ class IllegalLifecycleTransition extends RuntimeException
     public static function cannotReopen(LifecycleState $from, string $entity): self
     {
         return self::build('cannot_reopen', $from, $entity);
+    }
+
+    public static function cannotReject(LifecycleState $from, string $entity): self
+    {
+        return self::build('cannot_reject', $from, $entity);
     }
 
     private static function build(string $key, LifecycleState $from, string $entity): self

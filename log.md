@@ -207,3 +207,5 @@
 ## [2026-06-16 11:11] ralph | catalog-lifecycle-approval 2.1 | green | 3 files (IllegalLifecycleTransition + lang/en/catalog.php lifecycle group + unit test) | suite 496/496, phpstan 0, pint clean | no DB so no PG run
 
 ## [2026-06-16 11:43] ralph | catalog-lifecycle-approval 2.2 | green | shared LifecycleTransition mechanism (HasLifecycleState+TransitionType+service) + Submit/Reopen ProductMaster (audit-only, no event); 7 files; SQLite 502/502, PG17 98/98
+
+## [2026-06-16 12:11] ralph | catalog-lifecycle-approval 2.3 | green | approval governance (Creator→Reviewer→Approver SoD + role-count config + reject) on shared mechanism; 510/510 SQLite, PG17 106/106; 5 edited + 4 new files
