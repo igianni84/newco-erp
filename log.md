@@ -201,3 +201,5 @@
 ## [2026-06-16 10:36] spec-to-change | catalog-lifecycle-approval | Authored Module 0 lifecycle change (8 deltas: 7 ADDED + 1 MODIFIED on product-catalog; 17 tasks); openspec validate --strict GREEN; approved by Giovanni; APPROVED marker + ralph launch pending.
 
 ## [2026-06-16 10:48] ralph | catalog-lifecycle-approval 1.1 | green | 5 files — catalog_producer_states projection (enum+model+migration) + tests; full suite 481/481 SQLite, 77/77 Catalog+arch on PG17; CHECK+unique proven; phpstan 0, pint clean
+
+## [2026-06-16 11:03] ralph | catalog-lifecycle-approval 1.2 | green | 3 files | ProducerLifecycleProjector consumer + boot() registration; watermark upsert; 487/487 SQLite, 83/83 PG17, phpstan 0
