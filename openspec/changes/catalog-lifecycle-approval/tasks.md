@@ -65,7 +65,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
 
 ## 5. Cascades + reference integrity
 
-- [ ] 5.1 **Activation cascade — parent-before-child ordering (integration)** (design D7; spec — Requirements: Activation Cascade, Product Lifecycle Events) — an integration test (and any small ordering glue) proving the full chain activates parent-before-child and that the gate composes across the hierarchy: a child can never reach `active` before its parent, so the `*Activated` `domain_events.id` order is Master → Variant → PR → SKU.
+- [x] 5.1 **Activation cascade — parent-before-child ordering (integration)** (design D7; spec — Requirements: Activation Cascade, Product Lifecycle Events) — an integration test (and any small ordering glue) proving the full chain activates parent-before-child and that the gate composes across the hierarchy: a child can never reach `active` before its parent, so the `*Activated` `domain_events.id` order is Master → Variant → PR → SKU.
   - Acceptance: activating a full chain in order succeeds and the recorded `*Activated` events are in parent-before-child `id` order (**§14.3 / AC-0-FSM-10**); attempting to activate any child before its parent is rejected at every level; quality commands green; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/ActivationCascadeTest.php` (`DatabaseMigrations`) — build Master→Variant→PR→SellableSKU (+ Format/CaseConfig), project the producer `active`, activate each in order with distinct operators; assert the four `*Activated` events appear in ascending `id` = hierarchy order; assert activating the PR before the Variant is `active` throws.
 

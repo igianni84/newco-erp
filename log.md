@@ -225,3 +225,5 @@
 ## [2026-06-16 14:10] ralph | catalog-lifecycle-approval 4.5 | green | 11 files (9 new, 2 edited): Sellable SKU lifecycle + two-parent gate (PR AND Case Config); 587/587 SQLite, 183/183 PG17
 
 ## [2026-06-16 14:31] ralph | catalog-lifecycle-approval 4.6 | green | 11 files (9 new, 2 edited) | Composite SKU lifecycle + N-constituent gate (loops assertParentActive over junction); 600/600 SQLite, 196/196 PG17; all 7 spine entities now have lifecycle; 13/17 tasks
+
+## [2026-06-16 14:44] ralph | catalog-lifecycle-approval 5.1 | green | 1 file (ActivationCascadeTest, 2 tests/21 assert) | full 602/602 SQLite, PG17 198/198, phpstan 0, pint ok | test-only, no glue (activation ordering emergent)
