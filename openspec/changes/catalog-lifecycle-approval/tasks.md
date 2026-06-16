@@ -44,7 +44,7 @@ Read `proposal.md`, `design.md` (D1–D11) and the spec delta `specs/product-cat
   - Acceptance: a Format activates with no parent gate (only governance); records `FormatActivated`/`Retired`; from-state guarded; quality commands green; **PG17**.
   - Test hint: `tests/Feature/Modules/Catalog/FormatLifecycleTest.php` — submit+approve (distinct actors) → `active` + `FormatActivated`; illegal transition throws.
 
-- [ ] 4.2 **Case Configuration lifecycle** (standalone — no parent gate) — `CaseConfigurationActivated`/`Retired` events; the five Actions; activation subject only to governance.
+- [x] 4.2 **Case Configuration lifecycle** (standalone — no parent gate) — `CaseConfigurationActivated`/`Retired` events; the five Actions; activation subject only to governance.
   - Acceptance/Test hint: as 4.1 in `CaseConfigurationLifecycleTest.php` (assert `CaseConfigurationActivated`).
 
 - [ ] 4.3 **Product Variant lifecycle + gate (Master active)** — `ProductVariantActivated`/`Retired`; the five Actions; **gate**: activation requires the parent `ProductMaster` (`product_master_id`) to be `active`, else rejected.
