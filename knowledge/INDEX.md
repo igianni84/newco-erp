@@ -4,9 +4,10 @@
 
 | Domain | Folder | Status |
 |---|---|---|
-| architecture | `knowledge/architecture/` | 1 rule |
-| laravel | `knowledge/laravel/` | 3 rules |
-| testing | `knowledge/testing/` | 2 rules |
+| architecture | `knowledge/architecture/` | 2 rules |
+| data-model | `knowledge/data-model/` | 2 rules · 1 hypothesis |
+| laravel | `knowledge/laravel/` | 3 rules · 1 hypothesis |
+| testing | `knowledge/testing/` | 4 rules · 1 hypothesis |
 
 Suggested domains as work begins: `architecture` · `data-model` · `laravel` · `filament` · `testing` · `integrations` · `module-{0,k,a,d,s,b,c,e}` (one per spec module).
 

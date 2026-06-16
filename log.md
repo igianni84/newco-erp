@@ -245,3 +245,5 @@
 ## [2026-06-16 21:17] dreaming | first-run full scan | 3 rules promoted (Pint{@see}, Pest-globals, enum-CHECK) + testing trap#6 + Pint-lesson cross-link + INDEX counts; 6 further curations left Proposed in the dream PR
 
 ## [2026-06-16 21:48] merge | dreaming PR #1 | adversarial review (0 blockers, 2 fixes) -> merged --no-ff main 37f413a + pushed + branch deleted; /dreaming skill + 3 rules + trap#6 live; Phase 2 routine+ADR pending
+
+## [2026-06-16 22:21] dreaming-apply | dreams/2026-06-16 Proposed + Phase-2 routine | Branch dream/2026-06-16-apply-proposed: +5 rules +3 hypotheses (testing/architecture/laravel/data-model); new data-model domain (enum-CHECK relocated from laravel); localized-exc re-graded hyp->rule. Wired weekly Opus 4.8 1M dreaming cloud routine + ADR. Knowledge-only, PR open.

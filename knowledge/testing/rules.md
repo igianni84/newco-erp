@@ -38,3 +38,19 @@ The recurring SQLite-vs-PG portability traps — assert around them from the sta
 **Confirmations (dated, cross-change).** 2026-06-12 `foundations-domain-events-audit` (`domainEventRow` / `immutabilityDomainEventRow` prefixing); 2026-06-13 `foundations-money-i18n-flags` (`developerDoc()` redeclare); 2026-06-13 `substrate-hardening` (`captureConstraintViolation` / `captureImmutabilityError`); 2026-06-16 `catalog-lifecycle-approval` (unique `*LifecycleTest` create-helpers).
 
 **Applies to.** Every test file that defines a top-level helper `function`.
+
+## The closing integration test of a module slice drives the chain THROUGH the Actions (never factories) and asserts the emergent event-SET
+
+**Rule.** A module slice's final integration proof builds its entity chain by calling the real `Create*` / transition Actions end-to-end — **never the factories** (a factory calls `Model::create()` directly, bypassing the Action's `DB::transaction` + `DomainEventRecorder::record()`, so it records no event and runs no guard). Then assert the **distinct recorded event-name SET**, not per-entity counts: `DomainEvent::query()->orderBy('name')->distinct()->pluck('name')->all()` (or `->pluck('name')->unique()->values()` / `->toEqualCanonicalizing([...])`). One set-assertion proves BOTH that every evented entity fired AND that nothing extraneous leaked — a guarantee no per-entity count gives. Prove non-vacuity through the tricky leg.
+
+**Confirmations (dated, cross-change).** 2026-06-15 `catalog-product-spine` (`SpineCreationChainTest` — seven `Create*` actions, distinct-name set); 2026-06-15 `parties-core` (`SpineCreationChainTest` — `createPartiesSpine()`, exactly five `*Created`); 2026-06-16 `catalog-lifecycle-approval` (`ActivationCascadeTest` + `CatalogLifecycleChainTest` — ordered activate/retire set, `%Reviewed% === 0`); 2026-06-16 `parties-producer-lifecycle` (`SupplyLifecycleChainTest` — distinct set, "no surprise event can slip in").
+
+**Applies to.** The final/closing integration test of any module slice that builds a chain of evented entities.
+
+## Use `DatabaseMigrations` (not `RefreshDatabase`) to prove a level-0 guard, an `afterCommit` hook, or genuine commit/rollback atomicity
+
+**Rule.** `RefreshDatabase` runs each test inside an outer wrapper transaction (`DB::transactionLevel() ≥ 1`), which (a) makes a `transactionLevel() === 0` guard's reject branch **unreachable** and (b) means a real COMMIT/ROLLBACK never happens — `afterCommit` hooks fire at the inner commit and rollbacks are invisible. When the SUT relies on any of those — the recorder's level-0 `NotInTransactionException` guard, a `DB::afterCommit` post-commit projector, or a genuine atomicity/rollback proof — `uses(DatabaseMigrations::class)` instead: `migrate:fresh` (raw DDL, no wrapper txn) leaves each test at level 0, so the guard, the post-commit hook, and real commit/rollback are all observable. `DatabaseTruncation` is ruled out for this codebase — its per-table DELETE trips the append-only immutability triggers. Conversely, a Create-action test where the Action opens its **own** transaction can stay on `RefreshDatabase` (the savepoint under the wrapper satisfies the level-0 guard — no level-0 path to test there).
+
+**Confirmations (dated, cross-change).** 2026-06-12 `foundations-domain-events-audit` (origin — `AuditRecorder` / `DomainEventRecorder` / `InlineDeliveryExecutor` tests; commit/rollback observable only at level 0); 2026-06-15 `operator-auth-foundation` (`OperatorActorContextWiringTest` — a wrapper would silently satisfy the guard, hiding a missing wrapper); 2026-06-16 `catalog-lifecycle-approval` (every lifecycle Feature test + the projector's post-commit hook + the atomicity-rollback idiom).
+
+**Applies to.** Any test that proves a no-dual-write / level-0 guard, a `DB::afterCommit` delivery, or genuine commit/rollback atomicity. Default to `RefreshDatabase` otherwise.
