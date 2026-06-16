@@ -243,3 +243,5 @@
 ## [2026-06-16 20:21] skill | dreaming | created propose-only memory-curation skill (Phase 1, disable-model-invocation); Phase 2 cloud routine + ADR pending
 
 ## [2026-06-16 21:17] dreaming | first-run full scan | 3 rules promoted (Pint{@see}, Pest-globals, enum-CHECK) + testing trap#6 + Pint-lesson cross-link + INDEX counts; 6 further curations left Proposed in the dream PR
+
+## [2026-06-16 21:48] merge | dreaming PR #1 | adversarial review (0 blockers, 2 fixes) -> merged --no-ff main 37f413a + pushed + branch deleted; /dreaming skill + 3 rules + trap#6 live; Phase 2 routine+ADR pending

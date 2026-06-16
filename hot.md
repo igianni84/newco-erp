@@ -10,21 +10,23 @@ updated: 2026-06-16
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-16 (interactive — GUIDE §2.7 close of `catalog-lifecycle-approval` DONE).** The completed change (17/17, loop HEAD `ac7fa90`) is now **merged to `main` and archived**. Steps executed: (1) branch review; (2) **PG17 gate — the FULL suite, not just the Catalog subset, ran 613/613 on PostgreSQL 17** *and* 613/613 on SQLite; (3) `merge --no-ff` → `0fa2fb6`, pushed, branch `ralph/catalog-lifecycle-approval` deleted; (4) **semantic verify via 4 parallel sub-agents** over all 8 delta requirements → **0 CRITICAL / 0 WARNING** (only test-symmetry SUGGESTIONs — invariant 10 clean, watermark/idempotency correct, Option-B retirement scoping exact, cascade atomicity+ordering proven); (5) `openspec archive` → **7 ADDED + 1 MODIFIED requirement merged into `openspec/specs/product-catalog/spec.md`** (now 18 reqs, validates `--strict`), archived as `2026-06-16-catalog-lifecycle-approval`, commit `5308dc3`, pushed. `main` in sync with `origin/main`.
+**2026-06-16 (interactive — Dreaming memory-curation skill built + first curation merged via PR #1).** New `/dreaming` skill (`.claude/skills/dreaming/`, propose-only, `disable-model-invocation`): a scheduled curation pass over the memory system that promotes confirmed cross-change patterns to `knowledge/` rules, extracts lessons, and flags stale memory — applied on a `dream/<date>` branch + PR, never `main`. PR #1 (reviewed by an adversarial sub-agent → 0 blockers, 2 one-line fixes applied) merged `--no-ff` → `main` (`37f413a`), branch deleted, pushed. First run promoted **3 cross-change rules** (Pint `{@see \FQCN}` auto-import, PG enum-`CHECK` from `::cases()`, Pest global-helper namespace) + a **6th SQLite/PG portability trap**; 6 further candidates + a proposed `knowledge/data-model` domain are parked in `dreams/2026-06-16.md`.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev (`:memory:`); prod PG17.
-- **Green on `main`: full suite 613/613 SQLite AND 613/613 on PostgreSQL 17** (2806 assertions; the whole suite is PG-clean, not just Catalog). phpstan max 0; pint clean at last loop iter. No composer drift.
+- **Green on `main`: full suite 613/613 SQLite AND 613/613 PostgreSQL 17** (last code change at the catalog-lifecycle-approval close). The Dreaming PR is docs/knowledge-only — no code touched, CI green (4/4).
 
 ## Active Change & Next Task
-- **NONE active.** `openspec list` → "No active changes found." `catalog-lifecycle-approval` is fully closed (merged + archived).
-- **Next:** run `/spec-to-change` to convert the next Build_Workplan slice into a change (human review → `APPROVED` → `./ralph.sh`). Candidate follow-ons below.
+- **NONE active** (ERP build). `openspec list` → "No active changes found."
+- **Next (ERP):** `/spec-to-change` for the next Build_Workplan slice. Deferred follow-ons: `catalog-operator-console`, `parties-compliance`, Phase-3 cross-module referencers (D8).
+- **Next (Dreaming, Phase 2):** wire a scheduled cloud routine (`/schedule`, weekly) that runs `/dreaming`, + write ADR `decisions/2026-06-16-scheduled-memory-dreaming.md` (mechanism = cloud, propose-only-via-PR, cadence, cost). Optionally apply the 6 Proposed curations from `dreams/2026-06-16.md`.
 
 ## Blockers & Decisions Needed
-- **None.** Deferred follow-ons (carried forward from the catalog change): `catalog-operator-console` (Filament approval-queue UI on the audit-derived rejection-pending state), `parties-compliance` (KYC tightens `ActivateProducer` upstream — D6), Phase-3 referencers (the cross-module retirement-blocking leg — D8). Accepted SUGGESTIONs from semantic verify (optional test-hardening: per-entity reviewer-approves / role_count=2 symmetry; assert standalone Format/CaseConfig survive a cascade) → fold into a future change or `knowledge/testing/`, not blocking.
+- **None.**
 
 ## Open Patterns
+- **Dreaming is now the memory-curation actor.** The hypotheses→rules promotion lifecycle (previously best-effort — all three `hypotheses.md` were empty while patterns piled up in archived `progress.md`) now runs on a cadence. Promotion bar: **≥3 dated cross-change confirmations → rule-grade** (direct to `rules.md`).
 - **Full suite = `php -d memory_limit=512M vendor/bin/pest`** (NOT `php artisan test` — 128M OOMs in the arch plugin).
-- **PG17 gate** (lifecycle/cross-module tests use `DatabaseMigrations`): `docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17`; wait `docker exec pg bash -c 'until pg_isready -U newco -q; do sleep 0.5; done'`; run with `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco`; `docker rm -f pg`. At §2.7 close, run the WHOLE suite on PG (it passes), not just the change subset.
-- **GUIDE §2.7 close (delegated to Claude):** review → PG17 verify → `merge --no-ff` + push + delete branch → semantic verify (sub-agents; pause before `main` if any CRITICAL) → `openspec archive <name> --yes` + `git add -A && commit "archive: <name>" && push`. Archive renames the change folder into `changes/archive/YYYY-MM-DD-<name>/` and merges delta specs into `openspec/specs/`.
-- **Heredoc `cat <<EOF >> file` mentioning "spec" trips the git-guardrails Bash hook** — append to memory/progress files via the Edit tool (Read the tail first), not a shell redirect. `scripts/memlog.sh` is the sanctioned log.md appender.
+- **PG17 gate** before a DB task is done: `docker run -d --name pg … postgres:17`; run with `DB_CONNECTION=pgsql … -p 55432`; `docker rm -f pg`.
+- **GUIDE §2.7 close** ritual for ralph changes; Dreaming PRs follow the same `merge --no-ff` + delete-branch + memory-close flow.
+- **Heredoc `cat <<EOF` mentioning "spec" trips the git-guardrails Bash hook** — append memory via Edit/Write or `scripts/memlog.sh`, never a shell redirect.
