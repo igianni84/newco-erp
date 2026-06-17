@@ -33,7 +33,7 @@
 - **Q3 — manual-first enrichment baseline; LWIN pluggable.** External catalog enrichment is a **pluggable adapter selected by Product Type**; the **manual fallback path is the launch baseline**, so catalog enrichment is **off the launch critical path**. The `WINE` LWIN (Liv-ex) adapter drops in when the vendor lands — at launch if it is ready, otherwise post-launch, with **no rework**. (§5.)
 
 **The floor pieces Module 0 holds (all KEPT, whole) — verified in composition by Phase C §6:**
-- **Producer activation / KYC gate** — a Product Master cannot activate unless its linked Producer (Module K) is `active` and KYC-verified (§5.4, §13.4). This is the first link of the KYC/sanctions/Hold compliance floor.
+- **Producer activation / KYC gate** — a Product Master cannot activate unless its linked Producer (Module K) is `active` and KYC-cleared (`verified` or `not_required`) (§5.4, §13.4). This is the first link of the KYC/sanctions/Hold compliance floor.
 - **Layer-1 breakability whitelist** (§7) — the cataloging-level input the no-overselling / breakability contract reads (Module A Layer 2, Module S Layer 3, Module B/C at fulfilment).
 - **Version immutability + audit trail** (§4.8, §13.3) — the audit/retention floor.
 - **Parent-before-child event ordering** (§14.3) — the reliability guarantee the cross-module event contract depends on.
@@ -95,7 +95,7 @@ A **Product Master** (wine display alias: *Wine Master*) is the highest-level id
 Each Product Master:
 - Carries the **Product Type** (§3.1; `WINE` at launch).
 - Carries category-neutral identity fields — product name, producer link, lifecycle state, audit/version fields — plus the Product Type's attribute set (for `WINE`: appellation/region and the producer-supplied descriptive content — the "winery story" surfaced on the Bottle Page per §9).
-- Holds a **link to a Producer entity in Module K's Producer Registry**. The Producer entity itself (legal name, region, KYC status, lifecycle state, Discovery-only marker) is owned by Module K; PIM stores only the link. The link is a **hard activation prerequisite**: a Product Master cannot transition to `active` unless the linked Producer is itself `active` and KYC-verified in Module K (§5.4).
+- Holds a **link to a Producer entity in Module K's Producer Registry**. The Producer entity itself (legal name, region, KYC status, lifecycle state, Discovery-only marker) is owned by Module K; PIM stores only the link. The link is a **hard activation prerequisite**: a Product Master cannot transition to `active` unless the linked Producer is itself `active` and KYC-cleared (`verified` or `not_required`) in Module K (§5.4).
 - Carries translatable descriptive content per §8 (master-level prose: producer story, region context, winery narrative — readable in any of the six launch locales).
 
 A new producer-onboarded product creates a Product Master; subsequent variants/releases create new Product Variants under the existing Product Master rather than new Masters.
@@ -141,7 +141,7 @@ A **Sellable SKU (Intrinsic)** is the **commercial unit** that gets priced and t
 
 Intrinsic SKUs are NewCo's most common commercial unit — "a six-bottle OWC of Sassicaia 2018 in 0.75L", "a single loose bottle of Vega Sicilia Único 2010 in 1.5L". An Offer publishing this SKU at a price is what a member or Discovery customer ultimately buys.
 
-Activation prerequisites (the parent-before-child cascade at the SKU-activation boundary): the referenced PR must be `active` (which by cascade means the Product Variant, the Product Master, and the Format are all `active` and the linked Producer is `active` and KYC-verified), and the referenced Case Configuration must be `active`. Stating these explicitly at the SKU boundary lets downstream modules consume `SellableSKUActivated` without re-deriving each upstream gate. Intrinsic SKU is the only SKU shape that references Case Configuration.
+Activation prerequisites (the parent-before-child cascade at the SKU-activation boundary): the referenced PR must be `active` (which by cascade means the Product Variant, the Product Master, and the Format are all `active` and the linked Producer is `active` and KYC-cleared), and the referenced Case Configuration must be `active`. Stating these explicitly at the SKU boundary lets downstream modules consume `SellableSKUActivated` without re-deriving each upstream gate. Intrinsic SKU is the only SKU shape that references Case Configuration.
 
 ### §3.8 Composite SKU — **KEPT (Q1)**
 
@@ -209,7 +209,7 @@ If a Reviewer or Approver rejects an entity, it stays in `reviewed` with a visib
 
 A child entity cannot be set to `active` while its parent is not `active`:
 
-- A **Product Master** cannot be activated unless its linked Producer (Module K) is `active` and KYC-verified.
+- A **Product Master** cannot be activated unless its linked Producer (Module K) is `active` and KYC-cleared (`verified` or `not_required`).
 - A **Product Variant** cannot be activated unless its parent Product Master is `active`.
 - A **Product Reference** cannot be activated unless its parent Product Variant is `active` and its referenced Format is `active`.
 - A **Sellable SKU (Intrinsic)** cannot be activated unless its referenced PR is `active` and its referenced Case Configuration is `active`.
@@ -263,7 +263,7 @@ If a Product Type's enrichment adapter (for `WINE`, the Liv-ex API) is unavailab
 
 ### §5.4 Producer activation gate **(KYC compliance floor)**
 
-A Product Master cannot transition to `active` unless its linked Producer (Module K) is `active` and KYC-verified. This is a **hard gate**: the activation step is rejected at the workflow level if the Producer is not `active` and KYC-verified at the moment of transition.
+A Product Master cannot transition to `active` unless its linked Producer (Module K) is `active` and its KYC is **cleared** — `verified` or `not_required` (Module K §4.4). This is a **hard gate**: the activation step is rejected at the workflow level if, at the moment of transition, the Producer is not `active` or its KYC is **blocking** (`pending` or `rejected`).
 
 A consequence is **KYC-revocation symmetry**: if a Producer's KYC verification is later revoked, *existing* `active` Product Masters under that Producer remain `active`; only *new* Product Master activations (and new child-entity activations under those Masters) are blocked. Existing customer commitments are preserved; new commercial commitment pauses until KYC is reinstated. *(This is Module 0's link in the end-to-end KYC/sanctions/Hold floor — Phase C §6 chain 2.)*
 
@@ -420,7 +420,7 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 **BR-Lifecycle-2. Four-state lifecycle.** Every PIM entity follows `draft → reviewed → active → retired`. Re-activation from `retired` to `active` follows the same approval workflow.
 
-**BR-Lifecycle-3. Activation cascade.** A child cannot transition to `active` while its parent is not `active`. Product Master activation also requires its linked Producer (Module K) to be `active` and KYC-verified. Sellable SKU activation requires both the PR and the Case Configuration to be `active`.
+**BR-Lifecycle-3. Activation cascade.** A child cannot transition to `active` while its parent is not `active`. Product Master activation also requires its linked Producer (Module K) to be `active` and KYC-cleared (`verified` or `not_required`). Sellable SKU activation requires both the PR and the Case Configuration to be `active`.
 
 **BR-Lifecycle-4. Retirement cascade.** When a parent is retired, existing active children remain valid for current references but cannot be used in new commercial commitment. No new children can be activated under a retired parent.
 
@@ -438,7 +438,7 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 ### §13.4 Producer dependency **(KYC compliance floor)**
 
-**BR-Producer-1. Producer activation gate.** A Product Master cannot transition to `active` unless the linked Producer (Module K Producer Registry) is itself `active` and KYC-verified.
+**BR-Producer-1. Producer activation gate.** A Product Master cannot transition to `active` unless the linked Producer (Module K Producer Registry) is itself `active` and KYC-cleared (`verified` or `not_required`).
 
 **BR-Producer-2. KYC-revocation symmetry.** If a Producer's KYC verification is revoked after Product Masters have been activated under it, those existing `active` Masters remain `active`; the revocation only blocks *new* Master activations (and new child-entity activations under those Masters) for that Producer.
 

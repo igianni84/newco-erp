@@ -37,7 +37,7 @@
 - **Layer 1 no-overselling** (`qty − issued ≥ 0`, §7.1; DEC-099) + the **per-sub-pool ATP composition** with Module B's Layer 2 (§7.1, §11.5; DEC-185/187/196), strongly consistent, per sub-pool, no cross-sub-pool fungibility. *(Floor chain 1 / Phase C item G.)*
 - **The `VoucherCancelled` committed-inventory-protection release primitive** (§11.5.2, §12.3; DEC-099/190, Q-CL-6) — the load-bearing cross-module safety interlock that lets a Module B adjustment proceed against committed inventory. *(Committed-inventory floor chain.)*
 - **The sanctions-blind boundary** (§9; DEC-071) — Module A does **not** gate on sanctions; enforcement is Module S at order completion (the mirror of Module K §9.3 — K + A are sanctions-blind by design). *(Floor chain 2.)*
-- **The producer-side activation gates** — Product Reference `active`; Producer `active` + KYC-verified; SupplierProducerLink `active` (§9) — the floor's upstream expression (no allocation under an un-KYC'd producer).
+- **The producer-side activation gates** — Product Reference `active`; Producer `active` + KYC-cleared (`verified` or `not_required`); SupplierProducerLink `active` (§9) — the floor's upstream expression (no allocation under a producer whose KYC has not cleared).
 
 **The two hard cross-module contracts Module A anchors (KEPT, confirmed from both sides):**
 - **Hero Package capacity ↔ Module K.** Module A **owns the allocation `qty`** (§4.1; DEC-079); Module K's Hero Package Capacity Invariant (Module K §13) *reads* it (`active Profiles ≤ qty`), and A's mid-year mutability **is** the capacity-adjustment signal K consumes (ratified A Q5 + K Q5). No orphan. *(Phase C item G.)*
@@ -243,7 +243,7 @@ The **anti-orphan rule** is the dominant invariant (§5.3.4 canonical statement;
 
 #### §5.3.1 Allocation creation
 
-Inputs: `producer_id`; optional `supplier_id`; Product Reference; `sourcing_model` (immutable post-creation); `visibility`; `qty`; `commercial_terms {shape, value}`; `non_serialized_offer_admitted` (default FALSE); `qty_to_serialize` + `qty_non_serialized` partition; optional `producer_breakability` per case_config; actor role. Validation: PR `active` in Module 0; `producer_id` references an `active` + KYC-verified Producer in Module K; if `supplier_id` populated, an `active` SupplierProducerLink exists in Module D; `qty_to_serialize + qty_non_serialized = qty`; `producer_breakability` ⊆ the Product Variant's Layer 1 whitelist; `commercial_terms` shape/value well-formed. State: enters DRAFT. Side-effects: none (not yet sellable). *(Launch: operator-driven via Admin Panel; `actor_role = newco_ops`.)*
+Inputs: `producer_id`; optional `supplier_id`; Product Reference; `sourcing_model` (immutable post-creation); `visibility`; `qty`; `commercial_terms {shape, value}`; `non_serialized_offer_admitted` (default FALSE); `qty_to_serialize` + `qty_non_serialized` partition; optional `producer_breakability` per case_config; actor role. Validation: PR `active` in Module 0; `producer_id` references an `active`, KYC-cleared (`verified` or `not_required`) Producer in Module K; if `supplier_id` populated, an `active` SupplierProducerLink exists in Module D; `qty_to_serialize + qty_non_serialized = qty`; `producer_breakability` ⊆ the Product Variant's Layer 1 whitelist; `commercial_terms` shape/value well-formed. State: enters DRAFT. Side-effects: none (not yet sellable). *(Launch: operator-driven via Admin Panel; `actor_role = newco_ops`.)*
 
 #### §5.3.2 Activation (DRAFT → ACTIVE)
 
@@ -356,7 +356,7 @@ The rationale (DEC-071 + Module K §9.3): Module S blocks any non-`passed` Custo
 **Producer-side activation gates that DO apply to Module A** (the floor's upstream expression):
 
 - **PR active gate**: an allocation cannot be created against a `draft` / `retired` Product Reference (Module 0 §5.4 cascade).
-- **Producer active + KYC-verified gate**: the `producer_id` must reference an `active` Producer with KYC verified (existing allocations under a Producer whose KYC is later revoked remain active, but new allocations cannot be created until KYC reinstates). **No allocation under an un-KYC'd producer** — the floor's upstream KYC expression.
+- **Producer active + KYC-cleared gate**: the `producer_id` must reference an `active` Producer whose KYC is **cleared** — `verified` or `not_required` (Module K §4.4); KYC `pending` or `rejected` blocks (existing allocations under a Producer whose KYC is later revoked remain active, but new allocations cannot be created until KYC clears again). **No allocation under a producer whose KYC has not cleared** — the floor's upstream KYC expression.
 - **SupplierProducerLink active gate**: when `supplier_id` is populated, the link between the Supplier and the Producer must be `active` (Module D, DEC-087).
 
 Module A's allocation-operations gate is **upstream of and disjoint from** Module D's PO-issuance two-level gate (DEC-094, which reads ProducerAgreement state at PO time) — Module A admits its operations without reading ProducerAgreement state (DEC-077 orthogonality).
@@ -400,7 +400,7 @@ Load-bearing rules, prefixed `BR-A-{Domain}-NN`. Tech-implementation enforcement
 
 ### §10.7 Cross-module dependency
 - **BR-A-CrossModule-1 (PR active gate at creation)**: allocation creation requires the **Product Reference** to be `active` in Module 0.
-- **BR-A-CrossModule-2 (Producer active + KYC gate at creation)**: allocation creation requires `producer_id` to be `active` and KYC-verified in Module K. *(Floor — the upstream KYC expression.)*
+- **BR-A-CrossModule-2 (Producer active + KYC gate at creation)**: allocation creation requires `producer_id` to be `active` and KYC-cleared (`verified` or `not_required`) in Module K. *(Floor — the upstream KYC expression.)*
 - **BR-A-CrossModule-3 (sanctions-blind)**: Module A operations do not gate on `Customer.sanctions_status` (DEC-071); the enforcement point is order completion in Module S. *(Floor chain 2.)*
 - **BR-A-CrossModule-4 (`SupplierPaymentCompleted` has no FSM role)**: Module A takes no FSM action on `SupplierPaymentCompleted`; activation is operator-publish post-PO-commit (BR-A-Lifecycle-2). *(The event is E-emitted and consumed by Module D + Module B per Phase C R4 — Module A is neither its emitter nor a load-bearing consumer.)*
 
@@ -416,7 +416,7 @@ Every cross-module read and event-flow Module A participates in. Per DEC-074 the
 - **Module 0 lifecycle events** (`ProductReferenceActivated/Retired`, `ProductMaster*/ProductVariant*`): consumed **read-on-demand** at the moment of an allocation operation's validation; Module A does not subscribe at run-time. *(Renamed from `BottleReference*/Wine*` — naming cascade; payload semantics identical.)*
 
 ### §11.2 Module K (Parties) — read + observe
-- **Producer `active` + KYC-verified state**: read at allocation creation (BR-A-CrossModule-2).
+- **Producer `active` + KYC-cleared state**: read at allocation creation (BR-A-CrossModule-2).
 - **Supplier `active` state**: read at allocation creation when `supplier_id` is populated (no SupplierAgreement entity at launch, DEC-084).
 - **ProducerAgreement state**: **NOT read by Module A's operations** — read by **Module D at PO issuance** (DEC-094); Module A is decoupled (DEC-077).
 - **Module K lifecycle events** (`ProducerActivated`, `ProducerRetired`, `ProducerAgreementTerminated`, …): Module A does not auto-cascade (DEC-077); operator-initiated per-allocation actions are surfaced in the Admin Panel for ops-discretionary handling.

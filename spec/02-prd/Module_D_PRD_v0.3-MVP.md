@@ -121,7 +121,7 @@ The single procurement flow is detailed in §5 (PI), §6 (PO), §7 (InboundEvent
 **Cross-module reads** (full contracts in §14; naming cascade applied to the catalog-identity reads):
 
 - **Module A** (Allocation — the upstream supply primitive): Module D reads `Allocation.sourcing_model` (drives PO timing, DEC-086), `Allocation.commercial_terms` (drives PO line value computation, DEC-092 — the per-constituent `C_i` lineage the D19 settlement + the 5% Originating-Club share read), `Allocation.producer_id` / `Allocation.supplier_id` (counterparty routing, DEC-082), `Allocation.qty` (PI / PO units), `Allocation.state` (Level 2 of the PO-issuance gate, DEC-094). Module D records `ReverseInboundEventRecorded` triggered by Module A's `AllocationRecallTriggered` (DEC-090). **Module D no longer emits `SupplierPaymentCompleted` to Module A** — under R1 it has no FSM role; under R4 it is E-emitted (§3.3).
-- **Module K** (Parties): Producer (`active` + KYC-verified gate at PO line creation), Supplier (informal metadata at launch, DEC-084), ProducerAgreement `state` at PO issuance for Producer-counterparty POs (Level 1 of the two-level gate, DEC-094; Module K §4.6 KEEP-minimal — the D19 settlement-cadence seam).
+- **Module K** (Parties): Producer (`active` + KYC-cleared gate at PO line creation), Supplier (informal metadata at launch, DEC-084), ProducerAgreement `state` at PO issuance for Producer-counterparty POs (Level 1 of the two-level gate, DEC-094; Module K §4.6 KEEP-minimal — the D19 settlement-cadence seam).
 - **Module 0** (PIM): **Product Reference** identity at PI / PO line composition (the procurement flow operates on PR-keyed line items per Module 0 §3.4; wine-display alias *Bottle Reference*); the `Product Reference → Product Master → Producer` deref at SupplierProducerLink validation (§10).
 - **Module S** (Offer / Cart / Checkout): the voucher-issuance signal auto-fires V1/V2 PIs; `VoucherIssued` is the sell-through signal driving the PO PRODUCER→NEWCO **title** transition (item F, §3.5); `VoucherVoided` cancels a V1 PI (§14.4).
 - **Module B** (Inventory): **downstream consumer** of `InboundEventPhysicallyAccepted` (creates InboundBatch, DEC-195) + `InboundEventCostFinalized` (cost-basis flip) + `ConsignmentReceiptRecorded`; **emits to Module D** `InboundBatchDiscrepancy` + `BottleQuarantineResolved` (the reciprocal cascades — manual-first at launch, N1, §3.4). Module B also consumes `SupplierPaymentCompleted` (from E) for the inventory `ownership_flag` PRODUCER→CRURATED transition (§3.3 / §3.5).
@@ -473,7 +473,7 @@ The load-bearing supply-side cross-module contract.
 
 ### §14.2 Module K (Parties) — read + observe
 
-- **Producer `active` + KYC-verified state**: read at PO line creation.
+- **Producer `active` + KYC-cleared state**: read at PO line creation.
 - **Supplier informal metadata** (DEC-084 — no SupplierAgreement entity at launch, §18): read at PO issuance for counterparty identity (`payment_terms`, `notes` per Module K §4.5 informal extension).
 - **ProducerAgreement state**: read at PO issuance for **Producer-counterparty POs only** as Level 1 of the two-level gate (DEC-094, §11.1). **Not** read for Allocation operations (DEC-077 orthogonality). *(Module K's ProducerAgreement is KEEP-minimal — the D19 settlement-cadence seam, Module K §4.6.)*
 - **Module K lifecycle events**: `ProducerActivated` / `ProducerRetired` (Producer KYC gate at PO line creation); `ProducerAgreementActivated` / `ProducerAgreementSuperseded` / `ProducerAgreementTerminated` (Level 1 gate at PO issuance; cascades to operator-alert surfaces in the Admin Panel for in-flight PO awareness); `SupplierActivated` (Supplier identity gate when `supplier_id` is populated).
@@ -567,7 +567,7 @@ Load-bearing rules, prefixed `BR-D-{Domain}-NN`. Tech-implementation enforcement
 ### §15.9 Cross-module dependency
 - **BR-D-CrossModule-1 (Allocation read at PI creation)**: PI creation requires the source Allocation to exist in Module A (any state including DRAFT for the *Direct-Purchase initial PI* — *deferred at launch, §3.1*; subsequent PIs require ACTIVE).
 - **BR-D-CrossModule-2 (PR active gate at PO line)**: PO line creation requires the **Product Reference** to be `active` in Module 0 *(naming cascade)*.
-- **BR-D-CrossModule-3 (Producer active + KYC gate at PO line)**: PO line creation requires the line's PR's Producer to be `active` and KYC-verified in Module K.
+- **BR-D-CrossModule-3 (Producer active + KYC gate at PO line)**: PO line creation requires the line's PR's Producer to be `active` and KYC-cleared (`verified` or `not_required`) in Module K.
 - **BR-D-CrossModule-4 (`SupplierPaymentCompleted` — E-emitted, D-consumed, no FSM role) — RECONCILED (R1 + R4)**: `SupplierPaymentCompleted` is a **financial event with no Allocation-FSM role** (DEC-183 / R1 — *the v1.1 framing of it as Module A's Direct-Purchase activation trigger is superseded*) and is **emitted by Module E** on payment clearing (R4 — *the v1.1/cut-sheet framing of Module D as the emitter is superseded*); **Module D consumes it to settle/close the PO** (§6); Module B consumes it for the inventory `ownership_flag` transition (§14.5). Activation is operator-publish post-PO-commit uniformly (Module A PRD §10.5 BR-A-Lifecycle-2 / §10.7 BR-A-CrossModule-4 — already aligned).
 
 ---

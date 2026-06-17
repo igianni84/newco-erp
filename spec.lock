@@ -1,0 +1,8 @@
+# spec.lock — provenance of ai-dev/spec/. Auto-written by scripts/sync-spec.sh; do not hand-edit.
+# spec/ is a vendored mirror of the handoff/ subtree of the shared product-spec repo.
+source_repo:   https://github.com/c-mless/documentation
+source_ref:    cmless/main
+source_subdir: handoff
+source_sha:    4f48277da30075857feed30c4a109295dc4d65b8
+source_date:   2026-06-16T15:23:31+01:00
+source_commit: Module K PRD §9.5/§7.1: clarify screening launch posture (screen+gate are floor; vendor integration deferrable)

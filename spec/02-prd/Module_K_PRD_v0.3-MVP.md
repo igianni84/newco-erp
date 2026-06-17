@@ -227,8 +227,8 @@ The **Producer** is the winery — **the identity source for Product Master *(wi
 Each Producer carries:
 
 - **Identity**: name, region, optional appellation, country.
-- **Status lifecycle**: `draft → active → retired`. Activation requires KYC verification; retirement preserves existing Product Masters but blocks new Product Master activation (the cascade rule documented in the Module 0 PRD).
-- **KYC status**: a four-state lifecycle (`not_required / pending / verified / rejected`) at the Producer level — verification of wine authenticity and provenance, distinct from Customer-side KYC.
+- **Status lifecycle**: `draft → active → retired`. Activation requires KYC to be **cleared** (`verified` or `not_required` — see the KYC-status bullet); retirement preserves existing Product Masters but blocks new Product Master activation (the cascade rule documented in the Module 0 PRD).
+- **KYC status**: a four-state lifecycle (`not_required / pending / verified / rejected`) at the Producer level — verification of wine authenticity and provenance, distinct from Customer-side KYC. **KYC is *cleared* (non-blocking) when it is `verified` *or* `not_required`, and *blocking* when it is `pending` or `rejected`** — exactly as on the Customer side (§9.1), where `not_required` is likewise a cleared, non-blocking state. Every gate that requires the Producer to be "`active` and KYC-cleared" — the Producer's own `draft → active` activation (above), Product Master activation (Module 0), allocation creation (Module A), and PO-line creation (Module D) — passes when the Producer is `active` **and** KYC is cleared (`verified` or `not_required`), and blocks only while KYC is `pending` or `rejected`. A Producer for whom provenance KYC is `not_required` is therefore not held back from activation or any downstream use; `not_required` and `verified` are equivalent at every gate.
 - **Customer-facing description**: the producer story / winery narrative the Bottle Page (Module B) reads at render time. Translatable across the six launch locales (DEC-031 / DEC-064 / D2 KEEP). This is the canonical home for producer-level descriptive content; Product-Master-level and Product-Variant-level prose lives in Module 0 PIM.
 - **Website** (optional).
 
@@ -236,7 +236,7 @@ Each Producer carries:
 
 **Content workflow.** Producer content (name, description, region, website) follows a 3-step Creator → Reviewer → Approver approval workflow analogous to the PIM lifecycle in Module 0 — same governance pattern, applied to the upstream Producer that Product Master depends on. **The role-count is admin-configurable (Q3): a lighter (e.g. 2-step) approval may be configured for the small launch onboarding team — no spec change; the separation-of-duties floor (no self-approval; distinct actors; audited) holds at any configured depth.** *(Same decision as Module 0 Q2.)*
 
-**Discovery-only Producer admission.** A Discovery-only Producer is simply a Producer Registry entry (active, KYC-verified) for whom no Club references them. There is no separate "Discovery-only" attribute; the absence of any Club operating under that Producer *is* the Discovery-only state. The Module 0 PIM Product Master holds the link to the Producer regardless of whether the Producer operates a Club. The Producer's relationship with NewCo is governed by a ProducerAgreement (§4.6) regardless of Club operation.
+**Discovery-only Producer admission.** A Discovery-only Producer is simply a Producer Registry entry (active, KYC-cleared) for whom no Club references them. There is no separate "Discovery-only" attribute; the absence of any Club operating under that Producer *is* the Discovery-only state. The Module 0 PIM Product Master holds the link to the Producer regardless of whether the Producer operates a Club. The Producer's relationship with NewCo is governed by a ProducerAgreement (§4.6) regardless of Club operation.
 
 **KYC-revocation symmetry.** If a Producer's KYC verification is revoked after Product Masters have already been activated, those existing Product Masters remain active; the revocation only blocks *new* Product Master activations under that Producer.
 
@@ -388,7 +388,7 @@ NewCo runs three Customer-onboarding flows at launch — direct registration, Cl
 2. NewCo sends a verification email; the prospect clicks the link and confirms their email address.
 3. Module K creates the Customer record, the Account record, and the Party record (with the Customer Party-type marker).
 4. The prospect accepts the T&C and the Privacy Policy on the registration form (acceptance captured at Customer level with timestamps).
-5. **Synchronous sanctions screening runs (§9) (FLOOR).** If the screen passes, the Customer transitions `pending → active`. If it fails or lands `under_review`, onboarding pauses and Compliance reviews.
+5. **Sanctions screening runs (§9) (FLOOR).** Synchronous via the screening-vendor adapter in the standard flow; **operator-run (manual-first) is acceptable at launch** (§9.5) — either way the screen must complete before the Customer can transact. If the screen passes, the Customer transitions `pending → active`. If it fails or lands `under_review`, onboarding pauses and Compliance reviews.
 6. The Customer can now apply to one or more Clubs; each application creates a Profile in `Applied` state (or `WaitingList` if the target Club is at capacity — §13).
 
 A direct-registration Customer has no Profile until they apply to a Club. They can buy on Discovery from registration onward (subject to the standard sanctions / KYC gates).
@@ -496,6 +496,10 @@ NewCo's standard onboarding runs sanctions screening synchronously, so most Cust
 #### §9.4 Sanctions and KYC are independent
 
 A Customer with `kyc_status = verified` and `sanctions_status = pending` is blocked from purchasing (sanctions gate); a Customer with `sanctions_status = passed` and `kyc_status = pending` is also blocked (KYC `kyc` Hold). Both must clear independently. The two lifecycles emit independent events (§15).
+
+#### §9.5 The screen vs the integration — launch posture **(the FLOOR is the screen + the gate, not the integration)**
+
+The screening **outcome** (the KYC / `sanctions_status` state) and the **order-completion gate** (§9.3) are the FLOOR and are unchanged. The **screening-vendor integration** is the dev team's call (DEC-073) and may be **manual-first at launch** — an operator runs the check via the provider and records the resulting state into Module K — with the automated synchronous adapter as the post-launch path. Module K records the state identically whether the screen was operator-run or adapter-run; the gate (no order completion until `sanctions_status = passed`, and KYC cleared where required) is the same either way. **The screen is non-negotiable; only the integration is deferrable.** *(Same manual-first-vs-automated distinction as the N2 Hold-trigger note, §4.8.1: the automation depth differs, the Module-K-side state + gate behaviour does not. Building or deferring the vendor adapter therefore does not block Module K's completion or its acceptance — the acceptance criteria drive the lifecycles by setting state, not by calling a live vendor.)*
 
 ---
 
@@ -691,7 +695,7 @@ The Module K business rules cluster into nine groups. The naming cascade renames
 
 **BR-K-Producer-1. Producer is not a Party subtype.** The Producer entity is standalone in Module K. Some Producers may never have a Party / Supplier record at all.
 
-**BR-K-Producer-2. KYC verification gates Product Master activation.** A **Product Master** *(wine-display alias: Wine Master)* cannot be activated unless its linked Producer is `active` and KYC-verified. Producer KYC revocation does *not* deactivate existing active Product Masters; only new Product Master activations are blocked. *(Naming cascade — Phase C item A; §18. The behaviour is identical to v1.1.)*
+**BR-K-Producer-2. KYC clearance gates Product Master activation.** A **Product Master** *(wine-display alias: Wine Master)* cannot be activated unless its linked Producer is `active` and KYC-cleared (`verified` or `not_required`); KYC `pending` or `rejected` blocks. Producer KYC revocation does *not* deactivate existing active Product Masters; only new Product Master activations are blocked. *(Naming cascade — Phase C item A; §18. Cleared-state semantics per §4.4 — `not_required` clears the gate exactly as `verified`, aligning producer KYC with the Customer side.)*
 
 **BR-K-Producer-3. No auto-link between Producer and Supplier.** Creating a Producer does not auto-create a Supplier; creating a Supplier does not auto-create a Producer. Linking is an explicit operator action.
 
@@ -772,7 +776,7 @@ Module K emits a versioned set of domain events that downstream modules and the 
 ### §15.4 Producer-family events **(K's own names — UNCHANGED by the naming cascade)**
 
 - `ProducerCreated` — on Producer record creation.
-- `ProducerActivated` — on `draft → active` (KYC verified). **Consumer: Module 0 (enables Product Master activation against this Producer).** *(The event name is K's own and is unchanged; only the consumer-note prose renames Wine Master → Product Master — §18.)*
+- `ProducerActivated` — on `draft → active` (KYC cleared — `verified` or `not_required`). **Consumer: Module 0 (enables Product Master activation against this Producer).** *(The event name is K's own and is unchanged; only the consumer-note prose renames Wine Master → Product Master — §18.)*
 - `ProducerRetired` — on transition to `retired`. Consumers: Module 0 (blocks new Product Master activations); Module D (cascades to ProcurementIntent state); Module K's own offboarding cascade (§10).
 
 ### §15.5 ProducerAgreement-family events
