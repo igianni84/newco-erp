@@ -259,3 +259,7 @@
 ## [2026-06-17 09:23] decisions | 3 ADRs + erratum (Paolo 2026-06-16 call) | ADRs: spec-sync mechanism; producer-KYC not_required-clears (already upstream, no erratum); approval SoD role-gated -- contradicts spec+shipped code, erratum drafted for Paolo, no code change yet. INDEX updated.
 
 ## [2026-06-17 10:22] decision-resolved | approval SoD (Paolo, Slack 2026-06-17) | Paolo kept strict SoD -- two distinct actors, document authoritative; verbal call-note retracted. No spec/code change; shipped enforcement already correct. ADR + erratum + INDEX + hot updated.
+
+## [2026-06-17 11:44] spec-to-change | parties-compliance | Authored + APPROVED — KYC + sanctions four-state FSMs (additive nullable, DEC-071) + producer-KYC gate retro-tighten (cleared=verified∨not_required, NULL-cleared); Hold registry split to parties-holds. 6 delta reqs (4 ADDED/2 MODIFIED), 11 tasks, validate --strict green.
+
+## [2026-06-17 11:50] ralph | parties-compliance 1.1 | green | 4 files | KycStatus(+clears)/SanctionsStatus/ScreeningTriggerSource enums; 621/621, phpstan max, validate --strict ok
