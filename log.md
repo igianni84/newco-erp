@@ -279,3 +279,5 @@
 ## [2026-06-17 13:26] ralph | parties-compliance 5.1 | green | 5 files — ActivateProducer KYC-cleared gate (verified/not_required/NULL clear; pending/rejected block via kycNotCleared); 704/704 SQLite, PG17 Parties 146/146
 
 ## [2026-06-17 13:39] ralph | parties-compliance 6.1 | green | 2 files (new ComplianceIndependenceTest 6/6; tasks.md). Full 710/710 SQLite, PHPStan max 0, PG17 Parties 152/152. Independence 4-cell + scope guard.
+
+## [2026-06-17 13:47] ralph | parties-compliance 6.2 | green | 2 files — CONTEXT.md compliance terms (4 KYC/sanctions headwords + 4-event payload contract + 4 deferred seams) + tasks.md; suite 710/710 unchanged, docs-only no DB
