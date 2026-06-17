@@ -269,3 +269,5 @@
 ## [2026-06-17 12:17] ralph | parties-compliance 1.3 | green | 4 files (2 exceptions + lang + test) | 642/642 SQLite, no-DB so PG17 N/A
 
 ## [2026-06-17 12:37] ralph | parties-compliance 2.1 | green | 5 files: 3 KYC Actions + IllegalKycTransition ?KycStatus widen + CustomerKycLifecycleTest 17/17; SupplyLifecycleChain scope-guard +=3; full 659/659, PG17 Parties 110/110
+
+## [2026-06-17 12:47] ralph | parties-compliance 3.1 | green | 6 files — 4 Producer-KYC eventless Actions + test + scope-guard; 681/681 SQLite, 132/132 PG17, PHPStan 0, validate ok
