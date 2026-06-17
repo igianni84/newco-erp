@@ -273,3 +273,5 @@
 ## [2026-06-17 12:47] ralph | parties-compliance 3.1 | green | 6 files — 4 Producer-KYC eventless Actions + test + scope-guard; 681/681 SQLite, 132/132 PG17, PHPStan 0, validate ok
 
 ## [2026-06-17 12:59] ralph | parties-compliance 4.1 | green | 5 files: 4 sanctions screening event classes (verbatim § 15.6) + 1 unit test; 688/688 SQLite, PHPStan 0; events-only, no DB (PG17 N/A)
+
+## [2026-06-17 13:15] ralph | parties-compliance 4.2 | green | 3 files (RecordCustomerScreening + sanctions lifecycle test + chain-guard whitelist); 697/697 SQLite, 141/141 PG17, PHPStan max 0

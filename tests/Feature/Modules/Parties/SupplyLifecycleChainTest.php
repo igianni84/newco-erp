@@ -301,6 +301,7 @@ it('exposes only supply-side and compliance transition Actions — no Customer/A
     $complianceTransitions = [
         'RequireKyc', 'RecordKycVerified', 'RecordKycRejected',
         'RequireProducerKyc', 'RecordProducerKycVerified', 'RecordProducerKycRejected', 'WaiveProducerKyc',
+        'RecordCustomerScreening',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance ones. There is
