@@ -285,3 +285,5 @@
 ## [2026-06-17 14:02] ralph | parties-compliance 6.3 | green — CHANGE COMPLETE (11/11): ComplianceChainTest full-slice + cross-engine close; 718/718 SQLite + 168/168 PG17 | 1 file
 
 ## [2026-06-17 14:46] merge+archive | parties-compliance | merged --no-ff to main (b4e8561) + archived 2026-06-17-parties-compliance (cad774b); delta synced to party-registry spec; semantic-verify clean (0 CRITICAL, 2 WARN); 718 SQLite/168 PG17 green; push to origin pending human auth
+
+## [2026-06-17 16:02] close-out | parties-compliance | push to origin/main landed (0c23988) + ralph branch deleted (human); change fully closed out, working tree clean
