@@ -263,3 +263,5 @@
 ## [2026-06-17 11:44] spec-to-change | parties-compliance | Authored + APPROVED — KYC + sanctions four-state FSMs (additive nullable, DEC-071) + producer-KYC gate retro-tighten (cleared=verified∨not_required, NULL-cleared); Hold registry split to parties-holds. 6 delta reqs (4 ADDED/2 MODIFIED), 11 tasks, validate --strict green.
 
 ## [2026-06-17 11:50] ralph | parties-compliance 1.1 | green | 4 files | KycStatus(+clears)/SanctionsStatus/ScreeningTriggerSource enums; 621/621, phpstan max, validate --strict ok
+
+## [2026-06-17 12:08] ralph | parties-compliance 1.2 | green | 4 files | additive migration: 8 nullable cols parties_customers + 1 parties_producers, 4 PG nullable-CHECKs, casts+@property on both models; 629/629 SQLite, 132/132 PG17, down() reversible

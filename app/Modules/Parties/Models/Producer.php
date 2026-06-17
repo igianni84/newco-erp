@@ -3,6 +3,7 @@
 namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateProducer;
+use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ProducerCreated;
 use App\Platform\I18n\TranslatableText;
@@ -25,6 +26,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * and no auto-created Supplier (BR-K-Producer-3, design D10). The translatable `description` is held as
  * i18n-keyed JSON via {@see TranslatableTextCast} with per-attribute English fallback.
  *
+ * The `kyc_status` column is the provenance-KYC lifecycle (`not_required → pending → verified | rejected`),
+ * distinct from Customer KYC (§ 4.4), added additively as nullable (parties-compliance task 1.2, DEC-071). A
+ * NULL `kyc_status` is a Producer never touched by KYC and is treated as CLEARED at the activation gate
+ * (design L5), so existing Producers keep activating; the Producer-KYC Actions are its sole writers.
+ *
  * @property int $id
  * @property string $name
  * @property string $region
@@ -33,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property TranslatableText|null $description
  * @property string|null $website
  * @property ProducerStatus $status
+ * @property KycStatus|null $kyc_status
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -85,6 +92,8 @@ class Producer extends Model
         return [
             'description' => TranslatableTextCast::class,
             'status' => ProducerStatus::class,
+            // provenance-KYC lifecycle (parties-compliance task 1.2; design L1/L5) — additive nullable.
+            'kyc_status' => KycStatus::class,
             'version' => 'integer',
         ];
     }
