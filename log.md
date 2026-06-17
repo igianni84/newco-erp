@@ -257,3 +257,5 @@
 ## [2026-06-17 09:23] spec-sync | spec/ <- c-mless/documentation:handoff/ | New scripts/sync-spec.sh + spec.lock: spec/ is now a vendored mirror of handoff/ pinned @4f48277 (chose sync-script over submodule -> zero citation breakage). Refresh pulled the producer-KYC clarification.
 
 ## [2026-06-17 09:23] decisions | 3 ADRs + erratum (Paolo 2026-06-16 call) | ADRs: spec-sync mechanism; producer-KYC not_required-clears (already upstream, no erratum); approval SoD role-gated -- contradicts spec+shipped code, erratum drafted for Paolo, no code change yet. INDEX updated.
+
+## [2026-06-17 10:22] decision-resolved | approval SoD (Paolo, Slack 2026-06-17) | Paolo kept strict SoD -- two distinct actors, document authoritative; verbal call-note retracted. No spec/code change; shipped enforcement already correct. ADR + erratum + INDEX + hot updated.

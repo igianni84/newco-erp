@@ -4,6 +4,8 @@
 **Ambito:** Creator → Reviewer → Approver lifecycle (Module 0 catalog + Module K producer + Admin Panel)
 **Tipo:** richiesta di ratifica — la spec attuale dice il contrario di quanto emerso in call
 
+> **Esito (2026-06-17):** Paolo conferma di **mantenere le due persone distinte** (self-approval non permesso) — *"vale il documento sempre"*. La nota verbale di ieri era un ricordo impreciso (doc di ~10k pagine), non un cambiamento; allinea Laurent oggi. **Nessuna modifica a spec o codice** — l'enforcement già shippato era corretto. *(Nota archiviata come record; non serve più inviarla.)*
+
 ---
 
 ## Il punto

@@ -4,6 +4,8 @@ status: active
 date: 2026-06-17
 ---
 
+> **RESOLVED 2026-06-17 — proposal withdrawn; the written spec stands.** After this erratum, Paolo confirmed on Slack: keep the separation-of-duties floor **as written — two distinct people; self-approval never allowed** (*"vale il documento sempre"*). His 2026-06-16 call note ("same person may create + approve") was a **misremembering** across the ~10k-page spec, not a change; he is realigning the verbal exception he had given Laurent. **Net effect: no spec change, no code change — the shipped strict-SoD enforcement (`catalog-lifecycle-approval`, `parties-producer-lifecycle`) was already correct.** The analysis below is retained as the record of *why we did not auto-implement against the written spec* — the resolution vindicated that restraint. Status stays `active`: the in-force decision is now simply "the strict-SoD floor is retained."
+
 ## Decision: capture Paolo's "same actor may create + approve if role-qualified" direction; reconcile via spec erratum + a dedicated change — do NOT retrofit shipped code yet
 
 Paolo's 2026-06-16 call note (relayed by Giovanni): on the Creator → Reviewer → Approver lifecycle, **the same person MAY perform more than one step — including create *and* approve — provided they hold the role(s) that authorise each step.** This makes separation-of-duties **role-gated (does the actor hold the step's role?)** rather than **identity-gated (must the actors be distinct people?)**.
