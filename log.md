@@ -275,3 +275,5 @@
 ## [2026-06-17 12:59] ralph | parties-compliance 4.1 | green | 5 files: 4 sanctions screening event classes (verbatim § 15.6) + 1 unit test; 688/688 SQLite, PHPStan 0; events-only, no DB (PG17 N/A)
 
 ## [2026-06-17 13:15] ralph | parties-compliance 4.2 | green | 3 files (RecordCustomerScreening + sanctions lifecycle test + chain-guard whitelist); 697/697 SQLite, 141/141 PG17, PHPStan max 0
+
+## [2026-06-17 13:26] ralph | parties-compliance 5.1 | green | 5 files — ActivateProducer KYC-cleared gate (verified/not_required/NULL clear; pending/rejected block via kycNotCleared); 704/704 SQLite, PG17 Parties 146/146

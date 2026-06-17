@@ -22,18 +22,21 @@ use Illuminate\Support\Facades\DB;
  * a Producer as a derived step) — so a `ProducerActivated` is always a root event and the action needs no
  * causation/correlation threading parameters (the simpler signature it shares with `CloseClub`).
  *
- * DEFERRED SEAM (design L8): the PRD precondition that activation requires KYC verification (Module K PRD § 4.4)
- * is NOT enforced here. The KYC four-state lifecycle and its fields are owned by the future `parties-compliance`
- * change (DEC-071 — sanctions/KYC fields are nullable, added additively), so they do not exist in this slice;
- * activation therefore succeeds with no KYC verdict present, and `parties-compliance` SHALL tighten this
- * transition to gate on a verified verdict. This is the same "seam now, behaviour later" discipline the spine
- * used for `originating_club_id` and `CloseClub` uses for its all-members-gone gate.
+ * KYC-CLEARED GATE (parties-compliance, design L5; Module K PRD § 4.4 / BR-K-Producer-2): activation
+ * additionally requires the Producer's `kyc_status` to be CLEARED — `verified`, `not_required`, or NULL (a
+ * Producer never touched by KYC, treated as cleared so the additive nullable field, DEC-071, never breaks the
+ * activation of rows created before this change — ADR 2026-06-17). A `pending`/`rejected` `kyc_status` blocks:
+ * the action throws {@see IllegalProducerTransition::kycNotCleared()} and the transaction rolls back, leaving the
+ * Producer `draft` with no event recorded. This closes the seam the previously-shipped `parties-producer-lifecycle`
+ * slice left ungated; the cleared semantics ride {@see ProducerActivated} (§ 15.4 — there is no separate KYC event).
  *
  * From-state guarded and race-safe (design L2): inside ONE {@see DB::transaction} it re-reads the row
  * `->lockForUpdate()` (a real row lock on PostgreSQL, a harmless no-op under SQLite's single writer — the
- * from-state assert carries correctness either way), asserts `status === draft`, then writes `active` and
- * records the event. A call on a Producer not in `draft` throws {@see IllegalProducerTransition::cannotActivate()}
- * and the transaction rolls back, leaving the row and the event log unchanged. The status write and the event
+ * from-state assert carries correctness either way), asserts `status === draft` and that KYC is cleared, then
+ * writes `active` and records the event. A call on a Producer not in `draft` throws
+ * {@see IllegalProducerTransition::cannotActivate()}, and a `draft` Producer whose KYC is not cleared throws
+ * {@see IllegalProducerTransition::kycNotCleared()}; either way the transaction rolls back, leaving the row and
+ * the event log unchanged. The status write and the event
  * are recorded in the same transaction (the recorder's open-transaction guard makes write + emit atomic), and
  * the payload reflects the POST-transition state. `version` is NOT bumped — it is reserved for identity-attribute
  * revisions (its parties-core meaning), and the immutable domain event is the audit record of the transition
@@ -56,6 +59,15 @@ class ActivateProducer
 
             if ($producer->status !== ProducerStatus::Draft) {
                 throw IllegalProducerTransition::cannotActivate($producer->status);
+            }
+
+            // KYC-cleared gate (design L5; § 4.4 / BR-K-Producer-2): a Producer activates only with KYC
+            // cleared — `verified`, `not_required`, or NULL (never touched, treated as cleared for additivity,
+            // ADR 2026-06-17). `pending`/`rejected` block. The null-check narrows `$kyc` to a non-null blocking
+            // KycStatus before the throw, so `kycNotCleared` receives the offending state.
+            $kyc = $producer->kyc_status;
+            if ($kyc !== null && ! $kyc->clears()) {
+                throw IllegalProducerTransition::kycNotCleared($kyc);
             }
 
             $producer->update(['status' => ProducerStatus::Active]);

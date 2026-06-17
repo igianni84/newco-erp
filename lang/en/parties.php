@@ -15,6 +15,10 @@ return [
         // illegal-transition reasons. :state is the offending from-state token (a business enum value, not PII).
         'cannot_activate' => 'Cannot activate this Producer from state :state. A Producer activates only from draft.',
         'cannot_retire' => 'Cannot retire this Producer from state :state. A Producer retires only from active.',
+        // KYC-cleared activation gate (parties-compliance, design L5; § 4.4 / BR-K-Producer-2): a Producer
+        // activates only with KYC cleared (verified ∨ not_required; a NULL kyc_status is treated as cleared).
+        // :state is the offending blocking KYC token (pending | rejected) — a business enum value, not PII.
+        'kyc_not_cleared' => 'Cannot activate this Producer while its KYC is :state. Activation requires KYC cleared — verified or not_required.',
     ],
     'club' => [
         // BR-K-Club-1 rejection (design D3/D4): a Club requires exactly one EXISTING operating Producer.
