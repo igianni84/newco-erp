@@ -15,6 +15,10 @@ return [
         // illegal-transition reasons. :state is the offending from-state token (a business enum value, not PII).
         'cannot_activate' => 'Cannot activate this Producer from state :state. A Producer activates only from draft.',
         'cannot_retire' => 'Cannot retire this Producer from state :state. A Producer retires only from active.',
+        // KYC-cleared activation gate (parties-compliance, design L5; § 4.4 / BR-K-Producer-2): a Producer
+        // activates only with KYC cleared (verified ∨ not_required; a NULL kyc_status is treated as cleared).
+        // :state is the offending blocking KYC token (pending | rejected) — a business enum value, not PII.
+        'kyc_not_cleared' => 'Cannot activate this Producer while its KYC is :state. Activation requires KYC cleared — verified or not_required.',
     ],
     'club' => [
         // BR-K-Club-1 rejection (design D3/D4): a Club requires exactly one EXISTING operating Producer.
@@ -47,5 +51,23 @@ return [
         // id references (not PII), so they are interpolated to make the reason self-documenting (unlike the
         // duplicate_email reason, which omits the PII email).
         'duplicate_for_club' => 'Cannot create a Profile: Customer :customer already has a live Profile in Club :club. A Customer may hold at most one non-terminal Profile per Club.',
+    ],
+    'kyc' => [
+        // KYC FSM `not_required → pending → verified | rejected` (parties-compliance, design L2; § 9.1
+        // Customer-side / § 4.4 Producer-side — one shared domain at both levels). The require/verify/reject
+        // guards back both Customer and Producer KYC; waive is the Producer-only operator deselect to
+        // not_required. :state is the offending from-state token (a business enum value, not PII).
+        'cannot_require' => 'Cannot require KYC from state :state. KYC moves to pending only from not_required.',
+        'cannot_verify' => 'Cannot record KYC verified from state :state. KYC verifies only from pending.',
+        'cannot_reject' => 'Cannot record KYC rejected from state :state. KYC rejects only from pending.',
+        'cannot_waive' => 'Cannot waive KYC from state :state. The operator deselect applies only to an outstanding KYC requirement.',
+    ],
+    'sanctions' => [
+        // Sanctions screening FSM `pending → passed | failed | under_review`, `under_review → passed | failed`
+        // (parties-compliance, design L4; § 9.2). Onboarding must be the first screening; a screening that
+        // resolves an open review is valid only from under_review. :state is the offending from-state token
+        // (not PII); onboarding_already_screened names only the rule (the prior-screening timestamp is PII).
+        'onboarding_already_screened' => 'Cannot record an onboarding sanctions screening: this Customer has already been screened. The onboarding screening is a Customer\'s first screening only.',
+        'cannot_resolve' => 'Cannot resolve the sanctions screening from state :state. Only an under_review screening resolves to passed or failed.',
     ],
 ];

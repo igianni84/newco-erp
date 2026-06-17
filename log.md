@@ -259,3 +259,27 @@
 ## [2026-06-17 09:23] decisions | 3 ADRs + erratum (Paolo 2026-06-16 call) | ADRs: spec-sync mechanism; producer-KYC not_required-clears (already upstream, no erratum); approval SoD role-gated -- contradicts spec+shipped code, erratum drafted for Paolo, no code change yet. INDEX updated.
 
 ## [2026-06-17 10:22] decision-resolved | approval SoD (Paolo, Slack 2026-06-17) | Paolo kept strict SoD -- two distinct actors, document authoritative; verbal call-note retracted. No spec/code change; shipped enforcement already correct. ADR + erratum + INDEX + hot updated.
+
+## [2026-06-17 11:44] spec-to-change | parties-compliance | Authored + APPROVED — KYC + sanctions four-state FSMs (additive nullable, DEC-071) + producer-KYC gate retro-tighten (cleared=verified∨not_required, NULL-cleared); Hold registry split to parties-holds. 6 delta reqs (4 ADDED/2 MODIFIED), 11 tasks, validate --strict green.
+
+## [2026-06-17 11:50] ralph | parties-compliance 1.1 | green | 4 files | KycStatus(+clears)/SanctionsStatus/ScreeningTriggerSource enums; 621/621, phpstan max, validate --strict ok
+
+## [2026-06-17 12:08] ralph | parties-compliance 1.2 | green | 4 files | additive migration: 8 nullable cols parties_customers + 1 parties_producers, 4 PG nullable-CHECKs, casts+@property on both models; 629/629 SQLite, 132/132 PG17, down() reversible
+
+## [2026-06-17 12:17] ralph | parties-compliance 1.3 | green | 4 files (2 exceptions + lang + test) | 642/642 SQLite, no-DB so PG17 N/A
+
+## [2026-06-17 12:37] ralph | parties-compliance 2.1 | green | 5 files: 3 KYC Actions + IllegalKycTransition ?KycStatus widen + CustomerKycLifecycleTest 17/17; SupplyLifecycleChain scope-guard +=3; full 659/659, PG17 Parties 110/110
+
+## [2026-06-17 12:47] ralph | parties-compliance 3.1 | green | 6 files — 4 Producer-KYC eventless Actions + test + scope-guard; 681/681 SQLite, 132/132 PG17, PHPStan 0, validate ok
+
+## [2026-06-17 12:59] ralph | parties-compliance 4.1 | green | 5 files: 4 sanctions screening event classes (verbatim § 15.6) + 1 unit test; 688/688 SQLite, PHPStan 0; events-only, no DB (PG17 N/A)
+
+## [2026-06-17 13:15] ralph | parties-compliance 4.2 | green | 3 files (RecordCustomerScreening + sanctions lifecycle test + chain-guard whitelist); 697/697 SQLite, 141/141 PG17, PHPStan max 0
+
+## [2026-06-17 13:26] ralph | parties-compliance 5.1 | green | 5 files — ActivateProducer KYC-cleared gate (verified/not_required/NULL clear; pending/rejected block via kycNotCleared); 704/704 SQLite, PG17 Parties 146/146
+
+## [2026-06-17 13:39] ralph | parties-compliance 6.1 | green | 2 files (new ComplianceIndependenceTest 6/6; tasks.md). Full 710/710 SQLite, PHPStan max 0, PG17 Parties 152/152. Independence 4-cell + scope guard.
+
+## [2026-06-17 13:47] ralph | parties-compliance 6.2 | green | 2 files — CONTEXT.md compliance terms (4 KYC/sanctions headwords + 4-event payload contract + 4 deferred seams) + tasks.md; suite 710/710 unchanged, docs-only no DB
+
+## [2026-06-17 14:02] ralph | parties-compliance 6.3 | green — CHANGE COMPLETE (11/11): ComplianceChainTest full-slice + cross-engine close; 718/718 SQLite + 168/168 PG17 | 1 file

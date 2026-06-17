@@ -4,7 +4,10 @@ namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
+use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\PartyType;
+use App\Modules\Parties\Enums\SanctionsStatus;
+use App\Modules\Parties\Enums\ScreeningTriggerSource;
 use App\Modules\Parties\Events\CustomerCreated;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -32,6 +35,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * `NULL` with NO mutation surface in this change (the one-shot lock fires on the first membership approval —
  * deferred). Both relations are WITHIN-module (the boundary law forbids only CROSS-module relations).
  *
+ * The compliance-screening columns (`kyc_status` + `kyc_required` + the enhanced-KYC trigger fields;
+ * `sanctions_status` + `last_screening_at` / `next_rescreen_at` / `screening_trigger_source`) are added
+ * additively as nullable (parties-compliance task 1.2, DEC-071): a NULL `kyc_status` is un-screened, and a NULL
+ * `sanctions_status` is treated downstream as not-`passed`/blocked. The KYC and sanctions FSMs are each separate
+ * from the Customer status FSM and independent of each other (§ 9.1/§ 9.2/§ 9.4); the compliance transition
+ * Actions are their sole writers — the model stays persistence-only.
+ *
  * @property int $id
  * @property string $email
  * @property string $name
@@ -42,6 +52,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $preferred_locale
  * @property CustomerStatus $status
  * @property int|null $originating_club_id
+ * @property KycStatus|null $kyc_status
+ * @property bool|null $kyc_required
+ * @property bool|null $enhanced_kyc_flag
+ * @property CarbonImmutable|null $enhanced_kyc_at
+ * @property SanctionsStatus|null $sanctions_status
+ * @property CarbonImmutable|null $last_screening_at
+ * @property CarbonImmutable|null $next_rescreen_at
+ * @property ScreeningTriggerSource|null $screening_trigger_source
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -107,6 +125,15 @@ class Customer extends Model
             'party_type' => PartyType::class,
             'status' => CustomerStatus::class,
             'version' => 'integer',
+            // compliance-screening lifecycles (parties-compliance task 1.2; design L1) — additive nullable.
+            'kyc_status' => KycStatus::class,
+            'kyc_required' => 'boolean',
+            'enhanced_kyc_flag' => 'boolean',
+            'enhanced_kyc_at' => 'immutable_datetime',
+            'sanctions_status' => SanctionsStatus::class,
+            'last_screening_at' => 'immutable_datetime',
+            'next_rescreen_at' => 'immutable_datetime',
+            'screening_trigger_source' => ScreeningTriggerSource::class,
         ];
     }
 }

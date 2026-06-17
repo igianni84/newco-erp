@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Parties\Enums\ClubStatus;
+use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Exceptions\IllegalClubTransition;
@@ -9,11 +10,13 @@ use App\Modules\Parties\Exceptions\IllegalProducerTransition;
 use Tests\TestCase;
 
 // Pins the three supply-side transition-guard exceptions (parties-producer-lifecycle, task 1.1;
-// design L2; party-registry — Requirements: Producer/ProducerAgreement/Club Lifecycle). Each
-// transition Action (tasks 2.x–4.x) throws one of these on an out-of-state call; here we assert each
-// named factory builds the right class with a localized, PII-free reason that names the offending
-// state. Booting the app (TestCase, NO RefreshDatabase — no DB is touched) makes the translator
-// available so __() resolves the lang/en/parties.php copy instead of echoing the key back.
+// design L2) plus the compliance KYC-cleared activation gate added to IllegalProducerTransition
+// (parties-compliance, task 5.1; design L5) — party-registry — Requirements:
+// Producer/ProducerAgreement/Club Lifecycle. Each transition Action throws one of these on a
+// disallowed call; here we assert each named factory builds the right class with a localized,
+// PII-free reason that names the offending state. Booting the app (TestCase, NO RefreshDatabase —
+// no DB is touched) makes the translator available so __() resolves the lang/en/parties.php copy
+// instead of echoing the key back.
 
 uses(TestCase::class);
 
@@ -34,6 +37,18 @@ it('rejects retiring a Producer that is not active, naming the offending state',
     expect($exception)->toBeInstanceOf(IllegalProducerTransition::class)
         ->and($exception->getMessage())->not->toBe('')
         ->and($exception->getMessage())->toContain('draft');
+});
+
+it('rejects activating a Producer whose KYC is not cleared, naming the offending state', function () {
+    // The compliance KYC-cleared gate (parties-compliance, design L5; § 4.4 / BR-K-Producer-2): a
+    // `pending`/`rejected` KYC blocks activation. `pending` is absent from the template, so its presence
+    // proves :state was interpolated; `KYC` proves it is the gate copy, not a from-state guard message.
+    $exception = IllegalProducerTransition::kycNotCleared(KycStatus::Pending);
+
+    expect($exception)->toBeInstanceOf(IllegalProducerTransition::class)
+        ->and($exception->getMessage())->not->toBe('')
+        ->and($exception->getMessage())->toContain('KYC')
+        ->and($exception->getMessage())->toContain('pending');
 });
 
 it('rejects activating a ProducerAgreement that is not draft, naming the offending state', function () {
@@ -69,7 +84,7 @@ it('rejects closing a Club that is not sunset, naming the offending state', func
 });
 
 it('resolves every new transition lang key with the :state placeholder wired', function (string $key) {
-    // 'retired' appears in none of the six literal templates, so containing it proves :state is
+    // 'retired' appears in none of the seven literal templates, so containing it proves :state is
     // interpolated for every key; a missing key would make Laravel echo the key back unchanged.
     $resolved = __($key, ['state' => 'retired']);
 
@@ -78,6 +93,7 @@ it('resolves every new transition lang key with the :state placeholder wired', f
 })->with([
     'parties.producer.cannot_activate',
     'parties.producer.cannot_retire',
+    'parties.producer.kyc_not_cleared',
     'parties.club.cannot_sunset',
     'parties.club.cannot_close',
     'parties.producer_agreement.cannot_activate',

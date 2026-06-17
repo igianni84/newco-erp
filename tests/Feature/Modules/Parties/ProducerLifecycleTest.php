@@ -3,6 +3,7 @@
 use App\Modules\Parties\Actions\ActivateProducer;
 use App\Modules\Parties\Actions\RetireProducer;
 use App\Modules\Parties\Enums\ClubStatus;
+use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ClubSunset;
 use App\Modules\Parties\Events\ProducerActivated;
@@ -25,8 +26,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * (activation is never a cascade target); and (3) the `active → retired` transition via {@see RetireProducer},
  * which records {@see ProducerRetired} (the cascade ROOT) and CASCADES sunset onto every operated Club still
  * `active`, each recording a {@see ClubSunset} caused by — and sharing the correlation of — the retirement
- * (design L5/L6). The KYC-verified precondition on activation (Module K PRD § 4.4) is a deferred seam (design
- * L8), not enforced here; the Profile leg of the § 10.2 retirement cascade is deferred too (demand-side).
+ * (design L5/L6). The KYC-cleared gate on activation (Module K PRD § 4.4 / BR-K-Producer-2) is enforced here
+ * (parties-compliance, design L5): activation requires `kyc_status` cleared — `verified`, `not_required`, or
+ * NULL (treated as cleared for additivity) — and is rejected for `pending`/`rejected`, leaving the Producer
+ * `draft`. The Profile leg of the § 10.2 retirement cascade is deferred (demand-side).
  *
  * RefreshDatabase per the task hint; the transition opens its OWN DB::transaction, so the recorder's
  * `transactionLevel() === 0` guard is satisfied by the savepoint under the wrapper (the event being recorded at
@@ -110,12 +113,46 @@ it('activates a draft Producer and records a ProducerActivated in the same trans
         ->and($event->correlation_id)->toBe($event->event_id);
 });
 
-it('activates a draft Producer with no KYC verdict present — the KYC gate is a deferred seam', function () {
-    // The KYC four-state lifecycle and its fields are owned by the future `parties-compliance` change
-    // (DEC-071); they are not modelled in this slice, so no KYC verdict can exist. Activation must still
-    // succeed — the KYC-verified precondition (Module K PRD § 4.4) is a documented seam tightened later, not
-    // enforced here. When parties-compliance closes the seam, this scenario tightens to require a verdict.
-    $producer = Producer::factory()->create();   // born `draft`, with no KYC fields modelled
+it('activates a draft Producer whose KYC is cleared (verified, not_required, or NULL), recording a ProducerActivated', function (?KycStatus $kyc) {
+    // AC-K-FSM-7 positive arm (parties-compliance, design L5; § 4.4 / BR-K-Producer-2): the cleared KYC
+    // states — `verified`, `not_required`, and a NULL `kyc_status` (never touched, treated as cleared for
+    // additivity, ADR 2026-06-17) — all admit activation. The gate runs after the `draft` from-state assert.
+    $producer = Producer::factory()->create(['kyc_status' => $kyc]);   // born `draft`
+
+    $returned = app(ActivateProducer::class)->handle($producer->id);
+
+    expect($returned->status)->toBe(ProducerStatus::Active)
+        ->and(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active)
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(1);
+})->with([
+    'NULL kyc_status (never touched)' => [null],
+    'not_required' => [KycStatus::NotRequired],
+    'verified' => [KycStatus::Verified],
+]);
+
+it('rejects activating a draft Producer whose KYC is not cleared (pending or rejected), leaving it draft with no event', function (KycStatus $kyc) {
+    // AC-K-FSM-7 negative arm: the blocking KYC states reject activation. The `draft` from-state assert
+    // passes (the Producer IS draft), so the KYC-cleared gate is the sole reason for the throw — its message
+    // names KYC, distinguishing it from the from-state guard. The transaction rolls back: status stays
+    // `draft` and no ProducerActivated is recorded.
+    $producer = Producer::factory()->create(['kyc_status' => $kyc]);   // born `draft`, KYC blocking
+
+    expect(fn () => app(ActivateProducer::class)->handle($producer->id))
+        ->toThrow(IllegalProducerTransition::class, 'KYC');
+
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(0);
+})->with([
+    'pending' => [KycStatus::Pending],
+    'rejected' => [KycStatus::Rejected],
+]);
+
+it('still activates a Producer created before parties-compliance — NULL kyc_status is cleared (additive regression)', function () {
+    // The additive-safety regression (design L5): a Producer created before this change carries NULL
+    // `kyc_status` (the nullable column has no default and no backfill — DEC-071). NULL is treated as cleared
+    // at the gate, so existing Producers keep activating — tightening the gate must never break shipped rows.
+    $producer = Producer::factory()->create();   // born `draft`; the factory sets no kyc_status → NULL
+    expect($producer->kyc_status)->toBeNull();
 
     $returned = app(ActivateProducer::class)->handle($producer->id);
 
