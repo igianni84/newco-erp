@@ -30,7 +30,7 @@ Read `proposal.md`, `design.md` (L1–L8) and the spec delta `specs/party-regist
 
 ## 4. Sanctions screening lifecycle + events
 
-- [ ] 4.1 **The four sanctions screening events** (design L3/L4; spec — Requirement: Sanctions Screening Events) — `App\Modules\Parties\Events\{CustomerOnboardingScreeningPassed, CustomerOnboardingScreeningFailed, CustomerRescreeningPassed, CustomerRescreeningFailed}`, each a `final` class with untyped `const NAME` (verbatim § 15.6 name), `const ENTITY_TYPE = 'Customer'`, and a static `payload(Customer): array` → `{customer_id, sanctions_status, trigger_source}` (PII-free — no name/email/phone/DOB).
+- [x] 4.1 **The four sanctions screening events** (design L3/L4; spec — Requirement: Sanctions Screening Events) — `App\Modules\Parties\Events\{CustomerOnboardingScreeningPassed, CustomerOnboardingScreeningFailed, CustomerRescreeningPassed, CustomerRescreeningFailed}`, each a `final` class with untyped `const NAME` (verbatim § 15.6 name), `const ENTITY_TYPE = 'Customer'`, and a static `payload(Customer): array` → `{customer_id, sanctions_status, trigger_source}` (PII-free — no name/email/phone/DOB).
   - Acceptance: each event's `NAME` is byte-for-byte the § 15.6 name; `payload()` returns only the three keys with no personal data; `ENTITY_TYPE === 'Customer'`; quality commands green.
   - Test hint: `tests/Unit/Modules/Parties/Events/ScreeningEventsTest.php` — assert each `NAME` constant equals the expected string; build a Customer, assert `payload()` keys are exactly `{customer_id, sanctions_status, trigger_source}` and contain no PII.
 
