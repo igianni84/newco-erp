@@ -253,3 +253,7 @@
 ## [2026-06-16 22:41] fix | knowledge date consistency | Standardize catalog-product-spine confirmations on archive-dir date 06-15 (convention=dir-date, cf parties-producer-lifecycle 5/5 at 06-16). Fixed 2 PR#1-era outliers citing 06-14 (laravel use-cycle, data-model enum-CHECK). All 8 citations now 06-15.
 
 ## [2026-06-16 22:47] convention | knowledge confirmation dating | Codified: confirmations cite the change's archive-dir date, not progress.md's work-timestamp. Rule added to .claude/CLAUDE.md Knowledge System + lessons.md (Mistake->Correction->Rule). Prevents split confirmation counts in future dreaming/curation runs.
+
+## [2026-06-17 09:23] spec-sync | spec/ <- c-mless/documentation:handoff/ | New scripts/sync-spec.sh + spec.lock: spec/ is now a vendored mirror of handoff/ pinned @4f48277 (chose sync-script over submodule -> zero citation breakage). Refresh pulled the producer-KYC clarification.
+
+## [2026-06-17 09:23] decisions | 3 ADRs + erratum (Paolo 2026-06-16 call) | ADRs: spec-sync mechanism; producer-KYC not_required-clears (already upstream, no erratum); approval SoD role-gated -- contradicts spec+shipped code, erratum drafted for Paolo, no code change yet. INDEX updated.
