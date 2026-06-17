@@ -283,3 +283,5 @@
 ## [2026-06-17 13:47] ralph | parties-compliance 6.2 | green | 2 files — CONTEXT.md compliance terms (4 KYC/sanctions headwords + 4-event payload contract + 4 deferred seams) + tasks.md; suite 710/710 unchanged, docs-only no DB
 
 ## [2026-06-17 14:02] ralph | parties-compliance 6.3 | green — CHANGE COMPLETE (11/11): ComplianceChainTest full-slice + cross-engine close; 718/718 SQLite + 168/168 PG17 | 1 file
+
+## [2026-06-17 14:46] merge+archive | parties-compliance | merged --no-ff to main (b4e8561) + archived 2026-06-17-parties-compliance (cad774b); delta synced to party-registry spec; semantic-verify clean (0 CRITICAL, 2 WARN); 718 SQLite/168 PG17 green; push to origin pending human auth
