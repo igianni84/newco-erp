@@ -265,3 +265,5 @@
 ## [2026-06-17 11:50] ralph | parties-compliance 1.1 | green | 4 files | KycStatus(+clears)/SanctionsStatus/ScreeningTriggerSource enums; 621/621, phpstan max, validate --strict ok
 
 ## [2026-06-17 12:08] ralph | parties-compliance 1.2 | green | 4 files | additive migration: 8 nullable cols parties_customers + 1 parties_producers, 4 PG nullable-CHECKs, casts+@property on both models; 629/629 SQLite, 132/132 PG17, down() reversible
+
+## [2026-06-17 12:17] ralph | parties-compliance 1.3 | green | 4 files (2 exceptions + lang + test) | 642/642 SQLite, no-DB so PG17 N/A
