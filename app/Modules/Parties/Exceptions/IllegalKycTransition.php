@@ -25,6 +25,12 @@ use RuntimeException;
  * state token (`$from->value`) is a business enum value, NOT PII (the same discipline as the sibling
  * {@see IllegalProducerTransition} guard). `(string)` coerces the translator return (typed `mixed` by
  * Larastan) to the RuntimeException message contract.
+ *
+ * `cannotVerify` / `cannotReject` accept a NULLABLE from-state: `kyc_status` is an additive nullable
+ * column (DEC-071), so a verify/reject call on an un-screened Customer (NULL `kyc_status`) is a real
+ * illegal from-state and is rendered with the `unset` sentinel token. `cannotRequire` / `cannotWaive`
+ * never receive NULL — NULL is a LEGAL from-state for require (un-screened → pending) and for waive
+ * (un-screened → not_required), so their guards never reach the throw with a NULL.
  */
 class IllegalKycTransition extends RuntimeException
 {
@@ -35,17 +41,17 @@ class IllegalKycTransition extends RuntimeException
         ]));
     }
 
-    public static function cannotVerify(KycStatus $from): self
+    public static function cannotVerify(?KycStatus $from): self
     {
         return new self((string) __('parties.kyc.cannot_verify', [
-            'state' => $from->value,
+            'state' => $from->value ?? 'unset',
         ]));
     }
 
-    public static function cannotReject(KycStatus $from): self
+    public static function cannotReject(?KycStatus $from): self
     {
         return new self((string) __('parties.kyc.cannot_reject', [
-            'state' => $from->value,
+            'state' => $from->value ?? 'unset',
         ]));
     }
 

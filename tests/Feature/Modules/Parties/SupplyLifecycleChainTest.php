@@ -271,7 +271,7 @@ it('records zero demand-side lifecycle events — the demand side stays inert th
     expect(DomainEvent::query()->whereIn('entity_type', ['Customer', 'Account', 'Profile'])->count())->toBe(0);
 });
 
-it('exposes only the six supply-side transition Actions — no Customer/Account/Profile transition and no demand-side event type (the scope guard)', function () {
+it('exposes only supply-side and compliance transition Actions — no Customer/Account/Profile status transition and no demand-side event type (the scope guard)', function () {
     // Reflect the Parties Actions namespace: every Action is a flat class file directly under Actions/.
     $files = glob(app_path('Modules/Parties/Actions/*.php')) ?: [];
     expect($files)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
@@ -294,13 +294,21 @@ it('exposes only the six supply-side transition Actions — no Customer/Account/
         expect($actions)->toContain($transition);
     }
 
-    // ...and the ONLY non-Create (transition) Actions are exactly those six. There is no ActivateCustomer /
-    // SuspendAccount / ApproveProfile / LockOriginatingClub — Customer / Account / Profile expose no transition
-    // operation, and `originating_club_id` has no mutation surface (party-registry MODIFIED — "Supply-side
-    // transitions exist; demand-side transitions do not"). If a demand-side transition Action were ever added
-    // here, it would appear in this set and fail the assertion.
+    // ...alongside the compliance transition Actions (parties-compliance — the KYC/sanctions FSMs are SEPARATE
+    // from the Customer/Producer status FSMs, § 9.1/§ 9.4, so they are legitimate non-Create transitions). This
+    // list grows as the compliance slice lands its Actions (Customer KYC here; Producer KYC + sanctions
+    // screening follow), each task declaring its transitions in this guard.
+    $complianceTransitions = [
+        'RequireKyc', 'RecordKycVerified', 'RecordKycRejected',
+    ];
+
+    // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance ones. There is
+    // no ActivateCustomer / SuspendAccount / ApproveProfile / LockOriginatingClub — Customer / Account / Profile
+    // expose no STATUS transition, and `originating_club_id` has no mutation surface (party-registry MODIFIED —
+    // "Supply-side and compliance transitions exist; demand-side status transitions do not"). If a demand-side
+    // STATUS transition Action were ever added here, it would appear in this set and fail the assertion.
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing($supplySideTransitions);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions]);
 
     // Reflect the Events namespace the same way: none of the demand-side lifecycle event types even EXISTS in
     // this change — they are not recordable (the demand-side change introduces them). This complements the runtime

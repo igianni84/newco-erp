@@ -267,3 +267,5 @@
 ## [2026-06-17 12:08] ralph | parties-compliance 1.2 | green | 4 files | additive migration: 8 nullable cols parties_customers + 1 parties_producers, 4 PG nullable-CHECKs, casts+@property on both models; 629/629 SQLite, 132/132 PG17, down() reversible
 
 ## [2026-06-17 12:17] ralph | parties-compliance 1.3 | green | 4 files (2 exceptions + lang + test) | 642/642 SQLite, no-DB so PG17 N/A
+
+## [2026-06-17 12:37] ralph | parties-compliance 2.1 | green | 5 files: 3 KYC Actions + IllegalKycTransition ?KycStatus widen + CustomerKycLifecycleTest 17/17; SupplyLifecycleChain scope-guard +=3; full 659/659, PG17 Parties 110/110
