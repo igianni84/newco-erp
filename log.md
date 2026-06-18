@@ -295,3 +295,5 @@
 ## [2026-06-18 10:01] ralph | parties-holds 1.2 | green | 4 files (migration+Hold model+HoldFactory+HoldSchemaTest); 732/732 SQLite, 174/174 PG17 (Parties+Arch); 3 named CHECKs + composite index proven on PG
 
 ## [2026-06-18 10:08] ralph | parties-holds 1.3 | green | 3 files — IllegalHoldLift (autoManaged/notActive) + lang hold group; suite 738/738, PHPStan max 0, no DB
+
+## [2026-06-18 10:15] ralph | parties-holds 2.1 | green | 3 files (CustomerHoldPlaced/CustomerHoldLifted events + HoldEventsTest) | suite 744/744, PHPStan max 0, no DB
