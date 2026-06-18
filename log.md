@@ -331,3 +331,5 @@
 ## [2026-06-18 21:38] ralph | parties-membership-activation 2.2 | green | ActivateProfile approved→active + root ProfileActivated; 2 guards narrowed; SQLite 817/817, PG17 Parties 320/320; 4 code+2 change files
 
 ## [2026-06-18 21:55] ralph | parties-membership-activation 2.3 | green | ActivateCustomer + composite onboarding gate (5-conjunct, NULL kyc=cleared) + root CustomerActivated; 2 guard tests narrowed; 833/833 SQLite, Parties 336/336 PG17; 4 code/test files + memory
+
+## [2026-06-18 22:08] ralph | parties-membership-activation 3.1 | green | 2 files (new chain test + CONTEXT.md) — full activation chain 836/836 SQLite+PG17, docs extended, 5 guard files unamended, strict valid → CHANGE COMPLETE (7/7)
