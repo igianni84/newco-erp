@@ -291,3 +291,5 @@
 ## [2026-06-18 09:40] spec-to-change | parties-holds | Authored parties-holds change (4 ADDED+2 MODIFIED party-registry reqs, 10 tasks); validate --strict green. Resolved invariant#7 auto-lift tension -> ADR 2026-06-18-hold-lift-discipline-per-type (kyc/payment auto-lift, 4 others operator-only). Awaiting APPROVED.
 
 ## [2026-06-18 09:47] ralph | parties-holds 1.1 | green | 4 files | 3 Hold enums (HoldType+autoLiftable/HoldScope/HoldStatus) + HoldEnumsTest 8/8; suite 726/726, phpstan 0, validate ok
+
+## [2026-06-18 10:01] ralph | parties-holds 1.2 | green | 4 files (migration+Hold model+HoldFactory+HoldSchemaTest); 732/732 SQLite, 174/174 PG17 (Parties+Arch); 3 named CHECKs + composite index proven on PG
