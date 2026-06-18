@@ -305,3 +305,5 @@
 ## [2026-06-18 10:59] ralph | parties-holds 4.1 | green | KYC↔Hold coupling: RequireKyc reuses PlaceHold, RecordKycVerified inlines system kyc-Hold lift; 3 shipped tests flipped (incl. ComplianceChainTest); 754 SQLite + 184 PG17 | 5 files
 
 ## [2026-06-18 11:15] ralph | parties-holds 5.1 | green | 5 files (3 new contracts/reads + provider bind + test); read-API 772/772 SQLite, PG17 202/202; 8/11 done
+
+## [2026-06-18 11:25] ralph | parties-holds 6.1 | green | 3 files | HoldRegistryTest 9 cases (BR-K-Hold-1 multi-Hold, 6 types x 3 scopes placeable, demand-side scope guard); 781/781 SQLite, PG17 211/211
