@@ -309,3 +309,5 @@
 ## [2026-06-18 11:25] ralph | parties-holds 6.1 | green | 3 files | HoldRegistryTest 9 cases (BR-K-Hold-1 multi-Hold, 6 types x 3 scopes placeable, demand-side scope guard); 781/781 SQLite, PG17 211/211
 
 ## [2026-06-18 11:35] ralph | parties-holds 6.2 | green | docs: CONTEXT.md Hold cluster (6 terms) + Parties Hold events/read-API/seams subsection; kyc-coupling seam marked landed | 2 files | 781/781, docs-only no PG17
+
+## [2026-06-18 12:06] parties-holds 6.3 | HoldChainTest + cross-engine PG17 close | Closing chain test 2/2 (46 assertions); full suite 783/783 green on SQLite AND PG17; parties_holds value-set CHECKs + scope index verified on PG. Change 11/11 → CHANGE_COMPLETE. Ready for GUIDE §2.7 merge/archive.
