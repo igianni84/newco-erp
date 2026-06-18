@@ -17,3 +17,13 @@
 (append one entry per ralph iteration: task id → what shipped → quality/PG17 result → any new pattern)
 
 _seed — authored 2026-06-18 via `/spec-to-change`; awaiting human APPROVED + `./ralph.sh --change parties-holds`._
+
+## [2026-06-18 09:47] — 1.1 Hold enums + the `autoLiftable` predicate
+- Implemented the three string-backed Hold enums under `app/Modules/Parties/Enums/`: `HoldType` (`admin/kyc/payment/fraud/compliance/credit`) carrying the `autoLiftable(): bool` first predicate (true for `Kyc`/`Payment` only — mirrors `KycStatus::clears()`); `HoldScope` (`customer/account/profile`); `HoldStatus` (`active/lifted`). Docblocks cite design L1/L2 + spec § 4.8 + DEC-160/AC-K-FSM-11 + ADR 2026-06-18.
+- Files changed: `app/Modules/Parties/Enums/HoldType.php` (new), `HoldScope.php` (new), `HoldStatus.php` (new), `tests/Unit/Modules/Parties/Enums/HoldEnumsTest.php` (new — 8 tests, mirrors `ComplianceEnumsTest`), `openspec/changes/parties-holds/tasks.md` (1.1 flipped).
+- Quality loop: **green** — Pint clean · HoldEnumsTest 8/8 (19 assertions) · full suite 726/726 (3380 assertions, up from 718) · PHPStan max 0 errors · Pint --test clean · `openspec validate parties-holds --strict` valid.
+- No DB touched (pure enums) → no PG17 run needed this task; the migration (1.2) is the first PG17-gated task.
+- **Learnings for future iterations:**
+  - The carryover enum house style held verbatim: `enum X: string`, PascalCase cases in spec order, predicate as the FIRST method, docblock = design L-tag + spec § + ADR. The test pins order-sensitive `case→value` maps via a `foreach`-built assoc array + `toBe([...])` + `toHaveCount` + a `from()` round-trip + per-enum `ValueError`. Bogus tokens chosen to be *semantically adjacent* (`expired` for type/status, `producer` for scope) so the test documents the domain edges, not just "rejects garbage".
+  - `autoLiftable()` is intentionally `$this === self::Kyc || $this === self::Payment` (positive list), not `!in_array(...)` — same shape as `KycStatus::clears()`; keeps the auto-managed pair the single source of truth for the `LiftHold` guard (3.2) and the `RecordKycVerified` system-lift path (4.1).
+---

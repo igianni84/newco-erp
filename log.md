@@ -287,3 +287,7 @@
 ## [2026-06-17 14:46] merge+archive | parties-compliance | merged --no-ff to main (b4e8561) + archived 2026-06-17-parties-compliance (cad774b); delta synced to party-registry spec; semantic-verify clean (0 CRITICAL, 2 WARN); 718 SQLite/168 PG17 green; push to origin pending human auth
 
 ## [2026-06-17 16:02] close-out | parties-compliance | push to origin/main landed (0c23988) + ralph branch deleted (human); change fully closed out, working tree clean
+
+## [2026-06-18 09:40] spec-to-change | parties-holds | Authored parties-holds change (4 ADDED+2 MODIFIED party-registry reqs, 10 tasks); validate --strict green. Resolved invariant#7 auto-lift tension -> ADR 2026-06-18-hold-lift-discipline-per-type (kyc/payment auto-lift, 4 others operator-only). Awaiting APPROVED.
+
+## [2026-06-18 09:47] ralph | parties-holds 1.1 | green | 4 files | 3 Hold enums (HoldType+autoLiftable/HoldScope/HoldStatus) + HoldEnumsTest 8/8; suite 726/726, phpstan 0, validate ok

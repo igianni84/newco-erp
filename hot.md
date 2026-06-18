@@ -1,7 +1,7 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-17
+updated: 2026-06-18
 ---
 
 # Hot Cache
@@ -10,23 +10,23 @@ updated: 2026-06-17
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-17 (interactive — `parties-compliance` MERGED to main + ARCHIVED).** Post-loop close-out (GUIDE §2.7) run by hand. Independently re-verified the loop's green: **718/718 SQLite** (3361 assertions), PHPStan max 0, Pint clean, `openspec validate --strict` valid, composer diff empty. Semantic verification (subagent, per §2.7) = **CLEAN-WITH-WARNINGS, 0 CRITICAL** → merge approved. Two non-blocking WARNINGs noted: (1) dead `IllegalSanctionsTransition::cannotResolve()` factory + its `parties.sanctions.cannot_resolve` lang key (never called in production — documented scope decision); (2) copy nuance in `parties.kyc.cannot_require` (omits NULL as legal from-state; harmless). Merged `ralph/parties-compliance` → `main` `--no-ff` (**b4e8561**); archived to `openspec/changes/archive/2026-06-17-parties-compliance/`, delta synced into `openspec/specs/party-registry/spec.md` (+4 req, ~2 mod) (**cad774b**); then memory committed (0c23988) and **pushed to `origin/main`** (human ran the push + `git branch -d ralph/parties-compliance`). PG17 cross-engine close (168/168) was run by the loop, not re-run here.
+**2026-06-18 (ralph — `parties-holds` iteration 1/30, task 1.1 DONE).** The change is APPROVED and the loop is running. Shipped the three string-backed Hold enums under `app/Modules/Parties/Enums/`: `HoldType` (`admin/kyc/payment/fraud/compliance/credit`) + the `autoLiftable()` first predicate (true for `Kyc`/`Payment` only — mirrors `KycStatus::clears()`), `HoldScope` (`customer/account/profile`), `HoldStatus` (`active/lifted`). New `HoldEnumsTest` (8 tests). Quality loop fully green; committed.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev; prod PG17.
-- **Green: 718/718 SQLite** (3361 assertions). PHPStan max 0 · Pint clean. PG17 168/168 (from the loop).
-- **Pushed to `origin/main`** — origin in sync at `0c23988`; `ralph/parties-compliance` merged + branch deleted.
+- **Green: 726/726 SQLite** (3380 assertions) — up from 718 (the 8 new `HoldEnumsTest` cases). PHPStan max 0 · Pint clean · `openspec validate parties-holds --strict` valid.
+- No DB touched yet (pure enums); PG17 run not needed until the migration (task 1.2). Composer untouched (no new dep).
 
 ## Active Change & Next Task
-- **No active change.** `parties-compliance` merged + archived (11th archived change); `openspec/changes/` clean.
-- Build position: **end of Phase 2** (Catalog Mod 0 domain-complete; Parties Mod K ~70-75%). **Phases 3-6 (A/D/S/B/C/E) NOT started** — those module dirs are 30-line stub providers; no domain UI (no Filament resources). No commercial E2E possible yet.
-- **Next ralph run needs a fresh APPROVED change.** Likely successors on the Parties slice: **`parties-holds`** (unified 6-type Hold registry + `kyc`-Hold coupling onto the KYC Actions) or **`parties-membership-lifecycle`** (demand-side Customer/Account/Profile status FSMs). Run `/spec-to-change` to author.
+- **`parties-holds` — IN PROGRESS (1/11 tasks done).** Unified `parties_holds` registry: 6 types / 3 scopes / `active|lifted`, PlaceHold/LiftHold + per-type lift discipline, the `kyc`-Hold coupling (auto-place on `RequireKyc`, auto-lift on `RecordKycVerified` — MODIFIES those 2 Actions), `CustomerHoldPlaced`/`CustomerHoldLifted` events, and the `(sanctions_status, active-Hold-list)` read-API tuple.
+- **Next task: 1.2** — the additive migration `database/migrations/2026_06_18_000001_create_parties_holds_table.php` + `Hold` model + `HoldFactory`. **First PG17-gated task** (composite index `(scope_type,scope_id,status)` + non-nullable PG-only `CHECK`s from `Enum::cases()`, polymorphic `scope_id` with NO DB FK). Idiom = `Schema::create` (NEW table) → plain `CHECK (col IN (...))` per `2026_06_15_000005_create_parties_customers_table.php` (NOT the nullable form). Test: `tests/Feature/Modules/Parties/HoldSchemaTest.php`.
+- Build position: end of Phase 2; Mod K ~75-80% once this slice lands (closes the Phase-2 Hold-workflows signoff floor).
 
 ## Blockers & Decisions Needed
-- **None.** `parties-compliance` fully closed out: merged `--no-ff` (b4e8561) → archived (cad774b) → memory (0c23988) → **pushed to origin/main**, `ralph` branch deleted. No active change, no open ADR gate.
-- Optional follow-up micro-change: remove the dead `cannotResolve()` factory + its lang key + unit-test case.
+- None. ADR `2026-06-18-hold-lift-discipline-per-type.md` is the standing authority for the per-type lift discipline (root `CLAUDE.md` Invariant #7 kept as-is by Giovanni's 2026-06-18 call — Protected file, not edited).
+- No open ADR gate stepped through (events inline; no queue/object-storage/payment-provider/dependency).
 
 ## Open Patterns
-- **Close-out ritual idiom (§2.7):** re-verify the loop's green independently; run semantic-verify as a GATE **before** merge (safer than the GUIDE's after-merge order); only then merge `--no-ff` + archive; hold the branch until the push lands.
-- **PG17 gate recipe:** `docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17`; wait `until docker exec pg pg_isready -U newco -q; do sleep 0.5; done`; `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=512M vendor/bin/pest <paths>`; `docker rm -f pg`.
-- **Full suite runner** = `php -d memory_limit=512M vendor/bin/pest` (plain `php artisan test` OOMs at 128M).
+- **Enum house style (carryover, re-confirmed 1.1):** `enum X: string`, PascalCase cases in spec order, predicate as the FIRST method, docblock = design L-tag + spec § + ADR. Test pins order-sensitive `case→value` maps + `toHaveCount` + `from()` round-trip + per-enum `ValueError` (bogus token chosen semantically-adjacent to document the domain edge).
+- **`autoLiftable()` is the single source of truth** for both the `LiftHold` operator guard (task 3.2 rejects auto-managed) and the `RecordKycVerified` system-lift path (task 4.1). Positive list (`=== Kyc || === Payment`), not negation.
+- **The Hold registry is trigger-agnostic:** the 6 types + manual path + lift discipline ship now; `payment`/`fraud`/`compliance`/`credit` auto-triggers (+ finance subtypes) are Module-E seams. Scope is polymorphic (`scope_type`+`scope_id`, no FK); cascade resolves at READ (the read-API), not by duplicate rows.
