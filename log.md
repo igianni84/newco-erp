@@ -313,3 +313,5 @@
 ## [2026-06-18 12:06] parties-holds 6.3 | HoldChainTest + cross-engine PG17 close | Closing chain test 2/2 (46 assertions); full suite 783/783 green on SQLite AND PG17; parties_holds value-set CHECKs + scope index verified on PG. Change 11/11 → CHANGE_COMPLETE. Ready for GUIDE §2.7 merge/archive.
 
 ## [2026-06-18 12:15] archive | parties-holds | Merged --no-ff (6c6275b) + archived as 2026-06-18-parties-holds; synced +4 ADDED/~2 MODIFIED reqs into specs/party-registry. Semantic verify CLEAN. 783/783 SQLite+PG17. NOT pushed (human's call).
+
+## [2026-06-18 12:19] push | main → origin | parties-holds merge+archive pushed (2dfbc13) to github newco-erp; CI incl. tests-pgsql triggered; merged branch ralph/parties-holds deleted. main == origin/main.
