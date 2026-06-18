@@ -323,3 +323,5 @@
 ## [2026-06-18 20:50] ralph | parties-membership-activation 1.1 | green | 3 files: additive migration (3 nullable timestamptz onboarding-acceptance cols on parties_customers) + Customer casts/@property + test. 786/786 SQLite & PG17; down/up reversible on PG17; validate --strict green; composer diff empty.
 
 ## [2026-06-18 20:59] ralph | parties-membership-activation 1.2 | green | 4 files | IllegalProfile/CustomerTransition exceptions + 5 lang keys; full suite 797/797, phpstan 0, lint clean; no DB/no PG; guard tests untouched
+
+## [2026-06-18 21:11] ralph | parties-membership-activation 1.3 | green | 5 files | 3 activation event classes (Customer/Profile/Activated + OriginatingClubLocked §6.1) + narrowed SupplyLifecycleChain existence guard; 803/803, no DB→no PG

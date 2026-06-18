@@ -322,13 +322,18 @@ it('exposes only supply-side and compliance transition Actions — no Customer/A
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
     expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions]);
 
-    // Reflect the Events namespace the same way: none of the demand-side lifecycle event types even EXISTS in
-    // this change — they are not recordable (the demand-side change introduces them). This complements the runtime
-    // "zero demand-side events" assertion: not merely unrecorded, but un-recordable.
+    // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
+    // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This
+    // complements the runtime "zero demand-side events" assertion above: not merely unrecorded, but un-recordable.
+    // The three ACTIVATION events (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked`) now ship with
+    // parties-membership-activation, so they are removed from this absent-set (the runtime loop above still pins
+    // that the supply-side chain records none of them). What stays asserted-absent is the remaining demand side:
+    // `AccountActivated` (Account suspension slice), `ProfileApproved` (the audit-only proof — § 15.2 names no
+    // approve/decline event) and `CustomerSegmentChanged` (the segments slice).
     $eventFiles = glob(app_path('Modules/Parties/Events/*.php')) ?: [];
     $events = array_map(static fn (string $file): string => basename($file, '.php'), $eventFiles);
     expect($events)->not->toBeEmpty();
-    foreach (['CustomerActivated', 'AccountActivated', 'ProfileActivated', 'ProfileApproved', 'OriginatingClubLocked', 'CustomerSegmentChanged'] as $demandSideEvent) {
+    foreach (['AccountActivated', 'ProfileApproved', 'CustomerSegmentChanged'] as $demandSideEvent) {
         expect($events)->not->toContain($demandSideEvent);
     }
 });
