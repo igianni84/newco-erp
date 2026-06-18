@@ -293,3 +293,5 @@
 ## [2026-06-18 09:47] ralph | parties-holds 1.1 | green | 4 files | 3 Hold enums (HoldType+autoLiftable/HoldScope/HoldStatus) + HoldEnumsTest 8/8; suite 726/726, phpstan 0, validate ok
 
 ## [2026-06-18 10:01] ralph | parties-holds 1.2 | green | 4 files (migration+Hold model+HoldFactory+HoldSchemaTest); 732/732 SQLite, 174/174 PG17 (Parties+Arch); 3 named CHECKs + composite index proven on PG
+
+## [2026-06-18 10:08] ralph | parties-holds 1.3 | green | 3 files — IllegalHoldLift (autoManaged/notActive) + lang hold group; suite 738/738, PHPStan max 0, no DB

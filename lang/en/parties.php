@@ -70,4 +70,12 @@ return [
         'onboarding_already_screened' => 'Cannot record an onboarding sanctions screening: this Customer has already been screened. The onboarding screening is a Customer\'s first screening only.',
         'cannot_resolve' => 'Cannot resolve the sanctions screening from state :state. Only an under_review screening resolves to passed or failed.',
     ],
+    'hold' => [
+        // Hold lift discipline (parties-holds, design L2; § 4.8.1 DEC-160 / AC-K-FSM-11; ADR
+        // 2026-06-18-hold-lift-discipline-per-type). LiftHold (the operator path) throws IllegalHoldLift
+        // on a rejected lift. :type is the offending Hold-type token, :state the offending lifecycle-status
+        // token — both business enum values, not PII (the same discipline as the kyc/producer :state reasons).
+        'cannot_lift_auto_managed' => 'Cannot lift this :type Hold from the operator path. An auto-managed Hold lifts only on its system clearing signal, never by an operator.',
+        'cannot_lift_not_active' => 'Cannot lift a Hold from state :state. A Hold lifts only from active.',
+    ],
 ];
