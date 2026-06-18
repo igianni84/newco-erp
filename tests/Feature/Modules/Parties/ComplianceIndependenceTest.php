@@ -30,12 +30,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     now AUTO-PLACES then AUTO-LIFTS the coupled `kyc` Hold (parties-holds), so the compliance flow records the two
  *     Hold events plus the sanctions completion — and no event NAME contains "Kyc";
  *   - the scope guard: reflecting the Parties `Actions/` namespace, the compliance + supply-side transition Actions
- *     exist but NO demand-side STATUS transition class does (no `ActivateCustomer` / `SuspendAccount` /
- *     `ApproveProfile` / `LockOriginatingClub`), `originating_club_id` has no setter (CreateCustomer's surface is
- *     exactly creation, and it is the only Action that writes the column — only NULL, at birth), the coupled `kyc`
- *     Hold place/lift performs NO Customer STATUS transition (the Hold→`suspended` coupling is deferred), and no
- *     demand-side status event (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` /
- *     `CustomerSegmentChanged`) is recorded.
+ *     exist and — since parties-membership-activation — so does the demand-side Profile approve/decline pair
+ *     (`ApproveProfile` / `DeclineProfile`), BUT the still-deferred demand-side status transitions do not (no
+ *     `ActivateCustomer` / `ActivateProfile` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
+ *     ONLY mutation surface is the one-shot lock inside `ApproveProfile` (CreateCustomer writes it once to NULL at
+ *     birth — no other Action touches it), the coupled `kyc` Hold place/lift performs NO Customer STATUS transition
+ *     (the Hold→`suspended` coupling is deferred), and — driving the REAL compliance Actions — no demand-side status
+ *     event (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` / `CustomerSegmentChanged`) is recorded.
  *
  * The EXACT-SET "only these non-Create Actions exist" whitelist has a single canonical home in
  * {@see SupplyLifecycleChainTest}; this file is its independence-angle companion and uses a forbidden-name negative
@@ -140,39 +141,50 @@ it('exposes the compliance + supply-side transitions but no demand-side status t
         expect($actions)->toContain($present);
     }
 
-    // ...but NO demand-side STATUS transition class exists: Customer / Account / Profile expose no operation moving
-    // their status out of its birth state (party-registry MODIFIED — "demand-side status transitions do not [exist]").
-    // The forbidden names follow the codebase's verb+Entity convention (cf. ActivateProducer / RetireProducer /
-    // SunsetClub) and map 1:1 to the deferred demand-side events. The EXACT-SET "only these exist" whitelist lives
-    // canonically in SupplyLifecycleChainTest; this negative check is its independence-angle companion (robust to a
-    // future legitimate compliance Action being added without touching two files).
+    // ...but the STILL-DEFERRED demand-side STATUS transitions do not exist: Customer / Account expose no operation
+    // moving their status out of its birth state, and the Profile ACTIVATION transition (`ActivateProfile`) has not
+    // landed yet (party-registry MODIFIED — those demand-side status transitions remain deferred). The now-shipped
+    // approve/decline pair (`ApproveProfile` / `DeclineProfile`, parties-membership-activation — the one retained
+    // producer write) is REMOVED from this forbidden set: its presence is pinned by the EXACT-SET whitelist in
+    // SupplyLifecycleChainTest (this negative check is the independence-angle companion, robust to a future
+    // legitimate compliance Action). The remaining forbidden names follow the codebase's verb+Entity convention and
+    // map 1:1 to the deferred demand-side events.
     foreach ([
         'ActivateCustomer', 'SuspendCustomer', 'CloseCustomer',
         'ActivateAccount', 'SuspendAccount', 'CloseAccount',
-        'ApproveProfile', 'ActivateProfile', 'DeclineProfile',
+        'ActivateProfile',
         'LockOriginatingClub', 'SetOriginatingClub',
     ] as $forbidden) {
         expect($actions)->not->toContain($forbidden);
     }
 
-    // `originating_club_id` has no setter (BR-K-OC-2 / design D6 — the one-shot OriginatingClubLocked write arrives
-    // with the deferred membership-approval change). CreateCustomer's public surface is exactly creation...
+    // `originating_club_id`'s mutation surface is now the one-shot lock inside ApproveProfile (BR-K-OC-2 / design L3
+    // — parties-membership-activation): the deferred membership-approval write has landed. CreateCustomer's public
+    // surface is still exactly creation...
     $createCustomerMethods = collect((new ReflectionClass(CreateCustomer::class))->getMethods(ReflectionMethod::IS_PUBLIC))
         ->map(static fn (ReflectionMethod $method): string => $method->getName())
         ->all();
     expect($createCustomerMethods)->toEqualCanonicalizing(['__construct', 'handle']);
 
-    // ...and CreateCustomer is the ONLY Action that writes the column — exactly once, to NULL, at birth. No other
-    // Action writes it (the assertion targets the array-key write form `'originating_club_id' =>`, so a docblock
-    // that merely mentions the column in prose — e.g. CloseClub's "seam now" note — is not a false positive).
+    // ...and exactly two Actions write the column: CreateCustomer once (to NULL, at birth) and ApproveProfile once
+    // (the one-shot lock, to the approving Club on the first approval); every OTHER Action writes it zero times (the
+    // assertion targets the array-key write form `'originating_club_id' =>`, so a docblock that merely mentions the
+    // column in prose — e.g. CloseClub's "seam now" note or ApproveProfile's lock prose — is not a false positive).
     foreach ($files as $file) {
+        $name = basename($file, '.php');
         $source = (string) file_get_contents($file);
         $writes = substr_count($source, "'originating_club_id' =>");
-        if (basename($file, '.php') === 'CreateCustomer') {
+        if ($name === 'CreateCustomer') {
             expect($writes)->toBe(1)
-                ->and($source)->toContain("'originating_club_id' => null");   // born NULL — the only write, at birth
+                ->and($source)->toContain("'originating_club_id' => null");   // born NULL — the birth write
+        } elseif ($name === 'ApproveProfile') {
+            // The Originating-Club one-shot lock (design L3) — the column's only MUTATION surface: a conditional,
+            // non-NULL write (to the approving Club), never a reset to null. Gated on the link being unset, so the
+            // lock is idempotent + immutable.
+            expect($writes)->toBe(1)
+                ->and($source)->not->toContain("'originating_club_id' => null");
         } else {
-            expect($writes)->toBe(0);   // no mutation surface for the Originating-Club FK
+            expect($writes)->toBe(0);   // no other Action writes the Originating-Club FK
         }
     }
 });
