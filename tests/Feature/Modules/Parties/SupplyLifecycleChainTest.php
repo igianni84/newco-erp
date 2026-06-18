@@ -308,9 +308,10 @@ it('exposes only supply-side and compliance transition Actions — no Customer/A
     // a supply-side status transition nor a compliance-screening transition; crucially, placing/lifting a Hold
     // performs NO Customer/Account/Profile STATUS transition (the Hold→`suspended` coupling is a deferred
     // demand-side seam — proposal slice boundary), so these registry Actions do not breach the scope guard this
-    // test pins. This list grows with the slice's Action tasks (PlaceHold here; LiftHold follows in task 3.2).
+    // test pins. Both place (PlaceHold) and lift (LiftHold) shipped with the slice's Action tasks.
     $holdTransitions = [
         'PlaceHold',
+        'LiftHold',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry

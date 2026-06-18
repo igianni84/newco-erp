@@ -299,3 +299,5 @@
 ## [2026-06-18 10:15] ralph | parties-holds 2.1 | green | 3 files (CustomerHoldPlaced/CustomerHoldLifted events + HoldEventsTest) | suite 744/744, PHPStan max 0, no DB
 
 ## [2026-06-18 10:30] ralph | parties-holds 3.1 | green | PlaceHold Action (create+record CustomerHoldPlaced, actor resolved once) | 746/746 SQLite, PG17 176/176 | 3 files
+
+## [2026-06-18 10:39] ralph | parties-holds 3.2 | green | 4 files | LiftHold + per-type lift discipline; 753/753 SQLite, 183/183 PG17; openspec strict valid
