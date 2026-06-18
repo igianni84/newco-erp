@@ -307,3 +307,5 @@
 ## [2026-06-18 11:15] ralph | parties-holds 5.1 | green | 5 files (3 new contracts/reads + provider bind + test); read-API 772/772 SQLite, PG17 202/202; 8/11 done
 
 ## [2026-06-18 11:25] ralph | parties-holds 6.1 | green | 3 files | HoldRegistryTest 9 cases (BR-K-Hold-1 multi-Hold, 6 types x 3 scopes placeable, demand-side scope guard); 781/781 SQLite, PG17 211/211
+
+## [2026-06-18 11:35] ralph | parties-holds 6.2 | green | docs: CONTEXT.md Hold cluster (6 terms) + Parties Hold events/read-API/seams subsection; kyc-coupling seam marked landed | 2 files | 781/781, docs-only no PG17
