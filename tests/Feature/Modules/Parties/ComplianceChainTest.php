@@ -13,6 +13,8 @@ use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Enums\SanctionsStatus;
 use App\Modules\Parties\Enums\ScreeningTriggerSource;
+use App\Modules\Parties\Events\CustomerHoldLifted;
+use App\Modules\Parties\Events\CustomerHoldPlaced;
 use App\Modules\Parties\Events\CustomerOnboardingScreeningPassed;
 use App\Modules\Parties\Events\CustomerRescreeningPassed;
 use App\Modules\Parties\Events\ProducerActivated;
@@ -34,11 +36,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * KYC, screen + re-screen sanctions, open + waive Producer KYC, then activate the Producer through the NEW
  * KYC-cleared gate — and asserts the emergent contract of the slice as a whole:
  *   - every FSM reaches its cleared/screened terminal and the Producer activates (the gate admits `not_required`);
- *   - the chain records EXACTLY the two sanctions completions + the one ProducerActivated — KYC is event-silent
- *     (design L3 — the PRD § 15.1 names no KYC event), no `kyc` Hold is placed (the unified Hold registry is the
- *     deferred `parties-holds`), and the demand side stays inert (no CustomerActivated / AccountActivated /
- *     ProfileActivated / ProfileApproved / OriginatingClubLocked / CustomerSegmentChanged, no Account/Profile
- *     entity-type event);
+ *   - the chain records EXACTLY the two sanctions completions + the one ProducerActivated + the coupled `kyc` Hold's
+ *     place and lift (Customer require auto-places it, verify auto-lifts it — parties-holds) — KYC ITSELF is
+ *     event-silent (design L3 — the PRD § 15.1 names no KYC event; no event NAME contains "Kyc"), and the demand
+ *     side stays inert (no CustomerActivated / AccountActivated / ProfileActivated / ProfileApproved /
+ *     OriginatingClubLocked / CustomerSegmentChanged, no Account/Profile entity-type event);
  *   - the Producer activation matrix holds, driven through the REAL Producer-KYC Actions into the gate: cleared
  *     (`verified` / `not_required` / NULL) admits, blocking (`pending` / `rejected`) rejects with the Producer left
  *     `draft` and no event (AC-K-FSM-7);
@@ -116,13 +118,17 @@ it('drives every compliance FSM to its cleared/screened terminal and activates t
         ->and($producer->status)->toBe(ProducerStatus::Active);                            // activated through the cleared gate
 });
 
-it('records exactly the two sanctions screening events and the one ProducerActivated — no KYC event, no Hold, demand side inert', function () {
+it('records exactly the two sanctions events, the one ProducerActivated and the coupled kyc Hold place/lift — no KYC event, demand side inert', function () {
     runComplianceChain();
 
-    // EXACTLY three events: the two sanctions completions + the ProducerActivated from the gate. KYC is
-    // event-silent (design L3), so neither the Customer-KYC require→verify nor the Producer-KYC require→waive
-    // contributes a row. Asserted BY NAME (knowledge/testing trap 3 — never byte-compare PG jsonb).
+    // EXACTLY five events: the two sanctions completions + the ProducerActivated from the gate + the coupled `kyc`
+    // Hold's place (Customer require) and lift (Customer verify). KYC ITSELF is event-silent (design L3), so neither
+    // the Customer-KYC require→verify nor the Producer-KYC require→waive contributes a KYC-named row — the two Hold
+    // rows are the coupling's, not KYC's (Producer KYC has no Hold coupling — only Customer KYC). Asserted BY NAME
+    // (knowledge/testing trap 3 — never byte-compare PG jsonb).
     $expected = [
+        CustomerHoldPlaced::NAME => 1,
+        CustomerHoldLifted::NAME => 1,
         CustomerOnboardingScreeningPassed::NAME => 1,
         CustomerRescreeningPassed::NAME => 1,
         ProducerActivated::NAME => 1,
@@ -131,21 +137,17 @@ it('records exactly the two sanctions screening events and the one ProducerActiv
         expect(DomainEvent::query()->where('name', $name)->count())->toBe($count);
     }
 
-    // Exactly these three distinct names and NO other — pinned so no surprise event can slip in. 3 rows total, all
+    // Exactly these five distinct names and NO other — pinned so no surprise event can slip in. 5 rows total, all
     // module `parties`, all resolved to the System actor (the ActorContext seam default).
-    expect(DomainEvent::query()->pluck('name')->unique()->values()->all())->toEqualCanonicalizing([
-        CustomerOnboardingScreeningPassed::NAME,
-        CustomerRescreeningPassed::NAME,
-        ProducerActivated::NAME,
-    ]);
-    expect(DomainEvent::query()->count())->toBe(3)
-        ->and(DomainEvent::query()->where('module', 'parties')->count())->toBe(3)
+    expect(DomainEvent::query()->pluck('name')->unique()->values()->all())->toEqualCanonicalizing(array_keys($expected));
+    expect(DomainEvent::query()->count())->toBe(5)
+        ->and(DomainEvent::query()->where('module', 'parties')->count())->toBe(5)
         ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
 
-    // KYC is event-silent (Customer AND Producer): no event name carries "Kyc". And no `kyc` Hold is placed — the
-    // unified Hold registry is the deferred `parties-holds` (design L3 / proposal slice boundary).
+    // KYC is event-silent (Customer AND Producer): no event name carries "Kyc" (the coupled Hold events are named
+    // CustomerHold*, not *Kyc*). The only Hold events are the coupled `kyc` Hold's place + lift — exactly two.
     expect(DomainEvent::query()->where('name', 'like', '%Kyc%')->count())->toBe(0)
-        ->and(DomainEvent::query()->where('name', 'like', '%Hold%')->count())->toBe(0);
+        ->and(DomainEvent::query()->where('name', 'like', '%Hold%')->count())->toBe(2);
 
     // The demand side stays inert: no demand-side status event is recorded (party-registry MODIFIED "Birth
     // States…" — the demand-side change owns these). Asserted by EXACT name (not `like '%Activated%'`, which would
@@ -158,7 +160,8 @@ it('records exactly the two sanctions screening events and the one ProducerActiv
     }
 
     // No event carries an Account or Profile entity type — the compliance chain touches neither. The sanctions
-    // events legitimately carry the Customer type and ProducerActivated the Producer type, so those are NOT excluded.
+    // events carry the Customer type, ProducerActivated the Producer type, and the coupled Hold events the `Hold`
+    // type, so none of those are excluded here.
     expect(DomainEvent::query()->whereIn('entity_type', ['Account', 'Profile'])->count())->toBe(0);
 });
 

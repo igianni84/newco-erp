@@ -287,3 +287,27 @@
 ## [2026-06-17 14:46] merge+archive | parties-compliance | merged --no-ff to main (b4e8561) + archived 2026-06-17-parties-compliance (cad774b); delta synced to party-registry spec; semantic-verify clean (0 CRITICAL, 2 WARN); 718 SQLite/168 PG17 green; push to origin pending human auth
 
 ## [2026-06-17 16:02] close-out | parties-compliance | push to origin/main landed (0c23988) + ralph branch deleted (human); change fully closed out, working tree clean
+
+## [2026-06-18 09:40] spec-to-change | parties-holds | Authored parties-holds change (4 ADDED+2 MODIFIED party-registry reqs, 10 tasks); validate --strict green. Resolved invariant#7 auto-lift tension -> ADR 2026-06-18-hold-lift-discipline-per-type (kyc/payment auto-lift, 4 others operator-only). Awaiting APPROVED.
+
+## [2026-06-18 09:47] ralph | parties-holds 1.1 | green | 4 files | 3 Hold enums (HoldType+autoLiftable/HoldScope/HoldStatus) + HoldEnumsTest 8/8; suite 726/726, phpstan 0, validate ok
+
+## [2026-06-18 10:01] ralph | parties-holds 1.2 | green | 4 files (migration+Hold model+HoldFactory+HoldSchemaTest); 732/732 SQLite, 174/174 PG17 (Parties+Arch); 3 named CHECKs + composite index proven on PG
+
+## [2026-06-18 10:08] ralph | parties-holds 1.3 | green | 3 files — IllegalHoldLift (autoManaged/notActive) + lang hold group; suite 738/738, PHPStan max 0, no DB
+
+## [2026-06-18 10:15] ralph | parties-holds 2.1 | green | 3 files (CustomerHoldPlaced/CustomerHoldLifted events + HoldEventsTest) | suite 744/744, PHPStan max 0, no DB
+
+## [2026-06-18 10:30] ralph | parties-holds 3.1 | green | PlaceHold Action (create+record CustomerHoldPlaced, actor resolved once) | 746/746 SQLite, PG17 176/176 | 3 files
+
+## [2026-06-18 10:39] ralph | parties-holds 3.2 | green | 4 files | LiftHold + per-type lift discipline; 753/753 SQLite, 183/183 PG17; openspec strict valid
+
+## [2026-06-18 10:59] ralph | parties-holds 4.1 | green | KYC↔Hold coupling: RequireKyc reuses PlaceHold, RecordKycVerified inlines system kyc-Hold lift; 3 shipped tests flipped (incl. ComplianceChainTest); 754 SQLite + 184 PG17 | 5 files
+
+## [2026-06-18 11:15] ralph | parties-holds 5.1 | green | 5 files (3 new contracts/reads + provider bind + test); read-API 772/772 SQLite, PG17 202/202; 8/11 done
+
+## [2026-06-18 11:25] ralph | parties-holds 6.1 | green | 3 files | HoldRegistryTest 9 cases (BR-K-Hold-1 multi-Hold, 6 types x 3 scopes placeable, demand-side scope guard); 781/781 SQLite, PG17 211/211
+
+## [2026-06-18 11:35] ralph | parties-holds 6.2 | green | docs: CONTEXT.md Hold cluster (6 terms) + Parties Hold events/read-API/seams subsection; kyc-coupling seam marked landed | 2 files | 781/781, docs-only no PG17
+
+## [2026-06-18 12:06] parties-holds 6.3 | HoldChainTest + cross-engine PG17 close | Closing chain test 2/2 (46 assertions); full suite 783/783 green on SQLite AND PG17; parties_holds value-set CHECKs + scope index verified on PG. Change 11/11 → CHANGE_COMPLETE. Ready for GUIDE §2.7 merge/archive.

@@ -304,13 +304,23 @@ it('exposes only supply-side and compliance transition Actions — no Customer/A
         'RecordCustomerScreening',
     ];
 
-    // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance ones. There is
-    // no ActivateCustomer / SuspendAccount / ApproveProfile / LockOriginatingClub — Customer / Account / Profile
-    // expose no STATUS transition, and `originating_club_id` has no mutation surface (party-registry MODIFIED —
-    // "Supply-side and compliance transitions exist; demand-side status transitions do not"). If a demand-side
-    // STATUS transition Action were ever added here, it would appear in this set and fail the assertion.
+    // ...and the Hold lifecycle Actions (parties-holds — the unified Hold registry's place/lift). A Hold is neither
+    // a supply-side status transition nor a compliance-screening transition; crucially, placing/lifting a Hold
+    // performs NO Customer/Account/Profile STATUS transition (the Hold→`suspended` coupling is a deferred
+    // demand-side seam — proposal slice boundary), so these registry Actions do not breach the scope guard this
+    // test pins. Both place (PlaceHold) and lift (LiftHold) shipped with the slice's Action tasks.
+    $holdTransitions = [
+        'PlaceHold',
+        'LiftHold',
+    ];
+
+    // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry
+    // ones. There is no ActivateCustomer / SuspendAccount / ApproveProfile / LockOriginatingClub — Customer /
+    // Account / Profile expose no STATUS transition, and `originating_club_id` has no mutation surface (party-registry
+    // MODIFIED — "Supply-side, compliance and Hold transitions exist; demand-side status transitions do not"). If a
+    // demand-side STATUS transition Action were ever added here, it would appear in this set and fail the assertion.
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions]);
 
     // Reflect the Events namespace the same way: none of the demand-side lifecycle event types even EXISTS in
     // this change — they are not recordable (the demand-side change introduces them). This complements the runtime
