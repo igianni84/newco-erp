@@ -315,3 +315,9 @@
 ## [2026-06-18 12:15] archive | parties-holds | Merged --no-ff (6c6275b) + archived as 2026-06-18-parties-holds; synced +4 ADDED/~2 MODIFIED reqs into specs/party-registry. Semantic verify CLEAN. 783/783 SQLite+PG17. NOT pushed (human's call).
 
 ## [2026-06-18 12:19] push | main → origin | parties-holds merge+archive pushed (2dfbc13) to github newco-erp; CI incl. tests-pgsql triggered; merged branch ralph/parties-holds deleted. main == origin/main.
+
+## [2026-06-18 18:56] audit | phase-2-completeness | Phase 2 NOT complete — demand-side Parties + Admin-Panel UI (0 Filament Resources) unbuilt; UI-absence is unratified ralph drift. Decision (Giovanni): demand-side Mod K backend next, THEN the Admin Panel UI as the immediate next step (NOT deferred). Lesson: backend-green != phase-complete.
+
+## [2026-06-18 20:36] spec-to-change | parties-membership-activation | Authored demand-side activation spine: 4 ADDED + 2 MODIFIED party-registry reqs (approve/decline audit-only + OC one-shot lock, ProfileActivated, CustomerActivated gate), 19 scenarios, 7 tasks; validate --strict green. Giovanni approved; awaiting human APPROVED marker -> ralph.
+
+## [2026-06-18 20:50] ralph | parties-membership-activation 1.1 | green | 3 files: additive migration (3 nullable timestamptz onboarding-acceptance cols on parties_customers) + Customer casts/@property + test. 786/786 SQLite & PG17; down/up reversible on PG17; validate --strict green; composer diff empty.

@@ -10,20 +10,22 @@ updated: 2026-06-18
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-18 (interactive — `parties-holds` finished, MERGED + ARCHIVED + PUSHED).** The ralph loop had stopped at 10/11 (it printed the §2.7 "human steps" banner prematurely); finished task 6.3 interactively — `HoldChainTest` (closing end-to-end proof, 2 `it`/46 assertions), full suite **783/783 on SQLite AND PostgreSQL 17**. Then the full GUIDE §2.7 ritual: review → independent semantic verify (**CLEAN** — 0 critical/warning, 2 deferrable suggestions) → `git merge --no-ff` (`6c6275b`) → `openspec archive` (synced **+4 ADDED / ~2 MODIFIED** requirements into `openspec/specs/party-registry/spec.md`; archived dir `2026-06-18-parties-holds`) → pushed to origin + deleted the merged branch. The Module K Hold slice — registry (6 types × 3 scopes), lifecycle + per-type lift discipline, 2 events, sanctions/Hold read-API with cascade, KYC↔Hold coupling — is live in the spec.
+**2026-06-18 (ralph iter 1 — `parties-membership-activation` T1.1 DONE).** First production code of the demand-side activation spine: the additive migration adding the three onboarding-acceptance timestamps (`email_verified_at`, `tc_accepted_at`, `privacy_accepted_at`) to `parties_customers` — the gate inputs the later `ActivateCustomer` reads. Schema-only task; no Action/event yet.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev; prod PG17.
-- **Green: 783/783 SQLite AND 783/783 on PostgreSQL 17** (full suite — the §2.7 pre-merge gate). PHPStan max 0 · Pint --test clean. `openspec validate --specs` → 9/9 specs valid post-archive.
-- main HEAD = the `parties-holds` merge + archive (`2dfbc13`), **pushed to `origin/main`** (CI incl. the `tests-pgsql` lane triggered — watch it confirm green). Local branch `ralph/parties-holds` deleted (merged).
+- **Green 786/786** (was 783; +3 from `CustomerOnboardingAcceptanceTest`) on **SQLite AND PG17**; phpstan 0; pint clean. `openspec validate parties-membership-activation --strict` green. `git diff main -- composer.json composer.lock` empty (no new dep).
+- Branch `ralph/parties-membership-activation`; T1.1 committed locally (not pushed — human's call).
 
 ## Active Change & Next Task
-- **No active change** (`openspec list` → none).
-- **Next:** pick the next slice from `spec/05-release/Build_Workplan_v0.3-MVP.md` → `/spec-to-change` → human `APPROVED` → `./ralph.sh`. Carryover for a future change: reword the stale "deferred `parties-holds`" docblock in `RecordKycRejected.php` (semantic-verify SUGGESTION-1 — cosmetic; behavior correct & tested).
+- **`parties-membership-activation` — 1 / 7 tasks done.** Migration `2026_06_18_000002` + `Customer` casts/`@property`/docblock shipped. PG17-verified (cols = nullable `timestamptz`, no default; isolated `down()`/`up()` reversible).
+- **Next: T1.2** — `IllegalProfileTransition` (`::cannotApprove/cannotReject/cannotActivate`) + `IllegalCustomerTransition` (`::cannotActivate/gateNotMet`) exceptions + localized copy in the `profile`/`customer` groups of `lang/en/parties.php`; mirror `IllegalProducerTransition`. **Pure PHP/i18n — NO DB, no PG run** (its acceptance says so). Then T1.3 (3 event classes + narrow `SupplyLifecycleChainTest`), T2.1–2.3 (the four Actions + guard-test narrowing), T3.1 (chain + docs + full PG17 close).
 
 ## Blockers & Decisions Needed
-- None. Root `CLAUDE.md` Invariant #7 reword (per-type lift) remains the human's call (Protected file); ADR `2026-06-18-hold-lift-discipline-per-type.md` is the standing authority. Knowledge-promotion confirmation date for this change = `2026-06-18` (its archive-dir date).
+- None. Documented deferred seams stay deferred (NOT reads): **§13 Hero Package capacity** → Module A (`ApproveProfile`/`ActivateProfile` ship uncapped); **`MembershipFeePaid` listener** → Module E (`ActivateProfile` invoked directly); Hold→`suspended`, segments, producer/Filament UI → later slices. The three acceptance cols have no production setter yet (deferred registration surface — known additive-seam pattern).
 
 ## Open Patterns
-- **Loop-end banner ≠ change complete.** A ralph run can print the §2.7 "next steps (human)" banner while `openspec list` still shows N−1/N. Always check `openspec list` / `tasks.md` before trusting the banner — finish the last task before any merge.
-- **Closing chain-test idioms** (now in the archived `progress.md` of `2026-06-18-parties-holds`, candidates for `knowledge/testing`): read active Holds via the read-API not a re-declared global helper (Pest loads all files → fatal redeclare); order-insensitive `list<Enum>` set = `->toContain(e)->toContain(e)->toHaveCount(n)`; a pre-DML app-guard throw needs no savepoint for verify-after-throw on PG (trap 5 is constraint-RAISE only).
+- **Demand-side backend sequence:** activation spine (this change) → Club Credit → suspension + Hero Package → Admin Panel UI Phase 2 (Filament Resources — immediate next step after the demand-side backend, NOT deferred — `lessons.md` 2026-06-18).
+- **Backend-green ≠ phase-complete** (judge across all workplan columns + supply/demand split).
+- **New reusable patterns** (progress.md Codebase Patterns): additive-nullable-timestamp migration needs no CHECK; isolated PG17 `down()`/`up()` via `migrate:rollback --path=<mig>`; null-safe `?->format()` round-trip for nullable datetime casts (PHPStan-max clean); the arch-OOM 512M flag hits the full suite on SQLite too.
+- **Guard tests pre-name the seams:** archived forbidden-Action / event-non-existence lists hand the next slice its zero-invention names; narrow each in the SAME task that ships the name (grep-derive the blast radius — `lessons.md`).
