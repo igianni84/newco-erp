@@ -315,22 +315,24 @@ it('exposes the supply-side, compliance, Hold and demand-side approve/decline tr
         'LiftHold',
     ];
 
-    // ...and the demand-side Profile approve/decline pair (parties-membership-activation — the one retained producer
-    // write, L-PP). `ApproveProfile` (`applied → approved`, plus the in-tx Originating-Club one-shot lock) and
-    // `DeclineProfile` (`applied → rejected`, terminal) are the FIRST demand-side STATUS transitions to ship; both
-    // are audit-only on the Profile (§ 15.2 names no ProfileApproved/ProfileRejected — the approve path's lone event
-    // is the conditional OriginatingClubLocked). The still-deferred demand-side transitions are NOT here yet
-    // (`ActivateProfile` → membership-activation T2.2; `ActivateCustomer` → T2.3; the Account/suspension set → later).
+    // ...and the demand-side Profile transitions (parties-membership-activation — the one retained producer write,
+    // L-PP, plus activation). `ApproveProfile` (`applied → approved`, plus the in-tx Originating-Club one-shot lock)
+    // and `DeclineProfile` (`applied → rejected`, terminal) are audit-only on the Profile (§ 15.2 names no
+    // ProfileApproved/ProfileRejected — the approve path's lone event is the conditional OriginatingClubLocked);
+    // `ActivateProfile` (`approved → active`) is the one that records a § 15.2 event (`ProfileActivated`). The
+    // still-deferred demand-side transitions are NOT here yet (`ActivateCustomer` → membership-activation T2.3; the
+    // Account/suspension set → later).
     $demandSideTransitions = [
         'ApproveProfile',
         'DeclineProfile',
+        'ActivateProfile',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side approve/decline ones. There is no ActivateProfile / ActivateCustomer / SuspendAccount /
-    // LockOriginatingClub yet — those demand-side status transitions remain deferred (party-registry MODIFIED). If a
-    // still-deferred demand-side transition Action were added without declaring it here, it would appear in this set
-    // and fail the assertion (the whitelist grows one slice at a time).
+    // demand-side activation ones. There is no ActivateCustomer / SuspendAccount / LockOriginatingClub yet — those
+    // demand-side status transitions remain deferred (party-registry MODIFIED). If a still-deferred demand-side
+    // transition Action were added without declaring it here, it would appear in this set and fail the assertion
+    // (the whitelist grows one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
     expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions]);
 

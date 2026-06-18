@@ -327,3 +327,5 @@
 ## [2026-06-18 21:11] ralph | parties-membership-activation 1.3 | green | 5 files | 3 activation event classes (Customer/Profile/Activated + OriginatingClubLocked §6.1) + narrowed SupplyLifecycleChain existence guard; 803/803, no DB→no PG
 
 ## [2026-06-18 21:27] ralph | parties-membership-activation 2.1 | green | 5 files (ApproveProfile+DeclineProfile Actions, ProfileMembershipApprovalTest 9/9, 2 guard tests narrowed); full 812/812 SQLite, Parties 315/315 PG17; OC one-shot lock + audit-only approve/decline
+
+## [2026-06-18 21:38] ralph | parties-membership-activation 2.2 | green | ActivateProfile approved→active + root ProfileActivated; 2 guards narrowed; SQLite 817/817, PG17 Parties 320/320; 4 code+2 change files

@@ -30,9 +30,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     now AUTO-PLACES then AUTO-LIFTS the coupled `kyc` Hold (parties-holds), so the compliance flow records the two
  *     Hold events plus the sanctions completion — and no event NAME contains "Kyc";
  *   - the scope guard: reflecting the Parties `Actions/` namespace, the compliance + supply-side transition Actions
- *     exist and — since parties-membership-activation — so does the demand-side Profile approve/decline pair
- *     (`ApproveProfile` / `DeclineProfile`), BUT the still-deferred demand-side status transitions do not (no
- *     `ActivateCustomer` / `ActivateProfile` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
+ *     exist and — since parties-membership-activation — so do the demand-side Profile transitions (`ApproveProfile`
+ *     / `DeclineProfile` / `ActivateProfile`), BUT the still-deferred demand-side status transitions do not (no
+ *     `ActivateCustomer` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
  *     ONLY mutation surface is the one-shot lock inside `ApproveProfile` (CreateCustomer writes it once to NULL at
  *     birth — no other Action touches it), the coupled `kyc` Hold place/lift performs NO Customer STATUS transition
  *     (the Hold→`suspended` coupling is deferred), and — driving the REAL compliance Actions — no demand-side status
@@ -142,17 +142,15 @@ it('exposes the compliance + supply-side transitions but no demand-side status t
     }
 
     // ...but the STILL-DEFERRED demand-side STATUS transitions do not exist: Customer / Account expose no operation
-    // moving their status out of its birth state, and the Profile ACTIVATION transition (`ActivateProfile`) has not
-    // landed yet (party-registry MODIFIED — those demand-side status transitions remain deferred). The now-shipped
-    // approve/decline pair (`ApproveProfile` / `DeclineProfile`, parties-membership-activation — the one retained
-    // producer write) is REMOVED from this forbidden set: its presence is pinned by the EXACT-SET whitelist in
-    // SupplyLifecycleChainTest (this negative check is the independence-angle companion, robust to a future
-    // legitimate compliance Action). The remaining forbidden names follow the codebase's verb+Entity convention and
-    // map 1:1 to the deferred demand-side events.
+    // moving their status out of its birth state (party-registry MODIFIED — those demand-side status transitions
+    // remain deferred). The now-shipped Profile transitions (`ApproveProfile` / `DeclineProfile` / `ActivateProfile`,
+    // parties-membership-activation — the one retained producer write + activation) are REMOVED from this forbidden
+    // set: their presence is pinned by the EXACT-SET whitelist in SupplyLifecycleChainTest (this negative check is
+    // the independence-angle companion, robust to a future legitimate compliance Action). The remaining forbidden
+    // names follow the codebase's verb+Entity convention and map 1:1 to the deferred demand-side events.
     foreach ([
         'ActivateCustomer', 'SuspendCustomer', 'CloseCustomer',
         'ActivateAccount', 'SuspendAccount', 'CloseAccount',
-        'ActivateProfile',
         'LockOriginatingClub', 'SetOriginatingClub',
     ] as $forbidden) {
         expect($actions)->not->toContain($forbidden);
