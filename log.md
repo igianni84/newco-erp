@@ -303,3 +303,5 @@
 ## [2026-06-18 10:39] ralph | parties-holds 3.2 | green | 4 files | LiftHold + per-type lift discipline; 753/753 SQLite, 183/183 PG17; openspec strict valid
 
 ## [2026-06-18 10:59] ralph | parties-holds 4.1 | green | KYC↔Hold coupling: RequireKyc reuses PlaceHold, RecordKycVerified inlines system kyc-Hold lift; 3 shipped tests flipped (incl. ComplianceChainTest); 754 SQLite + 184 PG17 | 5 files
+
+## [2026-06-18 11:15] ralph | parties-holds 5.1 | green | 5 files (3 new contracts/reads + provider bind + test); read-API 772/772 SQLite, PG17 202/202; 8/11 done
