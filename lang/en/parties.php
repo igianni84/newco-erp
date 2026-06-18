@@ -44,6 +44,15 @@ return [
         // logs (unlike the producer-id references above, which are not PII). The operator supplied the value, so
         // the rule alone is fully actionable.
         'duplicate_email' => 'Cannot create a Customer: a Customer with this email address already exists. Each Customer email must be globally unique.',
+        // Customer status FSM `pending → active → …` (parties-membership-activation, design L6; § 4.1 /
+        // AC-K-FSM-1) illegal-transition reason. :state is the offending from-state token (a business enum
+        // value, not PII).
+        'cannot_activate' => 'Cannot activate this Customer from state :state. A Customer activates only from pending.',
+        // Composite onboarding-gate rejection (parties-membership-activation, design L6; § 4.1 / AC-K-J-1 +
+        // AC-K-BR-Identity-3). Raised by ActivateCustomer when the conjunctive gate is unmet. The reason names
+        // the gate CONDITIONS only — it interpolates NOTHING: the offending acceptance values (verification /
+        // T&C / privacy timestamps) are PII and this message can reach logs, so the rule alone is surfaced.
+        'gate_not_met' => 'Cannot activate this Customer: the onboarding gate is not met. Activation requires a verified email, accepted terms and privacy, a passed sanctions screening, and cleared KYC where required.',
     ],
     'profile' => [
         // BR-K-Identity-2 rejection (design D8): a Customer holds at most one NON-TERMINAL Profile per Club, so
@@ -51,6 +60,13 @@ return [
         // id references (not PII), so they are interpolated to make the reason self-documenting (unlike the
         // duplicate_email reason, which omits the PII email).
         'duplicate_for_club' => 'Cannot create a Profile: Customer :customer already has a live Profile in Club :club. A Customer may hold at most one non-terminal Profile per Club.',
+        // Profile membership FSM `applied → approved | rejected → active` (parties-membership-activation,
+        // design L2/L4; § 4.2.1 / AC-K-FSM-2) illegal-transition reasons. Approve/decline are audit-only writes
+        // (no Profile event — L2); activation records ProfileActivated. :state is the offending from-state token
+        // (a business enum value, not PII).
+        'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied.',
+        'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied.',
+        'cannot_activate' => 'Cannot activate this Profile from state :state. A Profile activates only from approved.',
     ],
     'kyc' => [
         // KYC FSM `not_required → pending → verified | rejected` (parties-compliance, design L2; § 9.1
