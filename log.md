@@ -301,3 +301,5 @@
 ## [2026-06-18 10:30] ralph | parties-holds 3.1 | green | PlaceHold Action (create+record CustomerHoldPlaced, actor resolved once) | 746/746 SQLite, PG17 176/176 | 3 files
 
 ## [2026-06-18 10:39] ralph | parties-holds 3.2 | green | 4 files | LiftHold + per-type lift discipline; 753/753 SQLite, 183/183 PG17; openspec strict valid
+
+## [2026-06-18 10:59] ralph | parties-holds 4.1 | green | KYC↔Hold coupling: RequireKyc reuses PlaceHold, RecordKycVerified inlines system kyc-Hold lift; 3 shipped tests flipped (incl. ComplianceChainTest); 754 SQLite + 184 PG17 | 5 files

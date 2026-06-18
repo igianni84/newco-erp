@@ -8,6 +8,8 @@ use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\SanctionsStatus;
 use App\Modules\Parties\Enums\ScreeningTriggerSource;
+use App\Modules\Parties\Events\CustomerHoldLifted;
+use App\Modules\Parties\Events\CustomerHoldPlaced;
 use App\Modules\Parties\Events\CustomerOnboardingScreeningPassed;
 use App\Modules\Parties\Models\Customer;
 use App\Platform\Events\DomainEvent;
@@ -24,14 +26,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     the (kyc × sanctions) state-pair grid persists orthogonally with the Customer status pinned to its `pending`
  *     birth, and — driven through the REAL Actions — a KYC transition moves only `kyc_status` while a sanctions
  *     screening moves only `sanctions_status`, neither touching the other FSM nor the Customer status;
- *   - KYC is event-silent (design L3 — the PRD § 15.1 names no KYC event), so the only event the whole compliance
- *     flow records is the sanctions completion;
+ *   - KYC itself is event-silent (design L3 — the PRD § 15.1 names no KYC event), but opening/clearing Customer KYC
+ *     now AUTO-PLACES then AUTO-LIFTS the coupled `kyc` Hold (parties-holds), so the compliance flow records the two
+ *     Hold events plus the sanctions completion — and no event NAME contains "Kyc";
  *   - the scope guard: reflecting the Parties `Actions/` namespace, the compliance + supply-side transition Actions
  *     exist but NO demand-side STATUS transition class does (no `ActivateCustomer` / `SuspendAccount` /
  *     `ApproveProfile` / `LockOriginatingClub`), `originating_club_id` has no setter (CreateCustomer's surface is
- *     exactly creation, and it is the only Action that writes the column — only NULL, at birth), no `kyc` Hold is
- *     placed (the Hold registry is the deferred `parties-holds`), and no demand-side status event
- *     (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` / `CustomerSegmentChanged`) is recorded.
+ *     exactly creation, and it is the only Action that writes the column — only NULL, at birth), the coupled `kyc`
+ *     Hold place/lift performs NO Customer STATUS transition (the Hold→`suspended` coupling is deferred), and no
+ *     demand-side status event (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` /
+ *     `CustomerSegmentChanged`) is recorded.
  *
  * The EXACT-SET "only these non-Create Actions exist" whitelist has a single canonical home in
  * {@see SupplyLifecycleChainTest}; this file is its independence-angle companion and uses a forbidden-name negative
@@ -64,13 +68,14 @@ it('records each (kyc × sanctions) pair independently, with the Customer status
     'kyc verified × sanctions passed' => [KycStatus::Verified, SanctionsStatus::Passed],
 ]);
 
-it('keeps KYC, sanctions and the Customer status mutually independent across real transitions, placing no Hold and recording no demand-side event', function () {
+it('keeps KYC, sanctions and the Customer status mutually independent across real transitions, coupling the kyc Hold but recording no demand-side event', function () {
     $customer = Customer::factory()->create();   // un-screened: kyc NULL, sanctions NULL, status `pending`
     expect($customer->kyc_status)->toBeNull()
         ->and($customer->sanctions_status)->toBeNull();
 
-    // (1) A KYC transition moves ONLY kyc_status — sanctions and the Customer status stay put, and KYC records no
-    //     domain event (design L3 — audit only; the PRD § 15.1 names none).
+    // (1) A KYC transition moves ONLY kyc_status — sanctions and the Customer status stay put. KYC itself records no
+    //     KYC event (design L3), but the coupled `kyc` Hold is auto-placed on require and auto-lifted on verify, so
+    //     the two Hold events are the only events so far — and no event NAME contains "Kyc".
     app(RequireKyc::class)->handle($customer->id);
     app(RecordKycVerified::class)->handle($customer->id);
 
@@ -78,7 +83,10 @@ it('keeps KYC, sanctions and the Customer status mutually independent across rea
     expect($afterKyc->kyc_status)->toBe(KycStatus::Verified)
         ->and($afterKyc->sanctions_status)->toBeNull()                  // sanctions untouched by KYC (§ 9.4)
         ->and($afterKyc->status)->toBe(CustomerStatus::Pending);        // the status FSM is separate
-    expect(DomainEvent::query()->count())->toBe(0);                     // KYC is event-silent
+    expect(DomainEvent::query()->count())->toBe(2)                      // exactly the coupled Hold place + lift
+        ->and(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', 'like', '%Kyc%')->count())->toBe(0);   // KYC itself is event-silent
 
     // (2) A sanctions screening moves ONLY sanctions_status — kyc_status and the Customer status stay put.
     app(RecordCustomerScreening::class)->handle($customer->id, SanctionsStatus::Passed, ScreeningTriggerSource::Onboarding);
@@ -88,15 +96,15 @@ it('keeps KYC, sanctions and the Customer status mutually independent across rea
         ->and($afterScreening->kyc_status)->toBe(KycStatus::Verified)   // KYC untouched by sanctions (§ 9.4)
         ->and($afterScreening->status)->toBe(CustomerStatus::Pending);  // the status FSM is separate
 
-    // Exactly the one sanctions completion event — the onboarding pass — and nothing else (KYC contributed none).
-    expect(DomainEvent::query()->count())->toBe(1)
+    // The sanctions completion joins the two Hold events — three in all (the onboarding pass is the only sanctions one).
+    expect(DomainEvent::query()->count())->toBe(3)
         ->and(DomainEvent::query()->where('name', CustomerOnboardingScreeningPassed::NAME)->count())->toBe(1);
 
-    // Scope guard (runtime): this slice places NO `kyc` Hold (the unified Hold registry is the deferred
-    // `parties-holds` change), and NO demand-side status event is recorded — the demand-side change owns those
-    // (party-registry MODIFIED "Birth States…"). Asserted by EXACT name (not `like '%Activated%'`, which would
-    // match the legitimate supply-side Producer/Agreement activations were any present).
-    expect(DomainEvent::query()->where('name', 'like', '%Hold%')->count())->toBe(0);
+    // Scope guard (runtime): the coupled `kyc` Hold place/lift records the two Hold events (BR-K-Hold-1) but performs
+    // NO Customer STATUS transition (the Hold→`suspended` coupling is deferred), and NO demand-side status event is
+    // recorded — the demand-side change owns those (party-registry MODIFIED "Birth States…"). Asserted by EXACT name
+    // (not `like '%Activated%'`, which would match legitimate supply-side activations were any present).
+    expect(DomainEvent::query()->where('name', 'like', '%Hold%')->count())->toBe(2);   // 1 placed + 1 lifted
     foreach ([
         'CustomerActivated', 'AccountActivated', 'ProfileActivated', 'ProfileApproved',
         'OriginatingClubLocked', 'CustomerSegmentChanged',
@@ -104,7 +112,7 @@ it('keeps KYC, sanctions and the Customer status mutually independent across rea
         expect(DomainEvent::query()->where('name', $demandSideEvent)->count())->toBe(0);
     }
     // No event in the compliance flow carries an Account or Profile entity type — the demand side stays inert (the
-    // sanctions event legitimately carries the Customer type, so Customer is NOT in this exclusion set).
+    // sanctions event carries the Customer type and the Hold events the `Hold` type, so neither is excluded here).
     expect(DomainEvent::query()->whereIn('entity_type', ['Account', 'Profile'])->count())->toBe(0);
 });
 

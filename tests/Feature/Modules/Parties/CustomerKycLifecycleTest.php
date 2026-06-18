@@ -4,9 +4,15 @@ use App\Modules\Parties\Actions\RecordKycRejected;
 use App\Modules\Parties\Actions\RecordKycVerified;
 use App\Modules\Parties\Actions\RequireKyc;
 use App\Modules\Parties\Enums\CustomerStatus;
+use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Enums\HoldStatus;
+use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Enums\KycStatus;
+use App\Modules\Parties\Events\CustomerHoldLifted;
+use App\Modules\Parties\Events\CustomerHoldPlaced;
 use App\Modules\Parties\Exceptions\IllegalKycTransition;
 use App\Modules\Parties\Models\Customer;
+use App\Modules\Parties\Models\Hold;
 use App\Platform\Events\DomainEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -18,20 +24,23 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * resolve `pending → verified | rejected`. Each Action is the SOLE writer of `kyc_status`, from-state guarded
  * against a `lockForUpdate` re-read inside its own `DB::transaction`.
  *
- * Three invariants this slice must hold and this test pins (design L3 + scope guards): KYC records NO domain
- * event (the PRD § 15.1 names none — audit-only), this slice places NO `kyc` Hold (the Hold registry is the
- * deferred `parties-holds` change), and the KYC FSM is SEPARATE from the Customer status FSM (a KYC transition
- * never moves `Customer.status` off its `pending` birth state). RefreshDatabase per the task hint — each Action
- * opens its OWN transaction, so the rejected-transition rollback is a savepoint under the wrapper (the from-state
- * guard throws a PHP exception before any write, so no DB-trigger aborts the outer transaction — the verify-
- * after-throw SELECT survives on PostgreSQL 17; cross-engine close in task 6.3).
+ * Three invariants this slice must hold and this test pins (design L2/L7 + scope guards): KYC itself records NO
+ * KYC domain event (the PRD § 15.1 names none — the kyc_status change is audit-only), the KYC FSM is SEPARATE
+ * from the Customer status FSM (a KYC transition never moves `Customer.status` off its `pending` birth state),
+ * and the `kyc` Hold COUPLING now holds — opening KYC (`→ pending`) auto-places a Customer-scope `kyc` Hold
+ * recording `CustomerHoldPlaced`, clearing it (`→ verified`) auto-lifts that Hold recording `CustomerHoldLifted`
+ * (the system lift path — the operator `LiftHold` is forbidden from a `kyc` Hold by the per-type discipline), and
+ * `→ rejected` LEAVES the Hold in place (§ 9.1 — Compliance reviews case-by-case). The only events the KYC flow
+ * records are therefore the coupled Hold events; KYC contributes none of its own. RefreshDatabase per the task
+ * hint — each Action opens its OWN transaction, so the rejected-transition rollback is a savepoint under the
+ * wrapper (the from-state guard throws a PHP exception before any write, so no DB-trigger aborts the outer
+ * transaction — the verify-after-throw SELECT survives on PostgreSQL 17; cross-engine close in task 6.3).
  */
 uses(RefreshDatabase::class);
 
-it('requires KYC on an un-screened Customer: NULL → pending, raises kyc_required, records no event', function () {
+it('requires KYC on an un-screened Customer: NULL → pending, raises kyc_required, auto-places the kyc Hold', function () {
     $customer = Customer::factory()->create();   // born status `pending`, kyc_status NULL (un-screened)
     expect($customer->kyc_status)->toBeNull();   // precondition — DEC-071 un-screened birth
-    $baseline = DomainEvent::query()->count();
 
     $returned = app(RequireKyc::class)->handle($customer->id);
 
@@ -43,8 +52,21 @@ it('requires KYC on an un-screened Customer: NULL → pending, raises kyc_requir
     expect($fresh->kyc_status)->toBe(KycStatus::Pending)
         ->and($fresh->kyc_required)->toBeTrue();
 
-    // KYC records NO domain event (design L3) and the Customer status FSM is untouched (separate FSM).
-    expect(DomainEvent::query()->count())->toBe($baseline)
+    // The coupling (design L7): opening KYC auto-places exactly one active Customer-scope `kyc` Hold (reason null —
+    // the type IS the reason, design L5) in the same transaction; the blocking effect is the Hold's, not the column's.
+    // `sole()` asserts exactly one such Hold exists (and returns it non-null).
+    $hold = Hold::query()
+        ->where('scope_type', HoldScope::Customer->value)
+        ->where('scope_id', $customer->id)
+        ->where('hold_type', HoldType::Kyc->value)
+        ->sole();
+    expect($hold->status)->toBe(HoldStatus::Active)
+        ->and($hold->reason)->toBeNull();
+
+    // KYC itself records NO KYC event (design L3); the only domain event is the coupled CustomerHoldPlaced. The
+    // Customer status FSM is untouched (separate FSM) — placing a Hold performs no status transition.
+    expect(DomainEvent::query()->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(1)
         ->and($fresh->status)->toBe(CustomerStatus::Pending);
 });
 
@@ -58,7 +80,10 @@ it('requires KYC from the explicit not_required state: not_required → pending'
         ->and(Customer::findOrFail($customer->id)->kyc_status)->toBe(KycStatus::Pending);
 });
 
-it('records KYC verified: pending → verified (a cleared state), no event, status untouched', function () {
+it('records KYC verified: pending → verified (a cleared state), no event when no kyc Hold exists, status untouched', function () {
+    // The factory lands `pending` directly (bypassing RequireKyc), so NO `kyc` Hold exists to lift: the system
+    // auto-lift in RecordKycVerified is a no-op here, recording nothing. This pins the FSM transition in isolation
+    // (the require→verify coupling — place then lift — is pinned by the dedicated coupling test below).
     $customer = Customer::factory()->create(['kyc_status' => KycStatus::Pending]);
     $baseline = DomainEvent::query()->count();
 
@@ -68,6 +93,7 @@ it('records KYC verified: pending → verified (a cleared state), no event, stat
     expect($returned->kyc_status)->toBe(KycStatus::Verified)
         ->and(Customer::findOrFail($customer->id)->kyc_status)->toBe(KycStatus::Verified);
 
+    // No active `kyc` Hold to lift → no CustomerHoldLifted (and KYC itself is event-silent); status untouched.
     expect(DomainEvent::query()->count())->toBe($baseline)
         ->and(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Pending);
 });
@@ -87,20 +113,61 @@ it('records KYC rejected: pending → rejected (a blocking state), no event, no 
         ->and(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Pending);
 });
 
-it('drives require → verify without placing any kyc Hold or moving the Customer status', function () {
+it('drives require → verify auto-placing then auto-lifting the kyc Hold, without moving the Customer status', function () {
+    // The coupling end-to-end (design L7; party-registry MODIFIED Customer KYC Lifecycle): require auto-places the
+    // `kyc` Hold, verify auto-lifts it. The kyc_status FSM walks `NULL → pending → verified`; the Customer status FSM
+    // never moves (the Hold→`suspended` coupling is deferred). KYC contributes no event of its own — the only events
+    // are the coupled CustomerHoldPlaced (require) + CustomerHoldLifted (verify).
     $customer = Customer::factory()->create();   // NULL kyc, born status `pending`
 
     app(RequireKyc::class)->handle($customer->id);
+
+    // After require: exactly one active `kyc` Hold + exactly one CustomerHoldPlaced (KYC itself records nothing).
+    $afterRequire = Hold::query()
+        ->where('scope_type', HoldScope::Customer->value)
+        ->where('scope_id', $customer->id)
+        ->where('hold_type', HoldType::Kyc->value)
+        ->sole();
+    expect($afterRequire->status)->toBe(HoldStatus::Active);
+    expect(DomainEvent::query()->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(1);
+
     app(RecordKycVerified::class)->handle($customer->id);
 
     $fresh = Customer::findOrFail($customer->id);
     expect($fresh->kyc_status)->toBe(KycStatus::Verified)
         ->and($fresh->status)->toBe(CustomerStatus::Pending);   // status FSM untouched by KYC
 
-    // Scope guard: no `kyc` Hold is placed by this slice (the Hold registry is `parties-holds`); KYC emits no
-    // domain event at all (design L3), so no `*Hold*` name — and indeed no event — can appear.
-    expect(DomainEvent::query()->where('name', 'like', '%Hold%')->count())->toBe(0)
-        ->and(DomainEvent::query()->count())->toBe(0);
+    // After verify: the same Hold is now `lifted` (the system lift path — the operator LiftHold is forbidden a `kyc`
+    // Hold), and a single CustomerHoldLifted joins the placement — exactly two events, both coupled Hold events.
+    expect(Hold::findOrFail($afterRequire->id)->status)->toBe(HoldStatus::Lifted)
+        ->and(DomainEvent::query()->count())->toBe(2)
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(1);
+});
+
+it('drives require → reject leaving the kyc Hold in place, recording no lift event', function () {
+    // § 9.1 — a rejection LEAVES the `kyc` Hold active (Compliance reviews case-by-case; no automatic onward
+    // transition). RecordKycRejected is UNCHANGED by this change: it touches no Hold, so the Hold the require placed
+    // stays `active` and no CustomerHoldLifted is recorded — only the placement event exists.
+    $customer = Customer::factory()->create();   // NULL kyc, born status `pending`
+
+    app(RequireKyc::class)->handle($customer->id);
+    app(RecordKycRejected::class)->handle($customer->id);
+
+    $fresh = Customer::findOrFail($customer->id);
+    expect($fresh->kyc_status)->toBe(KycStatus::Rejected)
+        ->and($fresh->status)->toBe(CustomerStatus::Pending);   // status FSM untouched
+
+    // The `kyc` Hold stays active; zero lift events; the only event is the placement from require.
+    $hold = Hold::query()
+        ->where('scope_type', HoldScope::Customer->value)
+        ->where('scope_id', $customer->id)
+        ->where('hold_type', HoldType::Kyc->value)
+        ->sole();
+    expect($hold->status)->toBe(HoldStatus::Active)
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->count())->toBe(1);
 });
 
 it('rejects RecordKycVerified from any non-pending state, leaving the row and event log unchanged', function (?KycStatus $from) {

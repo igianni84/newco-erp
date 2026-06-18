@@ -2,35 +2,58 @@
 
 namespace App\Modules\Parties\Actions;
 
+use App\Modules\Module;
+use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Enums\HoldStatus;
+use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Enums\KycStatus;
+use App\Modules\Parties\Events\CustomerHoldLifted;
 use App\Modules\Parties\Exceptions\IllegalKycTransition;
 use App\Modules\Parties\Models\Customer;
+use App\Modules\Parties\Models\Hold;
+use App\Platform\Events\ActorContext;
+use App\Platform\Events\DomainEventRecorder;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Records a Customer's KYC as verified — transitions `kyc_status` `pending → verified` atomically
- * (parties-compliance, design L2/L3; party-registry — Requirement: Customer KYC Lifecycle).
+ * Records a Customer's KYC as verified — transitions `kyc_status` `pending → verified` and AUTO-LIFTS the
+ * Customer's active `kyc` Hold(s), atomically (parties-holds, design L2/L7; party-registry — MODIFIED
+ * Requirement: Customer KYC Lifecycle).
  *
  * This action is the SOLE writer of the Customer `kyc_status` for the verify transition. `verified` is a
  * CLEARED (non-blocking) state ({@see KycStatus::clears()} — `verified` ∨ `not_required`); it is reachable only
  * from `pending` (§ 9.1). The KYC FSM is SEPARATE from the Customer status FSM: this transition NEVER moves
  * `Customer.status`.
  *
- * KYC records NO domain event (design L3 — § 15.1 names none); the change is audit-only, observable via the
- * column itself. No {@see DomainEventRecorder} is touched (no recorder/actor dependency) and NO Hold is lifted —
- * the `kyc` Hold auto-lift is owned by the deferred `parties-holds` change (scope guard); this slice records the
- * KYC state only.
+ * KYC itself records NO KYC domain event (design L3 — § 15.1 names none); the `kyc_status` change is audit-only.
+ * But clearing KYC AUTO-LIFTS the Customer's active `kyc` Hold(s) (the coupling — design L2/L7): the `kyc` Hold's
+ * blocking effect (§ 9.1) ends when identity is verified. This is the SYSTEM lift path — it deliberately does NOT
+ * reuse {@see LiftHold}, whose per-type discipline REJECTS an auto-managed `kyc` Hold from the operator path
+ * (`IllegalHoldLift::autoManaged()`): the system lifts on the clearing signal what an operator may not lift
+ * by hand (DEC-160; ADR 2026-06-18-hold-lift-discipline-per-type). It injects the {@see DomainEventRecorder} and
+ * resolves the actor from the {@see ActorContext} seam; one resolution + one lift moment stamp BOTH each Hold's
+ * `lifted_actor_*`/`lifted_at` columns and its {@see CustomerHoldLifted} envelope, so a Hold row and its event
+ * can never disagree. A system lift carries no free text → `lift_reason = null` (design L5). The lift(s) and their
+ * events run in the SAME transaction as the verify write (the recorder's open-transaction guard makes them
+ * atomic). `rejected` is the contrast — `RecordKycRejected` LEAVES the Hold in place (§ 9.1).
  *
  * From-state guarded and race-safe (design L2, mirroring `ActivateProducer`): inside ONE {@see DB::transaction}
  * it re-reads the row `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state
- * assert carries correctness either way), asserts `kyc_status === pending`, then writes `verified`. A call on a
- * Customer not in `pending` — including a NULL `kyc_status` (an un-screened Customer; DEC-071) — throws
- * {@see IllegalKycTransition::cannotVerify()} and the transaction rolls back, leaving the row unchanged.
- * `version` is NOT bumped (it is reserved for identity-attribute revisions — parties-core). The Model stays
- * persistence-only; this action is the only state writer (design L2).
+ * assert carries correctness either way), asserts `kyc_status === pending`, then writes `verified` and lifts the
+ * Hold(s). A call on a Customer not in `pending` — including a NULL `kyc_status` (an un-screened Customer;
+ * DEC-071) — throws {@see IllegalKycTransition::cannotVerify()} BEFORE any write, and the transaction rolls back
+ * leaving the row, the Hold(s) and the event log unchanged. `version` is NOT bumped (it is reserved for
+ * identity-attribute revisions — parties-core). The Models stay persistence-only; this action is the
+ * `kyc_status` writer and the system `kyc`-Hold lift-writer (design L2).
  */
 class RecordKycVerified
 {
+    public function __construct(
+        private readonly DomainEventRecorder $recorder,
+        private readonly ActorContext $actor,
+    ) {}
+
     public function handle(int $customerId): Customer
     {
         return DB::transaction(function () use ($customerId): Customer {
@@ -44,6 +67,46 @@ class RecordKycVerified
             }
 
             $customer->update(['kyc_status' => KycStatus::Verified]);
+
+            // The coupling (design L2/L7): system-lift every active Customer-scope `kyc` Hold in the SAME
+            // transaction. One actor resolution + one lift moment stamp both each Hold row and its event envelope
+            // (the seam resolves lazily per call — design L8). BR-K-Hold-1 permits multiple concurrent Holds, so this
+            // lifts all active `kyc` Hold(s) for the scope (in practice the one the require placed). A system lift
+            // carries no free text → lift_reason null (design L5).
+            $actorRole = $this->actor->role();
+            $actorId = $this->actor->actorId();
+            $liftedAt = CarbonImmutable::now();
+
+            $holds = Hold::query()
+                ->where('scope_type', HoldScope::Customer->value)
+                ->where('scope_id', $customer->id)
+                ->where('hold_type', HoldType::Kyc->value)
+                ->where('status', HoldStatus::Active->value)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($holds as $hold) {
+                $hold->update([
+                    'status' => HoldStatus::Lifted,
+                    'lifted_actor_role' => $actorRole,
+                    'lifted_actor_id' => $actorId,
+                    'lifted_at' => $liftedAt,
+                    'lift_reason' => null,
+                ]);
+
+                // Record CustomerHoldLifted in the SAME transaction (the recorder's open-transaction guard makes
+                // write + emit atomic). The event class is the single source of truth for the name / entity type /
+                // PII-free payload (which reads the just-written `lift_reason`). Root event (no causation/correlation).
+                $this->recorder->record(
+                    name: CustomerHoldLifted::NAME,
+                    module: Module::Parties->value,
+                    actorRole: $actorRole,
+                    actorId: $actorId,
+                    entityType: CustomerHoldLifted::ENTITY_TYPE,
+                    entityId: (string) $hold->id,
+                    payload: CustomerHoldLifted::payload($hold),
+                );
+            }
 
             return $customer;
         });
