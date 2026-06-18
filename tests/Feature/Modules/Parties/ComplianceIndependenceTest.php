@@ -30,9 +30,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     now AUTO-PLACES then AUTO-LIFTS the coupled `kyc` Hold (parties-holds), so the compliance flow records the two
  *     Hold events plus the sanctions completion — and no event NAME contains "Kyc";
  *   - the scope guard: reflecting the Parties `Actions/` namespace, the compliance + supply-side transition Actions
- *     exist and — since parties-membership-activation — so do the demand-side Profile transitions (`ApproveProfile`
- *     / `DeclineProfile` / `ActivateProfile`), BUT the still-deferred demand-side status transitions do not (no
- *     `ActivateCustomer` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
+ *     exist and — since parties-membership-activation — so do the demand-side activation transitions (`ApproveProfile`
+ *     / `DeclineProfile` / `ActivateProfile` / `ActivateCustomer`), BUT the still-deferred demand-side status
+ *     transitions do not (no `SuspendCustomer` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
  *     ONLY mutation surface is the one-shot lock inside `ApproveProfile` (CreateCustomer writes it once to NULL at
  *     birth — no other Action touches it), the coupled `kyc` Hold place/lift performs NO Customer STATUS transition
  *     (the Hold→`suspended` coupling is deferred), and — driving the REAL compliance Actions — no demand-side status
@@ -117,7 +117,7 @@ it('keeps KYC, sanctions and the Customer status mutually independent across rea
     expect(DomainEvent::query()->whereIn('entity_type', ['Account', 'Profile'])->count())->toBe(0);
 });
 
-it('exposes the compliance + supply-side transitions but no demand-side status transition class and no Originating-Club setter (the scope guard)', function () {
+it('exposes the compliance + supply-side transitions but no still-deferred demand-side status transition class and no Originating-Club setter (the scope guard)', function () {
     // Reflect the Parties Actions namespace: every Action is a flat class file directly under Actions/.
     $files = glob(app_path('Modules/Parties/Actions/*.php')) ?: [];
     expect($files)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
@@ -141,15 +141,17 @@ it('exposes the compliance + supply-side transitions but no demand-side status t
         expect($actions)->toContain($present);
     }
 
-    // ...but the STILL-DEFERRED demand-side STATUS transitions do not exist: Customer / Account expose no operation
-    // moving their status out of its birth state (party-registry MODIFIED — those demand-side status transitions
-    // remain deferred). The now-shipped Profile transitions (`ApproveProfile` / `DeclineProfile` / `ActivateProfile`,
-    // parties-membership-activation — the one retained producer write + activation) are REMOVED from this forbidden
-    // set: their presence is pinned by the EXACT-SET whitelist in SupplyLifecycleChainTest (this negative check is
-    // the independence-angle companion, robust to a future legitimate compliance Action). The remaining forbidden
-    // names follow the codebase's verb+Entity convention and map 1:1 to the deferred demand-side events.
+    // ...but the STILL-DEFERRED demand-side STATUS transitions do not exist: the Account exposes no operation moving
+    // its status out of its `active` birth, and the Customer exposes no `active →` suspend/close transition
+    // (party-registry MODIFIED — those demand-side status transitions remain deferred). The now-shipped demand-side
+    // activation Actions (`ApproveProfile` / `DeclineProfile` / `ActivateProfile` / `ActivateCustomer`,
+    // parties-membership-activation — the one retained producer write + Profile/Customer activation) are REMOVED
+    // from this forbidden set: their presence is pinned by the EXACT-SET whitelist in SupplyLifecycleChainTest (this
+    // negative check is the independence-angle companion, robust to a future legitimate compliance Action). The
+    // remaining forbidden names follow the codebase's verb+Entity convention and map 1:1 to the deferred
+    // demand-side events.
     foreach ([
-        'ActivateCustomer', 'SuspendCustomer', 'CloseCustomer',
+        'SuspendCustomer', 'CloseCustomer',
         'ActivateAccount', 'SuspendAccount', 'CloseAccount',
         'LockOriginatingClub', 'SetOriginatingClub',
     ] as $forbidden) {

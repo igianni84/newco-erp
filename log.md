@@ -329,3 +329,5 @@
 ## [2026-06-18 21:27] ralph | parties-membership-activation 2.1 | green | 5 files (ApproveProfile+DeclineProfile Actions, ProfileMembershipApprovalTest 9/9, 2 guard tests narrowed); full 812/812 SQLite, Parties 315/315 PG17; OC one-shot lock + audit-only approve/decline
 
 ## [2026-06-18 21:38] ralph | parties-membership-activation 2.2 | green | ActivateProfile approved→active + root ProfileActivated; 2 guards narrowed; SQLite 817/817, PG17 Parties 320/320; 4 code+2 change files
+
+## [2026-06-18 21:55] ralph | parties-membership-activation 2.3 | green | ActivateCustomer + composite onboarding gate (5-conjunct, NULL kyc=cleared) + root CustomerActivated; 2 guard tests narrowed; 833/833 SQLite, Parties 336/336 PG17; 4 code/test files + memory
