@@ -3,6 +3,8 @@
 namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateCustomer;
+use App\Modules\Parties\Actions\ReactivateCustomer;
+use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\PartyType;
@@ -12,9 +14,11 @@ use App\Modules\Parties\Events\CustomerCreated;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\Parties\CustomerFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -75,6 +79,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface $updated_at
  * @property-read Account|null $account
  * @property-read Club|null $originatingClub
+ * @property-read Collection<int, Profile> $profiles
  */
 class Customer extends Model
 {
@@ -101,6 +106,21 @@ class Customer extends Model
     public function account(): HasOne
     {
         return $this->hasOne(Account::class, 'customer_id');
+    }
+
+    /**
+     * The Club memberships this Customer holds — a WITHIN-module `hasMany` (both entities are Module K, so the
+     * cross-module relation ban does not apply). It is the cascade target of {@see SuspendCustomer}
+     * / {@see ReactivateCustomer} (§ 15.1 *"Cascades to all the Customer's Profiles"* — the
+     * `RetireProducer → Producer::clubs()` cascade precedent): a Customer may hold many Profiles, at most one per Club
+     * (BR-K-Identity-2). The Action re-reads this set `->lockForUpdate()` inside its transaction; the relation itself
+     * adds no writer (the model stays persistence-only).
+     *
+     * @return HasMany<Profile, $this>
+     */
+    public function profiles(): HasMany
+    {
+        return $this->hasMany(Profile::class, 'customer_id');
     }
 
     /**

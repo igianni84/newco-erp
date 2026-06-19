@@ -349,3 +349,5 @@
 ## [2026-06-19 13:15] ralph | parties-membership-suspension 2.2 | green | 4 files (LapseProfile+RenewProfile+test+guard); 890/890 SQLite, 393/393 PG17, PHPStan 0
 
 ## [2026-06-19 13:26] ralph | parties-membership-suspension 2.3 | green | CancelProfile (audit-only) + DeactivateProfile; 910/910 SQLite, 413/413 PG17; 4 files
+
+## [2026-06-19 13:47] ralph | parties-membership-suspension 3.1 | green | SuspendCustomer+ReactivateCustomer cascade (causation children + coverage-guarded restore); 6 files; SQLite 919/919, PG17 422/422

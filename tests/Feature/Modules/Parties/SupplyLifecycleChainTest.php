@@ -337,10 +337,11 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // Profile cancel/deactivate set: `CancelProfile` (`active | lapsed → cancelled`, writing the optional
     // `cancellation_reason`) is AUDIT-ONLY — it records NO event (§ 15.2 names no `ProfileCancelled`, design L2) but is
     // still a transition Action, so it IS whitelisted here; `DeactivateProfile` (`active → inactive`) records
-    // `ProfileInactive`. The rest of the status set is NOT here yet (the Customer
-    // `SuspendCustomer`/`ReactivateCustomer`/`CloseCustomer` cascade, and the Account
-    // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → the later tasks of this slice, each declaring its
-    // Actions in this whitelist).
+    // `ProfileInactive`. Task 3.1 adds the Customer suspend/restore cascade: `SuspendCustomer` (`active → suspended`,
+    // cascading `ProfileSuspended` to the Customer's `Active` Profiles as causation children — design L11) and
+    // `ReactivateCustomer` (`suspended → active`, cascade-restoring only the Profiles no longer covered by an active
+    // Hold). The rest of the status set is NOT here yet (the Customer terminal `CloseCustomer`, and the Account
+    // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → task 3.2, each declaring its Actions in this whitelist).
     $demandSideStatusTransitions = [
         'SuspendProfile',
         'ReactivateProfile',
@@ -348,10 +349,12 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'RenewProfile',
         'CancelProfile',
         'DeactivateProfile',
+        'SuspendCustomer',
+        'ReactivateCustomer',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status ones. There is no SuspendCustomer / SuspendAccount /
+    // demand-side activation + demand-side status ones. There is no CloseCustomer / SuspendAccount /
     // LockOriginatingClub yet — those demand-side status transitions remain deferred (party-registry MODIFIED). If a
     // still-deferred demand-side transition Action were added without declaring it here, it would appear in this set
     // and fail the assertion (the whitelist grows one slice at a time).
