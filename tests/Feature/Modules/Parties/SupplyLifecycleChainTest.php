@@ -333,8 +333,11 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // `ProfileSuspended` and `ReactivateProfile` (`suspended → active`) records `ProfileReactivated`, both
     // state-preserving (design L9). Task 2.2 adds the Profile lapse/renew pair: `LapseProfile` (`active → lapsed`,
     // stamping `lapsed_at`) records `ProfileExpired` (NOT `ProfileLapsed` — the § 15.2 naming trap, L3) and
-    // `RenewProfile` (`lapsed → active` within the 30-day grace, DEC-034) records `ProfileRenewed`. The rest of the
-    // status set is NOT here yet (the Profile cancel/deactivate set, the Customer
+    // `RenewProfile` (`lapsed → active` within the 30-day grace, DEC-034) records `ProfileRenewed`. Task 2.3 adds the
+    // Profile cancel/deactivate set: `CancelProfile` (`active | lapsed → cancelled`, writing the optional
+    // `cancellation_reason`) is AUDIT-ONLY — it records NO event (§ 15.2 names no `ProfileCancelled`, design L2) but is
+    // still a transition Action, so it IS whitelisted here; `DeactivateProfile` (`active → inactive`) records
+    // `ProfileInactive`. The rest of the status set is NOT here yet (the Customer
     // `SuspendCustomer`/`ReactivateCustomer`/`CloseCustomer` cascade, and the Account
     // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → the later tasks of this slice, each declaring its
     // Actions in this whitelist).
@@ -343,6 +346,8 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'ReactivateProfile',
         'LapseProfile',
         'RenewProfile',
+        'CancelProfile',
+        'DeactivateProfile',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +

@@ -347,3 +347,5 @@
 ## [2026-06-19 13:01] ralph | parties-membership-suspension 2.1 | green | 4 files (2 Actions + feature test + SupplyLifecycleChainTest whitelist) | 875/875 SQLite, 378/378 PG17
 
 ## [2026-06-19 13:15] ralph | parties-membership-suspension 2.2 | green | 4 files (LapseProfile+RenewProfile+test+guard); 890/890 SQLite, 393/393 PG17, PHPStan 0
+
+## [2026-06-19 13:26] ralph | parties-membership-suspension 2.3 | green | CancelProfile (audit-only) + DeactivateProfile; 910/910 SQLite, 413/413 PG17; 4 files
