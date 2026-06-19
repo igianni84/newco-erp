@@ -355,3 +355,5 @@
 ## [2026-06-19 13:58] ralph | parties-membership-suspension 3.2 | green | CloseCustomer (no cascade) + Account FSM audit-only (Suspend/Reactivate/Close); 8 files; 931/931 SQLite, 434/434 PG17
 
 ## [2026-06-19 14:15] ralph | parties-membership-suspension 4.1 | green | PlaceHold PLACE coupling drives covered active scopes to suspended; 4 files; SQLite 937/937 + PG17 440/440; only HoldRegistryTest Account assertion inverted
+
+## [2026-06-19 14:32] ralph | parties-membership-suspension 4.2 | green | 3 files (LiftHold+RecordKycVerified restore coupling, new HoldStatusCouplingLiftTest) | 945/945 SQLite + 448/448 PG17 | no guard amended | 10 of 11 tasks done

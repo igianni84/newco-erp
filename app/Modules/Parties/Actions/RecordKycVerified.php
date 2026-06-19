@@ -3,6 +3,7 @@
 namespace App\Modules\Parties\Actions;
 
 use App\Modules\Module;
+use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldStatus;
 use App\Modules\Parties\Enums\HoldType;
@@ -38,6 +39,16 @@ use Illuminate\Support\Facades\DB;
  * events run in the SAME transaction as the verify write (the recorder's open-transaction guard makes them
  * atomic). `rejected` is the contrast — `RecordKycRejected` LEAVES the Hold in place (§ 9.1).
  *
+ * THE RESTORE SIDE OF THE COUPLING (parties-membership-suspension task 4.2, design L6; party-registry — Requirement:
+ * Hold-Driven Status Coupling; ADR 2026-06-19): a status-bearing scope is `suspended` IFF covered by ≥1 active Hold,
+ * so after lifting the `kyc` Hold(s) this Action RESTORES the Customer by INVOKING {@see ReactivateCustomer} (which
+ * cascade-restores its uncovered Profiles) in the SAME transaction — but ONLY when the Customer is currently
+ * `suspended` AND no OTHER active Hold still covers it (re-queried coverage; the just-lifted `kyc` Hold(s) are already
+ * `lifted`). This is a NO-OP at onboarding (the Customer is `pending`, never suspended); it goes live on a
+ * post-activation re-screen, where `RequireKyc → PlaceHold` suspended an `active` Customer (the place coupling — task
+ * 4.1) and this verify lifts the `kyc` Hold and restores it. Deliberately does NOT reuse {@see LiftHold} (the per-type
+ * lift discipline forbids the operator path from a `kyc` Hold), so the system lift + restore are wired here too.
+ *
  * From-state guarded and race-safe (design L2, mirroring `ActivateProducer`): inside ONE {@see DB::transaction}
  * it re-reads the row `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state
  * assert carries correctness either way), asserts `kyc_status === pending`, then writes `verified` and lifts the
@@ -52,6 +63,7 @@ class RecordKycVerified
     public function __construct(
         private readonly DomainEventRecorder $recorder,
         private readonly ActorContext $actor,
+        private readonly ReactivateCustomer $reactivateCustomer,
     ) {}
 
     public function handle(int $customerId): Customer
@@ -108,7 +120,52 @@ class RecordKycVerified
                 );
             }
 
+            // The restore side of the Hold→`suspended` coupling (parties-membership-suspension task 4.2, design L6;
+            // ADR 2026-06-19): after lifting the `kyc` Hold(s), restore the Customer IFF it is now `suspended` and no
+            // OTHER active Hold still covers it (ReactivateCustomer cascade-restores its uncovered Profiles). A no-op at
+            // onboarding (the Customer was `pending`, never suspended); live on a post-activation re-screen, where the
+            // `kyc` Hold suspended an `active` Customer (the place coupling) and this lift restores it. The nested
+            // ReactivateCustomer transaction is a SAVEPOINT under this verify transaction.
+            $this->restoreCustomerIfUncovered($customer->id);
+
             return $customer;
         });
+    }
+
+    /**
+     * Restores the Customer ({@see ReactivateCustomer}, cascade-restoring its uncovered Profiles) after the system
+     * `kyc`-lift IFF it is currently `suspended` AND no OTHER active Customer-scope Hold still covers it (the
+     * just-lifted `kyc` Hold(s) are already `lifted`, so the coverage re-query excludes them). The from-state pre-check
+     * keeps this from throwing when the Customer was never suspended (onboarding KYC on a `pending` Customer — the
+     * canonical no-op; the live path is a post-activation re-screen). The Reactivate Action is the sole status writer +
+     * event emitter; this only decides WHETHER to invoke it. Deliberately does NOT reuse {@see LiftHold} (the per-type
+     * lift discipline forbids the operator path from a `kyc` Hold), so the restore is wired here too — design L6.
+     */
+    private function restoreCustomerIfUncovered(int $customerId): void
+    {
+        $customer = Customer::query()->whereKey($customerId)->first();
+
+        if ($customer?->status === CustomerStatus::Suspended && ! $this->customerStillCovered($customerId)) {
+            $this->reactivateCustomer->handle($customerId);
+        }
+    }
+
+    /**
+     * Is the Customer still covered by another active Customer-scope Hold? A Customer is suspended ONLY via a
+     * Customer-scope Hold (Profile-scope/Account-scope Holds isolate — BR-K-Hold-4), so its coverage is exactly the
+     * active Customer-scope Holds on it. Re-read as Hold ROWS `->lockForUpdate()->get()` + `count() > 0` (this path
+     * writes, so it locks the coverage rows) — the proven idiom (NOT `->exists()`, which would lift `FOR UPDATE` into
+     * an EXISTS subquery — avoided for PG cross-engine safety).
+     */
+    private function customerStillCovered(int $customerId): bool
+    {
+        $holds = Hold::query()
+            ->where('status', HoldStatus::Active->value)
+            ->where('scope_type', HoldScope::Customer->value)
+            ->where('scope_id', $customerId)
+            ->lockForUpdate()
+            ->get();
+
+        return count($holds) > 0;
     }
 }
