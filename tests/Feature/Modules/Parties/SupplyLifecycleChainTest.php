@@ -321,8 +321,6 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // names no ProfileApproved/ProfileRejected — the approve path's lone event is the conditional
     // OriginatingClubLocked); `ActivateProfile` (`approved → active`) records `ProfileActivated` and
     // `ActivateCustomer` (`pending → active`, behind the composite onboarding gate) records `CustomerActivated`.
-    // The still-deferred demand-side transitions are NOT here yet (the Account/suspension set — `SuspendAccount`,
-    // `SuspendCustomer`, the Profile suspend/lapse/cancel set → later).
     $demandSideTransitions = [
         'ApproveProfile',
         'DeclineProfile',
@@ -330,13 +328,25 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'ActivateCustomer',
     ];
 
+    // ...and the demand-side STATUS transitions (parties-membership-suspension — the post-activation status edges off
+    // `active`). Task 2.1 ships the Profile suspend/restore pair: `SuspendProfile` (`active → suspended`) records
+    // `ProfileSuspended` and `ReactivateProfile` (`suspended → active`) records `ProfileReactivated`, both
+    // state-preserving (design L9). The rest of the status set is NOT here yet (the Profile lapse/cancel/deactivate
+    // set, the Customer `SuspendCustomer`/`ReactivateCustomer`/`CloseCustomer` cascade, and the Account
+    // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → the later tasks of this slice, each declaring its
+    // Actions in this whitelist).
+    $demandSideStatusTransitions = [
+        'SuspendProfile',
+        'ReactivateProfile',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation ones. There is no SuspendCustomer / SuspendAccount / LockOriginatingClub yet — those
-    // demand-side status transitions remain deferred (party-registry MODIFIED). If a still-deferred demand-side
-    // transition Action were added without declaring it here, it would appear in this set and fail the assertion
-    // (the whitelist grows one slice at a time).
+    // demand-side activation + demand-side status ones. There is no SuspendCustomer / SuspendAccount /
+    // LockOriginatingClub yet — those demand-side status transitions remain deferred (party-registry MODIFIED). If a
+    // still-deferred demand-side transition Action were added without declaring it here, it would appear in this set
+    // and fail the assertion (the whitelist grows one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

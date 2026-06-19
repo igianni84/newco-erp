@@ -343,3 +343,5 @@
 ## [2026-06-19 12:38] ralph | parties-membership-suspension 1.2 | green | 5 files | +12 Illegal*Transition factories (new IllegalAccountTransition) + 12 lang keys/1 new account group; 857/857 SQLite, PHPStan 0, no-DB task
 
 ## [2026-06-19 12:47] ralph | parties-membership-suspension 1.3 | green | 9 files (8 event classes + StatusEventsTest); 865/865 SQLite; no DB so no PG; no guard test touched
+
+## [2026-06-19 13:01] ralph | parties-membership-suspension 2.1 | green | 4 files (2 Actions + feature test + SupplyLifecycleChainTest whitelist) | 875/875 SQLite, 378/378 PG17
