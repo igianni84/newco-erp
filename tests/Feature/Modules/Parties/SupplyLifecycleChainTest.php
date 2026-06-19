@@ -321,8 +321,6 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // names no ProfileApproved/ProfileRejected — the approve path's lone event is the conditional
     // OriginatingClubLocked); `ActivateProfile` (`approved → active`) records `ProfileActivated` and
     // `ActivateCustomer` (`pending → active`, behind the composite onboarding gate) records `CustomerActivated`.
-    // The still-deferred demand-side transitions are NOT here yet (the Account/suspension set — `SuspendAccount`,
-    // `SuspendCustomer`, the Profile suspend/lapse/cancel set → later).
     $demandSideTransitions = [
         'ApproveProfile',
         'DeclineProfile',
@@ -330,13 +328,49 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'ActivateCustomer',
     ];
 
+    // ...and the demand-side STATUS transitions (parties-membership-suspension — the post-activation status edges off
+    // `active`). Task 2.1 ships the Profile suspend/restore pair: `SuspendProfile` (`active → suspended`) records
+    // `ProfileSuspended` and `ReactivateProfile` (`suspended → active`) records `ProfileReactivated`, both
+    // state-preserving (design L9). Task 2.2 adds the Profile lapse/renew pair: `LapseProfile` (`active → lapsed`,
+    // stamping `lapsed_at`) records `ProfileExpired` (NOT `ProfileLapsed` — the § 15.2 naming trap, L3) and
+    // `RenewProfile` (`lapsed → active` within the 30-day grace, DEC-034) records `ProfileRenewed`. Task 2.3 adds the
+    // Profile cancel/deactivate set: `CancelProfile` (`active | lapsed → cancelled`, writing the optional
+    // `cancellation_reason`) is AUDIT-ONLY — it records NO event (§ 15.2 names no `ProfileCancelled`, design L2) but is
+    // still a transition Action, so it IS whitelisted here; `DeactivateProfile` (`active → inactive`) records
+    // `ProfileInactive`. Task 3.1 adds the Customer suspend/restore cascade: `SuspendCustomer` (`active → suspended`,
+    // cascading `ProfileSuspended` to the Customer's `Active` Profiles as causation children — design L11) and
+    // `ReactivateCustomer` (`suspended → active`, cascade-restoring only the Profiles no longer covered by an active
+    // Hold). Task 3.2 completes the set with the Customer terminal `CloseCustomer` (`active | suspended → closed`,
+    // recording `CustomerClosed` but — unlike suspension — NOT cascading to Profiles, § 15.1, design L7) and the whole
+    // Account FSM `SuspendAccount`/`ReactivateAccount`/`CloseAccount` (`active → suspended → active → closed`),
+    // AUDIT-ONLY — they record NO event (§ 15 names no Account-family event, design L8) but are still transition
+    // Actions, so they ARE whitelisted here. With 3.2 the demand-side status-transition set is COMPLETE; the coupling
+    // tasks 4.x wire `PlaceHold`/`LiftHold` into these Actions but add NO new Action class. There is still NO
+    // `ActivateAccount` (the Account is born `active` — design L8; it stays absent forever).
+    $demandSideStatusTransitions = [
+        'SuspendProfile',
+        'ReactivateProfile',
+        'LapseProfile',
+        'RenewProfile',
+        'CancelProfile',
+        'DeactivateProfile',
+        'SuspendCustomer',
+        'ReactivateCustomer',
+        'CloseCustomer',
+        'SuspendAccount',
+        'ReactivateAccount',
+        'CloseAccount',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation ones. There is no SuspendCustomer / SuspendAccount / LockOriginatingClub yet — those
-    // demand-side status transitions remain deferred (party-registry MODIFIED). If a still-deferred demand-side
-    // transition Action were added without declaring it here, it would appear in this set and fail the assertion
-    // (the whitelist grows one slice at a time).
+    // demand-side activation + demand-side status ones. With task 3.2 the demand-side status set is complete; the only
+    // names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8) and the deferred seams
+    // `WaitingList`/segment/Hero-cap (no Action class) and `LockOriginatingClub`/`SetOriginatingClub` (the
+    // Originating-Club lock lives inside `ApproveProfile`, never a standalone Action). If a deferred-seam Action were
+    // added without declaring it here, it would appear in this set and fail the assertion (the whitelist grew one
+    // slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

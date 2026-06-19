@@ -30,13 +30,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     now AUTO-PLACES then AUTO-LIFTS the coupled `kyc` Hold (parties-holds), so the compliance flow records the two
  *     Hold events plus the sanctions completion — and no event NAME contains "Kyc";
  *   - the scope guard: reflecting the Parties `Actions/` namespace, the compliance + supply-side transition Actions
- *     exist and — since parties-membership-activation — so do the demand-side activation transitions (`ApproveProfile`
- *     / `DeclineProfile` / `ActivateProfile` / `ActivateCustomer`), BUT the still-deferred demand-side status
- *     transitions do not (no `SuspendCustomer` / `SuspendAccount` / `LockOriginatingClub`); `originating_club_id`'s
- *     ONLY mutation surface is the one-shot lock inside `ApproveProfile` (CreateCustomer writes it once to NULL at
- *     birth — no other Action touches it), the coupled `kyc` Hold place/lift performs NO Customer STATUS transition
- *     (the Hold→`suspended` coupling is deferred), and — driving the REAL compliance Actions — no demand-side status
- *     event (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` / `CustomerSegmentChanged`) is recorded.
+ *     exist and — since parties-membership-activation / -suspension — so do the demand-side activation AND status
+ *     transitions (`ApproveProfile` / `DeclineProfile` / `ActivateProfile` / `ActivateCustomer`; the suspend/restore +
+ *     cascade + `CloseCustomer` + the Account FSM), BUT `ActivateAccount` never exists (the Account is born `active` —
+ *     AC-K-FSM-9) and `LockOriginatingClub` / `SetOriginatingClub` are not standalone Actions (the one-shot lock lives
+ *     inside `ApproveProfile`); `originating_club_id`'s ONLY mutation surface is that lock inside `ApproveProfile`
+ *     (CreateCustomer writes it once to NULL at birth — no other Action touches it), the coupled `kyc` Hold place/lift
+ *     performs NO Customer STATUS transition (the Hold→`suspended` coupling is deferred to tasks 4.x), and — driving
+ *     the REAL compliance Actions — no demand-side status event (`CustomerActivated` / `ProfileActivated` /
+ *     `OriginatingClubLocked` / `CustomerSegmentChanged`) is recorded.
  *
  * The EXACT-SET "only these non-Create Actions exist" whitelist has a single canonical home in
  * {@see SupplyLifecycleChainTest}; this file is its independence-angle companion and uses a forbidden-name negative
@@ -117,7 +119,7 @@ it('keeps KYC, sanctions and the Customer status mutually independent across rea
     expect(DomainEvent::query()->whereIn('entity_type', ['Account', 'Profile'])->count())->toBe(0);
 });
 
-it('exposes the compliance + supply-side transitions but no still-deferred demand-side status transition class and no Originating-Club setter (the scope guard)', function () {
+it('exposes the compliance + supply-side transitions but no ActivateAccount and no Originating-Club setter (the scope guard)', function () {
     // Reflect the Parties Actions namespace: every Action is a flat class file directly under Actions/.
     $files = glob(app_path('Modules/Parties/Actions/*.php')) ?: [];
     expect($files)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
@@ -141,18 +143,20 @@ it('exposes the compliance + supply-side transitions but no still-deferred deman
         expect($actions)->toContain($present);
     }
 
-    // ...but the STILL-DEFERRED demand-side STATUS transitions do not exist: the Account exposes no operation moving
-    // its status out of its `active` birth, and the Customer exposes no `active →` suspend/close transition
-    // (party-registry MODIFIED — those demand-side status transitions remain deferred). The now-shipped demand-side
-    // activation Actions (`ApproveProfile` / `DeclineProfile` / `ActivateProfile` / `ActivateCustomer`,
-    // parties-membership-activation — the one retained producer write + Profile/Customer activation) are REMOVED
-    // from this forbidden set: their presence is pinned by the EXACT-SET whitelist in SupplyLifecycleChainTest (this
-    // negative check is the independence-angle companion, robust to a future legitimate compliance Action). The
-    // remaining forbidden names follow the codebase's verb+Entity convention and map 1:1 to the deferred
-    // demand-side events.
+    // ...but two kinds of demand-side Action stay ABSENT. (1) `ActivateAccount` is NEVER created — the Account is born
+    // `active` (AC-K-FSM-9; design L8), so its only `→ active` edge is the restore `ReactivateAccount`; this name stays
+    // forbidden forever. (2) `LockOriginatingClub`/`SetOriginatingClub` do not exist as standalone Actions — the
+    // Originating-Club one-shot lock lives INSIDE `ApproveProfile` (BR-K-OC-2 / design L3, parties-membership-activation),
+    // never a dedicated setter. The full demand-side STATUS transition set is now SHIPPED and REMOVED from this
+    // forbidden check — the activation Actions (`ApproveProfile`/`DeclineProfile`/`ActivateProfile`/`ActivateCustomer`,
+    // parties-membership-activation), the Customer suspend/restore cascade (`SuspendCustomer`/`ReactivateCustomer`, task
+    // 3.1), the Customer terminal `CloseCustomer` and the whole Account FSM (`SuspendAccount`/`ReactivateAccount`/
+    // `CloseAccount`, task 3.2) — all driven manually or by the Hold coupling, NEVER by a compliance verdict (the
+    // runtime independence assertion above is the proof: a KYC/sanctions verdict on a `pending` Customer never flips
+    // `status`). Their presence is pinned by the EXACT-SET whitelist in SupplyLifecycleChainTest; this negative check is
+    // the independence-angle companion, robust to a future legitimate compliance Action.
     foreach ([
-        'SuspendCustomer', 'CloseCustomer',
-        'ActivateAccount', 'SuspendAccount', 'CloseAccount',
+        'ActivateAccount',
         'LockOriginatingClub', 'SetOriginatingClub',
     ] as $forbidden) {
         expect($actions)->not->toContain($forbidden);

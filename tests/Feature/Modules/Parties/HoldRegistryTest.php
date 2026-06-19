@@ -28,11 +28,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     not single-Hold (§ 4.8.1 / § 14.8 BR-K-Hold-1 / AC-K-BR-Hold-1; any one Hold blocks independently);
  *   - the registry is TRIGGER-AGNOSTIC with a manual-placement path for every one of the six types, on every one
  *     of the three scopes (§ 4.8 / § 4.8.1 / AC-K-MVP-2) — recorded identically regardless of type or scope;
- *   - the SCOPE GUARD holds — placing/lifting a Hold (or opening KYC, a real compliance transition) performs NO
- *     Customer/Account/Profile STATUS transition, leaving each scope entity in its birth state (`pending` /
- *     `active` / `applied`), and records NO demand-side status event (`CustomerActivated` / `ProfileActivated` /
- *     `OriginatingClubLocked` / `CustomerSegmentChanged`) — the Hold→`suspended` coupling is deferred with the
- *     demand-side status FSMs to `parties-membership-lifecycle` (§ 10.1 / AC-K-FSM-9).
+ *   - the SCOPE GUARD under the Hold→`suspended` coupling (task 4.1): opening KYC (a real compliance transition)
+ *     moves the KYC FSM but NEVER the status FSM, and placing a Hold on a NON-suspendable birth-state scope (a
+ *     `pending` Customer, an `applied` Profile) records the Hold and drives NO status transition; a Hold on the
+ *     `active`-born Account, however, drives it `active → suspended` (audit-only — § 15 names no Account event). No
+ *     demand-side status event (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked` /
+ *     `CustomerSegmentChanged`) is recorded across the sequence (§ 10.1 / AC-K-FSM-9).
  *
  * This complements {@see SpineCreationChainTest}, which pins the demand-side guard for the creation slice and stays
  * green unamended (this file adds the Hold-registry dimension of the same guard). The factories are pure fixtures
@@ -127,7 +128,7 @@ it('places a Hold on each of the three scopes — customer, account and profile'
     expect(Hold::query()->where('status', HoldStatus::Active->value)->count())->toBe(3);
 });
 
-it('places and lifts Holds without transitioning any scope entity status or recording a demand-side status event', function () {
+it('places/lifts Holds: a pending Customer and applied Profile stay put while an active Account suspends (audit-only), recording no demand-side status event', function () {
     // Three real scope entities in their BIRTH states: Customer `pending`, Account `active`, Profile `applied`.
     $customer = Customer::factory()->create();
     $account = Account::factory()->create(['customer_id' => $customer->id]);
@@ -135,7 +136,9 @@ it('places and lifts Holds without transitioning any scope entity status or reco
 
     // Exercise the full place/lift surface across all three scopes, plus the KYC coupling (a real compliance
     // transition): RequireKyc auto-places the `kyc` Hold AND moves kyc_status → pending, yet must NOT move the
-    // Customer STATUS (the KYC FSM is separate from the status FSM — § 9.1). Then lift one to exercise the lift path.
+    // Customer STATUS (the KYC FSM is separate from the status FSM — § 9.1). The Fraud Hold lands on the
+    // `active`-born Account, so the coupling (task 4.1) drives it `active → suspended` (audit-only). Then lift one
+    // to exercise the lift path.
     app(RequireKyc::class)->handle($customer->id);
     $adminOnCustomer = app(PlaceHold::class)->handle(HoldType::Admin, HoldScope::Customer, $customer->id, 'review');
     app(PlaceHold::class)->handle(HoldType::Fraud, HoldScope::Account, $account->id);
@@ -146,14 +149,16 @@ it('places and lifts Holds without transitioning any scope entity status or reco
     expect(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(4)
         ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(1);
 
-    // SCOPE GUARD — placing/lifting a Hold performs NO status transition: every scope entity is still in its birth
-    // state after the whole sequence (re-read from the DB; the Hold→`suspended` coupling is deferred — § 10.1).
+    // SCOPE GUARD under the coupling (task 4.1): a Hold on a NON-suspendable birth-state scope drives no transition —
+    // the Customer is still `pending` (the admin/kyc Holds suspend nothing off `pending`) and the Profile still
+    // `applied` — while the `active`-born Account, covered by the Fraud Hold, is now `suspended` (audit-only).
     expect(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Pending)
-        ->and(Account::findOrFail($account->id)->status)->toBe(AccountStatus::Active)
+        ->and(Account::findOrFail($account->id)->status)->toBe(AccountStatus::Suspended)
         ->and(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Applied);
 
-    // NO demand-side status event is recordable: none of the deferred demand-side names appears, and the ONLY events
-    // recorded across the whole sequence are the two Hold events (the MODIFIED Birth States scope guard).
+    // NO demand-side status event is recordable, even though the Account was suspended: the Account suspension is
+    // AUDIT-ONLY (§ 15 names no Account event), none of the deferred demand-side names appears, and the ONLY events
+    // recorded across the whole sequence are the Hold events (the coupling adds no event for the audit-only Account).
     expect(DomainEvent::query()->whereIn('name', [
         'CustomerActivated', 'ProfileActivated', 'OriginatingClubLocked', 'CustomerSegmentChanged',
     ])->count())->toBe(0)
