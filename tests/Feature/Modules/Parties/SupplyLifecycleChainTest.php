@@ -49,10 +49,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *     carries the ProducerRetired event's id as its causation_id and shares its correlation_id; the
  *     ProducerAgreementSuperseded carries the renewal-activation event's id as its causation_id and shares its
  *     correlation_id — while the STANDALONE ClubSunset and the original's own activation are roots;
- *   - the DEMAND SIDE stays inert: no CustomerActivated / ProfileActivated / OriginatingClubLocked /
- *     CustomerSegmentChanged (none of those event classes even exists yet), and — reflecting the Actions namespace
- *     — the only non-Create Actions are the six supply-side transitions, so Customer / Account / Profile expose no
- *     transition operation and `originating_club_id` has no mutation surface (the proposal slice boundary).
+ *   - the DEMAND SIDE stays inert through the whole supply-side chain: it records no CustomerActivated /
+ *     ProfileActivated / OriginatingClubLocked / CustomerSegmentChanged (the runtime assertion below) — even though
+ *     the activation event classes and the demand-side activation Actions now ship (parties-membership-activation);
+ *     and — reflecting the Actions namespace — the non-Create Actions are exactly the supply-side, compliance,
+ *     Hold-registry and demand-side activation transitions (the exact-set whitelist below).
  *
  * The companion SpineCreationChainTest (which asserts the CREATION chain emits no lifecycle event) and the two
  * architecture tests (ModuleBoundariesTest, ModulePersistenceConventionsTest) stay GREEN UNAMENDED — every
@@ -271,7 +272,7 @@ it('records zero demand-side lifecycle events — the demand side stays inert th
     expect(DomainEvent::query()->whereIn('entity_type', ['Customer', 'Account', 'Profile'])->count())->toBe(0);
 });
 
-it('exposes only supply-side and compliance transition Actions — no Customer/Account/Profile status transition and no demand-side event type (the scope guard)', function () {
+it('exposes the supply-side, compliance, Hold and demand-side activation transition Actions — the still-deferred demand-side status transitions and their event types stay absent (the scope guard)', function () {
     // Reflect the Parties Actions namespace: every Action is a flat class file directly under Actions/.
     $files = glob(app_path('Modules/Parties/Actions/*.php')) ?: [];
     expect($files)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
@@ -314,21 +315,41 @@ it('exposes only supply-side and compliance transition Actions — no Customer/A
         'LiftHold',
     ];
 
-    // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry
-    // ones. There is no ActivateCustomer / SuspendAccount / ApproveProfile / LockOriginatingClub — Customer /
-    // Account / Profile expose no STATUS transition, and `originating_club_id` has no mutation surface (party-registry
-    // MODIFIED — "Supply-side, compliance and Hold transitions exist; demand-side status transitions do not"). If a
-    // demand-side STATUS transition Action were ever added here, it would appear in this set and fail the assertion.
-    $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions]);
+    // ...and the demand-side activation transitions (parties-membership-activation — the one retained producer
+    // write, L-PP, plus activation). `ApproveProfile` (`applied → approved`, plus the in-tx Originating-Club
+    // one-shot lock) and `DeclineProfile` (`applied → rejected`, terminal) are audit-only on the Profile (§ 15.2
+    // names no ProfileApproved/ProfileRejected — the approve path's lone event is the conditional
+    // OriginatingClubLocked); `ActivateProfile` (`approved → active`) records `ProfileActivated` and
+    // `ActivateCustomer` (`pending → active`, behind the composite onboarding gate) records `CustomerActivated`.
+    // The still-deferred demand-side transitions are NOT here yet (the Account/suspension set — `SuspendAccount`,
+    // `SuspendCustomer`, the Profile suspend/lapse/cancel set → later).
+    $demandSideTransitions = [
+        'ApproveProfile',
+        'DeclineProfile',
+        'ActivateProfile',
+        'ActivateCustomer',
+    ];
 
-    // Reflect the Events namespace the same way: none of the demand-side lifecycle event types even EXISTS in
-    // this change — they are not recordable (the demand-side change introduces them). This complements the runtime
-    // "zero demand-side events" assertion: not merely unrecorded, but un-recordable.
+    // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
+    // demand-side activation ones. There is no SuspendCustomer / SuspendAccount / LockOriginatingClub yet — those
+    // demand-side status transitions remain deferred (party-registry MODIFIED). If a still-deferred demand-side
+    // transition Action were added without declaring it here, it would appear in this set and fail the assertion
+    // (the whitelist grows one slice at a time).
+    $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions]);
+
+    // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
+    // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This
+    // complements the runtime "zero demand-side events" assertion above: not merely unrecorded, but un-recordable.
+    // The three ACTIVATION events (`CustomerActivated` / `ProfileActivated` / `OriginatingClubLocked`) now ship with
+    // parties-membership-activation, so they are removed from this absent-set (the runtime loop above still pins
+    // that the supply-side chain records none of them). What stays asserted-absent is the remaining demand side:
+    // `AccountActivated` (Account suspension slice), `ProfileApproved` (the audit-only proof — § 15.2 names no
+    // approve/decline event) and `CustomerSegmentChanged` (the segments slice).
     $eventFiles = glob(app_path('Modules/Parties/Events/*.php')) ?: [];
     $events = array_map(static fn (string $file): string => basename($file, '.php'), $eventFiles);
     expect($events)->not->toBeEmpty();
-    foreach (['CustomerActivated', 'AccountActivated', 'ProfileActivated', 'ProfileApproved', 'OriginatingClubLocked', 'CustomerSegmentChanged'] as $demandSideEvent) {
+    foreach (['AccountActivated', 'ProfileApproved', 'CustomerSegmentChanged'] as $demandSideEvent) {
         expect($events)->not->toContain($demandSideEvent);
     }
 });

@@ -315,3 +315,21 @@
 ## [2026-06-18 12:15] archive | parties-holds | Merged --no-ff (6c6275b) + archived as 2026-06-18-parties-holds; synced +4 ADDED/~2 MODIFIED reqs into specs/party-registry. Semantic verify CLEAN. 783/783 SQLite+PG17. NOT pushed (human's call).
 
 ## [2026-06-18 12:19] push | main → origin | parties-holds merge+archive pushed (2dfbc13) to github newco-erp; CI incl. tests-pgsql triggered; merged branch ralph/parties-holds deleted. main == origin/main.
+
+## [2026-06-18 18:56] audit | phase-2-completeness | Phase 2 NOT complete — demand-side Parties + Admin-Panel UI (0 Filament Resources) unbuilt; UI-absence is unratified ralph drift. Decision (Giovanni): demand-side Mod K backend next, THEN the Admin Panel UI as the immediate next step (NOT deferred). Lesson: backend-green != phase-complete.
+
+## [2026-06-18 20:36] spec-to-change | parties-membership-activation | Authored demand-side activation spine: 4 ADDED + 2 MODIFIED party-registry reqs (approve/decline audit-only + OC one-shot lock, ProfileActivated, CustomerActivated gate), 19 scenarios, 7 tasks; validate --strict green. Giovanni approved; awaiting human APPROVED marker -> ralph.
+
+## [2026-06-18 20:50] ralph | parties-membership-activation 1.1 | green | 3 files: additive migration (3 nullable timestamptz onboarding-acceptance cols on parties_customers) + Customer casts/@property + test. 786/786 SQLite & PG17; down/up reversible on PG17; validate --strict green; composer diff empty.
+
+## [2026-06-18 20:59] ralph | parties-membership-activation 1.2 | green | 4 files | IllegalProfile/CustomerTransition exceptions + 5 lang keys; full suite 797/797, phpstan 0, lint clean; no DB/no PG; guard tests untouched
+
+## [2026-06-18 21:11] ralph | parties-membership-activation 1.3 | green | 5 files | 3 activation event classes (Customer/Profile/Activated + OriginatingClubLocked §6.1) + narrowed SupplyLifecycleChain existence guard; 803/803, no DB→no PG
+
+## [2026-06-18 21:27] ralph | parties-membership-activation 2.1 | green | 5 files (ApproveProfile+DeclineProfile Actions, ProfileMembershipApprovalTest 9/9, 2 guard tests narrowed); full 812/812 SQLite, Parties 315/315 PG17; OC one-shot lock + audit-only approve/decline
+
+## [2026-06-18 21:38] ralph | parties-membership-activation 2.2 | green | ActivateProfile approved→active + root ProfileActivated; 2 guards narrowed; SQLite 817/817, PG17 Parties 320/320; 4 code+2 change files
+
+## [2026-06-18 21:55] ralph | parties-membership-activation 2.3 | green | ActivateCustomer + composite onboarding gate (5-conjunct, NULL kyc=cleared) + root CustomerActivated; 2 guard tests narrowed; 833/833 SQLite, Parties 336/336 PG17; 4 code/test files + memory
+
+## [2026-06-18 22:08] ralph | parties-membership-activation 3.1 | green | 2 files (new chain test + CONTEXT.md) — full activation chain 836/836 SQLite+PG17, docs extended, 5 guard files unamended, strict valid → CHANGE COMPLETE (7/7)

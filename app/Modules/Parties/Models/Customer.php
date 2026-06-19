@@ -42,6 +42,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * from the Customer status FSM and independent of each other (§ 9.1/§ 9.2/§ 9.4); the compliance transition
  * Actions are their sole writers — the model stays persistence-only.
  *
+ * The onboarding-acceptance columns (`email_verified_at` + `tc_accepted_at` + `privacy_accepted_at`) are added
+ * additively as nullable (parties-membership-activation task 1.1, DEC-071/DEC-073): they are the gate inputs the
+ * `ActivateCustomer` composite gate reads (§ 4.1 — `pending → active` requires email verified ∧ T&C ∧ privacy
+ * accepted, alongside sanctions = passed and KYC cleared). Born `NULL` and written by the deferred consumer
+ * registration surface or an operator (no setter in this slice — the additive-seam pattern); a NULL timestamp is
+ * an unmet gate. `:state`/acceptance values are never carried into a domain-event payload.
+ *
  * @property int $id
  * @property string $email
  * @property string $name
@@ -60,6 +67,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $last_screening_at
  * @property CarbonImmutable|null $next_rescreen_at
  * @property ScreeningTriggerSource|null $screening_trigger_source
+ * @property CarbonImmutable|null $email_verified_at
+ * @property CarbonImmutable|null $tc_accepted_at
+ * @property CarbonImmutable|null $privacy_accepted_at
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -134,6 +144,12 @@ class Customer extends Model
             'last_screening_at' => 'immutable_datetime',
             'next_rescreen_at' => 'immutable_datetime',
             'screening_trigger_source' => ScreeningTriggerSource::class,
+            // onboarding-acceptance gate inputs (parties-membership-activation task 1.1; design L1) — additive
+            // nullable timestamps the ActivateCustomer composite gate reads (§ 4.1); set by the deferred
+            // registration surface or an operator.
+            'email_verified_at' => 'immutable_datetime',
+            'tc_accepted_at' => 'immutable_datetime',
+            'privacy_accepted_at' => 'immutable_datetime',
         ];
     }
 }
