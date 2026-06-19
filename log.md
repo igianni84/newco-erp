@@ -357,3 +357,5 @@
 ## [2026-06-19 14:15] ralph | parties-membership-suspension 4.1 | green | PlaceHold PLACE coupling drives covered active scopes to suspended; 4 files; SQLite 937/937 + PG17 440/440; only HoldRegistryTest Account assertion inverted
 
 ## [2026-06-19 14:32] ralph | parties-membership-suspension 4.2 | green | 3 files (LiftHold+RecordKycVerified restore coupling, new HoldStatusCouplingLiftTest) | 945/945 SQLite + 448/448 PG17 | no guard amended | 10 of 11 tasks done
+
+## [2026-06-19 14:52] ralph | parties-membership-suspension 5.1 | green | 3 files (chain test, CONTEXT.md, tasks.md); full suite 949/949 SQLite + 949/949 PG17; all 11 tasks done — CHANGE_COMPLETE
