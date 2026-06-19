@@ -5,6 +5,7 @@ namespace App\Modules\Parties\Models;
 use App\Modules\Parties\Actions\CreateProfile;
 use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Events\ProfileCreated;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\Parties\ProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,9 +24,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * non-terminal-duplicate pre-check, inserts the row (born `applied`) and records {@see ProfileCreated} in one
  * transaction — so `$guarded = []` carries no mass-assignment-from-request risk. `tier` / `role` are the
  * nullable single-tier / single-role-at-launch attributes (DEC-062); `invited_by_customer_id` is the nullable
- * referral seam (an inviter Customer captured by id, NOT a constrained relation this slice). This change defines
- * no transition out of `applied` (design D2); the multi-profile one-per-(Customer,Club) rule (BR-K-Identity-2)
- * is enforced by the partial unique index on `parties_profiles` plus the action's pre-check.
+ * referral seam (an inviter Customer captured by id, NOT a constrained relation this slice). The multi-profile
+ * one-per-(Customer,Club) rule (BR-K-Identity-2) is enforced by the partial unique index on `parties_profiles`
+ * plus the action's pre-check.
+ *
+ * The demand-side lifecycle columns (`lapsed_at` + `cancellation_reason`) are added additively as nullable
+ * (parties-membership-suspension task 1.1, DEC-071): `lapsed_at` is the grace-window anchor `LapseProfile` stamps
+ * and `RenewProfile` reads for the 30-day grace (DEC-034); `cancellation_reason` is the optional Producer-initiated
+ * reason `CancelProfile` records (cancellation is audit-only — § 15.2 names no `ProfileCancelled` — so the column
+ * carries the domain data a deferred Module-S offboarding consumer reads). Born `NULL`; the transition Actions are
+ * the sole writers (the model stays persistence-only); the values are never carried into a domain-event payload.
  *
  * @property int $id
  * @property int $customer_id
@@ -34,6 +42,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $tier
  * @property string|null $role
  * @property int|null $invited_by_customer_id
+ * @property CarbonImmutable|null $lapsed_at
+ * @property string|null $cancellation_reason
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -94,6 +104,10 @@ class Profile extends Model
         return [
             'state' => ProfileState::class,
             'version' => 'integer',
+            // demand-side lifecycle anchor (parties-membership-suspension task 1.1; design L1) — additive
+            // nullable timestamp stamped by LapseProfile / cleared by RenewProfile (the 30-day grace, DEC-034).
+            // `cancellation_reason` is a plain nullable string (no cast needed). Mirrors the Customer timestamp casts.
+            'lapsed_at' => 'immutable_datetime',
         ];
     }
 }

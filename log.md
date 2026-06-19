@@ -335,3 +335,7 @@
 ## [2026-06-18 22:08] ralph | parties-membership-activation 3.1 | green | 2 files (new chain test + CONTEXT.md) — full activation chain 836/836 SQLite+PG17, docs extended, 5 guard files unamended, strict valid → CHANGE COMPLETE (7/7)
 
 ## [2026-06-19 08:57] close-out | parties-membership-activation | merged --no-ff → main (4a27c61); semantic-verify CLEAN (0 CRIT/0 WARN, 2 no-action SUGGEST); archived 2026-06-19-parties-membership-activation; re-verified 836/836 SQLite+PG17; local-only, not pushed
+
+## [2026-06-19 12:11] spec-to-change | parties-membership-suspension | authored: 7 ADDED+2 MODIFIED reqs, 29 scenarios, 11 tasks (5 groups) + ADR 2026-06-19-hold-status-coupling (coverage-recompute); openspec validate --strict green; awaiting human APPROVED + ./ralph.sh
+
+## [2026-06-19 12:21] ralph | parties-membership-suspension 1.1 | green | 3 files | additive migration lapsed_at+cancellation_reason on parties_profiles; 839/839 SQLite + PG17; down() reversible; index untouched
