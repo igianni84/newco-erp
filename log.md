@@ -345,3 +345,5 @@
 ## [2026-06-19 12:47] ralph | parties-membership-suspension 1.3 | green | 9 files (8 event classes + StatusEventsTest); 865/865 SQLite; no DB so no PG; no guard test touched
 
 ## [2026-06-19 13:01] ralph | parties-membership-suspension 2.1 | green | 4 files (2 Actions + feature test + SupplyLifecycleChainTest whitelist) | 875/875 SQLite, 378/378 PG17
+
+## [2026-06-19 13:15] ralph | parties-membership-suspension 2.2 | green | 4 files (LapseProfile+RenewProfile+test+guard); 890/890 SQLite, 393/393 PG17, PHPStan 0

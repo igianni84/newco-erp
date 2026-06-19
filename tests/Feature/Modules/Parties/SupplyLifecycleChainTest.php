@@ -331,13 +331,18 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // ...and the demand-side STATUS transitions (parties-membership-suspension — the post-activation status edges off
     // `active`). Task 2.1 ships the Profile suspend/restore pair: `SuspendProfile` (`active → suspended`) records
     // `ProfileSuspended` and `ReactivateProfile` (`suspended → active`) records `ProfileReactivated`, both
-    // state-preserving (design L9). The rest of the status set is NOT here yet (the Profile lapse/cancel/deactivate
-    // set, the Customer `SuspendCustomer`/`ReactivateCustomer`/`CloseCustomer` cascade, and the Account
+    // state-preserving (design L9). Task 2.2 adds the Profile lapse/renew pair: `LapseProfile` (`active → lapsed`,
+    // stamping `lapsed_at`) records `ProfileExpired` (NOT `ProfileLapsed` — the § 15.2 naming trap, L3) and
+    // `RenewProfile` (`lapsed → active` within the 30-day grace, DEC-034) records `ProfileRenewed`. The rest of the
+    // status set is NOT here yet (the Profile cancel/deactivate set, the Customer
+    // `SuspendCustomer`/`ReactivateCustomer`/`CloseCustomer` cascade, and the Account
     // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → the later tasks of this slice, each declaring its
     // Actions in this whitelist).
     $demandSideStatusTransitions = [
         'SuspendProfile',
         'ReactivateProfile',
+        'LapseProfile',
+        'RenewProfile',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
