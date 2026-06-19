@@ -38,8 +38,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *
  * The state graph is pinned through factories (the sibling ProfileSuspensionTest / ProfileActivationTest convention)
  * so the from-state and the residual-Hold coverage are exact and the event-delta proof is honest (factories record no
- * event — every counted event is one of the Actions'). PlaceHold at this task records the Hold WITHOUT driving a
- * status transition (the Hold→`suspended` coupling lands at tasks 4.x), so it cleanly sets up residual coverage.
+ * event — every counted event is one of the Actions'). PlaceHold's coupling (task 4.1) suspends only a scope in its
+ * suspendable from-state, so a Hold placed on an already-`Suspended` Profile drives no transition — cleanly setting
+ * up residual coverage for the restore.
  * RefreshDatabase per the directory convention; each Action opens its OWN DB::transaction. Events are asserted BY NAME
  * and payloads BY KEY — never a byte-compare of stored jsonb (PG reorders keys; `causation_id` is an uncast column so
  * it reads back as a numeric string on PG while the `id` PK round-trips int — knowledge/testing traps 3 & 6) — so the
@@ -141,8 +142,9 @@ it('reactivates a suspended Customer, restoring only the Profiles no longer cove
     expect(Profile::findOrFail($held->id)->state)->toBe(ProfileState::Suspended)
         ->and(Profile::findOrFail($free->id)->state)->toBe(ProfileState::Suspended);
 
-    // Place a Profile-scope `admin` Hold on ONE of the two suspended Profiles. At task 3.1 PlaceHold records the Hold
-    // WITHOUT driving a status transition (the coupling lands at 4.x), so this only establishes residual coverage.
+    // Place a Profile-scope `admin` Hold on ONE of the two suspended Profiles. PlaceHold's coupling (task 4.1)
+    // suspends only a scope in its suspendable from-state; this Profile is already `Suspended`, so the placement
+    // drives no transition and only establishes residual coverage.
     app(PlaceHold::class)->handle(HoldType::Admin, HoldScope::Profile, $held->id, 'residual review');
 
     $eventsBefore = DomainEvent::query()->count();   // 3 cascade events + 1 CustomerHoldPlaced = 4
