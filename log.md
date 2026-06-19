@@ -339,3 +339,5 @@
 ## [2026-06-19 12:11] spec-to-change | parties-membership-suspension | authored: 7 ADDED+2 MODIFIED reqs, 29 scenarios, 11 tasks (5 groups) + ADR 2026-06-19-hold-status-coupling (coverage-recompute); openspec validate --strict green; awaiting human APPROVED + ./ralph.sh
 
 ## [2026-06-19 12:21] ralph | parties-membership-suspension 1.1 | green | 3 files | additive migration lapsed_at+cancellation_reason on parties_profiles; 839/839 SQLite + PG17; down() reversible; index untouched
+
+## [2026-06-19 12:38] ralph | parties-membership-suspension 1.2 | green | 5 files | +12 Illegal*Transition factories (new IllegalAccountTransition) + 12 lang keys/1 new account group; 857/857 SQLite, PHPStan 0, no-DB task

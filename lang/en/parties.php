@@ -53,6 +53,13 @@ return [
         // the gate CONDITIONS only — it interpolates NOTHING: the offending acceptance values (verification /
         // T&C / privacy timestamps) are PII and this message can reach logs, so the rule alone is surfaced.
         'gate_not_met' => 'Cannot activate this Customer: the onboarding gate is not met. Activation requires a verified email, accepted terms and privacy, a passed sanctions screening, and cleared KYC where required.',
+        // Customer status FSM `active → suspended | closed`, `suspended → active` (parties-membership-
+        // suspension, design L4/L7; § 4.1 / AC-K-FSM-1). Suspension and closure are explicit (manual or via
+        // the Hold coupling), never auto-driven by a Profile state or a KYC/sanctions verdict
+        // (AC-K-BR-Customer-1). :state is the offending from-state token (a business enum value, not PII).
+        'cannot_suspend' => 'Cannot suspend this Customer from state :state. A Customer suspends only from active.',
+        'cannot_reactivate' => 'Cannot reactivate this Customer from state :state. A Customer reactivates only from suspended.',
+        'cannot_close' => 'Cannot close this Customer from state :state. A Customer closes only from active or suspended.',
     ],
     'profile' => [
         // BR-K-Identity-2 rejection (design D8): a Customer holds at most one NON-TERMINAL Profile per Club, so
@@ -67,6 +74,27 @@ return [
         'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied.',
         'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied.',
         'cannot_activate' => 'Cannot activate this Profile from state :state. A Profile activates only from approved.',
+        // Profile status FSM off `active` (parties-membership-suspension, design L4/L5; § 4.2.1 /
+        // AC-K-FSM-2): `active ↔ suspended`, `active → lapsed → active` (30-day grace, DEC-034),
+        // `active | lapsed → cancelled` (audit-only — L2), `active → inactive`. cannot_renew also rejects a
+        // renewal past the grace window. :state is the offending from-state token (a business enum value,
+        // not PII).
+        'cannot_suspend' => 'Cannot suspend this Profile from state :state. A Profile suspends only from active.',
+        'cannot_reactivate' => 'Cannot reactivate this Profile from state :state. A Profile reactivates only from suspended.',
+        'cannot_lapse' => 'Cannot lapse this Profile from state :state. A Profile lapses only from active.',
+        'cannot_renew' => 'Cannot renew this Profile from state :state. A Profile renews only from lapsed within the grace window.',
+        'cannot_cancel' => 'Cannot cancel this Profile from state :state. A Profile cancels only from active or lapsed.',
+        'cannot_deactivate' => 'Cannot deactivate this Profile from state :state. A Profile deactivates only from active.',
+    ],
+    'account' => [
+        // Account status FSM `active → suspended → closed`, `suspended → active` (parties-membership-
+        // suspension, design L4/L8; § 4.7 / AC-K-FSM-9). The Account is born `active` (co-provisioned with
+        // its Customer) — there is NO ActivateAccount, only the restore ReactivateAccount; all Account
+        // transitions are audit-only (§ 15 names no Account event). :state is the offending from-state token
+        // (a business enum value, not PII).
+        'cannot_suspend' => 'Cannot suspend this Account from state :state. An Account suspends only from active.',
+        'cannot_reactivate' => 'Cannot reactivate this Account from state :state. An Account reactivates only from suspended.',
+        'cannot_close' => 'Cannot close this Account from state :state. An Account closes only from active or suspended.',
     ],
     'kyc' => [
         // KYC FSM `not_required → pending → verified | rejected` (parties-compliance, design L2; § 9.1
