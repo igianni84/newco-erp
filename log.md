@@ -351,3 +351,5 @@
 ## [2026-06-19 13:26] ralph | parties-membership-suspension 2.3 | green | CancelProfile (audit-only) + DeactivateProfile; 910/910 SQLite, 413/413 PG17; 4 files
 
 ## [2026-06-19 13:47] ralph | parties-membership-suspension 3.1 | green | SuspendCustomer+ReactivateCustomer cascade (causation children + coverage-guarded restore); 6 files; SQLite 919/919, PG17 422/422
+
+## [2026-06-19 13:58] ralph | parties-membership-suspension 3.2 | green | CloseCustomer (no cascade) + Account FSM audit-only (Suspend/Reactivate/Close); 8 files; 931/931 SQLite, 434/434 PG17

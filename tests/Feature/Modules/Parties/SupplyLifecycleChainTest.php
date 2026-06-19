@@ -340,8 +340,13 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // `ProfileInactive`. Task 3.1 adds the Customer suspend/restore cascade: `SuspendCustomer` (`active → suspended`,
     // cascading `ProfileSuspended` to the Customer's `Active` Profiles as causation children — design L11) and
     // `ReactivateCustomer` (`suspended → active`, cascade-restoring only the Profiles no longer covered by an active
-    // Hold). The rest of the status set is NOT here yet (the Customer terminal `CloseCustomer`, and the Account
-    // `SuspendAccount`/`ReactivateAccount`/`CloseAccount` FSM → task 3.2, each declaring its Actions in this whitelist).
+    // Hold). Task 3.2 completes the set with the Customer terminal `CloseCustomer` (`active | suspended → closed`,
+    // recording `CustomerClosed` but — unlike suspension — NOT cascading to Profiles, § 15.1, design L7) and the whole
+    // Account FSM `SuspendAccount`/`ReactivateAccount`/`CloseAccount` (`active → suspended → active → closed`),
+    // AUDIT-ONLY — they record NO event (§ 15 names no Account-family event, design L8) but are still transition
+    // Actions, so they ARE whitelisted here. With 3.2 the demand-side status-transition set is COMPLETE; the coupling
+    // tasks 4.x wire `PlaceHold`/`LiftHold` into these Actions but add NO new Action class. There is still NO
+    // `ActivateAccount` (the Account is born `active` — design L8; it stays absent forever).
     $demandSideStatusTransitions = [
         'SuspendProfile',
         'ReactivateProfile',
@@ -351,13 +356,19 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'DeactivateProfile',
         'SuspendCustomer',
         'ReactivateCustomer',
+        'CloseCustomer',
+        'SuspendAccount',
+        'ReactivateAccount',
+        'CloseAccount',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status ones. There is no CloseCustomer / SuspendAccount /
-    // LockOriginatingClub yet — those demand-side status transitions remain deferred (party-registry MODIFIED). If a
-    // still-deferred demand-side transition Action were added without declaring it here, it would appear in this set
-    // and fail the assertion (the whitelist grows one slice at a time).
+    // demand-side activation + demand-side status ones. With task 3.2 the demand-side status set is complete; the only
+    // names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8) and the deferred seams
+    // `WaitingList`/segment/Hero-cap (no Action class) and `LockOriginatingClub`/`SetOriginatingClub` (the
+    // Originating-Club lock lives inside `ApproveProfile`, never a standalone Action). If a deferred-seam Action were
+    // added without declaring it here, it would appear in this set and fail the assertion (the whitelist grew one
+    // slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
     expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions]);
 
