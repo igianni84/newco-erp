@@ -361,3 +361,5 @@
 ## [2026-06-19 14:52] ralph | parties-membership-suspension 5.1 | green | 3 files (chain test, CONTEXT.md, tasks.md); full suite 949/949 SQLite + 949/949 PG17; all 11 tasks done — CHANGE_COMPLETE
 
 ## [2026-06-19 15:23] close | parties-membership-suspension | merged --no-ff main (ff0be4a) | PG17 pre-merge gate 949/949 | semantic-verify §2.7 clean: 0 CRITICAL/0 WARNING/3 SUGGESTION | openspec archive +7/~2 into living party-registry spec | not pushed yet
+
+## [2026-06-19 15:26] push | main -> origin | close-out pushed (merge ff0be4a + archive cf2f77b + prior activation work); deleted merged ralph/parties-membership-suspension; only main remains, in sync

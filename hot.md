@@ -22,8 +22,7 @@ updated: 2026-06-19
 - **Next:** pick the next change via `/spec-to-change`. Deferred Module-K seams the spec keeps open: **`parties-hero-package`** (Hero cap + `Applied → WaitingList`/`WaitingListJoined`, after Module A), **`parties-customer-segments`** (+`CustomerSegmentChanged`), **`parties-anonymisation`**; cross-module consumers — Module E `MembershipFeePaid` listener (drives `RenewProfile`), Module S AC-K-EVT-14 cancellation signal + Club-Credit conversion/freeze.
 
 ## Blockers & Decisions Needed
-- **Push pending (human's call):** `main` is ahead of `origin/main` and NOT pushed (merge + archive commit + the prior unpushed activation work).
-- **Branch cleanup pending:** delete the merged `ralph/parties-membership-suspension` and the still-undeleted `ralph/parties-membership-activation`.
+- **None.** `main` pushed to `origin/main` (in sync). Merged `ralph/*` branches deleted — only `main` remains (local + remote); the `ralph/parties-membership-activation` the prior cache flagged was already gone.
 
 ## Open Patterns
 - All prior chain-test + coupling patterns hold (Hold→status on PLACE/LIFT, cascade-causation-child, coverage-recompute-under-lock; the `Membership*ChainTest` exact-multiset template).
