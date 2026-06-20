@@ -22,12 +22,16 @@ use App\Modules\Catalog\Actions\CreateProductMaster;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Models\ProductMaster;
+use App\Modules\Module;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages\ViewProductMaster;
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Platform\Audit\AuditRecord;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
+use App\Platform\Events\DomainEventRecorder;
+use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 use function Pest\Laravel\actingAs;
@@ -139,4 +143,151 @@ it('exposes the submit and reject lifecycle actions on the Product Master view p
     Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
         ->assertActionExists('submit')
         ->assertActionExists('reject');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Task 4.2 — Activate + the "second actor required" affordance + Producer-gate surfacing
+|--------------------------------------------------------------------------
+|
+| The console's activate action (design L5/L6; spec — Operator advances a Product Master…, The console surfaces
+| the Producer-activation gate). The console SURFACES the domain's two activation guards — the Creator →
+| Reviewer → Approver separation-of-duties floor (ApprovalGovernance) and the Producer activation gate — and
+| never re-checks either. A confirmation affordance reminds the operator a distinct approver is required; a
+| governance or gate rejection (both extend RuntimeException, surfaced by the shared surfaceLifecycleOutcome
+| helper) renders as a danger notification, leaving the Master unchanged.
+|
+| The success path uses THREE distinct operators (creator → reviewer → approver) against the production-default
+| role_count 3, mirroring tests/Feature/Modules/Catalog/ProductMasterLifecycleTest.php — no config override. The
+| producer-state projection the gate reads is seeded through the real consumer (a ProducerActivated event fanned
+| out to the ProducerLifecycleProjector), the faithful Module-K-emits shape.
+*/
+
+/**
+ * Project a producer state into Catalog's read model exactly as Module K's emit would: record a supply-side
+ * ProducerActivated/ProducerRetired (module `parties`, entity_type `Producer`, payload {producer_id, status})
+ * inside a real DB::transaction, so the inline post-commit hook fans it out to the ProducerLifecycleProjector,
+ * which upserts catalog_producer_states — the projection the Producer activation gate reads. Distinctly named
+ * (the `Console` infix) to avoid colliding with the Catalog lifecycle test's global lifecycleProjectProducer
+ * (one shared Pest namespace).
+ */
+function lifecycleConsoleProjectProducer(string $name, int $producerId, string $status): void
+{
+    DB::transaction(fn () => app(DomainEventRecorder::class)->record(
+        name: $name,
+        module: Module::Parties->value,
+        actorRole: ActorRole::System,
+        actorId: null,
+        entityType: 'Producer',
+        entityId: (string) $producerId,
+        payload: ['producer_id' => $producerId, 'status' => $status],
+    ));
+}
+
+it('exposes an activate action carrying the localized "second actor required" affordance', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $master = lifecycleConsoleDraftMaster();
+
+    // The activate action exists and SURFACES the separation-of-duties floor as a confirmation affordance
+    // (design L5/L6): the console reminds the operator a distinct approver is required, it never re-checks it.
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->assertActionExists('activate', fn (Action $action): bool => $action->isConfirmationRequired()
+            && $action->getModalDescription() === (string) __('operator_console.product_master.affordance.second_actor'));
+});
+
+it('localizes the second-actor affordance copy in EN and IT', function () {
+    $key = 'operator_console.product_master.affordance.second_actor';
+
+    app()->setLocale('en');
+    $en = (string) __($key);
+    app()->setLocale('it');
+    $it = (string) __($key);
+
+    // Both locales resolve the key (not the raw key) and the IT copy is a genuine translation, not the EN value
+    // verbatim — the affordance is "present + localized" (task 4.2 acceptance; invariant 12).
+    expect($en)->not->toBe($key)
+        ->and($it)->not->toBe($key)
+        ->and($it)->not->toBe($en);
+});
+
+it('activates a reviewed Master through the console when a distinct approver acts and the producer is active', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // Producer 7 active in Catalog's projection (the gate opens); three DISTINCT operators satisfy the
+    // default role_count-3 Creator → Reviewer → Approver floor.
+    lifecycleConsoleProjectProducer('ProducerActivated', 7, 'active');
+
+    actingAs($creator, 'operator');
+    $master = lifecycleConsoleDraftMaster(producerId: 7);
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    // The distinct approver activates THROUGH THE CONSOLE → reviewed → active, success notification.
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.activated'));
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Exactly one ProductMasterActivated carrying the operator envelope — actor_role newco_ops + the APPROVER
+    // (not the creator/reviewer) as actor_id (spec: an operator-driven write records newco_ops + the operator id).
+    $event = DomainEvent::query()->where('name', 'ProductMasterActivated')->sole();
+
+    expect($event->module)->toBe('catalog')
+        ->and($event->entity_type)->toBe('ProductMaster')
+        ->and($event->entity_id)->toBe((string) $master->id)
+        ->and($event->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($event->actor_id)->toEqual($approver->id);
+});
+
+it('surfaces a self-approval governance rejection as a danger notification, leaving the Master reviewed', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+
+    // Producer active so the ONLY thing that can reject is the SoD floor — isolating the self-approval path.
+    lifecycleConsoleProjectProducer('ProducerActivated', 7, 'active');
+
+    actingAs($creator, 'operator');
+    $master = lifecycleConsoleDraftMaster(producerId: 7);
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    // The reviewer (who performed the prior governance step) attempts the approval — the domain rejects the
+    // self-approval; the console SURFACES it as a danger notification and never re-checks the floor (design L5).
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    // Unchanged — still reviewed, NO activation event, NO activation audit row (the action's txn rolled back).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.activated')->count())->toBe(0);
+});
+
+it('surfaces the Producer-activation gate block as a danger notification, leaving the Master reviewed', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // Producer 9 is NEVER projected active (no row) — the gate rejects. The three actors are distinct, so the
+    // approval governance passes and the GATE is the sole rejection (proving the console surfaces the gate).
+    actingAs($creator, 'operator');
+    $master = lifecycleConsoleDraftMaster(producerId: 9);
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    // Stays reviewed, no activation event — the gate blocked the transition (AC-0-FSM-12).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
 });

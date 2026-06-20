@@ -379,3 +379,5 @@
 ## [2026-06-20 09:41] ralph | operator-console-catalog-master 3.1 | green | 7 files — write-through Create page routes to CreateProductMaster (no model save); dedup rejection -> form error on data.name; producer select from ProducerState; header create LINK not CreateAction; 963/963 SQLite + 43/43 PG17; phpstan 0
 
 ## [2026-06-20 09:57] ralph | operator-console-catalog-master 4.1 | green | 6 files | submit+reject header Actions on ViewProductMaster (audit-only draft→reviewed / stays reviewed); domain rejection→danger notification; 967/967 SQLite + PG17 47/47
+
+## [2026-06-20 10:13] ralph | operator-console-catalog-master 4.2 | green | 4 files | activate action + second-actor confirmation affordance + producer-gate/SoD surfacing; suite 972/972, phpstan 0, PG17 52/52

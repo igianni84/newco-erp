@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages;
 
+use App\Modules\Catalog\Actions\ActivateProductMaster;
 use App\Modules\Catalog\Actions\RejectProductMasterReview;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Models\ProductMaster;
@@ -23,8 +24,12 @@ use RuntimeException;
  * write-through {@see Action} that routes to a Catalog domain action and NEVER writes `lifecycle_state`
  * itself (the no-Eloquent-write rule, task 1.2):
  *   - "Submit for review" → {@see SubmitProductMasterForReview} (`draft → reviewed`, audit-only);
- *   - "Reject" → {@see RejectProductMasterReview} (collects `notes`; stays `reviewed`, audit-only).
- * Activate / retire / cascade / reopen land in tasks 4.2/5.x as further header actions here.
+ *   - "Reject" → {@see RejectProductMasterReview} (collects `notes`; stays `reviewed`, audit-only);
+ *   - "Activate" → {@see ActivateProductMaster} (`reviewed → active`, records ProductMasterActivated). It
+ *     carries a confirmation modal whose description is the localized "second actor required" affordance — the
+ *     console SURFACES the domain's Creator → Reviewer → Approver separation-of-duties floor (a distinct
+ *     approver) and the Producer activation gate, it never re-checks either (design L5/L6).
+ * Retire / cascade / reopen land in tasks 5.x as further header actions here.
  *
  * The console SURFACES the domain's decision, it never reimplements the floor (design L5): the from-state
  * guard, the Creator → Reviewer → Approver separation-of-duties and the producer gate all live in the
@@ -73,6 +78,20 @@ class ViewProductMaster extends ViewRecord
                         );
                     }
                 ),
+            Action::make('activate')
+                ->label((string) __('operator_console.product_master.actions.activate'))
+                // The "second actor required" affordance (design L5/L6): a confirmation step whose description
+                // tells the operator BEFORE they commit that a distinct approver is required. The domain
+                // (approval governance + the Producer activation gate) is the sole authority — a same-actor or
+                // gate-blocked activation is rejected there and surfaced below, never pre-checked here.
+                ->requiresConfirmation()
+                ->modalDescription((string) __('operator_console.product_master.affordance.second_actor'))
+                ->action(function (ProductMaster $record): void {
+                    self::surfaceLifecycleOutcome(
+                        fn () => app(ActivateProductMaster::class)->handle($record),
+                        (string) __('operator_console.product_master.notifications.activated'),
+                    );
+                }),
         ];
     }
 

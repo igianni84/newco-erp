@@ -32,11 +32,17 @@ return [
             'create' => 'Nuovo Product Master',
             'submit' => 'Invia in revisione',
             'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Master.',
         ],
 
         'notifications' => [
             'submitted' => 'Product Master inviato in revisione.',
             'rejected' => 'Rifiuto registrato; il Product Master resta in revisione.',
+            'activated' => 'Product Master attivato.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 

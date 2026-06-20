@@ -41,6 +41,15 @@ return [
             'create' => 'New Product Master',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            'activate' => 'Activate',
+        ],
+
+        // The "second actor required" affordance (design L5/L6) — rendered as the activate confirmation copy.
+        // The console SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct
+        // approver), it never reimplements it (ApprovalGovernance is the sole authority); the copy reminds the
+        // operator BEFORE they commit that the domain will reject a same-actor activation.
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Product Master.',
         ],
 
         // Outcome notifications for the write-through lifecycle actions. The success titles confirm the
@@ -49,6 +58,7 @@ return [
         'notifications' => [
             'submitted' => 'Product Master submitted for review.',
             'rejected' => 'Rejection recorded; the Product Master stays under review.',
+            'activated' => 'Product Master activated.',
             'action_failed' => 'The action could not be completed.',
         ],
 
