@@ -133,4 +133,64 @@ return [
         ],
     ],
 
+    // Case Configuration — a standalone PIM reference entity (the packaging form of a Sellable SKU: units per
+    // case + packaging type). No parent, no producer; activates subject only to the approval governance (no
+    // cascade gate). It carries NO breakability attribute (BR-RefData-2) — that decision lives downstream in
+    // Module A/S, so there is no breakability field. Operator-console-catalog-spine, task 2.2.
+    'case_configuration' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
+        'label' => 'Case Configuration',
+        'plural_label' => 'Case Configurations',
+
+        // List-table + view-infolist field labels.
+        'columns' => [
+            'name' => 'Name',
+            'units_per_case' => 'Units per case',
+            'packaging_type' => 'Packaging type',
+            'lifecycle_state' => 'Lifecycle state',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels + the reject action's notes field (recorded on the audit row, never
+        // reverting state — § 4.3). No breakability input (BR-RefData-2).
+        'fields' => [
+            'name' => 'Name',
+            'units_per_case' => 'Units per case',
+            'packaging_type' => 'Packaging type',
+            'rejection_notes' => 'Rejection notes',
+        ],
+
+        // Create-page header link + write-through lifecycle action labels. Every action routes through a
+        // Catalog domain action, never a Filament default mutating path (ADR 2026-06-19). A Case Configuration
+        // is standalone with no cascade-retire (Master-only, scope guard) — no `retire_cascade` key.
+        'actions' => [
+            'create' => 'New Case Configuration',
+            'submit' => 'Submit for review',
+            'reject' => 'Reject',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
+        ],
+
+        // The "second actor required" affordance — rendered as the activate confirmation copy. The console
+        // SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct approver), it never
+        // reimplements it (ApprovalGovernance is the sole authority).
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Case Configuration.',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (the
+        // rejection's own localized message — from lang/*/catalog.php, incl. the retire reference-integrity
+        // block — is rendered as the body).
+        'notifications' => [
+            'submitted' => 'Case Configuration submitted for review.',
+            'rejected' => 'Rejection recorded; the Case Configuration stays under review.',
+            'activated' => 'Case Configuration activated.',
+            'retired' => 'Case Configuration retired.',
+            'reopened' => 'Case Configuration reopened for review.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];

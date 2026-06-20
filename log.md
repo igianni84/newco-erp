@@ -399,3 +399,5 @@
 ## [2026-06-20 14:36] ralph | operator-console-catalog-spine 1.2 | green | 4 files (2 new kit bases OperatorConsoleResource+CreateRecord, 2 retrofit Master Resource+Create) | 996/996 SQLite, 76/76 PG17, phpstan 0, composer diff empty
 
 ## [2026-06-20 14:53] ralph | operator-console-catalog-spine 2.1 | green | 6 files (FormatResource + 3 pages + en/it lang + 2 tests) | 1011/1011 SQLite, 91/91 PG17, phpstan 0
+
+## [2026-06-20 15:05] ralph | operator-console-catalog-spine 2.2 | green | Case Configuration console (Resource+3 pages+EN/IT+2 tests), pure kit reuse, NO breakability + retire reference-integrity block; 1029/1029 SQLite, 109/109 PG17, phpstan 0 | 6 files

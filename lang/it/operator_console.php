@@ -100,4 +100,46 @@ return [
         ],
     ],
 
+    'case_configuration' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Case Configuration" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'name' => 'Nome',
+            'units_per_case' => 'Unità per cassa',
+            'packaging_type' => 'Tipo di confezione',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'name' => 'Nome',
+            'units_per_case' => 'Unità per cassa',
+            'packaging_type' => 'Tipo di confezione',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuova Case Configuration',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questa Case Configuration.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Case Configuration inviata in revisione.',
+            'rejected' => 'Rifiuto registrato; la Case Configuration resta in revisione.',
+            'activated' => 'Case Configuration attivata.',
+            'retired' => 'Case Configuration ritirata.',
+            'reopened' => 'Case Configuration riaperta per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];
