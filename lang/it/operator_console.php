@@ -193,4 +193,47 @@ return [
         ],
     ],
 
+    'product_reference' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Product Reference" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'variant' => 'Product Variant',
+            'format' => 'Format',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_variant' => 'Product Variant',
+            'format' => 'Format',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        // Colon-free, like the EN copy (the test asserts the rendered message verbatim).
+        'duplicate_reference' => 'Esiste già un Product Reference per questo Product Variant e Format. Ogni combinazione di Variant e Format deve essere unica.',
+
+        'actions' => [
+            'create' => 'Nuovo Product Reference',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Reference.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Product Reference inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Product Reference resta in revisione.',
+            'activated' => 'Product Reference attivato.',
+            'retired' => 'Product Reference ritirato.',
+            'reopened' => 'Product Reference riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];

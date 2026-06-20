@@ -270,4 +270,76 @@ return [
         ],
     ],
 
+    // Product Reference — the atomic product KEY and the second hierarchical PIM spine entity (a Product Variant
+    // + a Format, BR-Identity-3; §18 wine-display alias "Bottle Reference"). It binds exactly TWO within-catalog
+    // parents — so its create form carries a Variant picker AND a Format picker — and NO producer (design L6).
+    // Its `(variant, format)` pair is unique at the database; a duplicate carries no domain message, so the
+    // console owns the `duplicate_reference` form-error copy (design L5 — the ONE console-owned key this change
+    // adds). Its activation is gated on BOTH parents being `active` (the within-catalog activation cascade), and
+    // its retire is blocked while an active Sellable / Composite SKU references it; the console SURFACES both
+    // domain rejections, it never reimplements them (design L4) — so the only failure title here is the shared
+    // `notifications.action_failed` (the gate / reference-integrity body comes from lang/*/catalog.php).
+    // Operator-console-catalog-spine, task 3.2.
+    'product_reference' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
+        'label' => 'Product Reference',
+        'plural_label' => 'Product References',
+
+        // List-table + view-infolist field labels. `variant` / `format` are the two parent dimensions, rendered
+        // off the within-Catalog variant() / format() relations.
+        'columns' => [
+            'variant' => 'Product Variant',
+            'format' => 'Format',
+            'lifecycle_state' => 'Lifecycle state',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels (the two parent pickers) + the reject action's notes field (recorded on the
+        // audit row, never reverting state — § 4.3).
+        'fields' => [
+            'product_variant' => 'Product Variant',
+            'format' => 'Format',
+            'rejection_notes' => 'Rejection notes',
+        ],
+
+        // The console-owned duplicate-pair form error (design L5). The PR's `(variant, format)` uniqueness is a
+        // DB-structural rule with no localized domain message, so the console owns this copy — rendered on the
+        // create form instead of the raw SQL UniqueConstraintViolationException. Kept colon-free so the test's
+        // exact-message assertion is not truncated by Livewire's rule/message matcher.
+        'duplicate_reference' => 'A Product Reference for this Product Variant and Format already exists. Each Variant and Format pair must be unique.',
+
+        // Create-page header link + write-through lifecycle action labels. Every action routes through a Catalog
+        // domain action, never a Filament default mutating path (ADR 2026-06-19). A Product Reference is a
+        // hierarchical spine entity with no cascade-retire (Master-only, scope guard) — no `retire_cascade` key.
+        'actions' => [
+            'create' => 'New Product Reference',
+            'submit' => 'Submit for review',
+            'reject' => 'Reject',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
+        ],
+
+        // The "second actor required" affordance — rendered as the activate confirmation copy. The console
+        // SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct approver), it never
+        // reimplements it (ApprovalGovernance is the sole authority).
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Product Reference.',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (the
+        // rejection's own localized message — from lang/*/catalog.php, incl. the activation-cascade gate
+        // `gate.parent_not_active` and the retire reference-integrity block
+        // `retirement.blocked_by_active_references` — is rendered as the body).
+        'notifications' => [
+            'submitted' => 'Product Reference submitted for review.',
+            'rejected' => 'Rejection recorded; the Product Reference stays under review.',
+            'activated' => 'Product Reference activated.',
+            'retired' => 'Product Reference retired.',
+            'reopened' => 'Product Reference reopened for review.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];
