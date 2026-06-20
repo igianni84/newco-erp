@@ -121,7 +121,10 @@ git diff main...ralph/<name> --stat              # e i file che ti interessano
 # 2. Verifica locale su PostgreSQL 17 — il loop gira su SQLite, ma SQLite-verde è necessario,
 #    non sufficiente (knowledge/testing/rules.md): conferma il motore di produzione PRIMA del merge.
 docker run -d --name pg -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17
-DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php artisan test
+until docker exec pg pg_isready -U newco -d newco_test >/dev/null 2>&1; do sleep 1; done   # attendi che PG accetti connessioni
+# La suite INTERA va in OOM sotto `php artisan test` (CLI default 128M; il processo pest figlio
+# ignora un -d passato al padre) → lancia pest DIRETTAMENTE con memory_limit alzato:
+DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=1024M vendor/bin/pest
 docker rm -f pg
 
 # 3. Merge e push
@@ -265,5 +268,5 @@ openspec archive <name> --yes
 git add -A && git commit -m "archive: <name>" && git push
 
 # ── Qualità (quando l'app esiste) ─────────────────────────────
-vendor/bin/pint && php artisan test && vendor/bin/phpstan analyse
+vendor/bin/pint && php -d memory_limit=1024M vendor/bin/pest && vendor/bin/phpstan analyse   # suite intera: pest diretto +mem (php artisan test → OOM a 128M)
 ```
