@@ -395,3 +395,5 @@
 ## [2026-06-20 13:51] spec-to-change | operator-console-catalog-spine | Authored + APPROVED: 5 ADDED reqs, 10 tasks, ADR 2026-06-20 shared console kit (extract + retrofit Master). 6 spine entities on operator-console; zero new backend. validate --strict green.
 
 ## [2026-06-20 14:23] ralph | operator-console-catalog-spine 1.1 | green | 3 files — extracted operator-console kit (SurfacesDomainActions trait + OperatorConsoleViewRecord base) + retrofit ViewProductMaster; 996/996 SQLite, 76/76 PG17, phpstan 0, design-L9 boundary held
+
+## [2026-06-20 14:36] ralph | operator-console-catalog-spine 1.2 | green | 4 files (2 new kit bases OperatorConsoleResource+CreateRecord, 2 retrofit Master Resource+Create) | 996/996 SQLite, 76/76 PG17, phpstan 0, composer diff empty

@@ -4,20 +4,26 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\ProducerState;
 use App\Modules\Catalog\Models\ProductMaster;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 /**
  * ProductMasterResource — the operator console's READ-ONLY surface over the Catalog Product Master
- * (operator-console-catalog-master, task 2.1; design L1/L10; ADR 2026-06-19).
+ * (operator-console-catalog-master, task 2.1; retrofitted onto the shared {@see OperatorConsoleResource} kit in
+ * operator-console-catalog-spine, task 1.2; design L1/L2/L10; ADR 2026-06-19 + 2026-06-20).
+ *
+ * It now extends the kit base, which owns the read-only conventions (the `operator_console.<entity>` model
+ * labels off {@see i18nKey()}, the shared `lifecycle_state` badge + `version` column helpers, and the
+ * no-mutating-action default); this resource supplies only its own columns/form/infolist/pages and the
+ * Master-only producer picker (design L6).
  *
  * It read-binds to {@see ProductMaster} — the ADR-sanctioned exception, OperatorPanel-only and
  * display-only: the resource queries the model for the list table + the view infolist and NEVER writes it.
@@ -33,20 +39,15 @@ use Filament\Tables\Table;
  * stays exactly {Models, Actions} (the import-boundary carve-out, task 1.3). All user-facing copy is
  * localized through the `operator_console` group (invariant 12).
  */
-class ProductMasterResource extends Resource
+class ProductMasterResource extends OperatorConsoleResource
 {
     protected static ?string $model = ProductMaster::class;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getModelLabel(): string
+    protected static function i18nKey(): string
     {
-        return (string) __('operator_console.product_master.label');
-    }
-
-    public static function getPluralModelLabel(): string
-    {
-        return (string) __('operator_console.product_master.plural_label');
+        return 'product_master';
     }
 
     /**
@@ -95,15 +96,11 @@ class ProductMasterResource extends Resource
                 TextColumn::make('product_type')
                     ->label((string) __('operator_console.product_master.columns.product_type'))
                     ->getStateUsing(fn (ProductMaster $record): string => $record->product_type->value),
-                TextColumn::make('lifecycle_state')
-                    ->label((string) __('operator_console.product_master.columns.lifecycle_state'))
-                    ->badge()
-                    ->getStateUsing(fn (ProductMaster $record): string => $record->lifecycle_state->value),
+                static::lifecycleStateColumn(),
                 TextColumn::make('producer')
                     ->label((string) __('operator_console.product_master.columns.producer'))
                     ->getStateUsing(fn (ProductMaster $record): string => self::producerLabel($record)),
-                TextColumn::make('version')
-                    ->label((string) __('operator_console.product_master.columns.version')),
+                static::versionColumn(),
             ]);
     }
 
