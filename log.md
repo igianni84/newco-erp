@@ -389,3 +389,5 @@
 ## [2026-06-20 10:58] ralph | operator-console-catalog-master 6.1 | green | 2 files (new I18n token-scan+fallback test; lang/it removes English-invariant label keys for real per-key fallback). suite 995/995, phpstan 0, pint clean. DB-free → no PG17. 10/11 done
 
 ## [2026-06-20 11:19] ralph | operator-console-catalog-master 6.2 | green | demo-path chain test (1 test/136 assert) + cross-engine close: 996/996 SQLite, 244/244 PG17 (OperatorPanel+Catalog+Architecture); 11/11 done → CHANGE_COMPLETE | 1 file
+
+## [2026-06-20 11:56] merge+archive | operator-console-catalog-master | dual gate CLEAN (semantic-verify subagent + PG17 full 996/996, 5115 assns); merge --no-ff a3b2943 → openspec archive caa8fad (truth spec operator-console, +7 reqs). Local only, not pushed. Next: operator-console-catalog-spine.
