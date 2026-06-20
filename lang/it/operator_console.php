@@ -142,4 +142,55 @@ return [
         ],
     ],
 
+    'product_variant' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Product Variant" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'variant_identifier' => 'Identificativo variante',
+            'master' => 'Product Master',
+            'vintage' => 'Annata',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_master' => 'Product Master',
+            'variant_identifier' => 'Identificativo variante',
+            'vintage_year' => 'Anno di annata',
+            'non_vintage' => 'Senza annata',
+            'tasting_notes' => 'Note di degustazione',
+            'tasting_notes_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'values' => [
+            'non_vintage' => 'Senza annata',
+            'yes' => 'Sì',
+            'no' => 'No',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Product Variant',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Variant.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Product Variant inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Product Variant resta in revisione.',
+            'activated' => 'Product Variant attivato.',
+            'retired' => 'Product Variant ritirato.',
+            'reopened' => 'Product Variant riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];
