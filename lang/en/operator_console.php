@@ -411,4 +411,70 @@ return [
         ],
     ],
 
+    // Composite SKU — the FINAL spine entity and the spine's only many-to-many entity (a curated bundle of N ≥ 2
+    // ORDERED constituent Product References, BR-SKU-2). It binds NO parent FK and NO producer (the catalog is
+    // PRODUCER-AGNOSTIC about constituents, design D9) — so its create form carries a single ORDERED, N≥2
+    // Product-Reference multi-select picker, no producer picker. Its ONE create guard is the `< 2 distinct
+    // constituents` floor, a localized domain rejection (catalog.composite_sku.insufficient_constituents) the
+    // console surfaces as a form error via the kit base catch (design L5) — so there is no console-owned create
+    // message here. Its activation is gated on EVERY constituent being `active` (the within-catalog activation
+    // cascade); the console SURFACES that domain gate, it never reimplements it (design L4) — so the only failure
+    // title here is the shared `notifications.action_failed` (the gate's own body comes from lang/*/catalog.php).
+    // It is a LEAF (nothing within catalog references it), so retire carries no reference-integrity block.
+    // Operator-console-catalog-spine, task 4.1.
+    'composite_sku' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
+        'label' => 'Composite SKU',
+        'plural_label' => 'Composite SKUs',
+
+        // List-table + view-infolist field labels. `constituent_count` is the bundle size (the N of the N ≥ 2
+        // bundle), shown in the list and the view.
+        'columns' => [
+            'constituent_count' => 'Constituents',
+            'lifecycle_state' => 'Lifecycle state',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels (the single ordered constituents picker) + the reject action's notes field
+        // (recorded on the audit row, never reverting state — § 4.3). `constituents` also labels the ordered
+        // constituent list on the view infolist.
+        'fields' => [
+            'constituents' => 'Constituents',
+            'constituents_help' => 'Select two or more Product References, in bundle order.',
+            'rejection_notes' => 'Rejection notes',
+        ],
+
+        // Create-page header link + write-through lifecycle action labels. Every action routes through a Catalog
+        // domain action, never a Filament default mutating path (ADR 2026-06-19). A Composite SKU is a spine
+        // entity with no cascade-retire (Master-only, scope guard) — no `retire_cascade` key.
+        'actions' => [
+            'create' => 'New Composite SKU',
+            'submit' => 'Submit for review',
+            'reject' => 'Reject',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
+        ],
+
+        // The "second actor required" affordance — rendered as the activate confirmation copy. The console
+        // SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct approver), it never
+        // reimplements it (ApprovalGovernance is the sole authority).
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Composite SKU.',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (the
+        // rejection's own localized message — from lang/*/catalog.php, incl. the activation-cascade gate
+        // `gate.parent_not_active` — is rendered as the body).
+        'notifications' => [
+            'submitted' => 'Composite SKU submitted for review.',
+            'rejected' => 'Rejection recorded; the Composite SKU stays under review.',
+            'activated' => 'Composite SKU activated.',
+            'retired' => 'Composite SKU retired.',
+            'reopened' => 'Composite SKU reopened for review.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];

@@ -279,4 +279,43 @@ return [
         ],
     ],
 
+    'composite_sku' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Composite SKU" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'constituent_count' => 'Costituenti',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'constituents' => 'Costituenti',
+            'constituents_help' => 'Seleziona due o più Product Reference, in ordine di bundle.',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Composite SKU',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Composite SKU.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Composite SKU inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Composite SKU resta in revisione.',
+            'activated' => 'Composite SKU attivato.',
+            'retired' => 'Composite SKU ritirato.',
+            'reopened' => 'Composite SKU riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];
