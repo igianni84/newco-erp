@@ -385,3 +385,5 @@
 ## [2026-06-20 10:27] ralph | operator-console-catalog-master 5.1 | green | retire+reopen header actions, surfaceLifecycleOutcome reuse; single-entity retire preserves child, reopen audit-only + gate re-check; 4 tests; suite 976/976, phpstan 0, PG17 56/56 | 4 files
 
 ## [2026-06-20 10:42] ralph | operator-console-catalog-master 5.2 | green | 4 files | cascade-retire header action (RetireProductMasterCascade + requiresConfirmation warning); 980/980 SQLite, PG17 60/60, phpstan 0
+
+## [2026-06-20 10:58] ralph | operator-console-catalog-master 6.1 | green | 2 files (new I18n token-scan+fallback test; lang/it removes English-invariant label keys for real per-key fallback). suite 995/995, phpstan 0, pint clean. DB-free → no PG17. 10/11 done

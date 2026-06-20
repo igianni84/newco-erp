@@ -73,7 +73,7 @@ Read `proposal.md`, `design.md` (L1–L10), the delta spec `specs/operator-conso
 
 ## 6. i18n + capability close
 
-- [ ] 6.1 **i18n EN + IT for all console copy** (design L8; spec — Operator console copy is localized in EN and IT) — create `lang/en/operator_console.php` + `lang/it/operator_console.php` (resource/field/column/action labels, affordance + notification copy); route all of 2–5's strings through `__('operator_console.…')` (and reuse `__('catalog.…')` for domain rejection messages). EN baseline; IT may be partial (per-key EN fallback).
+- [x] 6.1 **i18n EN + IT for all console copy** (design L8; spec — Operator console copy is localized in EN and IT) — create `lang/en/operator_console.php` + `lang/it/operator_console.php` (resource/field/column/action labels, affordance + notification copy); route all of 2–5's strings through `__('operator_console.…')` (and reuse `__('catalog.…')` for domain rejection messages). EN baseline; IT may be partial (per-key EN fallback).
   - Acceptance: spec scenarios "The console renders in the operator's locale" + "A missing Italian key falls back to English" pass; with `app()->setLocale('it')` the console labels/messages render Italian; a key absent in `it` renders its EN value; **no hardcoded user-facing string** remains in any `App\Modules\OperatorPanel\Filament` class (a scan/test); quality commands green.
   - Test hint: `tests/Feature/Modules/OperatorPanel/Catalog/ProductMasterConsoleI18nTest.php` — assert representative labels resolve in `en` and `it`, a deliberately IT-missing key falls back to EN, and a token-scan finds no raw user-facing literal in the Filament classes (allow `__()`/trans keys only).
 

@@ -7,8 +7,10 @@
 return [
 
     'product_master' => [
-        'label' => 'Product Master',
-        'plural_label' => 'Product Master',
+        // 'label' / 'plural_label' are intentionally ABSENT here: "Product Master" is an English-invariant
+        // structural domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it from
+        // lang/en/operator_console.php under every locale — duplicating the English string in `it` would be
+        // redundant. This is also the live demonstration of the per-key fallback (ProductMasterConsoleI18nTest).
 
         'columns' => [
             'name' => 'Nome',
