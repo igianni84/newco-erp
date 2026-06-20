@@ -76,4 +76,61 @@ return [
         'producer_unprojected' => 'Not projected',
     ],
 
+    // Format — a standalone PIM reference entity (a wine bottle size). No parent, no producer; activates
+    // subject only to the approval governance (no cascade gate). Operator-console-catalog-spine, task 2.1.
+    'format' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
+        'label' => 'Format',
+        'plural_label' => 'Formats',
+
+        // List-table + view-infolist field labels.
+        'columns' => [
+            'name' => 'Name',
+            'size_label' => 'Size label',
+            'volume_ml' => 'Volume (ml)',
+            'lifecycle_state' => 'Lifecycle state',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels + the reject action's notes field (recorded on the audit row, never
+        // reverting state — § 4.3).
+        'fields' => [
+            'name' => 'Name',
+            'size_label' => 'Size label',
+            'volume_ml' => 'Volume (ml)',
+            'rejection_notes' => 'Rejection notes',
+        ],
+
+        // Create-page header link + write-through lifecycle action labels. Every action routes through a
+        // Catalog domain action, never a Filament default mutating path (ADR 2026-06-19). Format is standalone
+        // with no cascade-retire (Master-only, scope guard) — no `retire_cascade` key.
+        'actions' => [
+            'create' => 'New Format',
+            'submit' => 'Submit for review',
+            'reject' => 'Reject',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
+        ],
+
+        // The "second actor required" affordance — rendered as the activate confirmation copy. The console
+        // SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct approver), it never
+        // reimplements it (ApprovalGovernance is the sole authority).
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Format.',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (the
+        // rejection's own localized message — from lang/*/catalog.php — is rendered as the body).
+        'notifications' => [
+            'submitted' => 'Format submitted for review.',
+            'rejected' => 'Rejection recorded; the Format stays under review.',
+            'activated' => 'Format activated.',
+            'retired' => 'Format retired.',
+            'reopened' => 'Format reopened for review.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];

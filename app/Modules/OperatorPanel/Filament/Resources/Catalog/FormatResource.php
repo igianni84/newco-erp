@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
+
+use App\Modules\Catalog\Models\Format;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
+use App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource\Pages;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+
+/**
+ * FormatResource — the operator console's READ-ONLY surface over the Catalog Format
+ * (operator-console-catalog-spine, task 2.1; design L1/L3; ADR 2026-06-19 + 2026-06-20). It is the first of
+ * the six spine consoles built as PURE reuse of the kit extracted in tasks 1.1/1.2.
+ *
+ * It extends {@see OperatorConsoleResource}, which owns the read-only conventions (the
+ * `operator_console.<entity>` model labels off {@see i18nKey()}, the shared `lifecycle_state` badge +
+ * `version` column helpers, and the no-mutating-action default); this resource supplies only its own
+ * columns/form/infolist/pages. Format is a STANDALONE reference entity — no parent, no producer — so there is
+ * no parent picker and no Master-only producer picker (design L6).
+ *
+ * It read-binds to {@see Format} — the ADR-sanctioned exception, OperatorPanel-only and display-only: the
+ * resource queries the model for the list table + the view infolist and NEVER writes it. Every mutation is a
+ * separate Filament Action routed through a Catalog domain action (the kit's view + create pages); there is
+ * deliberately NO Edit page and NO Delete/Create default action — the Catalog backend ships no update Action
+ * (post-creation field edits are out of scope, proposal slice-boundary), and create lands on a write-through
+ * {@see Pages\CreateFormat} page. The no-Eloquent-write PHPStan rule (task 1.2) guards the discipline. The
+ * `lifecycle_state` enum is rendered through its cast instance (`->value`), never by importing
+ * `App\Modules\Catalog\Enums\*`, so the console's cross-module surface stays exactly {Models, Actions} (the
+ * import-boundary carve-out). All user-facing copy is localized through the `operator_console` group
+ * (invariant 12).
+ */
+class FormatResource extends OperatorConsoleResource
+{
+    protected static ?string $model = Format::class;
+
+    protected static ?string $recordTitleAttribute = 'name';
+
+    protected static function i18nKey(): string
+    {
+        return 'format';
+    }
+
+    /**
+     * The create form (design L3/L8). Collects the scalar inputs the Catalog `CreateFormat` action consumes —
+     * a name, a size label, and a volume in millilitres. The form only COLLECTS; the write routes through the
+     * action in {@see Pages\CreateFormat::createViaAction()} (there is no Edit page — the Catalog backend ships
+     * no update Action). All labels localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('name')
+                    ->label((string) __('operator_console.format.fields.name'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('size_label')
+                    ->label((string) __('operator_console.format.fields.size_label'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('volume_ml')
+                    ->label((string) __('operator_console.format.fields.volume_ml'))
+                    ->required()
+                    ->numeric()
+                    ->minValue(1),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->label((string) __('operator_console.format.columns.name'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('size_label')
+                    ->label((string) __('operator_console.format.columns.size_label')),
+                TextColumn::make('volume_ml')
+                    ->label((string) __('operator_console.format.columns.volume_ml')),
+                static::lifecycleStateColumn(),
+                static::versionColumn(),
+            ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextEntry::make('name')
+                    ->label((string) __('operator_console.format.columns.name')),
+                TextEntry::make('size_label')
+                    ->label((string) __('operator_console.format.columns.size_label')),
+                TextEntry::make('volume_ml')
+                    ->label((string) __('operator_console.format.columns.volume_ml')),
+                TextEntry::make('lifecycle_state')
+                    ->label((string) __('operator_console.format.columns.lifecycle_state'))
+                    ->getStateUsing(fn (Format $record): string => $record->lifecycle_state->value),
+                TextEntry::make('version')
+                    ->label((string) __('operator_console.format.columns.version')),
+            ]);
+    }
+
+    /**
+     * @return array<string, PageRegistration>
+     */
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListFormats::route('/'),
+            'create' => Pages\CreateFormat::route('/create'),
+            'view' => Pages\ViewFormat::route('/{record}'),
+        ];
+    }
+}

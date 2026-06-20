@@ -58,4 +58,46 @@ return [
         'producer_unprojected' => 'Non proiettato',
     ],
 
+    'format' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Format" is an English-invariant structural domain
+        // term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'name' => 'Nome',
+            'size_label' => 'Etichetta formato',
+            'volume_ml' => 'Volume (ml)',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'name' => 'Nome',
+            'size_label' => 'Etichetta formato',
+            'volume_ml' => 'Volume (ml)',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Format',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Format.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Format inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Format resta in revisione.',
+            'activated' => 'Format attivato.',
+            'retired' => 'Format ritirato.',
+            'reopened' => 'Format riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];

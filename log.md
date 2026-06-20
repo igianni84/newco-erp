@@ -397,3 +397,5 @@
 ## [2026-06-20 14:23] ralph | operator-console-catalog-spine 1.1 | green | 3 files — extracted operator-console kit (SurfacesDomainActions trait + OperatorConsoleViewRecord base) + retrofit ViewProductMaster; 996/996 SQLite, 76/76 PG17, phpstan 0, design-L9 boundary held
 
 ## [2026-06-20 14:36] ralph | operator-console-catalog-spine 1.2 | green | 4 files (2 new kit bases OperatorConsoleResource+CreateRecord, 2 retrofit Master Resource+Create) | 996/996 SQLite, 76/76 PG17, phpstan 0, composer diff empty
+
+## [2026-06-20 14:53] ralph | operator-console-catalog-spine 2.1 | green | 6 files (FormatResource + 3 pages + en/it lang + 2 tests) | 1011/1011 SQLite, 91/91 PG17, phpstan 0
