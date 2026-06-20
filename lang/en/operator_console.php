@@ -477,4 +477,40 @@ return [
         ],
     ],
 
+    // Producer — the standalone winery-identity registry (Module K § 4.4), the source of the producer
+    // reference Module 0's Product Master keys off. The FIRST Parties operator console
+    // (operator-console-parties-producer). Its state is `status` (draft → active → retired) with a SEPARATE
+    // provenance-KYC lifecycle in `kyc_status` — not the catalog `lifecycle_state` (design D2).
+    'producer' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Producer',
+        'plural_label' => 'Producers',
+
+        // List-table + view-infolist field labels. `status` / `kyc_status` are the Producer's two FSMs (the
+        // status lifecycle and the separate provenance-KYC lifecycle); `version` is the optimistic lock.
+        'columns' => [
+            'name' => 'Name',
+            'region' => 'Region',
+            'country' => 'Country',
+            'status' => 'Status',
+            'kyc_status' => 'KYC status',
+            'version' => 'Version',
+        ],
+
+        // View-infolist labels for the identity attributes the list omits. The create-form input labels land
+        // with the create surface (task 2.1).
+        'fields' => [
+            'appellation' => 'Appellation',
+            'website' => 'Website',
+            'description' => 'Description',
+            'clubs' => 'Operated clubs',
+        ],
+
+        // Create-page header link label. The write-through lifecycle action labels (activate/retire + the four
+        // KYC verbs) and their outcome notifications land with the view page (tasks 3.1 / 4.1).
+        'actions' => [
+            'create' => 'New Producer',
+        ],
+    ],
+
 ];

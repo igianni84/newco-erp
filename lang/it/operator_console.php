@@ -318,4 +318,28 @@ return [
         ],
     ],
 
+    // Producer — registro identità del produttore (Module K § 4.4). `label` / `plural_label` assenti → fallback
+    // per-chiave su EN (DEC-127): «Producer» è il termine di dominio canonico, invariato in italiano.
+    'producer' => [
+        'columns' => [
+            'name' => 'Nome',
+            'region' => 'Regione',
+            'country' => 'Paese',
+            'status' => 'Stato',
+            'kyc_status' => 'Stato KYC',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'appellation' => 'Denominazione',
+            'website' => 'Sito web',
+            'description' => 'Descrizione',
+            'clubs' => 'Club operati',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Producer',
+        ],
+    ],
+
 ];
