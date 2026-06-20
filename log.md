@@ -391,3 +391,7 @@
 ## [2026-06-20 11:19] ralph | operator-console-catalog-master 6.2 | green | demo-path chain test (1 test/136 assert) + cross-engine close: 996/996 SQLite, 244/244 PG17 (OperatorPanel+Catalog+Architecture); 11/11 done → CHANGE_COMPLETE | 1 file
 
 ## [2026-06-20 11:56] merge+archive | operator-console-catalog-master | dual gate CLEAN (semantic-verify subagent + PG17 full 996/996, 5115 assns); merge --no-ff a3b2943 → openspec archive caa8fad (truth spec operator-console, +7 reqs). Local only, not pushed. Next: operator-console-catalog-spine.
+
+## [2026-06-20 13:51] spec-to-change | operator-console-catalog-spine | Authored + APPROVED: 5 ADDED reqs, 10 tasks, ADR 2026-06-20 shared console kit (extract + retrofit Master). 6 spine entities on operator-console; zero new backend. validate --strict green.
+
+## [2026-06-20 14:23] ralph | operator-console-catalog-spine 1.1 | green | 3 files — extracted operator-console kit (SurfacesDomainActions trait + OperatorConsoleViewRecord base) + retrofit ViewProductMaster; 996/996 SQLite, 76/76 PG17, phpstan 0, design-L9 boundary held
