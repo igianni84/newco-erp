@@ -5,6 +5,9 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 use App\Modules\Catalog\Models\ProducerState;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
@@ -44,6 +47,41 @@ class ProductMasterResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return (string) __('operator_console.product_master.plural_label');
+    }
+
+    /**
+     * The create form (task 3.1; design L2/L6/L8). Collects the manual-baseline inputs the Catalog
+     * `CreateProductMaster` action consumes — name, producer, the WINE identity attributes
+     * (appellation/region) and an optional winery story. The producer is a select sourced from
+     * Catalog's OWN producer-state projection ({@see ProducerState}), read-only and Catalog-local, never
+     * Module K (invariant 10). The form only COLLECTS; the write routes through the action in
+     * {@see Pages\CreateProductMaster::handleRecordCreation()} (there is no Edit page —
+     * the Catalog backend ships no update Action). All labels localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('name')
+                    ->label((string) __('operator_console.product_master.fields.name'))
+                    ->required()
+                    ->maxLength(255),
+                Select::make('producer_id')
+                    ->label((string) __('operator_console.product_master.fields.producer'))
+                    ->options(self::producerOptions(...))
+                    ->required(),
+                TextInput::make('appellation')
+                    ->label((string) __('operator_console.product_master.fields.appellation'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('region')
+                    ->label((string) __('operator_console.product_master.fields.region'))
+                    ->required()
+                    ->maxLength(255),
+                Textarea::make('winery_story')
+                    ->label((string) __('operator_console.product_master.fields.winery_story'))
+                    ->helperText((string) __('operator_console.product_master.fields.winery_story_help')),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -105,6 +143,7 @@ class ProductMasterResource extends Resource
     {
         return [
             'index' => Pages\ListProductMasters::route('/'),
+            'create' => Pages\CreateProductMaster::route('/create'),
             'view' => Pages\ViewProductMaster::route('/{record}'),
         ];
     }
@@ -129,5 +168,26 @@ class ProductMasterResource extends Resource
             ?? (string) __('operator_console.product_master.producer_unprojected');
 
         return '#'.$record->producer_id.' · '.$statusLabel;
+    }
+
+    /**
+     * Create-form producer options, keyed by `producer_id` → a `#id · status` label, read from Catalog's
+     * OWN producer-state projection ({@see ProducerState}). A producer is selectable only once it has been
+     * projected (Parties emits ProducerActivated/Retired — design D3); the Producer-activation gate (a domain
+     * rule) is what blocks activating a Master under a non-active producer, so creation lists every projected
+     * producer. Read-only and Catalog-local; never Module K (invariant 10). Status rendered through its cast
+     * instance, so no `Catalog\Enums` import is needed (the {Models, Actions} surface, task 1.3).
+     *
+     * @return array<int, string>
+     */
+    private static function producerOptions(): array
+    {
+        return ProducerState::query()
+            ->orderBy('producer_id')
+            ->get()
+            ->mapWithKeys(static fn (ProducerState $state): array => [
+                $state->producer_id => '#'.$state->producer_id.' · '.$state->status->value,
+            ])
+            ->all();
     }
 }

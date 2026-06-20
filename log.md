@@ -375,3 +375,5 @@
 ## [2026-06-20 08:45] ralph | operator-console-catalog-master 1.3 | green | 1 file (ModuleBoundariesTest: OperatorPanel Models+Actions carve-out + guard test); suite 955/955, phpstan 0
 
 ## [2026-06-20 09:12] ralph | operator-console-catalog-master 2.1 | green | 6 files | ProductMasterResource read-only List+View, producer via ProducerState projection, no edit/delete, operator_console i18n EN+IT; 960/960 SQLite + PG17 40/40
+
+## [2026-06-20 09:41] ralph | operator-console-catalog-master 3.1 | green | 7 files — write-through Create page routes to CreateProductMaster (no model save); dedup rejection -> form error on data.name; producer select from ProducerState; header create LINK not CreateAction; 963/963 SQLite + 43/43 PG17; phpstan 0

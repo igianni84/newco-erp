@@ -21,11 +21,22 @@ return [
             'version' => 'Version',
         ],
 
-        // View-infolist labels for the WINE per-type attribute set.
+        // Create-form input labels + view-infolist labels for the neutral core and the WINE per-type
+        // attribute set. `name`/`producer` are the create-form inputs; appellation/region/winery_story are
+        // shared by the create form and the view infolist.
         'fields' => [
+            'name' => 'Name',
+            'producer' => 'Producer',
             'appellation' => 'Appellation',
             'region' => 'Region',
             'winery_story' => 'Winery story',
+            'winery_story_help' => 'Optional. Captured in English, the baseline locale.',
+        ],
+
+        // Create-page header link + write-through action labels (creation routes through CreateProductMaster,
+        // never a Filament default mutating action — ADR 2026-06-19).
+        'actions' => [
+            'create' => 'New Product Master',
         ],
 
         // Shown for a producer that has no row in Catalog's producer-state projection yet

@@ -19,9 +19,16 @@ return [
         ],
 
         'fields' => [
+            'name' => 'Nome',
+            'producer' => 'Produttore',
             'appellation' => 'Denominazione',
             'region' => 'Regione',
             'winery_story' => 'Storia della cantina',
+            'winery_story_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Product Master',
         ],
 
         'producer_unprojected' => 'Non proiettato',

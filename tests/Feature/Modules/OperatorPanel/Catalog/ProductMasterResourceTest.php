@@ -82,16 +82,18 @@ it('renders the wine attribute set on the read-only view page', function () {
         ->assertSee('A storied estate.');
 });
 
-it('exposes only the read pages and no create, edit, or delete default action', function () {
+it('exposes the read pages plus a write-through create page and no edit or delete default action', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     ProductMaster::factory()->create(['producer_id' => 7001]);
 
-    // No create/edit page is registered — only the read projection (list) and view.
+    // The read projection (list) + view, plus the dedicated write-through create page (task 3.1, routed
+    // through CreateProductMaster). No edit page — the Catalog backend ships no update Action.
     expect(array_keys(ProductMasterResource::getPages()))
-        ->toEqualCanonicalizing(['index', 'view']);
+        ->toEqualCanonicalizing(['index', 'create', 'view']);
 
-    // No mutating row/bulk action on the table (a future DeleteAction would trip this).
+    // No mutating row/bulk action on the table (a future DeleteAction would trip this); the create
+    // affordance is a navigation link to the write-through page, never an inline CreateAction.
     Livewire::test(ListProductMasters::class)
         ->assertTableActionDoesNotExist('edit')
         ->assertTableActionDoesNotExist('delete')
