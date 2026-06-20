@@ -17,6 +17,10 @@ parameters:
     # one file so our own migrations stay fully analysed.
     excludePaths:
         - database/migrations/*_create_permission_tables.php
+        # Architecture-rule fixtures plant deliberate Eloquent writes for the red→green proof in
+        # tests/Architecture/NoEloquentWriteInOperatorPanelRuleTest — they are pinned by that test,
+        # not production code, so the main run must not analyse them.
+        - tests/Architecture/Fixtures/*
 
     bootstrapFiles:
         - phpstan-bootstrap.php
@@ -25,3 +29,18 @@ parameters:
     # (fillForm, assertHasFormErrors, ...) — vendor-shipped, not a baseline.
     stubFiles:
         - vendor/filament/forms/.stubs.php
+
+# Operator-console architecture rule (ADR 2026-06-19; design L4) — the CI half of the
+# read-binding / write-through-actions discipline: a Filament console class must never write an
+# Eloquent model directly; every write routes through the owning module's domain action. Scoped to
+# the console surface (app/Modules/OperatorPanel/Filament/); the auth principal's own writes
+# (Operator::save() under Models/, operator-auth-foundation) are a separate concern and out of
+# scope. Detection is pinned red→green by tests/Architecture/NoEloquentWriteInOperatorPanelRuleTest.
+services:
+    -
+        class: Tests\PHPStan\Rules\NoEloquentWriteInOperatorPanelRule
+        tags:
+            - phpstan.rules.rule
+        arguments:
+            scopedPathNeedles:
+                - 'Modules/OperatorPanel/Filament/'

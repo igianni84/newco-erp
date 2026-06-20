@@ -369,3 +369,5 @@
 ## [2026-06-19 17:16] spec-to-change | operator-console-catalog-master | Authored change 1 (operator-console foundation + ProductMaster console): proposal + delta spec (7 req/15 scen) + design + tasks (11); validate --strict green. Awaiting human APPROVED -> ralph. Bulk-import/enrichment/field-edit OUT (no backend).
 
 ## [2026-06-20 08:07] ralph | operator-console-catalog-master 1.1 | green | 3 files (AdminPanelProvider repoint + Filament/ skeleton + PanelDiscoveryTest); discovery → App\Modules\OperatorPanel\Filament\*; 953/953
+
+## [2026-06-20 08:27] ralph | operator-console-catalog-master 1.2 | green | 4 files | PHPStan custom rule bans Eloquent writes in OperatorPanel/Filament (type-aware, RuleTestCase red->green); suite 954/954, phpstan 0

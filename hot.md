@@ -10,22 +10,22 @@ updated: 2026-06-20
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-20 (ralph — `operator-console-catalog-master` task 1.1 green).** First task of the Operator Console (Catalog) change landed: the Filament panel's resource/page/widget **discovery is repointed into the OperatorPanel module**, plus the discovery directory skeleton. No Filament resource yet, no DB writes — pure panel-config seam. Suite 953/953 green.
+**2026-06-20 (ralph — `operator-console-catalog-master` task 1.2 green).** The operator-console write-discipline guard landed: a **PHPStan custom rule** (primary option, type-aware) that fails `type_check` on any Eloquent write in the Filament console. Suite 954/954 green; phpstan 0 errors.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev; prod PG17.
-- **953/953 green** (949 prior + 4 new `PanelDiscoveryTest`, 4698 assertions). phpstan 0 errors; pint clean. `composer.json/lock` untouched; no migrations added; no protected files touched.
-- ⚠ **Run the full suite as `php -d memory_limit=-1 vendor/bin/pest`** (and `… vendor/bin/phpstan analyse`) — bare `php artisan test` OOMs at the box's 128M in `laravel/pao` (false-red). See lessons.md 2026-06-20.
+- **954/954 green** (953 prior + 1 new `NoEloquentWriteInOperatorPanelRuleTest`, 4710 assertions). phpstan 0 errors (rule loaded + clean tree green); pint clean. `composer.json/lock` untouched; no migrations; no protected files touched.
+- ⚠ **Run the full suite as `php -d memory_limit=-1 vendor/bin/pest`** (and `… vendor/bin/phpstan analyse`) — bare `php artisan test` OOMs at the box's 128M in `laravel/pao` (false-red). See lessons.md / progress Codebase Patterns.
 
 ## Active Change & Next Task
-- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **1/11** done).
-- **Done 1.1:** `AdminPanelProvider` discovery repointed `app/Filament/**` → `app/Modules/OperatorPanel/Filament/**` (namespaces `App\Modules\OperatorPanel\Filament\{Resources,Pages,Widgets}`); skeleton `Resources/Catalog/`, `Pages/`, `Widgets/` (each `.gitkeep`).
-- **Next 1.2:** the **architecture test** — no Eloquent write (`save/saveQuietly/update/updateQuietly/delete/forceDelete/create/insert/fill/setAttribute`) on a model receiver under `app/Modules/OperatorPanel/`. Primary: a PHPStan custom rule wired into `phpstan.neon`; fallback: a Pest token-scan over `Filament/**`. MUST be proven red (planted violation) → green. Then **1.3** (amend the import-boundary test for the OperatorPanel read carve-out), then **2.1** (`ProductMasterResource` read surface — first PG17 task).
+- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **2/11** done).
+- **Done 1.2:** `tests/PHPStan/Rules/NoEloquentWriteInOperatorPanelRule.php` (flags save/saveQuietly/update/updateQuietly/delete/forceDelete/create/insert/fill/setAttribute on a `Model` receiver), registered in `phpstan.neon` `services:` scoped to `Modules/OperatorPanel/Filament/`; `RuleTestCase` + fixture prove red→green; also proven via a planted violation in a real Filament class. **Scope = `Filament/` only** so `Operator::save()` (auth model under `Models/`) stays out of scope.
+- **Next 1.3:** amend the import-boundary test (`tests/Architecture/ModuleBoundariesTest.php`) to **permit** `App\Modules\OperatorPanel` → `App\Modules\*\Models` (read-binding carve-out, OperatorPanel source only) via an extra `->ignoring()` entry; a planted lateral import (Catalog → `Parties\Models`) must still fail. **Read what it asserts first.** Then **2.1** (`ProductMasterResource` read surface — first PG17 task).
 
 ## Blockers & Decisions Needed
 - None. `openspec validate operator-console-catalog-master --strict` green; on branch `ralph/operator-console-catalog-master`.
 
 ## Open Patterns
-- **Operator-console (ADR 2026-06-19):** resources read-bind module models **read-only**; every write `app(<Action>)->handle()`; arch test (1.2, next) bans Eloquent writes in the namespace. 1.1 laid only the discovery seam.
-- **Panel-discovery getters:** `Filament::getPanel('admin')->getResourceNamespaces()/getResourceDirectories()` (+Page/Widget) assert discovery config without a real resource; Filament no-ops on a missing discovery dir, so `.gitkeep` skeletons suffice (progress.md Codebase Patterns).
-- Filament 5 write signatures (`handleRecordCreation`, `Filament\Actions\Action`) still to verify in `vendor/` before the 3.x–5.x write tasks (lessons.md).
+- **Operator-console (ADR 2026-06-19):** resources read-bind module models read-only; every write `app(<Action>)->handle()`. 1.2 now enforces the no-write half in CI (PHPStan rule). 1.3 carves the read half into the import-boundary test.
+- **Repo-local PHPStan custom rules** are viable here despite the phar (RuleTestCase autoloads; rule lives under dev-autoloaded `tests/` → no composer change; scope via constructor path-needle; `excludePaths` the fixture). See progress.md Codebase Patterns.
+- Filament 5 write signatures (`handleRecordCreation`, `Filament\Actions\Action`) still to verify in `vendor/` before the create/lifecycle write tasks 3.1–5.2 (lessons.md).
