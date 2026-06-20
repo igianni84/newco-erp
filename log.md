@@ -423,3 +423,5 @@
 ## [2026-06-20 22:21] ralph | operator-console-parties-producer 3.1-3.2 | green | 4 files: ViewProducer status lifecycle (activate+retire, form-less, cascade) + en/it lang + ProducerLifecycleConsoleTest 8/85; suite 1154 green, phpstan 0
 
 ## [2026-06-20 22:32] ralph | operator-console-parties-producer 4.1/4.2 | green | 4 files — Producer KYC verbs (require/waive/verify/reject) appended to ViewProducer, audit-only; +13 tests (1167/1167)
+
+## [2026-06-20 22:42] ralph | operator-console-parties-producer 5.1 | green | i18n kit-key completeness test (ProducerConsoleI18nTest, 38 cases); suite 1205/1205; 1 file
