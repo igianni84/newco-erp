@@ -42,6 +42,8 @@ return [
             'submit' => 'Submit for review',
             'reject' => 'Reject',
             'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
         ],
 
         // The "second actor required" affordance (design L5/L6) — rendered as the activate confirmation copy.
@@ -59,6 +61,8 @@ return [
             'submitted' => 'Product Master submitted for review.',
             'rejected' => 'Rejection recorded; the Product Master stays under review.',
             'activated' => 'Product Master activated.',
+            'retired' => 'Product Master retired.',
+            'reopened' => 'Product Master reopened for review.',
             'action_failed' => 'The action could not be completed.',
         ],
 

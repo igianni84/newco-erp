@@ -18,10 +18,16 @@
 // freely here: the {Models, Actions} import-boundary carve-out (task 1.3) governs OperatorPanel PRODUCTION
 // code, not tests.
 
+use App\Modules\Catalog\Actions\ActivateProductMaster;
+use App\Modules\Catalog\Actions\ActivateProductVariant;
 use App\Modules\Catalog\Actions\CreateProductMaster;
+use App\Modules\Catalog\Actions\CreateProductVariant;
+use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
+use App\Modules\Catalog\Actions\SubmitProductVariantForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Models\ProductMaster;
+use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Module;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages\ViewProductMaster;
 use App\Modules\OperatorPanel\Models\Operator;
@@ -290,4 +296,163 @@ it('surfaces the Producer-activation gate block as a danger notification, leavin
     // Stays reviewed, no activation event — the gate blocked the transition (AC-0-FSM-12).
     expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
         ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Task 5.1 — Retire + Reopen (the retire / reopen half of the lifecycle)
+|--------------------------------------------------------------------------
+|
+| The console's retire + reopen header actions (design L7; spec — Operator retires, cascade-retires, and reopens
+| a Product Master). Both route through a Catalog domain action via the shared surfaceLifecycleOutcome helper and
+| never write lifecycle_state themselves (the no-Eloquent-write rule, task 1.2):
+|   - Retire (`active → retired`) is SINGLE-ENTITY — a hierarchy parent carries no reference-integrity guard, so
+|     it PRESERVES existing active children (§ 4.5); it records one ProductMasterRetired. The operator-driven
+|     cascade is a distinct action (task 5.2).
+|   - Reopen (`retired → reviewed`) is AUDIT-ONLY (no domain event); it returns the Master to the activatable
+|     `reviewed` state, where the next Activate RE-RUNS the Producer gate.
+| Retire/reopen carry only the operator-principal floor (no distinct-actor SoD — that is the activation step's
+| floor), so any authenticated operator may perform them; the domain rejects only an out-of-state call, surfaced
+| as a danger notification. The success paths drive the Master to `active` through the real domain actions with
+| three distinct operators + an active producer (the role_count-3 shape, as in task 4.2).
+*/
+
+/**
+ * Drive a freshly-created draft Master to `active` through the real Catalog domain actions, faithfully: a
+ * distinct creator → reviewer → approver lineage (the production-default role_count 3, no config override) over
+ * an `active` producer projection. Returns the active Master; the three operators are the caller's to reuse.
+ * Distinctly named (the `Console`/`ActiveMaster` infix) to avoid colliding with the Catalog lifecycle test's
+ * helpers (one shared Pest function namespace).
+ */
+function lifecycleConsoleActiveMaster(Operator $creator, Operator $reviewer, Operator $approver, int $producerId = 7): ProductMaster
+{
+    lifecycleConsoleProjectProducer('ProducerActivated', $producerId, 'active');
+
+    actingAs($creator, 'operator');
+    $master = lifecycleConsoleDraftMaster(producerId: $producerId);
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    actingAs($approver, 'operator');
+    app(ActivateProductMaster::class)->handle($master);
+
+    return $master;
+}
+
+it('retires an active Master single-entity through the console, recording one ProductMasterRetired and preserving an active child', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    $master = lifecycleConsoleActiveMaster($creator, $reviewer, $approver);
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Seed an ACTIVE child Variant under the now-active Master through the real Catalog actions (the same three
+    // operators carry the Variant's OWN approval lineage; its activation re-confirms the parent is active via the
+    // activation-cascade gate). The {Models, Actions} carve-out governs OperatorPanel PRODUCTION code, not tests,
+    // so the Catalog actions/models are imported freely here.
+    actingAs($creator, 'operator');
+    $variant = app(CreateProductVariant::class)->handle(productMasterId: $master->id, variantIdentifier: '2019');
+    actingAs($reviewer, 'operator');
+    app(SubmitProductVariantForReview::class)->handle($variant);
+    actingAs($approver, 'operator');
+    app(ActivateProductVariant::class)->handle($variant);
+    expect(ProductVariant::findOrFail($variant->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Retire the Master single-entity THROUGH THE CONSOLE. Retire carries only the operator floor, so any
+    // authenticated operator may perform it; here the approver does.
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('retire')
+        ->assertNotified((string) __('operator_console.product_master.notifications.retired'));
+
+    // The Master is retired and the existing active child is PRESERVED — single-entity retire never cascades
+    // (§ 4.5 / BR-Lifecycle-4); only NEW activation under the now-retired Master would be blocked.
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Retired)
+        ->and(ProductVariant::findOrFail($variant->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Exactly one ProductMasterRetired carrying the operator envelope — actor_role newco_ops + the retiring
+    // operator as actor_id (spec: an operator-driven write records newco_ops + the operator id).
+    $event = DomainEvent::query()->where('name', 'ProductMasterRetired')->sole();
+
+    expect($event->module)->toBe('catalog')
+        ->and($event->entity_type)->toBe('ProductMaster')
+        ->and($event->entity_id)->toBe((string) $master->id)
+        ->and($event->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($event->actor_id)->toEqual($approver->id);
+});
+
+it('reopens a retired Master to reviewed through the console (audit-only, no event) and re-checks the producer gate on the next activation', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    $master = lifecycleConsoleActiveMaster($creator, $reviewer, $approver);
+
+    // Retire it (carries only the operator floor) so there is a `retired` Master to reopen.
+    actingAs($approver, 'operator');
+    app(RetireProductMaster::class)->handle($master);
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Retired);
+
+    $eventsBeforeReopen = DomainEvent::query()->count();
+
+    // Reopen THROUGH THE CONSOLE → retired → reviewed.
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('reopen')
+        ->assertNotified((string) __('operator_console.product_master.notifications.reopened'));
+
+    // Back to `reviewed`, AUDIT-ONLY: reopen recorded NO new domain event (the event total is unchanged).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->count())->toBe($eventsBeforeReopen);
+
+    // One reopen audit row carrying the operator envelope + the lifecycle edge.
+    $reopen = AuditRecord::query()->where('action', 'catalog.product_master.reopened')->sole();
+    expect($reopen->entity_type)->toBe('ProductMaster')
+        ->and($reopen->entity_id)->toBe((string) $master->id)
+        ->and($reopen->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($reopen->actor_id)->toEqual($approver->id)
+        ->and($reopen->before)->toBe(['lifecycle_state' => 'retired'])
+        ->and($reopen->after)->toBe(['lifecycle_state' => 'reviewed']);
+
+    // The Producer gate is RE-CHECKED on the next activation (design L7): flip the producer to retired and the
+    // subsequent activate is gate-blocked — proving reopen restored an activatable `reviewed` whose gate re-runs
+    // fresh (it now BLOCKS where it passed before). The approver is distinct from creator + reviewer, so the SoD
+    // floor passes and the GATE is the sole rejection.
+    lifecycleConsoleProjectProducer('ProducerRetired', 7, 'retired');
+
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    // Stays reviewed; still exactly the one original ProductMasterActivated (the blocked re-activation added none).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1);
+});
+
+it('surfaces an out-of-state retire as a danger notification, changing nothing', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A draft Master: retire requires `active`, so the domain rejects the out-of-state call. The console
+    // surfaces it as a danger notification; it never pre-checks the from-state (design L5 — surface, don't
+    // reimplement).
+    $master = lifecycleConsoleDraftMaster();
+
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('retire')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    // Unchanged: still draft, and no ProductMasterRetired recorded (the rejected attempt's transaction rolled back).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Draft)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterRetired')->count())->toBe(0);
+});
+
+it('exposes the retire and reopen lifecycle actions on the Product Master view page', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = lifecycleConsoleDraftMaster();
+
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->assertActionExists('retire')
+        ->assertActionExists('reopen');
 });

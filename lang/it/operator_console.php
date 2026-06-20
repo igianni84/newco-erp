@@ -33,6 +33,8 @@ return [
             'submit' => 'Invia in revisione',
             'reject' => 'Rifiuta',
             'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
         ],
 
         'affordance' => [
@@ -43,6 +45,8 @@ return [
             'submitted' => 'Product Master inviato in revisione.',
             'rejected' => 'Rifiuto registrato; il Product Master resta in revisione.',
             'activated' => 'Product Master attivato.',
+            'retired' => 'Product Master ritirato.',
+            'reopened' => 'Product Master riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 

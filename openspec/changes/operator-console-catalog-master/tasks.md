@@ -63,7 +63,7 @@ Read `proposal.md`, `design.md` (L1–L10), the delta spec `specs/operator-conso
 
 ## 5. Product Master — retire / cascade / reopen
 
-- [ ] 5.1 **Retire + Reopen actions** (design L7; spec — Operator retires, cascade-retires, and reopens a Product Master) — "Retire" Action → `app(RetireProductMaster::class)->handle($record)` (`active → retired`, single-entity, preserves active children); "Reopen" Action → `app(ReopenProductMaster::class)->handle($record)` (`retired → reviewed`, audit-only). Domain exceptions → notifications. Localized.
+- [x] 5.1 **Retire + Reopen actions** (design L7; spec — Operator retires, cascade-retires, and reopens a Product Master) — "Retire" Action → `app(RetireProductMaster::class)->handle($record)` (`active → retired`, single-entity, preserves active children); "Reopen" Action → `app(ReopenProductMaster::class)->handle($record)` (`retired → reviewed`, audit-only). Domain exceptions → notifications. Localized.
   - Acceptance: spec scenarios "Single-entity retire preserves existing active children" + "Reopen returns the Master to reviewed and re-checks the gate" pass; retire an `active` Master → `retired` + **1** `ProductMasterRetired` (newco_ops); a pre-seeded active child remains `active`; reopen → `reviewed`, **0** events; a subsequent activate re-runs the producer gate; quality commands green; **verified on PG17**.
   - Test hint: same console test file — drive a Master to `active`, seed an active child Variant (via the Catalog actions), `callAction('retire')` asserts `retired` + 1 `ProductMasterRetired` + the child still `active`; `callAction('reopen')` asserts `reviewed` + 0 events.
 
