@@ -415,3 +415,15 @@
 ## [2026-06-20 17:21] ralph | operator-console-catalog-spine 5.2 | green | 1 file (SpineConsoleChainTest) | SQLite 1138/1138 + PG17 429/429 OperatorPanel+Catalog+arch | CHANGE COMPLETE 10/10
 
 ## [2026-06-20 19:03] ritual-close | operator-console-catalog-spine | GUIDE §2.7: PG17 full-suite 1138/1138 (6442 assn) + semantic verify CLEAN (5/5 reqs, 0 CRITICAL) -> merge --no-ff + archive (specs/operator-console +5 reqs, dir 2026-06-20) + ralph branch deleted; main +13 vs origin, NOT pushed (human pushes)
+
+## [2026-06-20 21:58] ralph | operator-console-parties-producer 1.1-1.3 | green | Producer read-only console (Resource+List+i18n) + Create/View scaffolds; 1143/1143 SQLite, phpstan 0; 7 files
+
+## [2026-06-20 22:09] ralph | operator-console-parties-producer 2.1-2.2 | green | 4 files — Producer create form on ProducerResource::form() + fields.{name,region,country} EN/IT + ProducerCreateConsoleTest (3 tests); full 1146/1146, phpstan 0, pint clean, validate OK
+
+## [2026-06-20 22:21] ralph | operator-console-parties-producer 3.1-3.2 | green | 4 files: ViewProducer status lifecycle (activate+retire, form-less, cascade) + en/it lang + ProducerLifecycleConsoleTest 8/85; suite 1154 green, phpstan 0
+
+## [2026-06-20 22:32] ralph | operator-console-parties-producer 4.1/4.2 | green | 4 files — Producer KYC verbs (require/waive/verify/reject) appended to ViewProducer, audit-only; +13 tests (1167/1167)
+
+## [2026-06-20 22:42] ralph | operator-console-parties-producer 5.1 | green | i18n kit-key completeness test (ProducerConsoleI18nTest, 38 cases); suite 1205/1205; 1 file
+
+## [2026-06-20 22:54] ralph | operator-console-parties-producer 6.1 | green | 1 file (new closing-chain test) | full suite 1206/1206 SQLite + Parties folder 83/83 PG17; phpstan 0; pint clean; validate strict OK; composer empty. ALL 11 tasks done → CHANGE_COMPLETE

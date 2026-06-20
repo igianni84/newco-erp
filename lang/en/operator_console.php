@@ -477,4 +477,72 @@ return [
         ],
     ],
 
+    // Producer — the standalone winery-identity registry (Module K § 4.4), the source of the producer
+    // reference Module 0's Product Master keys off. The FIRST Parties operator console
+    // (operator-console-parties-producer). Its state is `status` (draft → active → retired) with a SEPARATE
+    // provenance-KYC lifecycle in `kyc_status` — not the catalog `lifecycle_state` (design D2).
+    'producer' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Producer',
+        'plural_label' => 'Producers',
+
+        // List-table + view-infolist field labels. `status` / `kyc_status` are the Producer's two FSMs (the
+        // status lifecycle and the separate provenance-KYC lifecycle); `version` is the optimistic lock.
+        'columns' => [
+            'name' => 'Name',
+            'region' => 'Region',
+            'country' => 'Country',
+            'status' => 'Status',
+            'kyc_status' => 'KYC status',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels + the view-infolist labels for the attributes the list omits.
+        // name/region/country are required create inputs (also re-used as view labels via `columns.*`);
+        // appellation/website/description are optional create inputs shared with the view infolist; `clubs` is
+        // view-only (the operated-Clubs read). The create form exposes NEITHER `status` NOR `kyc_status` — a
+        // Producer is born `draft` with no KYC and both FSMs advance only through the view-page actions (D6).
+        'fields' => [
+            'name' => 'Name',
+            'region' => 'Region',
+            'country' => 'Country',
+            'appellation' => 'Appellation',
+            'website' => 'Website',
+            'description' => 'Description',
+            'clubs' => 'Operated clubs',
+        ],
+
+        // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs (task 3.1)
+        // and the four KYC verbs require/waive/verify/reject (task 4.1). Every action routes through a Parties
+        // domain action, never a Filament default mutating path (ADR 2026-06-19). Producer has NO
+        // separation-of-duties activation (it is KYC-gated, not Creator→Reviewer→Approver), so there is no
+        // `affordance` block and no verb carries a confirmation modal (design D3). The KYC verbs are audit-only
+        // (the domain records no event and places no Hold); `waive` is the operator "deselect" of the KYC
+        // requirement (any outstanding state → not_required, clearing the activation gate as if verified).
+        'actions' => [
+            'create' => 'New Producer',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'require_kyc' => 'Require KYC',
+            'waive_kyc' => 'Waive KYC',
+            'verify_kyc' => 'Verify KYC',
+            'reject_kyc' => 'Reject KYC',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition — its own
+        // localized message (from lang/*/parties.php, e.g. the illegal-from-state, KYC-not-cleared or illegal
+        // KYC-transition text) is rendered as the body, so the console owns only this title, never the
+        // per-rejection copy (design D5). The four KYC success titles confirm the audit-only `kyc_status` move.
+        'notifications' => [
+            'activated' => 'Producer activated.',
+            'retired' => 'Producer retired.',
+            'kyc_required' => 'Producer KYC required.',
+            'kyc_waived' => 'Producer KYC waived.',
+            'kyc_verified' => 'Producer KYC verified.',
+            'kyc_rejected' => 'Producer KYC rejected.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];
