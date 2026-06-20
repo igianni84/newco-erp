@@ -10,23 +10,22 @@ updated: 2026-06-20
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-20 (ralph — `operator-console-catalog-master` task 1.3 green).** The import-boundary test now encodes the operator-console carve-out: `App\Modules\OperatorPanel` may import each operated module's `Models\*` (read-bind) **and** `Actions\*` (write-through `app(<Action>)->handle()`), scoped OperatorPanel-only. Suite 955/955; phpstan 0.
+**2026-06-20 (ralph — `operator-console-catalog-master` task 2.1 green, SQLite + PG17).** Built the console's first Filament resource: `ProductMasterResource` — a READ-ONLY surface over Catalog `ProductMaster` (List + View), producer column resolved via the `ProducerState` projection, no create/edit/delete action, `operator_console` i18n group (EN+IT) seeded. Suite 960/960; phpstan 0; PG17 40/40.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev; prod PG17.
-- **955/955 green** (4738 assertions; +1 boundary guard test vs 1.2). phpstan 0 errors; pint clean. `composer.json/lock` untouched; no migrations; only the non-protected `tests/Architecture/ModuleBoundariesTest.php` touched.
-- ⚠ **Run the full suite as `php -d memory_limit=-1 vendor/bin/pest`** (and `… phpstan analyse`) — bare `php artisan test` OOMs at 128M in `laravel/pao` (false-red). See lessons.md.
+- **960/960 green** (4756 assertions, +5 vs 2.0). phpstan 0; pint clean. `composer.json/lock` untouched; no migrations; no protected files. Only new app code (`Filament/Resources/Catalog/**`), `lang/{en,it}/operator_console.php`, and a test.
+- **PG17 verified** (first DB-action task): `tests/Feature/Modules/OperatorPanel` = 40/40 on docker `postgres:17`. Local box has no native psql; Docker Desktop daemon was down → `open -a Docker` then ran it (now running).
+- ⚠ Full suite/phpstan: `php -d memory_limit=-1 vendor/bin/pest` (and `… phpstan analyse`) — bare `php artisan test` OOMs at 128M (false-red). PG run uses `-d memory_limit=512M vendor/bin/pest` + `DB_CONNECTION=pgsql …`. See lessons.md.
 
 ## Active Change & Next Task
-- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **3/11** done).
-- **Done 1.3:** `ModuleBoundariesTest.php` — extracted helper `moduleBoundaryAllowedImports(Module $source)` (single source of truth); baseline = each other module's `Contracts\*`+`Events\*`; **OperatorPanel-only** also gets `Models\*`+`Actions\*`. Added a guard test pinning the carve-out OperatorPanel-only (never whole-module, lateral peers excluded). Red→green→lateral proven with temp files (all deleted).
-- **Next 2.1:** build `ProductMasterResource` (read-projection) + List + View under `app/Modules/OperatorPanel/Filament/Resources/Catalog/`; `$model = \App\Modules\Catalog\Models\ProductMaster::class`; producer column via `\App\Modules\Catalog\Models\ProducerState`; **no** Edit/Delete default action; labels localized (seed the i18n group). **First PG17 task** — seed via `CreateProductMaster` + a `ProducerState` row; run the test on docker `postgres:17` and record it in progress.md.
+- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **4/11** done).
+- **Next 3.1:** Create page → `app(CreateProductMaster::class)->handle(name, producerId, appellation, region, wineryStory)` via `handleRecordCreation(array $data): Model`; producer **select** from `ProducerState`; map the BR-Identity-1 dedup rejection to a **form field error** (catch via base exception type + `getMessage()`, NOT `use Catalog\Exceptions`). **First console WRITE** — drive the action (never `$model->save()`), assert `draft` Master + exactly 1 `ProductMasterCreated` with `actor_role: newco_ops` + `actor_id` (ActorContext via operator guard). Re-confirm Filament 5 `handleRecordCreation`/`Filament\Actions\Action` signatures in `vendor/` first. **PG17 task.**
 
 ## Blockers & Decisions Needed
 - None. `openspec validate operator-console-catalog-master --strict` green; on branch `ralph/operator-console-catalog-master`.
 
 ## Open Patterns
-- **Console cross-module surface = exactly {Models, Actions}** (progress.md Codebase Patterns). For 3.1–5.2 keep it tight: **catch domain rejections via base types** (`\Throwable`/`DomainException`/`ValidationException` + `getMessage()`), NOT `use Catalog\Exceptions\…`; **render enums via the cast instance** (`$record->lifecycle_state->…`), NOT `use Catalog\Enums\…`. Then no later task re-amends the 1.3 carve-out.
-- **Two console guards now live:** 1.2 PHPStan no-Eloquent-write rule (`tests/PHPStan/`, scoped to `OperatorPanel/Filament/`) + 1.3 boundary carve-out. Read/write discipline = ADR 2026-06-19.
-- **PHPStan gotcha (lessons.md):** never chain `expect($list)->toContain()->toContain()->not->toContain()` — degrades to `mixed`/null under larastan; use `in_array(...,true)`+`toBeTrue/False`, one per `expect()`.
-- Filament 5 write signatures (`handleRecordCreation`, `Filament\Actions\Action`) still to verify in `vendor/` before create/lifecycle tasks 3.1–5.2 (lessons.md).
+- **Filament 5 read-only resource skeleton** (verified API) is now in progress.md Codebase Patterns — read before 3.x–5.x: table/infolist via `getStateUsing` (both from `HasCellState`); `Schema->components()`; `getPages()`={index,view}; read-only = add nothing (header actions default `[]`); labels via static `getModelLabel()`+`(string) __()`; authz no-policy+non-strict = allowed; test via `Livewire::test()` + Filament macros + `actingAs(Operator::factory()->create(),'operator')`.
+- **`EloquentBuilder::value('enum_col')` applies the cast** (returns the enum, not a raw string) — render module enums via the cast instance (`->first()?->status->value`), never assume raw (lessons.md).
+- **Console cross-module surface = exactly {Models, Actions}.** For 3.1–5.2: catch domain rejections via base types (`\Throwable`/`DomainException`/`ValidationException`), render enums via the cast instance — so no later task re-amends the 1.3 carve-out. Two console guards live: 1.2 PHPStan no-Eloquent-write rule + 1.3 boundary carve-out.
