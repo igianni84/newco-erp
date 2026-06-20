@@ -9,7 +9,7 @@ updated: 2026-06-20
 > Auto-injected at session start and post-compaction via hooks. OVERWRITTEN completely, never appended.
 
 ## Last Updated
-**2026-06-20 (§2.7 close ritual of `operator-console-parties-producer` — MERGED + ARCHIVED).** First Parties/Module-K console (the Producer surface: create + status FSM activate[KYC-gated]/retire[Club-sunset cascade] + 4-verb audit-only KYC FSM; non-catalog trait-reuse, ADR 2026-06-20). Reviewed → merged `--no-ff` to `main` (`69fec90`) → semantic-checked → archived (`c938364`): `openspec archive` merged its 3 ADDED requirements into the living `openspec/specs/operator-console/spec.md` (validates). Semantic: 0 CRITICAL, 1 WARNING + 2 SUGGESTION accepted. **Not pushed** — `main` is +9 vs `origin/main`; humans push.
+**2026-06-20 (§2.7 close ritual of `operator-console-parties-producer` — MERGED + ARCHIVED).** First Parties/Module-K console (the Producer surface: create + status FSM activate[KYC-gated]/retire[Club-sunset cascade] + 4-verb audit-only KYC FSM; non-catalog trait-reuse, ADR 2026-06-20). Reviewed → merged `--no-ff` to `main` (`69fec90`) → semantic-checked → archived (`c938364`): `openspec archive` merged its 3 ADDED requirements into the living `openspec/specs/operator-console/spec.md` (validates). Semantic: 0 CRITICAL, 1 WARNING + 2 SUGGESTION accepted. **Pushed to `origin/main`** (`751e867`, with Giovanni's consent); merged ralph branch deleted.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (level max) · Pint 1.29.1. SQLite dev; prod PG17.
@@ -21,7 +21,7 @@ updated: 2026-06-20
 - **Next change:** `operator-console-parties-supply-side` (Club + ProducerAgreement consoles) — reuses the proven non-catalog trait-reuse recipe (ADR 2026-06-20), consolidated in the archived change's progress Codebase Patterns. Run `/spec-to-change`, or pick it up if already APPROVED.
 
 ## Blockers & Decisions Needed
-- **Push pending — humans push.** `main` +9 vs `origin/main` (6 feature + approve + merge + archive commits). Branch `ralph/operator-console-parties-producer` not deleted (`git branch -d` is the human's call).
+- **Done & in sync.** `main` == `origin/main` (`751e867`); branch `ralph/operator-console-parties-producer` deleted (was merged). Nothing pending.
 - Semantic-check findings (non-blocking, candidates for the supply-side change or `knowledge/testing`): **W1** R1 "no Supplier created" has no console-test assertion (console can't import/create a Supplier — it's a domain guarantee). **S1** activation-blocked tested via `pending`, not `rejected`. **S2** waive tested from pending/rejected/verified, not NULL (NULL is a legal from-state, confirmed). All are OR-branches on a state-agnostic console path.
 - Cleanup: `newco-pg17-test` docker container may still be running (`docker rm -f newco-pg17-test` to drop).
 
