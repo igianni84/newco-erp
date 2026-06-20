@@ -363,3 +363,7 @@
 ## [2026-06-19 15:23] close | parties-membership-suspension | merged --no-ff main (ff0be4a) | PG17 pre-merge gate 949/949 | semantic-verify §2.7 clean: 0 CRITICAL/0 WARNING/3 SUGGESTION | openspec archive +7/~2 into living party-registry spec | not pushed yet
 
 ## [2026-06-19 15:26] push | main -> origin | close-out pushed (merge ff0be4a + archive cf2f77b + prior activation work); deleted merged ralph/parties-membership-suspension; only main remains, in sync
+
+## [2026-06-19 17:16] adr | operator-console read-binding (STEP-1 gate) | grill resolved STEP-1: OperatorPanel = composition layer; Filament reads module models read-only, writes via domain actions, arch-test enforced. Wrote ADR 2026-06-19-operator-console-read-binding-write-through-actions + INDEX + CONTEXT (Operator console term).
+
+## [2026-06-19 17:16] spec-to-change | operator-console-catalog-master | Authored change 1 (operator-console foundation + ProductMaster console): proposal + delta spec (7 req/15 scen) + design + tasks (11); validate --strict green. Awaiting human APPROVED -> ralph. Bulk-import/enrichment/field-edit OUT (no backend).

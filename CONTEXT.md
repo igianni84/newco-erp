@@ -469,6 +469,10 @@ _Avoid_: user (overloaded), admin (a role, not the principal), Customer/Producer
 The thin, first-party login record (credentials only) that authenticates an actor — a platform-foundation concern, never a business module's. For a Customer or Producer it **references the Module K party by id** and holds no business identity of its own (the party stays authoritative — a Customer is identity+eligibility, never a login); for an Operator the principal *is* the identity. The Actor context resolves `actor_role` + `actor_id` from the authenticated principal, where `actor_id` is the party/operator id — never the principal's own id. No external IdP at launch (EU-resident, first-party); social/SSO is a deferred seam.
 _Avoid_: User, account (the Module K Account is a billing container), password-on-the-Customer
 
+**Operator console**:
+The per-module operator surface within the Admin Panel — the OperatorPanel module's window onto one other module's entities (the Catalog console, the Parties console). It owns no entities: it displays the operated module's data and drives every change through that module's domain actions, never writing the entity directly. "Admin Panel" names the whole surface; an Operator console is one module's slice of it.
+_Avoid_: admin screen, back-office UI, CRUD page (every write is a domain action)
+
 ## Operations & Integrations
 
 **Vinlock**:
