@@ -331,6 +331,9 @@ return [
         ],
 
         'fields' => [
+            'name' => 'Nome',
+            'region' => 'Regione',
+            'country' => 'Paese',
             'appellation' => 'Denominazione',
             'website' => 'Sito web',
             'description' => 'Descrizione',

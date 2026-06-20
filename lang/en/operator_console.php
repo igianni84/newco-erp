@@ -497,9 +497,15 @@ return [
             'version' => 'Version',
         ],
 
-        // View-infolist labels for the identity attributes the list omits. The create-form input labels land
-        // with the create surface (task 2.1).
+        // Create-form input labels + the view-infolist labels for the attributes the list omits.
+        // name/region/country are required create inputs (also re-used as view labels via `columns.*`);
+        // appellation/website/description are optional create inputs shared with the view infolist; `clubs` is
+        // view-only (the operated-Clubs read). The create form exposes NEITHER `status` NOR `kyc_status` — a
+        // Producer is born `draft` with no KYC and both FSMs advance only through the view-page actions (D6).
         'fields' => [
+            'name' => 'Name',
+            'region' => 'Region',
+            'country' => 'Country',
             'appellation' => 'Appellation',
             'website' => 'Website',
             'description' => 'Description',

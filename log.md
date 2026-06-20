@@ -417,3 +417,5 @@
 ## [2026-06-20 19:03] ritual-close | operator-console-catalog-spine | GUIDE §2.7: PG17 full-suite 1138/1138 (6442 assn) + semantic verify CLEAN (5/5 reqs, 0 CRITICAL) -> merge --no-ff + archive (specs/operator-console +5 reqs, dir 2026-06-20) + ralph branch deleted; main +13 vs origin, NOT pushed (human pushes)
 
 ## [2026-06-20 21:58] ralph | operator-console-parties-producer 1.1-1.3 | green | Producer read-only console (Resource+List+i18n) + Create/View scaffolds; 1143/1143 SQLite, phpstan 0; 7 files
+
+## [2026-06-20 22:09] ralph | operator-console-parties-producer 2.1-2.2 | green | 4 files — Producer create form on ProducerResource::form() + fields.{name,region,country} EN/IT + ProducerCreateConsoleTest (3 tests); full 1146/1146, phpstan 0, pint clean, validate OK

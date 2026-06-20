@@ -6,6 +6,8 @@ use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages;
 use App\Modules\Parties\Models\Producer;
 use BackedEnum;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Schema;
@@ -48,6 +50,42 @@ class ProducerResource extends OperatorConsoleResource
     protected static function i18nKey(): string
     {
         return 'producer';
+    }
+
+    /**
+     * The create form (design D6/D8). Collects the scalar identity inputs the Parties `CreateProducer` action
+     * consumes — the required name/region/country plus the optional appellation, website and (English-baseline,
+     * translatable) description. It deliberately exposes NEITHER `status` NOR `kyc_status`: a Producer is born
+     * `draft` with no KYC by the action, and both FSMs advance only through the view-page lifecycle actions
+     * (tasks 3.1/4.1), never as create-form inputs. The form only COLLECTS; the write routes through the action
+     * in {@see Pages\CreateProducer::createViaAction()} (there is no Edit page — the Parties backend ships no
+     * Producer update Action). All labels localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('name')
+                    ->label((string) __('operator_console.producer.fields.name'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('region')
+                    ->label((string) __('operator_console.producer.fields.region'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('country')
+                    ->label((string) __('operator_console.producer.fields.country'))
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('appellation')
+                    ->label((string) __('operator_console.producer.fields.appellation'))
+                    ->maxLength(255),
+                TextInput::make('website')
+                    ->label((string) __('operator_console.producer.fields.website'))
+                    ->maxLength(255),
+                Textarea::make('description')
+                    ->label((string) __('operator_console.producer.fields.description')),
+            ]);
     }
 
     public static function table(Table $table): Table
