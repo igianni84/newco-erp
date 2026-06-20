@@ -367,3 +367,25 @@
 ## [2026-06-19 17:16] adr | operator-console read-binding (STEP-1 gate) | grill resolved STEP-1: OperatorPanel = composition layer; Filament reads module models read-only, writes via domain actions, arch-test enforced. Wrote ADR 2026-06-19-operator-console-read-binding-write-through-actions + INDEX + CONTEXT (Operator console term).
 
 ## [2026-06-19 17:16] spec-to-change | operator-console-catalog-master | Authored change 1 (operator-console foundation + ProductMaster console): proposal + delta spec (7 req/15 scen) + design + tasks (11); validate --strict green. Awaiting human APPROVED -> ralph. Bulk-import/enrichment/field-edit OUT (no backend).
+
+## [2026-06-20 08:07] ralph | operator-console-catalog-master 1.1 | green | 3 files (AdminPanelProvider repoint + Filament/ skeleton + PanelDiscoveryTest); discovery → App\Modules\OperatorPanel\Filament\*; 953/953
+
+## [2026-06-20 08:27] ralph | operator-console-catalog-master 1.2 | green | 4 files | PHPStan custom rule bans Eloquent writes in OperatorPanel/Filament (type-aware, RuleTestCase red->green); suite 954/954, phpstan 0
+
+## [2026-06-20 08:45] ralph | operator-console-catalog-master 1.3 | green | 1 file (ModuleBoundariesTest: OperatorPanel Models+Actions carve-out + guard test); suite 955/955, phpstan 0
+
+## [2026-06-20 09:12] ralph | operator-console-catalog-master 2.1 | green | 6 files | ProductMasterResource read-only List+View, producer via ProducerState projection, no edit/delete, operator_console i18n EN+IT; 960/960 SQLite + PG17 40/40
+
+## [2026-06-20 09:41] ralph | operator-console-catalog-master 3.1 | green | 7 files — write-through Create page routes to CreateProductMaster (no model save); dedup rejection -> form error on data.name; producer select from ProducerState; header create LINK not CreateAction; 963/963 SQLite + 43/43 PG17; phpstan 0
+
+## [2026-06-20 09:57] ralph | operator-console-catalog-master 4.1 | green | 6 files | submit+reject header Actions on ViewProductMaster (audit-only draft→reviewed / stays reviewed); domain rejection→danger notification; 967/967 SQLite + PG17 47/47
+
+## [2026-06-20 10:13] ralph | operator-console-catalog-master 4.2 | green | 4 files | activate action + second-actor confirmation affordance + producer-gate/SoD surfacing; suite 972/972, phpstan 0, PG17 52/52
+
+## [2026-06-20 10:27] ralph | operator-console-catalog-master 5.1 | green | retire+reopen header actions, surfaceLifecycleOutcome reuse; single-entity retire preserves child, reopen audit-only + gate re-check; 4 tests; suite 976/976, phpstan 0, PG17 56/56 | 4 files
+
+## [2026-06-20 10:42] ralph | operator-console-catalog-master 5.2 | green | 4 files | cascade-retire header action (RetireProductMasterCascade + requiresConfirmation warning); 980/980 SQLite, PG17 60/60, phpstan 0
+
+## [2026-06-20 10:58] ralph | operator-console-catalog-master 6.1 | green | 2 files (new I18n token-scan+fallback test; lang/it removes English-invariant label keys for real per-key fallback). suite 995/995, phpstan 0, pint clean. DB-free → no PG17. 10/11 done
+
+## [2026-06-20 11:19] ralph | operator-console-catalog-master 6.2 | green | demo-path chain test (1 test/136 assert) + cross-engine close: 996/996 SQLite, 244/244 PG17 (OperatorPanel+Catalog+Architecture); 11/11 done → CHANGE_COMPLETE | 1 file

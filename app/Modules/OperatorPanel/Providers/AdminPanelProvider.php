@@ -38,12 +38,16 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            // Discovery is repointed from the shell's default app/Filament/** into the OperatorPanel
+            // module (ADR 2026-06-19): the operator surface IS OperatorPanel code, so its resources,
+            // pages and widgets live under app/Modules/OperatorPanel/Filament/** — keeping the module
+            // self-contained and setting the pattern for the seven module consoles still to come.
+            ->discoverResources(in: app_path('Modules/OperatorPanel/Filament/Resources'), for: 'App\Modules\OperatorPanel\Filament\Resources')
+            ->discoverPages(in: app_path('Modules/OperatorPanel/Filament/Pages'), for: 'App\Modules\OperatorPanel\Filament\Pages')
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->discoverWidgets(in: app_path('Modules/OperatorPanel/Filament/Widgets'), for: 'App\Modules\OperatorPanel\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
