@@ -236,4 +236,47 @@ return [
         ],
     ],
 
+    'sellable_sku' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Sellable SKU" is an English-invariant structural domain
+        // term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Nome commerciale',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Nome commerciale',
+            'marketing_copy' => 'Testo di marketing',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Sellable SKU',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Sellable SKU.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Sellable SKU inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Sellable SKU resta in revisione.',
+            'activated' => 'Sellable SKU attivato.',
+            'retired' => 'Sellable SKU ritirato.',
+            'reopened' => 'Sellable SKU riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];

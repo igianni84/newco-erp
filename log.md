@@ -405,3 +405,5 @@
 ## [2026-06-20 15:25] ralph | operator-console-catalog-spine 3.1 | green | 6 files (Variant Resource+3 pages, en/it lang, 2 tests) | SQLite 1046/1046, PG17 OperatorPanel 126/126, phpstan 0
 
 ## [2026-06-20 15:42] ralph | operator-console-catalog-spine 3.2 | green | 8 files: ProductReference console (Resource+3 pages), EN/IT i18n (+console-owned duplicate_reference key), 2 tests. SQLite 1065/1065, PG17 145/145, phpstan 0, pint clean. PR dup→form-error + both retire reference-integrity blocks surfaced.
+
+## [2026-06-20 16:34] ralph | operator-console-catalog-spine 3.3 | green | 8 files (SQLite 1082/1082, PG17 162/162, phpstan 0, pint clean)

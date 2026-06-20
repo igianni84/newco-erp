@@ -342,4 +342,73 @@ return [
         ],
     ],
 
+    // Sellable SKU (Intrinsic) — the commercial unit and the third hierarchical PIM spine entity (one Product
+    // Reference + one Case Configuration + commercial attributes, BR-SKU-1). It binds exactly TWO within-catalog
+    // parents — so its create form carries a Product Reference picker AND a Case Configuration picker (plus the
+    // commercial name + optional marketing copy) — and NO producer (design L6). Unlike the Product Reference it
+    // has NO uniqueness rule (the same Product Reference + Case Configuration pair may back many SKUs), so there
+    // is no duplicate form-error key. Its activation is gated on BOTH parents being `active` (the within-catalog
+    // activation cascade); the console SURFACES that domain gate, it never reimplements it (design L4) — so the
+    // only failure title here is the shared `notifications.action_failed` (the gate's own body comes from
+    // lang/*/catalog.php). It is a LEAF (nothing within catalog references it), so retire carries no
+    // reference-integrity block. Operator-console-catalog-spine, task 3.3.
+    'sellable_sku' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
+        'label' => 'Sellable SKU',
+        'plural_label' => 'Sellable SKUs',
+
+        // List-table + view-infolist field labels. `reference` / `case_configuration` are the two parent
+        // dimensions, rendered off the within-Catalog reference() / caseConfiguration() relations.
+        'columns' => [
+            'reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Commercial name',
+            'lifecycle_state' => 'Lifecycle state',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels (the two parent pickers + the commercial attributes) + the reject action's
+        // notes field (recorded on the audit row, never reverting state — § 4.3). `marketing_copy` is an optional
+        // SKU-level string (NOT translatable — §8.1 scopes translatable content to Master/Variant/PR).
+        'fields' => [
+            'product_reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Commercial name',
+            'marketing_copy' => 'Marketing copy',
+            'rejection_notes' => 'Rejection notes',
+        ],
+
+        // Create-page header link + write-through lifecycle action labels. Every action routes through a Catalog
+        // domain action, never a Filament default mutating path (ADR 2026-06-19). A Sellable SKU is a hierarchical
+        // spine entity with no cascade-retire (Master-only, scope guard) — no `retire_cascade` key.
+        'actions' => [
+            'create' => 'New Sellable SKU',
+            'submit' => 'Submit for review',
+            'reject' => 'Reject',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+            'reopen' => 'Reopen',
+        ],
+
+        // The "second actor required" affordance — rendered as the activate confirmation copy. The console
+        // SURFACES the Creator → Reviewer → Approver separation-of-duties floor (a distinct approver), it never
+        // reimplements it (ApprovalGovernance is the sole authority).
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Sellable SKU.',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (the
+        // rejection's own localized message — from lang/*/catalog.php, incl. the activation-cascade gate
+        // `gate.parent_not_active` — is rendered as the body).
+        'notifications' => [
+            'submitted' => 'Sellable SKU submitted for review.',
+            'rejected' => 'Rejection recorded; the Sellable SKU stays under review.',
+            'activated' => 'Sellable SKU activated.',
+            'retired' => 'Sellable SKU retired.',
+            'reopened' => 'Sellable SKU reopened for review.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];
