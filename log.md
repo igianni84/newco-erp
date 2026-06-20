@@ -391,3 +391,25 @@
 ## [2026-06-20 11:19] ralph | operator-console-catalog-master 6.2 | green | demo-path chain test (1 test/136 assert) + cross-engine close: 996/996 SQLite, 244/244 PG17 (OperatorPanel+Catalog+Architecture); 11/11 done → CHANGE_COMPLETE | 1 file
 
 ## [2026-06-20 11:56] merge+archive | operator-console-catalog-master | dual gate CLEAN (semantic-verify subagent + PG17 full 996/996, 5115 assns); merge --no-ff a3b2943 → openspec archive caa8fad (truth spec operator-console, +7 reqs). Local only, not pushed. Next: operator-console-catalog-spine.
+
+## [2026-06-20 13:51] spec-to-change | operator-console-catalog-spine | Authored + APPROVED: 5 ADDED reqs, 10 tasks, ADR 2026-06-20 shared console kit (extract + retrofit Master). 6 spine entities on operator-console; zero new backend. validate --strict green.
+
+## [2026-06-20 14:23] ralph | operator-console-catalog-spine 1.1 | green | 3 files — extracted operator-console kit (SurfacesDomainActions trait + OperatorConsoleViewRecord base) + retrofit ViewProductMaster; 996/996 SQLite, 76/76 PG17, phpstan 0, design-L9 boundary held
+
+## [2026-06-20 14:36] ralph | operator-console-catalog-spine 1.2 | green | 4 files (2 new kit bases OperatorConsoleResource+CreateRecord, 2 retrofit Master Resource+Create) | 996/996 SQLite, 76/76 PG17, phpstan 0, composer diff empty
+
+## [2026-06-20 14:53] ralph | operator-console-catalog-spine 2.1 | green | 6 files (FormatResource + 3 pages + en/it lang + 2 tests) | 1011/1011 SQLite, 91/91 PG17, phpstan 0
+
+## [2026-06-20 15:05] ralph | operator-console-catalog-spine 2.2 | green | Case Configuration console (Resource+3 pages+EN/IT+2 tests), pure kit reuse, NO breakability + retire reference-integrity block; 1029/1029 SQLite, 109/109 PG17, phpstan 0 | 6 files
+
+## [2026-06-20 15:25] ralph | operator-console-catalog-spine 3.1 | green | 6 files (Variant Resource+3 pages, en/it lang, 2 tests) | SQLite 1046/1046, PG17 OperatorPanel 126/126, phpstan 0
+
+## [2026-06-20 15:42] ralph | operator-console-catalog-spine 3.2 | green | 8 files: ProductReference console (Resource+3 pages), EN/IT i18n (+console-owned duplicate_reference key), 2 tests. SQLite 1065/1065, PG17 145/145, phpstan 0, pint clean. PR dup→form-error + both retire reference-integrity blocks surfaced.
+
+## [2026-06-20 16:34] ralph | operator-console-catalog-spine 3.3 | green | 8 files (SQLite 1082/1082, PG17 162/162, phpstan 0, pint clean)
+
+## [2026-06-20 16:54] ralph | operator-console-catalog-spine 4.1 | green | 8 files (Composite SKU console: Resource+3 pages, EN/IT lang, 2 tests) | SQLite 1100/1100, phpstan 0, PG17 180/180
+
+## [2026-06-20 17:05] ralph | operator-console-catalog-spine 5.1 | green | 1 file (SpineConsoleI18nTest, 37 tests) | 1137/1137 SQLite; phpstan 0; pint clean; lang files already complete (no edit); DB-free
+
+## [2026-06-20 17:21] ralph | operator-console-catalog-spine 5.2 | green | 1 file (SpineConsoleChainTest) | SQLite 1138/1138 + PG17 429/429 OperatorPanel+Catalog+arch | CHANGE COMPLETE 10/10

@@ -58,4 +58,264 @@ return [
         'producer_unprojected' => 'Non proiettato',
     ],
 
+    'format' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Format" is an English-invariant structural domain
+        // term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'name' => 'Nome',
+            'size_label' => 'Etichetta formato',
+            'volume_ml' => 'Volume (ml)',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'name' => 'Nome',
+            'size_label' => 'Etichetta formato',
+            'volume_ml' => 'Volume (ml)',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Format',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Format.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Format inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Format resta in revisione.',
+            'activated' => 'Format attivato.',
+            'retired' => 'Format ritirato.',
+            'reopened' => 'Format riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'case_configuration' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Case Configuration" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'name' => 'Nome',
+            'units_per_case' => 'Unità per cassa',
+            'packaging_type' => 'Tipo di confezione',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'name' => 'Nome',
+            'units_per_case' => 'Unità per cassa',
+            'packaging_type' => 'Tipo di confezione',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuova Case Configuration',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questa Case Configuration.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Case Configuration inviata in revisione.',
+            'rejected' => 'Rifiuto registrato; la Case Configuration resta in revisione.',
+            'activated' => 'Case Configuration attivata.',
+            'retired' => 'Case Configuration ritirata.',
+            'reopened' => 'Case Configuration riaperta per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'product_variant' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Product Variant" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'variant_identifier' => 'Identificativo variante',
+            'master' => 'Product Master',
+            'vintage' => 'Annata',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_master' => 'Product Master',
+            'variant_identifier' => 'Identificativo variante',
+            'vintage_year' => 'Anno di annata',
+            'non_vintage' => 'Senza annata',
+            'tasting_notes' => 'Note di degustazione',
+            'tasting_notes_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'values' => [
+            'non_vintage' => 'Senza annata',
+            'yes' => 'Sì',
+            'no' => 'No',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Product Variant',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Variant.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Product Variant inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Product Variant resta in revisione.',
+            'activated' => 'Product Variant attivato.',
+            'retired' => 'Product Variant ritirato.',
+            'reopened' => 'Product Variant riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'product_reference' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Product Reference" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'variant' => 'Product Variant',
+            'format' => 'Format',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_variant' => 'Product Variant',
+            'format' => 'Format',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        // Colon-free, like the EN copy (the test asserts the rendered message verbatim).
+        'duplicate_reference' => 'Esiste già un Product Reference per questo Product Variant e Format. Ogni combinazione di Variant e Format deve essere unica.',
+
+        'actions' => [
+            'create' => 'Nuovo Product Reference',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Reference.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Product Reference inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Product Reference resta in revisione.',
+            'activated' => 'Product Reference attivato.',
+            'retired' => 'Product Reference ritirato.',
+            'reopened' => 'Product Reference riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'sellable_sku' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Sellable SKU" is an English-invariant structural domain
+        // term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Nome commerciale',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'product_reference' => 'Product Reference',
+            'case_configuration' => 'Case Configuration',
+            'commercial_name' => 'Nome commerciale',
+            'marketing_copy' => 'Testo di marketing',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Sellable SKU',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Sellable SKU.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Sellable SKU inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Sellable SKU resta in revisione.',
+            'activated' => 'Sellable SKU attivato.',
+            'retired' => 'Sellable SKU ritirato.',
+            'reopened' => 'Sellable SKU riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'composite_sku' => [
+        // 'label' / 'plural_label' intentionally ABSENT: "Composite SKU" is an English-invariant structural
+        // domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it under every locale.
+
+        'columns' => [
+            'constituent_count' => 'Costituenti',
+            'lifecycle_state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'constituents' => 'Costituenti',
+            'constituents_help' => 'Seleziona due o più Product Reference, in ordine di bundle.',
+            'rejection_notes' => 'Note di rifiuto',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Composite SKU',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+            'reopen' => 'Riapri',
+        ],
+
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Composite SKU.',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Composite SKU inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Composite SKU resta in revisione.',
+            'activated' => 'Composite SKU attivato.',
+            'retired' => 'Composite SKU ritirato.',
+            'reopened' => 'Composite SKU riaperto per la revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];
