@@ -10,22 +10,23 @@ updated: 2026-06-20
 > Updated by: every ralph iteration (mandatory), and any interactive session that materially changes the repo.
 
 ## Last Updated
-**2026-06-20 (ralph — `operator-console-catalog-master` task 1.2 green).** The operator-console write-discipline guard landed: a **PHPStan custom rule** (primary option, type-aware) that fails `type_check` on any Eloquent write in the Filament console. Suite 954/954 green; phpstan 0 errors.
+**2026-06-20 (ralph — `operator-console-catalog-master` task 1.3 green).** The import-boundary test now encodes the operator-console carve-out: `App\Modules\OperatorPanel` may import each operated module's `Models\*` (read-bind) **and** `Actions\*` (write-through `app(<Action>)->handle()`), scoped OperatorPanel-only. Suite 955/955; phpstan 0.
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 · Pint 1.29.1. SQLite dev; prod PG17.
-- **954/954 green** (953 prior + 1 new `NoEloquentWriteInOperatorPanelRuleTest`, 4710 assertions). phpstan 0 errors (rule loaded + clean tree green); pint clean. `composer.json/lock` untouched; no migrations; no protected files touched.
-- ⚠ **Run the full suite as `php -d memory_limit=-1 vendor/bin/pest`** (and `… vendor/bin/phpstan analyse`) — bare `php artisan test` OOMs at the box's 128M in `laravel/pao` (false-red). See lessons.md / progress Codebase Patterns.
+- **955/955 green** (4738 assertions; +1 boundary guard test vs 1.2). phpstan 0 errors; pint clean. `composer.json/lock` untouched; no migrations; only the non-protected `tests/Architecture/ModuleBoundariesTest.php` touched.
+- ⚠ **Run the full suite as `php -d memory_limit=-1 vendor/bin/pest`** (and `… phpstan analyse`) — bare `php artisan test` OOMs at 128M in `laravel/pao` (false-red). See lessons.md.
 
 ## Active Change & Next Task
-- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **2/11** done).
-- **Done 1.2:** `tests/PHPStan/Rules/NoEloquentWriteInOperatorPanelRule.php` (flags save/saveQuietly/update/updateQuietly/delete/forceDelete/create/insert/fill/setAttribute on a `Model` receiver), registered in `phpstan.neon` `services:` scoped to `Modules/OperatorPanel/Filament/`; `RuleTestCase` + fixture prove red→green; also proven via a planted violation in a real Filament class. **Scope = `Filament/` only** so `Operator::save()` (auth model under `Models/`) stays out of scope.
-- **Next 1.3:** amend the import-boundary test (`tests/Architecture/ModuleBoundariesTest.php`) to **permit** `App\Modules\OperatorPanel` → `App\Modules\*\Models` (read-binding carve-out, OperatorPanel source only) via an extra `->ignoring()` entry; a planted lateral import (Catalog → `Parties\Models`) must still fail. **Read what it asserts first.** Then **2.1** (`ProductMasterResource` read surface — first PG17 task).
+- **Active: `operator-console-catalog-master`** (APPROVED, in progress — **3/11** done).
+- **Done 1.3:** `ModuleBoundariesTest.php` — extracted helper `moduleBoundaryAllowedImports(Module $source)` (single source of truth); baseline = each other module's `Contracts\*`+`Events\*`; **OperatorPanel-only** also gets `Models\*`+`Actions\*`. Added a guard test pinning the carve-out OperatorPanel-only (never whole-module, lateral peers excluded). Red→green→lateral proven with temp files (all deleted).
+- **Next 2.1:** build `ProductMasterResource` (read-projection) + List + View under `app/Modules/OperatorPanel/Filament/Resources/Catalog/`; `$model = \App\Modules\Catalog\Models\ProductMaster::class`; producer column via `\App\Modules\Catalog\Models\ProducerState`; **no** Edit/Delete default action; labels localized (seed the i18n group). **First PG17 task** — seed via `CreateProductMaster` + a `ProducerState` row; run the test on docker `postgres:17` and record it in progress.md.
 
 ## Blockers & Decisions Needed
 - None. `openspec validate operator-console-catalog-master --strict` green; on branch `ralph/operator-console-catalog-master`.
 
 ## Open Patterns
-- **Operator-console (ADR 2026-06-19):** resources read-bind module models read-only; every write `app(<Action>)->handle()`. 1.2 now enforces the no-write half in CI (PHPStan rule). 1.3 carves the read half into the import-boundary test.
-- **Repo-local PHPStan custom rules** are viable here despite the phar (RuleTestCase autoloads; rule lives under dev-autoloaded `tests/` → no composer change; scope via constructor path-needle; `excludePaths` the fixture). See progress.md Codebase Patterns.
-- Filament 5 write signatures (`handleRecordCreation`, `Filament\Actions\Action`) still to verify in `vendor/` before the create/lifecycle write tasks 3.1–5.2 (lessons.md).
+- **Console cross-module surface = exactly {Models, Actions}** (progress.md Codebase Patterns). For 3.1–5.2 keep it tight: **catch domain rejections via base types** (`\Throwable`/`DomainException`/`ValidationException` + `getMessage()`), NOT `use Catalog\Exceptions\…`; **render enums via the cast instance** (`$record->lifecycle_state->…`), NOT `use Catalog\Enums\…`. Then no later task re-amends the 1.3 carve-out.
+- **Two console guards now live:** 1.2 PHPStan no-Eloquent-write rule (`tests/PHPStan/`, scoped to `OperatorPanel/Filament/`) + 1.3 boundary carve-out. Read/write discipline = ADR 2026-06-19.
+- **PHPStan gotcha (lessons.md):** never chain `expect($list)->toContain()->toContain()->not->toContain()` — degrades to `mixed`/null under larastan; use `in_array(...,true)`+`toBeTrue/False`, one per `expect()`.
+- Filament 5 write signatures (`handleRecordCreation`, `Filament\Actions\Action`) still to verify in `vendor/` before create/lifecycle tasks 3.1–5.2 (lessons.md).
