@@ -34,11 +34,13 @@ return [
             'reject' => 'Rifiuta',
             'activate' => 'Attiva',
             'retire' => 'Ritira',
+            'retire_cascade' => 'Ritira (a cascata)',
             'reopen' => 'Riapri',
         ],
 
         'affordance' => [
             'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato o revisionato questo Product Master.',
+            'cascade_warning' => 'Il ritiro a cascata ritira anche tutti i discendenti attivi di questo Product Master — varianti, reference e SKU — in un solo passaggio. Usa Ritira per ritirare solo il Product Master.',
         ],
 
         'notifications' => [
@@ -46,6 +48,7 @@ return [
             'rejected' => 'Rifiuto registrato; il Product Master resta in revisione.',
             'activated' => 'Product Master attivato.',
             'retired' => 'Product Master ritirato.',
+            'cascade_retired' => 'Product Master e i suoi discendenti attivi ritirati.',
             'reopened' => 'Product Master riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],

@@ -6,6 +6,7 @@ use App\Modules\Catalog\Actions\ActivateProductMaster;
 use App\Modules\Catalog\Actions\RejectProductMasterReview;
 use App\Modules\Catalog\Actions\ReopenProductMaster;
 use App\Modules\Catalog\Actions\RetireProductMaster;
+use App\Modules\Catalog\Actions\RetireProductMasterCascade;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource;
@@ -34,9 +35,13 @@ use RuntimeException;
  *     approver) and the Producer activation gate, it never re-checks either (design L5/L6);
  *   - "Retire" → {@see RetireProductMaster} (`active → retired`, single-entity — it PRESERVES existing active
  *     children; records ProductMasterRetired);
+ *   - "Retire (cascade)" → {@see RetireProductMasterCascade} (`active → retired` for the Master AND its active
+ *     descendants — Variants → Product References → SKUs — parent-before-child in one atomic transaction). It
+ *     is a DISTINCT affordance from the single-entity retire (design L7; § 4.7): a confirmation modal WARNS
+ *     that active descendants are retired too, so the operator commits to the cascade knowingly. The domain
+ *     owns the ordering and atomicity; the console only triggers the action and surfaces its outcome;
  *   - "Reopen" → {@see ReopenProductMaster} (`retired → reviewed`, audit-only — the next activation re-checks
  *     the Producer gate, design L7).
- * The operator-driven cascade retire lands in task 5.2 as a further header action here.
  *
  * The console SURFACES the domain's decision, it never reimplements the floor (design L5): the from-state
  * guard, the Creator → Reviewer → Approver separation-of-duties and the producer gate all live in the
@@ -110,6 +115,23 @@ class ViewProductMaster extends ViewRecord
                     self::surfaceLifecycleOutcome(
                         fn () => app(RetireProductMaster::class)->handle($record),
                         (string) __('operator_console.product_master.notifications.retired'),
+                    );
+                }),
+            // Operator-driven cascade retire — DISTINCT from the single-entity retire above (design L7; § 4.7):
+            // it retires the Master AND its active descendants (Variants → Product References → SKUs),
+            // parent-before-child in one atomic transaction. Because it reaches beyond the viewed Master, it
+            // carries a confirmation modal whose description WARNS that active descendants are retired too — the
+            // operator commits to the cascade knowingly (the same confirmation-affordance shape as activate's
+            // second-actor reminder). Ordering/atomicity are the domain's; an out-of-state cascade is rejected
+            // there (the Master's from-state guard) and surfaced below as a danger notification.
+            Action::make('retireCascade')
+                ->label((string) __('operator_console.product_master.actions.retire_cascade'))
+                ->requiresConfirmation()
+                ->modalDescription((string) __('operator_console.product_master.affordance.cascade_warning'))
+                ->action(function (ProductMaster $record): void {
+                    self::surfaceLifecycleOutcome(
+                        fn () => app(RetireProductMasterCascade::class)->handle($record),
+                        (string) __('operator_console.product_master.notifications.cascade_retired'),
                     );
                 }),
             // Reopen (`retired → reviewed`): audit-only, no domain event — it returns the Master to the

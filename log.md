@@ -383,3 +383,5 @@
 ## [2026-06-20 10:13] ralph | operator-console-catalog-master 4.2 | green | 4 files | activate action + second-actor confirmation affordance + producer-gate/SoD surfacing; suite 972/972, phpstan 0, PG17 52/52
 
 ## [2026-06-20 10:27] ralph | operator-console-catalog-master 5.1 | green | retire+reopen header actions, surfaceLifecycleOutcome reuse; single-entity retire preserves child, reopen audit-only + gate re-check; 4 tests; suite 976/976, phpstan 0, PG17 56/56 | 4 files
+
+## [2026-06-20 10:42] ralph | operator-console-catalog-master 5.2 | green | 4 files | cascade-retire header action (RetireProductMasterCascade + requiresConfirmation warning); 980/980 SQLite, PG17 60/60, phpstan 0

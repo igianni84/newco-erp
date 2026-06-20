@@ -43,6 +43,7 @@ return [
             'reject' => 'Reject',
             'activate' => 'Activate',
             'retire' => 'Retire',
+            'retire_cascade' => 'Retire (cascade)',
             'reopen' => 'Reopen',
         ],
 
@@ -52,6 +53,9 @@ return [
         // operator BEFORE they commit that the domain will reject a same-actor activation.
         'affordance' => [
             'second_actor' => 'Activation must be approved by a different operator than the one who created or reviewed this Product Master.',
+            // Cascade-retire confirmation copy (design L7): warns that the operation reaches the whole active
+            // subtree, distinguishing it from the single-entity Retire above.
+            'cascade_warning' => 'Cascade retire also retires every active descendant of this Product Master — its variants, references, and SKUs — in one step. Use Retire to retire only the Product Master itself.',
         ],
 
         // Outcome notifications for the write-through lifecycle actions. The success titles confirm the
@@ -62,6 +66,7 @@ return [
             'rejected' => 'Rejection recorded; the Product Master stays under review.',
             'activated' => 'Product Master activated.',
             'retired' => 'Product Master retired.',
+            'cascade_retired' => 'Product Master and its active descendants retired.',
             'reopened' => 'Product Master reopened for review.',
             'action_failed' => 'The action could not be completed.',
         ],

@@ -18,16 +18,33 @@
 // freely here: the {Models, Actions} import-boundary carve-out (task 1.3) governs OperatorPanel PRODUCTION
 // code, not tests.
 
+use App\Modules\Catalog\Actions\ActivateCaseConfiguration;
+use App\Modules\Catalog\Actions\ActivateFormat;
 use App\Modules\Catalog\Actions\ActivateProductMaster;
+use App\Modules\Catalog\Actions\ActivateProductReference;
 use App\Modules\Catalog\Actions\ActivateProductVariant;
+use App\Modules\Catalog\Actions\ActivateSellableSku;
+use App\Modules\Catalog\Actions\CreateCaseConfiguration;
+use App\Modules\Catalog\Actions\CreateFormat;
 use App\Modules\Catalog\Actions\CreateProductMaster;
+use App\Modules\Catalog\Actions\CreateProductReference;
 use App\Modules\Catalog\Actions\CreateProductVariant;
+use App\Modules\Catalog\Actions\CreateSellableSku;
 use App\Modules\Catalog\Actions\RetireProductMaster;
+use App\Modules\Catalog\Actions\RetireProductMasterCascade;
+use App\Modules\Catalog\Actions\SubmitCaseConfigurationForReview;
+use App\Modules\Catalog\Actions\SubmitFormatForReview;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
+use App\Modules\Catalog\Actions\SubmitProductReferenceForReview;
 use App\Modules\Catalog\Actions\SubmitProductVariantForReview;
+use App\Modules\Catalog\Actions\SubmitSellableSkuForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
+use App\Modules\Catalog\Models\CaseConfiguration;
+use App\Modules\Catalog\Models\Format;
 use App\Modules\Catalog\Models\ProductMaster;
+use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Catalog\Models\SellableSku;
 use App\Modules\Module;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages\ViewProductMaster;
 use App\Modules\OperatorPanel\Models\Operator;
@@ -455,4 +472,204 @@ it('exposes the retire and reopen lifecycle actions on the Product Master view p
     Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
         ->assertActionExists('retire')
         ->assertActionExists('reopen');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Task 5.2 — Cascade-retire (the operator-driven multi-entity retirement)
+|--------------------------------------------------------------------------
+|
+| The console's cascade-retire header action (design L7; § 4.7; spec — Operator retires, cascade-retires, and
+| reopens a Product Master). It is a DISTINCT affordance from the single-entity retire (task 5.1): it routes to
+| RetireProductMasterCascade, which retires the Master AND its active descendants (Variants → Product References
+| → SKUs) parent-before-child in ONE atomic transaction, recording each entity's `*Retired`. Because the
+| operation reaches beyond the viewed Master, the action carries a confirmation modal WARNING that active
+| descendants are retired too (the same confirmation-affordance shape as activate's second-actor reminder,
+| task 4.2). The console only triggers the domain action via the shared surfaceLifecycleOutcome helper and never
+| writes lifecycle_state itself (the no-Eloquent-write rule, task 1.2); an out-of-state cascade (Master not
+| `active`) is rejected by the domain and surfaced as a danger notification.
+|
+| Cascade carries only the operator-principal floor (no distinct-actor SoD — that is the activation step's
+| floor), so any authenticated operator may trigger it. The active descendant tree is seeded through the REAL
+| Catalog create + submit + activate domain actions (task 5.2 acceptance), reusing the single creator → reviewer
+| → approver lineage at every level — the SoD floor is per-entity (it reads each entity's OWN *Created event +
+| submit audit), so three mutually-distinct operators satisfy it everywhere (proven for Master + Variant by the
+| 5.1 retire test). The exhaustive domain proof of ordering/atomicity/non-active-skip lives in
+| tests/Feature/Modules/Catalog/RetirementCascadeTest.php + CatalogLifecycleChainTest.php; THESE tests pin the
+| console wiring.
+*/
+
+/**
+ * Extend lifecycleConsoleActiveMaster() into a fully-`active` Module-0 ownership tree —
+ * Master → Variant → (Format) → Product Reference → (Case Configuration) → Sellable SKU — built ENTIRELY
+ * through the real Catalog create + submit + activate domain actions (task 5.2 acceptance: "seeded via the
+ * Catalog create+activate actions"). The same creator → reviewer → approver lineage drives every entity (the
+ * separation-of-duties floor is per-entity, so three mutually-distinct operators satisfy it at each level — no
+ * fresh operators per level). Format + Case Configuration are STANDALONE reference entities (no parent gate);
+ * the cascade does NOT descend into them (§ 4.7) — they exist only to satisfy the Product Reference / Sellable
+ * SKU activation gates. Distinctly named (the `Tree` infix) so the one shared Pest namespace carries no
+ * redeclare. Returns the whole tree for the caller's assertions.
+ *
+ * @return array{
+ *     master: ProductMaster,
+ *     variant: ProductVariant,
+ *     format: Format,
+ *     reference: ProductReference,
+ *     caseConfiguration: CaseConfiguration,
+ *     sku: SellableSku,
+ * }
+ */
+function lifecycleConsoleActiveTree(Operator $creator, Operator $reviewer, Operator $approver, int $producerId = 7): array
+{
+    $master = lifecycleConsoleActiveMaster($creator, $reviewer, $approver, $producerId);
+
+    // Variant — gated on the parent Master being active (the within-module activation cascade).
+    actingAs($creator, 'operator');
+    $variant = app(CreateProductVariant::class)->handle(productMasterId: $master->id, variantIdentifier: '2019');
+    actingAs($reviewer, 'operator');
+    app(SubmitProductVariantForReview::class)->handle($variant);
+    actingAs($approver, 'operator');
+    app(ActivateProductVariant::class)->handle($variant);
+
+    // Format — standalone (approval governance only, no parent gate).
+    actingAs($creator, 'operator');
+    $format = app(CreateFormat::class)->handle(name: 'Magnum', sizeLabel: '1.5L', volumeMl: 1500);
+    actingAs($reviewer, 'operator');
+    app(SubmitFormatForReview::class)->handle($format);
+    actingAs($approver, 'operator');
+    app(ActivateFormat::class)->handle($format);
+
+    // Product Reference — gated on BOTH the Variant and the Format being active.
+    actingAs($creator, 'operator');
+    $reference = app(CreateProductReference::class)->handle(productVariantId: $variant->id, formatId: $format->id);
+    actingAs($reviewer, 'operator');
+    app(SubmitProductReferenceForReview::class)->handle($reference);
+    actingAs($approver, 'operator');
+    app(ActivateProductReference::class)->handle($reference);
+
+    // Case Configuration — standalone.
+    actingAs($creator, 'operator');
+    $caseConfiguration = app(CreateCaseConfiguration::class)->handle(name: 'Original Wooden Case (6)', unitsPerCase: 6, packagingType: 'owc');
+    actingAs($reviewer, 'operator');
+    app(SubmitCaseConfigurationForReview::class)->handle($caseConfiguration);
+    actingAs($approver, 'operator');
+    app(ActivateCaseConfiguration::class)->handle($caseConfiguration);
+
+    // Sellable SKU — the leaf; gated on BOTH the Product Reference and the Case Configuration being active.
+    actingAs($creator, 'operator');
+    $sku = app(CreateSellableSku::class)->handle(
+        productReferenceId: $reference->id,
+        caseConfigurationId: $caseConfiguration->id,
+        commercialName: 'Château Console 2019 — Magnum (OWC 6)',
+    );
+    actingAs($reviewer, 'operator');
+    app(SubmitSellableSkuForReview::class)->handle($sku);
+    actingAs($approver, 'operator');
+    app(ActivateSellableSku::class)->handle($sku);
+
+    return [
+        'master' => $master,
+        'variant' => $variant,
+        'format' => $format,
+        'reference' => $reference,
+        'caseConfiguration' => $caseConfiguration,
+        'sku' => $sku,
+    ];
+}
+
+it('exposes a cascade-retire action carrying the localized "retires active descendants" warning affordance', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $master = lifecycleConsoleDraftMaster();
+
+    // The cascade-retire action is a DISTINCT affordance from the single-entity retire (design L7): it carries a
+    // confirmation modal whose description WARNS that active descendants are retired too — surfaced BEFORE the
+    // operator commits. Asserted without HTML scraping via the resolved unmounted action (the task-4.2 shape).
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->assertActionExists('retireCascade', fn (Action $action): bool => $action->isConfirmationRequired()
+            && $action->getModalDescription() === (string) __('operator_console.product_master.affordance.cascade_warning'));
+});
+
+it('localizes the cascade-retire warning copy in EN and IT', function () {
+    $key = 'operator_console.product_master.affordance.cascade_warning';
+
+    app()->setLocale('en');
+    $en = (string) __($key);
+    app()->setLocale('it');
+    $it = (string) __($key);
+
+    // Both locales resolve the key (not the raw key) and the IT copy is a genuine translation, not the EN value
+    // verbatim — the warning is "present + localized" (task 5.2; invariant 12).
+    expect($en)->not->toBe($key)
+        ->and($it)->not->toBe($key)
+        ->and($it)->not->toBe($en);
+});
+
+it('cascade-retires an active Master and its active descendants parent-before-child through the console', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    $tree = lifecycleConsoleActiveTree($creator, $reviewer, $approver);
+
+    // The whole ownership tree is active before the cascade (seeded through the real create+activate actions).
+    expect(ProductMaster::findOrFail($tree['master']->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(ProductVariant::findOrFail($tree['variant']->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(ProductReference::findOrFail($tree['reference']->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(SellableSku::findOrFail($tree['sku']->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Cascade-retire THROUGH THE CONSOLE. Cascade carries only the operator-principal floor (no distinct-actor
+    // SoD), so any authenticated operator may trigger it; here the approver does.
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $tree['master']->getKey()])
+        ->callAction('retireCascade')
+        ->assertNotified((string) __('operator_console.product_master.notifications.cascade_retired'));
+
+    // The whole OWNERSHIP tree (Master → Variant → PR → SKU) reached `retired`.
+    expect(ProductMaster::findOrFail($tree['master']->id)->lifecycle_state)->toBe(LifecycleState::Retired)
+        ->and(ProductVariant::findOrFail($tree['variant']->id)->lifecycle_state)->toBe(LifecycleState::Retired)
+        ->and(ProductReference::findOrFail($tree['reference']->id)->lifecycle_state)->toBe(LifecycleState::Retired)
+        ->and(SellableSku::findOrFail($tree['sku']->id)->lifecycle_state)->toBe(LifecycleState::Retired);
+
+    // The STANDALONE reference entities are NOT descended into by the cascade (§ 4.7) — they stay active.
+    expect(Format::findOrFail($tree['format']->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(CaseConfiguration::findOrFail($tree['caseConfiguration']->id)->lifecycle_state)->toBe(LifecycleState::Active);
+
+    // Each entity recorded its `*Retired` in ascending domain_events.id = parent-before-child order (§ 14.3):
+    // the cascade records them Master → Variant → PR → SKU explicitly inside ONE transaction.
+    $order = DomainEvent::query()
+        ->whereIn('name', ['ProductMasterRetired', 'ProductVariantRetired', 'ProductReferenceRetired', 'SellableSKURetired'])
+        ->orderBy('id')
+        ->pluck('name')
+        ->all();
+
+    expect($order)->toBe(['ProductMasterRetired', 'ProductVariantRetired', 'ProductReferenceRetired', 'SellableSKURetired']);
+
+    // Every cascade write carries the operator envelope — actor_role newco_ops + the cascading operator (the
+    // approver) as actor_id (spec: an operator-driven write records newco_ops + the operator id).
+    $retiredEvents = DomainEvent::query()
+        ->whereIn('name', ['ProductMasterRetired', 'ProductVariantRetired', 'ProductReferenceRetired', 'SellableSKURetired'])
+        ->get();
+
+    expect($retiredEvents)->toHaveCount(4);
+    foreach ($retiredEvents as $event) {
+        expect($event->actor_role)->toBe(ActorRole::NewcoOps)
+            ->and($event->actor_id)->toEqual($approver->id);
+    }
+});
+
+it('surfaces an out-of-state cascade retire as a danger notification, changing nothing', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A draft Master: cascade retire requires the Master to be `active`, so the domain rejects the out-of-state
+    // call (the Master's from-state guard). The console surfaces it as a danger notification; it never pre-checks
+    // the from-state (design L5 — surface, don't reimplement).
+    $master = lifecycleConsoleDraftMaster();
+
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('retireCascade')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    // Unchanged: still draft, and no *Retired recorded (the rejected attempt's transaction rolled back).
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Draft)
+        ->and(DomainEvent::query()->where('name', 'like', '%Retired%')->count())->toBe(0);
 });
