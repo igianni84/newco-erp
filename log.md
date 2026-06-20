@@ -421,3 +421,5 @@
 ## [2026-06-20 22:09] ralph | operator-console-parties-producer 2.1-2.2 | green | 4 files — Producer create form on ProducerResource::form() + fields.{name,region,country} EN/IT + ProducerCreateConsoleTest (3 tests); full 1146/1146, phpstan 0, pint clean, validate OK
 
 ## [2026-06-20 22:21] ralph | operator-console-parties-producer 3.1-3.2 | green | 4 files: ViewProducer status lifecycle (activate+retire, form-less, cascade) + en/it lang + ProducerLifecycleConsoleTest 8/85; suite 1154 green, phpstan 0
+
+## [2026-06-20 22:32] ralph | operator-console-parties-producer 4.1/4.2 | green | 4 files — Producer KYC verbs (require/waive/verify/reject) appended to ViewProducer, audit-only; +13 tests (1167/1167)

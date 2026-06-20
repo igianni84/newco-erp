@@ -23,8 +23,8 @@
 
 ## 4. Producer KYC management — require / waive / verify / reject (ViewProducer)
 
-- [ ] 4.1 Append the four KYC actions to `ViewProducer::getHeaderActions()` via `lifecycleAction` (form-less): `requireKyc`→`kyc_required`→`RequireProducerKyc`; `waiveKyc`→`kyc_waived`→`WaiveProducerKyc`; `verifyKyc`→`kyc_verified`→`RecordProducerKycVerified`; `rejectKyc`→`kyc_rejected`→`RecordProducerKycRejected` (each `->handle($this->recordOf(Producer::class,$r)->id)`).
-- [ ] 4.2 Add `operator_console.producer.actions.{require_kyc,waive_kyc,verify_kyc,reject_kyc}` + `notifications.{kyc_required,kyc_waived,kyc_verified,kyc_rejected}` to `lang/{en,it}`.
+- [x] 4.1 Append the four KYC actions to `ViewProducer::getHeaderActions()` via `lifecycleAction` (form-less): `requireKyc`→`kyc_required`→`RequireProducerKyc`; `waiveKyc`→`kyc_waived`→`WaiveProducerKyc`; `verifyKyc`→`kyc_verified`→`RecordProducerKycVerified`; `rejectKyc`→`kyc_rejected`→`RecordProducerKycRejected` (each `->handle($this->recordOf(Producer::class,$r)->id)`).
+- [x] 4.2 Add `operator_console.producer.actions.{require_kyc,waive_kyc,verify_kyc,reject_kyc}` + `notifications.{kyc_required,kyc_waived,kyc_verified,kyc_rejected}` to `lang/{en,it}`.
 - **Tests** (`ProducerKycConsoleTest.php`): require (`not_required`/NULL→`pending`), waive (`pending`/`rejected`/`verified`→`not_required`), verify (`pending`→`verified`), reject (`pending`→`rejected`) — for each: the `kyc_status` moves, the Producer's `status` is unchanged, the `domain_events` count is **unchanged** (audit-only, no event), and no Hold row is created; an illegal KYC transition (verify/reject from a non-`pending` state, or waive from `not_required`) → `action_failed` danger notification, `kyc_status` unchanged; **KYC↔activation gate end-to-end**: a `draft` Producer set to `kyc_status` `pending` → activate is blocked (`action_failed`, stays `draft`, 0 `ProducerActivated`) → verify → activate now succeeds (`active` + 1 `ProducerActivated`).
 
 ## 5. i18n kit-key completeness (EN/IT)
