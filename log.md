@@ -419,3 +419,5 @@
 ## [2026-06-20 21:58] ralph | operator-console-parties-producer 1.1-1.3 | green | Producer read-only console (Resource+List+i18n) + Create/View scaffolds; 1143/1143 SQLite, phpstan 0; 7 files
 
 ## [2026-06-20 22:09] ralph | operator-console-parties-producer 2.1-2.2 | green | 4 files — Producer create form on ProducerResource::form() + fields.{name,region,country} EN/IT + ProducerCreateConsoleTest (3 tests); full 1146/1146, phpstan 0, pint clean, validate OK
+
+## [2026-06-20 22:21] ralph | operator-console-parties-producer 3.1-3.2 | green | 4 files: ViewProducer status lifecycle (activate+retire, form-less, cascade) + en/it lang + ProducerLifecycleConsoleTest 8/85; suite 1154 green, phpstan 0

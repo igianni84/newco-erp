@@ -342,6 +342,14 @@ return [
 
         'actions' => [
             'create' => 'Nuovo Producer',
+            'activate' => 'Attiva',
+            'retire' => 'Ritira',
+        ],
+
+        'notifications' => [
+            'activated' => 'Producer attivato.',
+            'retired' => 'Producer ritirato.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
 

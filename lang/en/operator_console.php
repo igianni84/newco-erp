@@ -512,10 +512,26 @@ return [
             'clubs' => 'Operated clubs',
         ],
 
-        // Create-page header link label. The write-through lifecycle action labels (activate/retire + the four
-        // KYC verbs) and their outcome notifications land with the view page (tasks 3.1 / 4.1).
+        // Create-page header link + the write-through STATUS lifecycle action labels (task 3.1). Every action
+        // routes through a Parties domain action, never a Filament default mutating path (ADR 2026-06-19).
+        // Producer has NO separation-of-duties activation (it is KYC-gated, not Creator→Reviewer→Approver), so
+        // there is no `affordance` block and activate carries no confirmation modal (design D3). The four KYC
+        // verbs (require/waive/verify/reject) are appended in task 4.1.
         'actions' => [
             'create' => 'New Producer',
+            'activate' => 'Activate',
+            'retire' => 'Retire',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition — its own
+        // localized message (from lang/*/parties.php, e.g. the illegal-from-state or KYC-not-cleared text) is
+        // rendered as the body, so the console owns only this title, never the per-rejection copy (design D5).
+        // The four KYC success titles land with task 4.1.
+        'notifications' => [
+            'activated' => 'Producer activated.',
+            'retired' => 'Producer retired.',
+            'action_failed' => 'The action could not be completed.',
         ],
     ],
 
