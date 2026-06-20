@@ -25,10 +25,19 @@ return [
             'region' => 'Regione',
             'winery_story' => 'Storia della cantina',
             'winery_story_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
+            'rejection_notes' => 'Note di rifiuto',
         ],
 
         'actions' => [
             'create' => 'Nuovo Product Master',
+            'submit' => 'Invia in revisione',
+            'reject' => 'Rifiuta',
+        ],
+
+        'notifications' => [
+            'submitted' => 'Product Master inviato in revisione.',
+            'rejected' => 'Rifiuto registrato; il Product Master resta in revisione.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
 
         'producer_unprojected' => 'Non proiettato',
