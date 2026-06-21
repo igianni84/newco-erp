@@ -57,7 +57,7 @@
 
 ## 10. ProducerAgreement i18n kit-key completeness (EN/IT)
 
-- [ ] 10.1 Add `ProducerAgreementConsoleI18nTest.php` enumerating the kit-contract keys: `label`/`plural_label`/`columns.{producer,club,status,term_start,term_end,version}`/`producer_wide`; `actions.{activate,terminate,create}`; `notifications.{activated,terminated,action_failed}`; the create `fields.*`. Same five guards as 5.1, IT⊆EN filtered by `str_starts_with($dotKey, 'producer_agreement.')`, sink scan scoped to `ProducerAgreementResource*`, the `scanOperatorConsoleHardcodedSinks` helper reused behind `function_exists`.
+- [x] 10.1 Add `ProducerAgreementConsoleI18nTest.php` enumerating the kit-contract keys: `label`/`plural_label`/`columns.{producer,club,status,term_start,term_end,version}`/`producer_wide`; `actions.{activate,terminate,create}`; `notifications.{activated,terminated,action_failed}`; the create `fields.*`. Same five guards as 5.1, IT⊆EN filtered by `str_starts_with($dotKey, 'producer_agreement.')`, sink scan scoped to `ProducerAgreementResource*`, the `scanOperatorConsoleHardcodedSinks` helper reused behind `function_exists`.
 - **Tests**: enumeration green (a removed key fails); sink scan finds zero hardcoded strings in `…/Resources/Parties/ProducerAgreementResource*`. Run via `--filter`/full suite, not a bare path.
 
 ## 11. ProducerAgreement full closing-chain integration test (PG17)
