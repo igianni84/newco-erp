@@ -545,4 +545,40 @@ return [
         ],
     ],
 
+    // Club — a Producer-operated membership program (Module K § 4.3). The SECOND Parties operator console
+    // (operator-console-parties-supply-side). Its state is `status` (active → sunset → closed), a self-owned
+    // badge column rendered through the cast — not the catalog `lifecycle_state` (design D2). A Club is born
+    // `active` (no activate verb — D9); the create surface CONSTRUCTS the `registration_flow_type` operand enum
+    // (the {Models, Actions, Enums} carve-out — D7).
+    'club' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Club',
+        'plural_label' => 'Clubs',
+
+        // List-table + view-infolist field labels. `producer` is the operating Producer (a within-Parties read);
+        // `registration_flow_type` is the fixed per-Club registration classifier; `status` is the Club lifecycle
+        // FSM; `version` is the optimistic lock.
+        'columns' => [
+            'display_name' => 'Name',
+            'producer' => 'Producer',
+            'registration_flow_type' => 'Registration flow',
+            'status' => 'Status',
+            'version' => 'Version',
+        ],
+
+        // View-infolist labels for the attributes the list omits: the per-Club `fee` (Money) and the two
+        // single-tier flags. The create-form fee inputs (amount/currency) land with the create surface (task 3.2).
+        'fields' => [
+            'fee' => 'Fee',
+            'generates_credit' => 'Generates credit',
+            'invite_only' => 'Invite only',
+        ],
+
+        // Create-page header link. The write-through lifecycle action labels (sunset/close) + their
+        // notifications land with the ViewClub page (task 4.2).
+        'actions' => [
+            'create' => 'New Club',
+        ],
+    ],
+
 ];

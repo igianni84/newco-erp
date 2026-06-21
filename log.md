@@ -433,3 +433,5 @@
 ## [2026-06-20 23:30] push | main | pushed close-ritual commits to origin/main (751e867); deleted merged local branch ralph/operator-console-parties-producer (not on remote); origin in sync
 
 ## [2026-06-21 09:28] ralph | operator-console-parties-supply-side 1.1 | green | carve-out widened {Models,Actions}->{...,Enums} (ADR 2026-06-21); ModuleBoundariesTest 3/3, suite 1206/1206, phpstan 0 | 1 code + 3 change-authoring files
+
+## [2026-06-21 09:48] ralph | operator-console-parties-supply-side 2.1/2.2/2.3 | green | Club read surface (Resource+List+real Create+bare View) + EN/IT i18n; suite 1211/1211, phpstan 0, ModuleBoundaries 3/3, openspec valid; first prod use of the Enums carve-out
