@@ -409,6 +409,10 @@ return [
         'producer_wide' => 'Valido per tutto il produttore',
 
         'fields' => [
+            'producer' => 'Produttore',
+            'club' => 'Club di riferimento',
+            'term_start' => 'Inizio termine',
+            'term_end' => 'Fine termine',
             'settlement_cadence' => 'Cadenza di liquidazione',
         ],
 

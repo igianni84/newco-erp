@@ -629,9 +629,15 @@ return [
         'producer_wide' => 'Producer-wide',
 
         // View-infolist labels for the attributes the list omits + the create-form input labels. The form (task
-        // 8.1) uses `fields.*` for every input; `settlement_cadence` is the view-only D19 settlement-cadence seam
-        // (also a create input). The create form exposes NO `status` — an agreement is born `draft` (design D7).
+        // 8.1) uses `fields.*` for every input: `producer` is the required Producer party; `club` is the OPTIONAL
+        // narrowing (blank = a Producer-wide agreement, § 4.6); `term_start`/`term_end` are the OPTIONAL agreement
+        // term dates; `settlement_cadence` is the view-only D19 settlement-cadence seam (also a create input). The
+        // create form exposes NO `status` — an agreement is born `draft` (design D7).
         'fields' => [
+            'producer' => 'Producer',
+            'club' => 'Scoped Club',
+            'term_start' => 'Term start',
+            'term_end' => 'Term end',
             'settlement_cadence' => 'Settlement cadence',
         ],
 
