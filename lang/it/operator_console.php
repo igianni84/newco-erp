@@ -444,6 +444,8 @@ return [
         ],
 
         'fields' => [
+            'email' => 'Indirizzo email',
+            'name' => 'Nome',
             'phone' => 'Telefono',
             'date_of_birth' => 'Data di nascita',
             'preferred_currency' => 'Valuta preferita',

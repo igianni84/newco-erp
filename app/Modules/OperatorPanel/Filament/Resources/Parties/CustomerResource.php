@@ -6,8 +6,13 @@ use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Profile;
+use App\Platform\I18n\SupportedLocale;
+use App\Platform\Money\Currency;
 use BackedEnum;
 use Closure;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Schema;
@@ -50,6 +55,46 @@ class CustomerResource extends OperatorConsoleResource
     protected static function i18nKey(): string
     {
         return 'customer';
+    }
+
+    /**
+     * The create form (design D5/D6/D7). Collects the inputs the Parties `CreateCustomer` action consumes — the
+     * required email (email-validated) and name, the required preferred-currency / preferred-locale preferences
+     * (the ISO 4217 / launch-locale Selects), and the OPTIONAL phone and date_of_birth. It deliberately exposes
+     * NO `status`: a Customer is born `pending` by the action and advances only through the ViewCustomer status
+     * verbs (task 3.1), never as a create-form input (design D5). The form only COLLECTS; the write routes
+     * through the action in {@see Pages\CreateCustomer::createViaAction()}, which constructs the PLATFORM
+     * `Currency::of()` / `SupportedLocale::from()` operands from the selected codes — no `Parties\Enums` import,
+     * so the boundary needs no widening (design D6). There is no Edit page — the Parties backend ships no Customer
+     * profile-update Action. All labels localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('email')
+                    ->label((string) __('operator_console.customer.fields.email'))
+                    ->email()
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('name')
+                    ->label((string) __('operator_console.customer.fields.name'))
+                    ->required()
+                    ->maxLength(255),
+                Select::make('preferred_currency')
+                    ->label((string) __('operator_console.customer.fields.preferred_currency'))
+                    ->options(self::currencyOptions(...))
+                    ->required(),
+                Select::make('preferred_locale')
+                    ->label((string) __('operator_console.customer.fields.preferred_locale'))
+                    ->options(self::localeOptions(...))
+                    ->required(),
+                TextInput::make('phone')
+                    ->label((string) __('operator_console.customer.fields.phone'))
+                    ->maxLength(255),
+                DatePicker::make('date_of_birth')
+                    ->label((string) __('operator_console.customer.fields.date_of_birth')),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -175,5 +220,37 @@ class CustomerResource extends OperatorConsoleResource
 
             return $account === null ? '' : $account->status->value;
         };
+    }
+
+    /**
+     * Create-form preferred-currency options, keyed by the ISO 4217 code → the same code as its label, driven off
+     * the Platform {@see Currency} enum (the launch set is the five DEC-037 currencies). `Currency` is an
+     * `App\Platform` type, freely importable (not cross-module — design D6); {@see Pages\CreateCustomer}
+     * constructs the `Currency::of()` operand from the selected code. The code is domain data (like a read
+     * column), not UI chrome, so no per-value i18n key is introduced — only the Select's own `label` is localized.
+     *
+     * @return array<string, string>
+     */
+    private static function currencyOptions(): array
+    {
+        return collect(Currency::cases())
+            ->mapWithKeys(static fn (Currency $currency): array => [$currency->value => $currency->value])
+            ->all();
+    }
+
+    /**
+     * Create-form preferred-locale options, keyed by the locale code → the same code as its label, driven off the
+     * Platform {@see SupportedLocale} enum (the six DEC-031 launch locales). `SupportedLocale` is an `App\Platform`
+     * type, freely importable (not cross-module — design D6); {@see Pages\CreateCustomer} constructs the
+     * `SupportedLocale::from()` operand from the selected code. Domain data, not UI chrome — only the Select's own
+     * `label` is localized.
+     *
+     * @return array<string, string>
+     */
+    private static function localeOptions(): array
+    {
+        return collect(SupportedLocale::cases())
+            ->mapWithKeys(static fn (SupportedLocale $locale): array => [$locale->value => $locale->value])
+            ->all();
     }
 }

@@ -459,3 +459,5 @@
 ## [2026-06-21 21:41] spec-to-change | operator-console-parties-customer | Authored + APPROVED: Customer operator console (3 reqs, 5 task groups, PG17 chain). ADR 2026-06-21 closes rule-of-three/D10 (continue trait, no verb-list base). No domain code/migration/boundary change.
 
 ## [2026-06-21 22:01] ralph | operator-console-parties-customer 1.1/1.2/1.3 | green | 7 files | Customer read-only console (Resource+List+real Create+View stub) + EN/IT i18n; SQLite 1330/1330, phpstan 0, boundary untouched (D6 operands platform-level)
+
+## [2026-06-21 22:12] ralph | operator-console-parties-customer 2.1/2.2 | green | 3 files (CustomerResource::form + create-field i18n EN/IT + CustomerCreateConsoleTest); SQLite 1333/1333, phpstan 0, boundary 3/3 unchanged (D6), validate strict ok

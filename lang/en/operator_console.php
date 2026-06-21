@@ -701,6 +701,8 @@ return [
         // view infolist and gain their `fields.*` create-input labels with the create form (task 2.2). The create
         // form exposes NO `status` — a Customer is born `pending` (design D5).
         'fields' => [
+            'email' => 'Email',
+            'name' => 'Name',
             'phone' => 'Phone',
             'date_of_birth' => 'Date of birth',
             'preferred_currency' => 'Preferred currency',
