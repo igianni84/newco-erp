@@ -385,6 +385,14 @@ return [
 
         'actions' => [
             'create' => 'Nuovo Club',
+            'sunset' => 'Dismetti',
+            'close' => 'Chiudi',
+        ],
+
+        'notifications' => [
+            'sunset' => 'Club dismesso.',
+            'closed' => 'Club chiuso.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
 

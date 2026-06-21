@@ -583,10 +583,26 @@ return [
             'invite_only' => 'Invite only',
         ],
 
-        // Create-page header link. The write-through lifecycle action labels (sunset/close) + their
-        // notifications land with the ViewClub page (task 4.2).
+        // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs sunset
+        // (`active → sunset`) and close (`sunset → closed`), assembled on the ViewClub page (task 4.1). Both route
+        // through a Parties domain action, never a Filament default mutating path (ADR 2026-06-19). A Club is born
+        // `active`, so there is NO activate verb (D9) and no separation-of-duties affordance — Club lifecycle is
+        // single-operator (no confirmation modal, design D3).
         'actions' => [
             'create' => 'New Club',
+            'sunset' => 'Sunset',
+            'close' => 'Close',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (e.g. an
+        // out-of-state sunset/close, or a close attempted on an `active` Club — close is reachable only from
+        // `sunset`) — its own localized message (from lang/*/parties.php) is rendered as the body, so the console
+        // owns only this title, never the per-rejection copy (design D5).
+        'notifications' => [
+            'sunset' => 'Club sunset.',
+            'closed' => 'Club closed.',
+            'action_failed' => 'The action could not be completed.',
         ],
     ],
 
