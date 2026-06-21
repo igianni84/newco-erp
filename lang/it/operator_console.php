@@ -429,4 +429,30 @@ return [
         ],
     ],
 
+    // Customer — registro delle persone fisiche di NewCo (Module K § 4.1). `label` / `plural_label` assenti →
+    // fallback per-chiave su EN (DEC-127): «Customer» è il termine di dominio canonico, invariato in italiano.
+    'customer' => [
+        'columns' => [
+            'name' => 'Nome',
+            'email' => 'Indirizzo email',
+            'status' => 'Stato',
+            'kyc_status' => 'Stato KYC',
+            'sanctions_status' => 'Stato sanzioni',
+            'account_status' => 'Stato account',
+            'profiles' => 'Profili',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'phone' => 'Telefono',
+            'date_of_birth' => 'Data di nascita',
+            'preferred_currency' => 'Valuta preferita',
+            'preferred_locale' => 'Lingua preferita',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo cliente',
+        ],
+    ],
+
 ];

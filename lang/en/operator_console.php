@@ -665,4 +665,53 @@ return [
         ],
     ],
 
+    // Customer — NewCo's natural-person registry (Module K § 4.1). The FIRST DEMAND-SIDE Parties operator
+    // console (operator-console-parties-customer), the "least kit-shaped surface" the supply-side trilogy
+    // deferred to. It carries THREE orthogonal lifecycles on one record — the status FSM (`status`), the KYC
+    // lifecycle (`kyc_status`) and the sanctions lifecycle (`sanctions_status`) — each a self-owned badge
+    // rendered through its BackedEnum cast (NOT the catalog `lifecycle_state`, design D2), plus the
+    // co-provisioned Account status and the Club-membership Profiles, all read-only. A Customer is born `pending`
+    // (no `status` create input); the create surface CONSTRUCTS the platform `Currency`/`SupportedLocale`
+    // operands (no `Parties\Enums` import — design D6). The four status verbs activate/suspend/reactivate/close
+    // are assembled on the ViewCustomer page (task 3.1).
+    'customer' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Customer',
+        'plural_label' => 'Customers',
+
+        // List-table + view-infolist field labels. `status` / `kyc_status` / `sanctions_status` are the three
+        // orthogonal lifecycles (each a self-owned badge via the cast); `account_status` is the co-provisioned
+        // Account's state (a within-Parties read); `profiles` is the Club-membership count (list) / list
+        // (infolist); `version` is the optimistic lock.
+        'columns' => [
+            'name' => 'Name',
+            'email' => 'Email',
+            'status' => 'Status',
+            'kyc_status' => 'KYC status',
+            'sanctions_status' => 'Sanctions status',
+            'account_status' => 'Account status',
+            'profiles' => 'Profiles',
+            'version' => 'Version',
+        ],
+
+        // View-infolist labels for the personal-data attributes the list omits + (from task 2.1) the create-form
+        // input labels. The form uses `fields.*` for every input: phone/date_of_birth are the OPTIONAL
+        // personal-data inputs (also view-infolist labels); preferred_currency/preferred_locale are the required
+        // ISO 4217 / locale preference Selects (also view-infolist labels). email/name re-use `columns.*` on the
+        // view infolist and gain their `fields.*` create-input labels with the create form (task 2.2). The create
+        // form exposes NO `status` — a Customer is born `pending` (design D5).
+        'fields' => [
+            'phone' => 'Phone',
+            'date_of_birth' => 'Date of birth',
+            'preferred_currency' => 'Preferred currency',
+            'preferred_locale' => 'Preferred locale',
+        ],
+
+        // Create-page header link. The write-through status lifecycle action labels (activate / suspend /
+        // reactivate / close) + their notifications land on the ViewCustomer page (task 3.2).
+        'actions' => [
+            'create' => 'New Customer',
+        ],
+    ],
+
 ];

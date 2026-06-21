@@ -455,3 +455,7 @@
 ## [2026-06-21 11:28] ralph | operator-console-parties-supply-side 11.1 | green | 1 file (ProducerAgreementConsoleChainTest) | CHANGE COMPLETE 19/19 | SQLite 1325 + PG17 202 green
 
 ## [2026-06-21 20:44] close-ritual | operator-console-parties-supply-side | PG17 full suite 1325/1325 green; semantic-verify 0 CRITICAL (faithful to delta spec); merged --no-ff to main + archived (4 reqs -> living operator-console spec, 19 total). Push to origin/main deferred to human (classifier-gated); local ralph branch retained.
+
+## [2026-06-21 21:41] spec-to-change | operator-console-parties-customer | Authored + APPROVED: Customer operator console (3 reqs, 5 task groups, PG17 chain). ADR 2026-06-21 closes rule-of-three/D10 (continue trait, no verb-list base). No domain code/migration/boundary change.
+
+## [2026-06-21 22:01] ralph | operator-console-parties-customer 1.1/1.2/1.3 | green | 7 files | Customer read-only console (Resource+List+real Create+View stub) + EN/IT i18n; SQLite 1330/1330, phpstan 0, boundary untouched (D6 operands platform-level)

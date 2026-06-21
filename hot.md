@@ -7,24 +7,25 @@ updated: 2026-06-21
 # Hot Cache
 
 ## Last Updated
-**2026-06-21 (`operator-console-parties-supply-side` — CLOSED: merged + archived via GUIDE §2.7).** The change shipped the **Club + ProducerAgreement** operator consoles (read / create / lifecycle / i18n / closing-chain each), completing the Parties supply-side console trio (Producer archived 2026-06-20). Closing ritual run end-to-end: branch reviewed (12 commits, clean diff, no composer drift) → **PG17 full suite 1325/1325** (7360 assn) → **semantic-verification 0 CRITICAL** (fresh-context subagent; faithful to delta spec, all 22 scenarios test-mapped) → `git merge --no-ff` to **main** (48f2f78) → `openspec archive` (b913a73; 4 reqs merged into living `openspec/specs/operator-console/spec.md` → 19 total; change moved to `changes/archive/2026-06-21-operator-console-parties-supply-side`). Built on the operand-enum carve-out (ADR 2026-06-21, extends 2026-06-19).
+**2026-06-21 (`operator-console-parties-customer` — GROUP 1 GREEN: Customer read-only console).** First **demand-side** Parties console shipped read-side: `CustomerResource` (read-only) + `ListCustomers` (create-LINK) + **real** `CreateCustomer` (createViaAction done) + bare `ViewCustomer` stub + EN/IT resource/infolist i18n. Three orthogonal lifecycle badges (`status`/`kyc_status`/`sanctions_status`) via a shared `enumBadgeState()` cast resolver (no `Parties\Enums` import) + co-provisioned Account status + Profiles. Tasks 1.1/1.2/1.3 done (3 of 9).
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (level max) · Pint 1.29.1. SQLite dev; prod PG17.
-- **GREEN:** SQLite suite **1325/1325**; **PG17 full-suite 1325/1325** (7360 assn) as the production-engine close gate; phpstan 0; pint + pint --test clean; `openspec validate` valid pre-archive; composer diff vs `main` empty.
-- **main is 2 commits ahead of origin/main, UNPUSHED** (merge + archive). Push to origin/main was **classifier-denied** (bypasses review; not in the user's 4-step ask) — deferred to human. Local branch `ralph/operator-console-parties-supply-side` **retained** (merged, not deleted).
-- **Run-cmd gotchas:** full suite OOMs under bare `php artisan test` → use `php -d memory_limit=-1 vendor/bin/pest`. PG17 container `newco-pg17-test` **removed** post-ritual (recreate per GUIDE §2.7 recipe when next needed).
+- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (max) · Pint 1.29.1. SQLite dev; prod PG17.
+- **Last GREEN: SQLite 1330/1330 (7386 assn, +5), phpstan 0, pint clean, `ModuleBoundariesTest` 3/3, validate --strict valid, composer diff vs main empty.** (No PG17 run this group — scoped to group 5 chain.)
+- **main is 2 commits ahead of origin/main, UNPUSHED** (supply-side merge+archive; push classifier-denied earlier) — still deferred to human.
+- Run-cmd: full suite `php -d memory_limit=-1 vendor/bin/pest`; filter `--filter=CustomerResourceTest`. PG17 chain command in tasks.md preamble (group 5).
 
 ## Active Change & Next Task
-- **Active: NONE.** No in-flight change. Parties supply-side console trio complete (Producer + Club + ProducerAgreement).
-- **Next (human picks)** per Build Workplan F2: demand-side `operator-console-parties-customer` (Customer's 3 orthogonal FSMs + Account + multi-Profile — the rule-of-three trigger for the `OperatorConsoleViewRecord` verb-list generalization, deliberately deferred here per design.md D10); or `operator-console-parties-compliance` (Hold registry + sanctions; crosses object-storage ADR gate if it stores KYC docs); or another F2 K/0 slice via `/spec-to-change`.
+- **Active: `operator-console-parties-customer` (3 of 9 tasks done).** Loop continues.
+- **Next = Group 2 (task 2.1/2.2): Customer create surface.** Remaining work is `CustomerResource::form()` ONLY (email/name required TextInputs; preferred_currency/preferred_locale required Selects off `Currency`/`SupportedLocale` PLATFORM enum cases; phone TextInput; date_of_birth DatePicker; **NO `status`**) + `fields.{email,name}` i18n + `CustomerCreateConsoleTest`. **The real `createViaAction` + operands + `createRejectionField` already shipped group 1** (dormant until the form exists). Then 3 lifecycle (activate/suspend/reactivate/close on ViewCustomer) · 4 i18n completeness · 5 PG17 chain.
 
 ## Blockers & Decisions Needed
-- **Push decision (human):** main holds the merge + archive commits locally; origin/main not updated. Decide push-to-main vs PR vs hold, then optionally `git branch -d ralph/operator-console-parties-supply-side`.
+- **Push decision (human, carried over):** main holds supply-side merge+archive locally; origin/main not updated.
+- **LANDMINE (design D5, group 3):** `activate`'s gate is cross-slice (onboarding timestamps + sanctions=passed + KYC) → the verb idles/rejects in prod until consumer-onboarding + compliance ship. Correct behaviour — do NOT set gate columns from the console. Chain test (group 5) seeds a gate-met, profile-less Customer (D9).
 - Otherwise none.
 
 ## Open Patterns
-- **Closing-chain integration test (thrice-proven: Producer + Club + ProducerAgreement).** One `it()`, `DatabaseMigrations`, drive the slice through the PAGES (not raw Actions); assert the emergent `DomainEvent` set `toEqualCanonicalizing` + foreach the newco_ops envelope + representative loose `actor_id`/`causation_id` (PG numeric strings). ALWAYS grep `app/` for the events first to prove no listener/projector leaks. `toEqualCanonicalizing` is a multiset compare (duplicates preserved). Re-instantiate the View page per `callAction`.
-- **Supersession = side-effect not verb (D8), proven end-to-end.** Activate B in A's NULL-safe `(producer_id,club_id)` scope → A superseded; `ProducerAgreementSuperseded` (entity_id=A) carries B's activation id as `causation_id`. Find B's activation among siblings via `where('entity_id',(string)$b->id)`.
-- **i18n five-guard kit completeness (four-times-proven).** Test count = |kit| + |differs| + 2 + 1 + 1; trailing-dot `str_starts_with` filter load-bearing; run via `--filter` (sink helper lives in another file).
-- **Rule-of-three deferred:** verb-list generalization of `OperatorConsoleViewRecord` waits for a demand-side console (Customer) before committing the abstraction.
+- **Read-surface group = ONE green unit (4th proof).** `getPages()` eager-references all pages → Resource + List + **real** Create + bare View ship together. `OperatorConsoleCreateRecord`'s two abstract methods → the clean Create scaffold IS the real page (group-2 work = `form()` only). Full Codebase Patterns in the change's `progress.md`.
+- **Three-badge shared resolver** `enumBadgeState(attr): Closure` (table + infolist) + nullable-`hasOne` `accountStatusState()` (`->status->value`, no instanceof) — both in progress.md Codebase Patterns. Operands platform-level (D6) → `ModuleBoundariesTest` untouched.
+- **i18n incremental + IT 'Indirizzo email'** (the EN/IT 'Email' collision; group-4 IT-differs guard needs IT != EN).
+- **Rule-of-three RESOLVED (ADR 2026-06-21):** non-catalog consoles stay at the trait level; `OperatorConsoleViewRecord` stays catalog-only. ViewCustomer (group 3) = `ViewRecord` + `use SurfacesDomainActions` + bespoke `getHeaderActions()`.
