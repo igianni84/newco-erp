@@ -606,4 +606,41 @@ return [
         ],
     ],
 
+    'producer_agreement' => [
+        // The NewCo↔Producer commercial agreement (§ 4.6). `label`/`plural_label` are the model labels the kit
+        // base resolves off i18nKey(); IT omits them (per-key EN fallback, DEC-127).
+        'label' => 'Producer agreement',
+        'plural_label' => 'Producer agreements',
+
+        // List-table + view-infolist field labels. `producer` is the required Producer (a within-Parties read);
+        // `club` is the OPTIONAL narrowing Club — when null the column renders the `producer_wide` placeholder;
+        // `status` is the agreement lifecycle FSM; `term_start`/`term_end` are the agreement term dates;
+        // `version` is the optimistic lock.
+        'columns' => [
+            'producer' => 'Producer',
+            'club' => 'Club',
+            'status' => 'Status',
+            'term_start' => 'Term start',
+            'term_end' => 'Term end',
+            'version' => 'Version',
+        ],
+
+        // The placeholder the `club` column/entry renders for a Producer-wide agreement (a null `club_id`).
+        'producer_wide' => 'Producer-wide',
+
+        // View-infolist labels for the attributes the list omits + the create-form input labels. The form (task
+        // 8.1) uses `fields.*` for every input; `settlement_cadence` is the view-only D19 settlement-cadence seam
+        // (also a create input). The create form exposes NO `status` — an agreement is born `draft` (design D7).
+        'fields' => [
+            'settlement_cadence' => 'Settlement cadence',
+        ],
+
+        // Create-page header link + the write-through lifecycle action labels. The two STATUS verbs (activate /
+        // terminate, assembled on ViewProducerAgreement in task 9.1) land with their groups; `create` is the
+        // header navigation link to the write-through Create page (never an inline CreateAction, ADR 2026-06-19).
+        'actions' => [
+            'create' => 'New agreement',
+        ],
+    ],
+
 ];

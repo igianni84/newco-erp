@@ -396,4 +396,25 @@ return [
         ],
     ],
 
+    'producer_agreement' => [
+        'columns' => [
+            'producer' => 'Produttore',
+            'club' => 'Club di riferimento',
+            'status' => 'Stato',
+            'term_start' => 'Inizio termine',
+            'term_end' => 'Fine termine',
+            'version' => 'Versione',
+        ],
+
+        'producer_wide' => 'Valido per tutto il produttore',
+
+        'fields' => [
+            'settlement_cadence' => 'Cadenza di liquidazione',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo accordo',
+        ],
+    ],
+
 ];

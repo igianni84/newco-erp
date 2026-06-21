@@ -443,3 +443,5 @@
 ## [2026-06-21 10:26] ralph | operator-console-parties-supply-side 5.1 | green | 1 file (ClubConsoleI18nTest, 44 tests) — Club i18n kit-key completeness, 5 guards; full suite 1264/1264
 
 ## [2026-06-21 10:34] ralph | operator-console-parties-supply-side 6.1 | green | 1 file (ClubConsoleChainTest) | SQLite 1265/1265 + PG17 142/142 | 10/19
+
+## [2026-06-21 10:51] ralph | operator-console-parties-supply-side 7.1-7.3 | green | 6 files (4 new src + test + 2 lang) | ProducerAgreement read surface, full suite 1271/1271, phpstan 0, boundary 3/3
