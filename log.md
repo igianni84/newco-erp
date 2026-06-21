@@ -431,3 +431,25 @@
 ## [2026-06-20 23:28] close-ritual | operator-console-parties-producer | merged --no-ff (69fec90) + archived (c938364) to main; 3 reqs to living operator-console spec; main green 1206/1206 phpstan0 pint openspec-valid; semantic 0 CRITICAL (1W+2S accepted); +9 unpushed (humans push)
 
 ## [2026-06-20 23:30] push | main | pushed close-ritual commits to origin/main (751e867); deleted merged local branch ralph/operator-console-parties-producer (not on remote); origin in sync
+
+## [2026-06-21 09:28] ralph | operator-console-parties-supply-side 1.1 | green | carve-out widened {Models,Actions}->{...,Enums} (ADR 2026-06-21); ModuleBoundariesTest 3/3, suite 1206/1206, phpstan 0 | 1 code + 3 change-authoring files
+
+## [2026-06-21 09:48] ralph | operator-console-parties-supply-side 2.1/2.2/2.3 | green | Club read surface (Resource+List+real Create+bare View) + EN/IT i18n; suite 1211/1211, phpstan 0, ModuleBoundaries 3/3, openspec valid; first prod use of the Enums carve-out
+
+## [2026-06-21 10:05] ralph | operator-console-parties-supply-side 3.1/3.2 | green | 5 files | Club create form (Resource::form + pickers) + create-field i18n EN/IT + ClubCreateConsoleTest; fixed CreateClub amount guard to is_numeric (->numeric dehydrates float); suite 1215/1215, boundary proves group-1 carve-out
+
+## [2026-06-21 10:16] ralph | operator-console-parties-supply-side 4.1-4.2 | green | 4 files (ViewClub sunset/close lifecycle + EN/IT i18n + ClubLifecycleConsoleTest 5/5); suite 1220/1220, phpstan 0
+
+## [2026-06-21 10:26] ralph | operator-console-parties-supply-side 5.1 | green | 1 file (ClubConsoleI18nTest, 44 tests) — Club i18n kit-key completeness, 5 guards; full suite 1264/1264
+
+## [2026-06-21 10:34] ralph | operator-console-parties-supply-side 6.1 | green | 1 file (ClubConsoleChainTest) | SQLite 1265/1265 + PG17 142/142 | 10/19
+
+## [2026-06-21 10:51] ralph | operator-console-parties-supply-side 7.1-7.3 | green | 6 files (4 new src + test + 2 lang) | ProducerAgreement read surface, full suite 1271/1271, phpstan 0, boundary 3/3
+
+## [2026-06-21 11:06] ralph | operator-console-parties-supply-side 8.1-8.2 | green | ProducerAgreement create form + EN/IT fields.* + 5 tests | 4 files; SQLite 1276/1276, phpstan 0
+
+## [2026-06-21 11:14] ralph | operator-console-parties-supply-side 9.1-9.2 | green | 4 files | ViewProducerAgreement activate/terminate (no supersede verb, D8); supersession OR-branch causation_id proven; 1282/1282, phpstan 0
+
+## [2026-06-21 11:21] ralph | operator-console-parties-supply-side 10.1 | green | 1 file | ProducerAgreementConsoleI18nTest 42/42 (5-guard kit completeness, 20-key kit); suite 1324/1324; phpstan 0; pint clean. 18/19 done — group 11 (PG17 chain) remains
+
+## [2026-06-21 11:28] ralph | operator-console-parties-supply-side 11.1 | green | 1 file (ProducerAgreementConsoleChainTest) | CHANGE COMPLETE 19/19 | SQLite 1325 + PG17 202 green

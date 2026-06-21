@@ -361,4 +361,72 @@ return [
         ],
     ],
 
+    // Club — programma di membership operato da un Producer (Module K § 4.3). `label` / `plural_label` assenti →
+    // fallback per-chiave su EN (DEC-127): «Club» è il termine di dominio canonico, invariato in italiano.
+    'club' => [
+        'columns' => [
+            'display_name' => 'Nome',
+            'producer' => 'Produttore',
+            'registration_flow_type' => 'Flusso di registrazione',
+            'status' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'display_name' => 'Nome',
+            'producer' => 'Produttore operante',
+            'registration_flow_type' => 'Flusso di registrazione',
+            'amount' => 'Importo quota (unità minori)',
+            'currency' => 'Valuta quota',
+            'fee' => 'Quota',
+            'generates_credit' => 'Genera credito',
+            'invite_only' => 'Solo su invito',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Club',
+            'sunset' => 'Dismetti',
+            'close' => 'Chiudi',
+        ],
+
+        'notifications' => [
+            'sunset' => 'Club dismesso.',
+            'closed' => 'Club chiuso.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
+    'producer_agreement' => [
+        'columns' => [
+            'producer' => 'Produttore',
+            'club' => 'Club di riferimento',
+            'status' => 'Stato',
+            'term_start' => 'Inizio termine',
+            'term_end' => 'Fine termine',
+            'version' => 'Versione',
+        ],
+
+        'producer_wide' => 'Valido per tutto il produttore',
+
+        'fields' => [
+            'producer' => 'Produttore',
+            'club' => 'Club di riferimento',
+            'term_start' => 'Inizio termine',
+            'term_end' => 'Fine termine',
+            'settlement_cadence' => 'Cadenza di liquidazione',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo accordo',
+            'activate' => 'Attiva',
+            'terminate' => 'Termina',
+        ],
+
+        'notifications' => [
+            'activated' => 'Accordo produttore attivato.',
+            'terminated' => 'Accordo produttore terminato.',
+            'action_failed' => 'Impossibile completare l’azione.',
+        ],
+    ],
+
 ];

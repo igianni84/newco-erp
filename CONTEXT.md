@@ -473,6 +473,14 @@ _Avoid_: User, account (the Module K Account is a billing container), password-o
 The per-module operator surface within the Admin Panel — the OperatorPanel module's window onto one other module's entities (the Catalog console, the Parties console). It owns no entities: it displays the operated module's data and drives every change through that module's domain actions, never writing the entity directly. "Admin Panel" names the whole surface; an Operator console is one module's slice of it.
 _Avoid_: admin screen, back-office UI, CRUD page (every write is a domain action)
 
+**Operand enum**:
+A domain enum that appears as a **parameter of a domain Action's `handle()`** (e.g. `ClubRegistrationFlowType` on `CreateClub`, `HoldType` / `HoldScope` on `PlaceHold`). The Operator console may import and **construct** an operated module's operand enums — they are part of the Action's write-through call contract, as inseparable from `Actions` as the Eloquent model is from read-`Models` (carve-out widened by [[decisions/2026-06-21-operator-console-operand-enum-carveout]]). Contrast a State enum.
+_Avoid_: input enum, config enum, argument enum
+
+**State enum**:
+A module's FSM status enum that a domain Action sets **internally** (e.g. `ClubStatus`, `KycStatus`, `ProducerAgreementStatus`). The Operator console only **renders** it, through the model's cast (`->value`), and never imports or constructs it. Contrast an Operand enum.
+_Avoid_: status enum, lifecycle enum
+
 ## Operations & Integrations
 
 **Vinlock**:

@@ -22,9 +22,19 @@ use App\Modules\Module;
  *   - Actions\* — every mutation routes through app(<Action>)->handle(...), so a
  *     console references the owning module's domain actions (e.g.
  *     app(CreateProductMaster::class) — the seven Catalog lifecycle actions).
- * Consoles catch domain exceptions via base types and render enum casts via
- * their instances, so the cross-module surface stays exactly {Models, Actions}
- * and no later console task needs to widen this list.
+ *   - Enums\*   — OPERAND enums only (decisions/2026-06-21-operator-console-operand-enum-carveout.md):
+ *     a value a domain Action's handle() takes as a PARAMETER (e.g.
+ *     ClubRegistrationFlowType on CreateClub), which the console must CONSTRUCT
+ *     from a form value to perform the write-through. It is the third leg of the
+ *     write-through call contract — as inseparable from Actions as the Eloquent
+ *     model is from read-Models. STATE enums (FSM statuses an Action sets
+ *     internally — ClubStatus, KycStatus, ProducerAgreementStatus, ...) are still
+ *     NEVER imported: the console renders them through the model cast (->value).
+ *     The guard is namespace-prefix-based, so it admits the whole Enums prefix;
+ *     the operand-only scope is documented discipline (CONTEXT.md: operand enum /
+ *     state enum), backstopped by NoEloquentWriteInOperatorPanelRule + review.
+ * Consoles catch domain exceptions via base types, so the cross-module surface
+ * for the OperatorPanel composition layer is exactly {Models, Actions, Enums}.
  *
  * Strictly scoped to OperatorPanel: a lateral business module (e.g. Catalog)
  * gets the baseline public surface ONLY, so a Catalog -> Parties\Models or
@@ -48,6 +58,7 @@ function moduleBoundaryAllowedImports(Module $source): array
         if ($source === Module::OperatorPanel) {
             $allowed[] = $other->namespace().'\\Models';
             $allowed[] = $other->namespace().'\\Actions';
+            $allowed[] = $other->namespace().'\\Enums';
         }
     }
 
@@ -76,12 +87,14 @@ function moduleBoundaryAllowedImports(Module $source): array
 //   - ->ignoring([...]) strips uses by namespace PREFIX before the check
 //     (LayerFactory::make → str_starts_with), so a reference into another
 //     module's Contracts\* / Events\* (or, for OperatorPanel, Models\* /
-//     Actions\*) is allowed while a reference into anything else under that
-//     module's namespace is still a violation.
+//     Actions\* / Enums\*) is allowed while a reference into anything else under
+//     that module's namespace is still a violation.
 //
-// OperatorPanel carve-out (ADR 2026-06-19): the operator-console composition
-// layer may additionally import each operated module's Models\* (read-bind) and
-// Actions\* (write-through via app(<Action>)->handle()). It lives in
+// OperatorPanel carve-out (ADRs 2026-06-19 + 2026-06-21): the operator-console
+// composition layer may additionally import each operated module's Models\*
+// (read-bind), Actions\* (write-through via app(<Action>)->handle()) and Enums\*
+// (operand enums constructed to call those Actions — ADR 2026-06-21; state enums
+// stay rendered via the model cast, never imported). It lives in
 // moduleBoundaryAllowedImports() and is pinned OperatorPanel-only by the
 // carve-out guard test below; the no-Eloquent-write rule (task 1.2) carries the
 // read-only half this import test no longer enforces for OperatorPanel.
@@ -102,8 +115,8 @@ it('keeps each module private to every other module except its public surface', 
 
         // ...except the imports allowed for this source module: every other
         // module's public surface (Contracts\* + Events\*) plus, for the
-        // OperatorPanel composition layer only, each operated module's Models\*
-        // and Actions\* (the operator-console carve-out — see the helper).
+        // OperatorPanel composition layer only, each operated module's Models\*,
+        // Actions\* and Enums\* (the operator-console carve-out — see the helper).
         expect($module->namespace())
             ->not->toUse($forbidden)
             ->ignoring(moduleBoundaryAllowedImports($module));
@@ -111,20 +124,23 @@ it('keeps each module private to every other module except its public surface', 
 });
 
 // Pins the operator-console carve-out to the OperatorPanel namespace ONLY
-// (ADR 2026-06-19; design L1) — the guard the task calls "plant one to prove it
-// still fails", made permanent and layout-independent. It asserts directly on
-// moduleBoundaryAllowedImports() (the same source of truth the law above feeds
-// to ->ignoring()), so widening the carve-out to a lateral module — or to a
-// whole module instead of just Models\* + Actions\* — breaks this test:
-//   - OperatorPanel MAY read-bind + write-through every operated module, but its
-//     allow-list never contains a whole-module namespace nor a module internal
-//     (e.g. Catalog\Lifecycle), so it cannot reach past Models\* / Actions\*.
+// (ADRs 2026-06-19 + 2026-06-21; design L1) — the guard the task calls "plant one
+// to prove it still fails", made permanent and layout-independent. It asserts
+// directly on moduleBoundaryAllowedImports() (the same source of truth the law
+// above feeds to ->ignoring()), so widening the carve-out to a lateral module —
+// or to a whole module instead of just Models\* + Actions\* + Enums\* — breaks
+// this test:
+//   - OperatorPanel MAY read-bind + write-through + construct operand enums for
+//     every operated module, but its allow-list never contains a whole-module
+//     namespace nor a non-operand internal (e.g. Catalog\Lifecycle), so it cannot
+//     reach past Models\* / Actions\* / Enums\*.
 //   - a lateral business module (Catalog) gets the public surface ONLY, so a
-//     Catalog -> Parties\Models / Parties\Actions import stays forbidden.
+//     Catalog -> Parties\Models / Parties\Actions / Parties\Enums import stays
+//     forbidden.
 // Catalog and Parties are named as the concrete lateral pair the acceptance
 // cites; the property holds for any non-OperatorPanel source.
 
-it('scopes the operator-console Models/Actions carve-out to OperatorPanel only', function () {
+it('scopes the operator-console Models/Actions/Enums carve-out to OperatorPanel only', function () {
     $operatorPanelAllows = moduleBoundaryAllowedImports(Module::OperatorPanel);
 
     foreach (Module::cases() as $operated) {
@@ -132,22 +148,27 @@ it('scopes the operator-console Models/Actions carve-out to OperatorPanel only',
             continue;
         }
 
-        // Read-binding + write-through is permitted for every operated module...
+        // Read-binding + write-through + operand-enum construction is permitted
+        // for every operated module (ADR 2026-06-19 + 2026-06-21)...
         expect(in_array($operated->namespace().'\\Models', $operatorPanelAllows, true))->toBeTrue();
         expect(in_array($operated->namespace().'\\Actions', $operatorPanelAllows, true))->toBeTrue();
-        // ...but never the whole module, so console code cannot reach a module
-        // internal (Lifecycle, Services, Enums, Exceptions, ...).
+        expect(in_array($operated->namespace().'\\Enums', $operatorPanelAllows, true))->toBeTrue();
+        // ...but never the whole module, so console code cannot reach a non-operand
+        // module internal (Lifecycle, Services, Exceptions, ...). Enums is admitted
+        // as the operand-construction seam (ADR 2026-06-21); the whole-module
+        // namespace stays forbidden, so the exception still cannot widen to it.
         expect(in_array($operated->namespace(), $operatorPanelAllows, true))->toBeFalse();
     }
 
     // A lateral business module gets the public surface ONLY — its peers'
-    // Models\* / Actions\* stay forbidden, so the carve-out cannot be widened by
-    // accident into general cross-module coupling.
+    // Models\* / Actions\* / Enums\* stay forbidden, so the carve-out cannot be
+    // widened by accident into general cross-module coupling.
     $catalogAllows = moduleBoundaryAllowedImports(Module::Catalog);
     expect(in_array('App\\Modules\\Parties\\Contracts', $catalogAllows, true))->toBeTrue();
     expect(in_array('App\\Modules\\Parties\\Events', $catalogAllows, true))->toBeTrue();
     expect(in_array('App\\Modules\\Parties\\Models', $catalogAllows, true))->toBeFalse();
     expect(in_array('App\\Modules\\Parties\\Actions', $catalogAllows, true))->toBeFalse();
+    expect(in_array('App\\Modules\\Parties\\Enums', $catalogAllows, true))->toBeFalse();
 });
 
 // Pins the platform-direction half of the boundary law (task 2.3; design D3 —

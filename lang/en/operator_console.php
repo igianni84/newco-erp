@@ -545,4 +545,124 @@ return [
         ],
     ],
 
+    // Club — a Producer-operated membership program (Module K § 4.3). The SECOND Parties operator console
+    // (operator-console-parties-supply-side). Its state is `status` (active → sunset → closed), a self-owned
+    // badge column rendered through the cast — not the catalog `lifecycle_state` (design D2). A Club is born
+    // `active` (no activate verb — D9); the create surface CONSTRUCTS the `registration_flow_type` operand enum
+    // (the {Models, Actions, Enums} carve-out — D7).
+    'club' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Club',
+        'plural_label' => 'Clubs',
+
+        // List-table + view-infolist field labels. `producer` is the operating Producer (a within-Parties read);
+        // `registration_flow_type` is the fixed per-Club registration classifier; `status` is the Club lifecycle
+        // FSM; `version` is the optimistic lock.
+        'columns' => [
+            'display_name' => 'Name',
+            'producer' => 'Producer',
+            'registration_flow_type' => 'Registration flow',
+            'status' => 'Status',
+            'version' => 'Version',
+        ],
+
+        // Create-form input labels + the view-infolist labels for the attributes the list omits. The form uses
+        // `fields.*` for every input (mirroring the Producer console): display_name/producer/registration_flow_type
+        // re-label the create inputs; amount/currency are the OPTIONAL fee inputs (assembled into a Money only when
+        // both are present — D11); generates_credit/invite_only are the two single-tier flags (also view-infolist
+        // labels). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
+        // `active` (design D9).
+        'fields' => [
+            'display_name' => 'Name',
+            'producer' => 'Operating producer',
+            'registration_flow_type' => 'Registration flow',
+            'amount' => 'Fee amount (minor units)',
+            'currency' => 'Fee currency',
+            'fee' => 'Fee',
+            'generates_credit' => 'Generates credit',
+            'invite_only' => 'Invite only',
+        ],
+
+        // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs sunset
+        // (`active → sunset`) and close (`sunset → closed`), assembled on the ViewClub page (task 4.1). Both route
+        // through a Parties domain action, never a Filament default mutating path (ADR 2026-06-19). A Club is born
+        // `active`, so there is NO activate verb (D9) and no separation-of-duties affordance — Club lifecycle is
+        // single-operator (no confirmation modal, design D3).
+        'actions' => [
+            'create' => 'New Club',
+            'sunset' => 'Sunset',
+            'close' => 'Close',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (e.g. an
+        // out-of-state sunset/close, or a close attempted on an `active` Club — close is reachable only from
+        // `sunset`) — its own localized message (from lang/*/parties.php) is rendered as the body, so the console
+        // owns only this title, never the per-rejection copy (design D5).
+        'notifications' => [
+            'sunset' => 'Club sunset.',
+            'closed' => 'Club closed.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
+    'producer_agreement' => [
+        // The NewCo↔Producer commercial agreement (§ 4.6). `label`/`plural_label` are the model labels the kit
+        // base resolves off i18nKey(); IT omits them (per-key EN fallback, DEC-127).
+        'label' => 'Producer agreement',
+        'plural_label' => 'Producer agreements',
+
+        // List-table + view-infolist field labels. `producer` is the required Producer (a within-Parties read);
+        // `club` is the OPTIONAL narrowing Club — when null the column renders the `producer_wide` placeholder;
+        // `status` is the agreement lifecycle FSM; `term_start`/`term_end` are the agreement term dates;
+        // `version` is the optimistic lock.
+        'columns' => [
+            'producer' => 'Producer',
+            'club' => 'Club',
+            'status' => 'Status',
+            'term_start' => 'Term start',
+            'term_end' => 'Term end',
+            'version' => 'Version',
+        ],
+
+        // The placeholder the `club` column/entry renders for a Producer-wide agreement (a null `club_id`).
+        'producer_wide' => 'Producer-wide',
+
+        // View-infolist labels for the attributes the list omits + the create-form input labels. The form (task
+        // 8.1) uses `fields.*` for every input: `producer` is the required Producer party; `club` is the OPTIONAL
+        // narrowing (blank = a Producer-wide agreement, § 4.6); `term_start`/`term_end` are the OPTIONAL agreement
+        // term dates; `settlement_cadence` is the view-only D19 settlement-cadence seam (also a create input). The
+        // create form exposes NO `status` — an agreement is born `draft` (design D7).
+        'fields' => [
+            'producer' => 'Producer',
+            'club' => 'Scoped Club',
+            'term_start' => 'Term start',
+            'term_end' => 'Term end',
+            'settlement_cadence' => 'Settlement cadence',
+        ],
+
+        // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs activate
+        // (`draft → active`) and terminate (`active → terminated`), assembled on the ViewProducerAgreement page
+        // (task 9.1). Both route through a Parties domain action, never a Filament default mutating path (ADR
+        // 2026-06-19). There is NO supersede verb — supersession is the inline side-effect of activation (design
+        // D8), not an operator action — and no separation-of-duties affordance: agreement lifecycle is
+        // single-operator (no confirmation modal, design D3).
+        'actions' => [
+            'create' => 'New agreement',
+            'activate' => 'Activate',
+            'terminate' => 'Terminate',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (e.g. an
+        // out-of-state activate/terminate — activate is reachable only from `draft`, terminate only from
+        // `active`) — its own localized message (from lang/*/parties.php) is rendered as the body, so the console
+        // owns only this title, never the per-rejection copy (design D5).
+        'notifications' => [
+            'activated' => 'Producer agreement activated.',
+            'terminated' => 'Producer agreement terminated.',
+            'action_failed' => 'The action could not be completed.',
+        ],
+    ],
+
 ];
