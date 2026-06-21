@@ -709,10 +709,27 @@ return [
             'preferred_locale' => 'Preferred locale',
         ],
 
-        // Create-page header link. The write-through status lifecycle action labels (activate / suspend /
-        // reactivate / close) + their notifications land on the ViewCustomer page (task 3.2).
+        // Create-page header link + the four write-through status-FSM verb labels on the ViewCustomer page
+        // (activate / suspend / reactivate / close — the manual path, design D4). Each routes through a Parties
+        // domain action, never a Filament default mutating path (ADR 2026-06-19; design D1).
         'actions' => [
             'create' => 'New Customer',
+            'activate' => 'Activate',
+            'suspend' => 'Suspend',
+            'reactivate' => 'Reactivate',
+            'close' => 'Close',
+        ],
+
+        // Outcome notifications for the four write-through status verbs. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition — an
+        // out-of-state call, or the cross-slice activation gate not yet met (design D5) — with the rejection's
+        // own localized message (from lang/*/parties.php) rendered as the body.
+        'notifications' => [
+            'activated' => 'Customer activated.',
+            'suspended' => 'Customer suspended.',
+            'reactivated' => 'Customer reactivated.',
+            'closed' => 'Customer closed.',
+            'action_failed' => 'The action could not be completed.',
         ],
     ],
 

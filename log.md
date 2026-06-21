@@ -461,3 +461,5 @@
 ## [2026-06-21 22:01] ralph | operator-console-parties-customer 1.1/1.2/1.3 | green | 7 files | Customer read-only console (Resource+List+real Create+View stub) + EN/IT i18n; SQLite 1330/1330, phpstan 0, boundary untouched (D6 operands platform-level)
 
 ## [2026-06-21 22:12] ralph | operator-console-parties-customer 2.1/2.2 | green | 3 files (CustomerResource::form + create-field i18n EN/IT + CustomerCreateConsoleTest); SQLite 1333/1333, phpstan 0, boundary 3/3 unchanged (D6), validate strict ok
+
+## [2026-06-21 22:23] ralph | operator-console-parties-customer 3.1/3.2 | green | ViewCustomer 4 form-less status verbs (activate/suspend/reactivate/close) via SurfacesDomainActions + EN/IT actions/notifications i18n + CustomerLifecycleConsoleTest 9/9; full 1342/1342, phpstan 0, boundary 3/3 unchanged | 4 files

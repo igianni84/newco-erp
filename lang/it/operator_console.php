@@ -454,6 +454,18 @@ return [
 
         'actions' => [
             'create' => 'Nuovo cliente',
+            'activate' => 'Attiva',
+            'suspend' => 'Sospendi',
+            'reactivate' => 'Riattiva',
+            'close' => 'Chiudi',
+        ],
+
+        'notifications' => [
+            'activated' => 'Cliente attivato.',
+            'suspended' => 'Cliente sospeso.',
+            'reactivated' => 'Cliente riattivato.',
+            'closed' => 'Cliente chiuso.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
 
