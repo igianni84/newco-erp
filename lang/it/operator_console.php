@@ -373,6 +373,11 @@ return [
         ],
 
         'fields' => [
+            'display_name' => 'Nome',
+            'producer' => 'Produttore operante',
+            'registration_flow_type' => 'Flusso di registrazione',
+            'amount' => 'Importo quota (unità minori)',
+            'currency' => 'Valuta quota',
             'fee' => 'Quota',
             'generates_credit' => 'Genera credito',
             'invite_only' => 'Solo su invito',

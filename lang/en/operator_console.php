@@ -566,9 +566,18 @@ return [
             'version' => 'Version',
         ],
 
-        // View-infolist labels for the attributes the list omits: the per-Club `fee` (Money) and the two
-        // single-tier flags. The create-form fee inputs (amount/currency) land with the create surface (task 3.2).
+        // Create-form input labels + the view-infolist labels for the attributes the list omits. The form uses
+        // `fields.*` for every input (mirroring the Producer console): display_name/producer/registration_flow_type
+        // re-label the create inputs; amount/currency are the OPTIONAL fee inputs (assembled into a Money only when
+        // both are present — D11); generates_credit/invite_only are the two single-tier flags (also view-infolist
+        // labels). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
+        // `active` (design D9).
         'fields' => [
+            'display_name' => 'Name',
+            'producer' => 'Operating producer',
+            'registration_flow_type' => 'Registration flow',
+            'amount' => 'Fee amount (minor units)',
+            'currency' => 'Fee currency',
             'fee' => 'Fee',
             'generates_credit' => 'Generates credit',
             'invite_only' => 'Invite only',

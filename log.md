@@ -435,3 +435,5 @@
 ## [2026-06-21 09:28] ralph | operator-console-parties-supply-side 1.1 | green | carve-out widened {Models,Actions}->{...,Enums} (ADR 2026-06-21); ModuleBoundariesTest 3/3, suite 1206/1206, phpstan 0 | 1 code + 3 change-authoring files
 
 ## [2026-06-21 09:48] ralph | operator-console-parties-supply-side 2.1/2.2/2.3 | green | Club read surface (Resource+List+real Create+bare View) + EN/IT i18n; suite 1211/1211, phpstan 0, ModuleBoundaries 3/3, openspec valid; first prod use of the Enums carve-out
+
+## [2026-06-21 10:05] ralph | operator-console-parties-supply-side 3.1/3.2 | green | 5 files | Club create form (Resource::form + pickers) + create-field i18n EN/IT + ClubCreateConsoleTest; fixed CreateClub amount guard to is_numeric (->numeric dehydrates float); suite 1215/1215, boundary proves group-1 carve-out

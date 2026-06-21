@@ -67,7 +67,7 @@ class CreateClub extends OperatorConsoleCreateRecord
             ! is_string($displayName)
             || ! is_numeric($producerId)
             || ! is_string($registrationFlowType)
-            || ! (is_null($amount) || is_string($amount) || is_int($amount))
+            || ! (is_null($amount) || $amount === '' || is_numeric($amount))
             || ! (is_null($currency) || is_string($currency))
             || ! is_bool($generatesCredit)
             || ! is_bool($inviteOnly)

@@ -4,8 +4,14 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ClubResource\Pages;
+use App\Modules\Parties\Enums\ClubRegistrationFlowType;
 use App\Modules\Parties\Models\Club;
+use App\Modules\Parties\Models\Producer;
+use App\Platform\Money\Currency;
 use BackedEnum;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
@@ -47,6 +53,49 @@ class ClubResource extends OperatorConsoleResource
     protected static function i18nKey(): string
     {
         return 'club';
+    }
+
+    /**
+     * The create form (design D6/D7/D11). Collects the inputs the Parties `CreateClub` action consumes — the
+     * required display_name, the operating Producer (a WITHIN-Parties picker; a Club belongs to exactly one
+     * Producer, BR-K-Club-1), the required `registration_flow_type` classifier, the OPTIONAL fee (an amount in
+     * integer minor units + an ISO 4217 currency, assembled into a `Money` only when both are present — D11),
+     * and the two single-tier flags. It deliberately exposes NO `status`: a Club is born `active` by the action,
+     * with no activate verb (design D9), so state never enters as a create input. The form only COLLECTS; the
+     * write routes through the action in {@see Pages\CreateClub::createViaAction()}, which constructs the
+     * `ClubRegistrationFlowType` operand enum from the selected value (the {Models, Actions, Enums} carve-out —
+     * ADR 2026-06-21). There is no Edit page — the Parties backend ships no Club update Action. All labels
+     * localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('display_name')
+                    ->label((string) __('operator_console.club.fields.display_name'))
+                    ->required()
+                    ->maxLength(255),
+                Select::make('producer_id')
+                    ->label((string) __('operator_console.club.fields.producer'))
+                    ->options(self::producerOptions(...))
+                    ->required(),
+                Select::make('registration_flow_type')
+                    ->label((string) __('operator_console.club.fields.registration_flow_type'))
+                    ->options(self::registrationFlowTypeOptions(...))
+                    ->required(),
+                TextInput::make('amount')
+                    ->label((string) __('operator_console.club.fields.amount'))
+                    ->numeric(),
+                Select::make('currency')
+                    ->label((string) __('operator_console.club.fields.currency'))
+                    ->options(self::currencyOptions(...)),
+                Toggle::make('generates_credit')
+                    ->label((string) __('operator_console.club.fields.generates_credit'))
+                    ->default(true),
+                Toggle::make('invite_only')
+                    ->label((string) __('operator_console.club.fields.invite_only'))
+                    ->default(false),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -143,5 +192,58 @@ class ClubResource extends OperatorConsoleResource
 
                 return $state instanceof BackedEnum ? (string) $state->value : '';
             });
+    }
+
+    /**
+     * Create-form operating-Producer options, keyed by `producer_id` → a `#id · name` label, read from Parties'
+     * OWN {@see Producer} model (a WITHIN-Parties reference — a Club belongs to exactly one operating Producer,
+     * BR-K-Club-1, never a cross-module join). Creation lists every Producer; the action's `MissingClubProducer`
+     * pre-check (and the within-module FK) is the real guard, so the picker need not pre-filter. `getStateUsing`
+     * aside, this is a pure read — the no-Eloquent-write rule polices writes only — and `Producer` is within the
+     * {Models} carve-out.
+     *
+     * @return array<int, string>
+     */
+    private static function producerOptions(): array
+    {
+        return Producer::query()
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(static fn (Producer $producer): array => [
+                $producer->id => '#'.$producer->id.' · '.$producer->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * Create-form registration-flow options, keyed by the {@see ClubRegistrationFlowType} backing value → the
+     * same token as its label (the per-Club classifier is a fixed enum; the four flows are the full launch
+     * domain). Driven off the OPERAND enum (design D7) — the import the {Models, Actions, Enums} carve-out admits
+     * for OperatorPanel (ADR 2026-06-21); `CreateClub::createViaAction` constructs the same enum from the
+     * selected value. The token is domain data (like the read column), not UI chrome, so no per-value i18n key is
+     * introduced — only the Select's own `label` is localized.
+     *
+     * @return array<string, string>
+     */
+    private static function registrationFlowTypeOptions(): array
+    {
+        return collect(ClubRegistrationFlowType::cases())
+            ->mapWithKeys(static fn (ClubRegistrationFlowType $flow): array => [$flow->value => $flow->value])
+            ->all();
+    }
+
+    /**
+     * Create-form fee-currency options, keyed by the ISO 4217 code → the same code as its label, driven off the
+     * Platform {@see Currency} enum (the launch set is the five DEC-037 currencies). `Currency` is an
+     * `App\Platform` type, freely importable (not cross-module). The fee is optional, so this Select is not
+     * `required`; `CreateClub` assembles a `Money` only when BOTH an amount and a currency are supplied (D11).
+     *
+     * @return array<string, string>
+     */
+    private static function currencyOptions(): array
+    {
+        return collect(Currency::cases())
+            ->mapWithKeys(static fn (Currency $currency): array => [$currency->value => $currency->value])
+            ->all();
     }
 }
