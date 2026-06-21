@@ -33,7 +33,7 @@
 
 ## 6. Club full closing-chain integration test (PG17)
 
-- [ ] 6.1 Add `ClubConsoleChainTest.php` — one `it()` driving a Club through the console **pages**: `Livewire::test(CreateClub::class)->fillForm([...])->call('create')` (an existing operating Producer seeded event-free via `Producer::factory()`), then `Livewire::test(ViewClub::class, ['record' => $id])->callAction('sunset')` → `callAction('close')`. Assert: the emergent event set `DomainEvent::query()->pluck('name')->all()` `->toEqualCanonicalizing(['ClubCreated','ClubSunset','ClubClosed'])`; a `foreach` asserting every event `module === 'parties'`, `actor_role === ActorRole::NewcoOps`, `actor_id` non-null; a representative `actor_id` equals the acting operator (loose `toEqual` — PG returns a numeric string).
+- [x] 6.1 Add `ClubConsoleChainTest.php` — one `it()` driving a Club through the console **pages**: `Livewire::test(CreateClub::class)->fillForm([...])->call('create')` (an existing operating Producer seeded event-free via `Producer::factory()`), then `Livewire::test(ViewClub::class, ['record' => $id])->callAction('sunset')` → `callAction('close')`. Assert: the emergent event set `DomainEvent::query()->pluck('name')->all()` `->toEqualCanonicalizing(['ClubCreated','ClubSunset','ClubClosed'])`; a `foreach` asserting every event `module === 'parties'`, `actor_role === ActorRole::NewcoOps`, `actor_id` non-null; a representative `actor_id` equals the acting operator (loose `toEqual` — PG returns a numeric string).
 - **Tests**: green on SQLite AND PG17 (the command in the preamble); phpstan 0; pint clean.
 
 ## 7. ProducerAgreement read-only Resource + list + resource i18n

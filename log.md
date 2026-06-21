@@ -441,3 +441,5 @@
 ## [2026-06-21 10:16] ralph | operator-console-parties-supply-side 4.1-4.2 | green | 4 files (ViewClub sunset/close lifecycle + EN/IT i18n + ClubLifecycleConsoleTest 5/5); suite 1220/1220, phpstan 0
 
 ## [2026-06-21 10:26] ralph | operator-console-parties-supply-side 5.1 | green | 1 file (ClubConsoleI18nTest, 44 tests) — Club i18n kit-key completeness, 5 guards; full suite 1264/1264
+
+## [2026-06-21 10:34] ralph | operator-console-parties-supply-side 6.1 | green | 1 file (ClubConsoleChainTest) | SQLite 1265/1265 + PG17 142/142 | 10/19
