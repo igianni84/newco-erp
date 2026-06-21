@@ -641,11 +641,27 @@ return [
             'settlement_cadence' => 'Settlement cadence',
         ],
 
-        // Create-page header link + the write-through lifecycle action labels. The two STATUS verbs (activate /
-        // terminate, assembled on ViewProducerAgreement in task 9.1) land with their groups; `create` is the
-        // header navigation link to the write-through Create page (never an inline CreateAction, ADR 2026-06-19).
+        // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs activate
+        // (`draft → active`) and terminate (`active → terminated`), assembled on the ViewProducerAgreement page
+        // (task 9.1). Both route through a Parties domain action, never a Filament default mutating path (ADR
+        // 2026-06-19). There is NO supersede verb — supersession is the inline side-effect of activation (design
+        // D8), not an operator action — and no separation-of-duties affordance: agreement lifecycle is
+        // single-operator (no confirmation modal, design D3).
         'actions' => [
             'create' => 'New agreement',
+            'activate' => 'Activate',
+            'terminate' => 'Terminate',
+        ],
+
+        // Outcome notifications for the write-through lifecycle actions. The success titles confirm the domain
+        // transition; `action_failed` is the danger title shown when the domain rejects a transition (e.g. an
+        // out-of-state activate/terminate — activate is reachable only from `draft`, terminate only from
+        // `active`) — its own localized message (from lang/*/parties.php) is rendered as the body, so the console
+        // owns only this title, never the per-rejection copy (design D5).
+        'notifications' => [
+            'activated' => 'Producer agreement activated.',
+            'terminated' => 'Producer agreement terminated.',
+            'action_failed' => 'The action could not be completed.',
         ],
     ],
 

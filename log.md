@@ -447,3 +447,5 @@
 ## [2026-06-21 10:51] ralph | operator-console-parties-supply-side 7.1-7.3 | green | 6 files (4 new src + test + 2 lang) | ProducerAgreement read surface, full suite 1271/1271, phpstan 0, boundary 3/3
 
 ## [2026-06-21 11:06] ralph | operator-console-parties-supply-side 8.1-8.2 | green | ProducerAgreement create form + EN/IT fields.* + 5 tests | 4 files; SQLite 1276/1276, phpstan 0
+
+## [2026-06-21 11:14] ralph | operator-console-parties-supply-side 9.1-9.2 | green | 4 files | ViewProducerAgreement activate/terminate (no supersede verb, D8); supersession OR-branch causation_id proven; 1282/1282, phpstan 0

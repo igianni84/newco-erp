@@ -418,6 +418,14 @@ return [
 
         'actions' => [
             'create' => 'Nuovo accordo',
+            'activate' => 'Attiva',
+            'terminate' => 'Termina',
+        ],
+
+        'notifications' => [
+            'activated' => 'Accordo produttore attivato.',
+            'terminated' => 'Accordo produttore terminato.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
 
