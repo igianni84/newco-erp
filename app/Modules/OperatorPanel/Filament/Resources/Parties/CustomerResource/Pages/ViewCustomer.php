@@ -10,6 +10,7 @@ use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Actions\ReactivateCustomer;
+use App\Modules\Parties\Actions\RecordCustomerScreening;
 use App\Modules\Parties\Actions\RecordKycRejected;
 use App\Modules\Parties\Actions\RecordKycVerified;
 use App\Modules\Parties\Actions\RequireKyc;
@@ -320,8 +321,17 @@ class ViewCustomer extends ViewRecord
      * (operator-console-parties-kyc-sanctions, tasks 3.1/3.2; design D3/D6/D7). Built BESPOKE rather than through
      * {@see SurfacesDomainActions::lifecycleAction()} (the {@see placeHoldAction()} precedent): a screening carries
      * operands the form-less verb helper cannot thread — a {@see SanctionsStatus} verdict and a
-     * {@see ScreeningTriggerSource}. The `->action()` write-through into the Parties `RecordCustomerScreening` action
-     * lands in task 3.2; THIS task only assembles the form (so the body is the no-op the placeHold 3.1 step used).
+     * {@see ScreeningTriggerSource}. The `->action()` narrows both form operands (the `is_string` discipline) and
+     * routes them into the Parties `RecordCustomerScreening` action through
+     * {@see SurfacesDomainActions::surfaceLifecycleOutcome()} — REUSING the trait's uniform
+     * success / `RuntimeException`→`action_failed` notification, never an Eloquent write (design D3). The console
+     * invokes ONLY `RecordCustomerScreening`, the SOLE writer of the sanctions fields: it sets `sanctions_status`,
+     * stamps the 12-month re-screen window (`last_screening_at` / `next_rescreen_at`), records the
+     * `screening_trigger_source` and — on a `passed`/`failed` COMPLETION — the matching § 15.6 screening event, all in
+     * ONE transaction (design D6/D7). An out-of-band re-onboarding is the domain's floor
+     * (`IllegalSanctionsTransition::onboardingAlreadyScreened`, a `RuntimeException` surfaced as `action_failed`) —
+     * the stale `onboarding` option simply DROPS once a first screening exists (design D6 — the option-set narrows,
+     * the domain still enforces; the exception is named in PROSE so Pint cannot re-add a forbidden import).
      *
      * The `verdict` Select offers the four {@see SanctionsStatus} operand-enum tokens (value → value — the
      * holdType/holdScope Select precedent: domain data, not UI chrome, so no per-value i18n key). The `trigger_source`
@@ -349,8 +359,32 @@ class ViewCustomer extends ViewRecord
                     ->options(fn (): array => $this->screeningSourceOptions($this->recordOf(Customer::class, $this->getRecord())))
                     ->required(),
             ])
-            // The write-through into the Parties RecordCustomerScreening action lands in task 3.2; this surface only collects.
-            ->action(function (): void {});
+            ->action(
+                /** @param  array<string, mixed>  $data */
+                function (array $data): void {
+                    $customer = $this->recordOf(Customer::class, $this->getRecord());
+
+                    // The form state arrives stringly-typed (Filament Select values serialize to strings); narrow BOTH
+                    // operands with the slice's `is_string` discipline before constructing the typed verdict /
+                    // trigger-source. verdict / trigger_source are `->required()` → present on the happy path (the `: ''`
+                    // floors satisfy the type system, the trait's `$notes` idiom).
+                    $verdict = is_string($data['verdict'] ?? null) ? $data['verdict'] : '';
+                    $source = is_string($data['trigger_source'] ?? null) ? $data['trigger_source'] : '';
+
+                    // The console invokes ONLY RecordCustomerScreening (the SOLE sanctions writer): it sets the sanctions
+                    // fields, stamps the 12-month re-screen window and records the § 15.6 completion event in ONE
+                    // transaction (design D6/D7). surfaceLifecycleOutcome renders the success/`action_failed` notification
+                    // and never writes Eloquent; the onboarding-already-screened floor surfaces as `action_failed`.
+                    $this->surfaceLifecycleOutcome(
+                        fn () => app(RecordCustomerScreening::class)->handle(
+                            $customer->id,
+                            SanctionsStatus::from($verdict),
+                            ScreeningTriggerSource::from($source),
+                        ),
+                        (string) __('operator_console.customer.notifications.screening_recorded'),
+                    );
+                }
+            );
     }
 
     /**

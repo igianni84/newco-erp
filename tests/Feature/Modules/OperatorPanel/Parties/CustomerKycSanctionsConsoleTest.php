@@ -13,7 +13,8 @@
 // the page can't raise (the Filament hidden-action landmine, lessons.md 2026-06-22). Task 2.1 pins the VISIBILITY
 // contract; 2.2 the write-through + auto-Hold coupling; 2.3 (below) the reject-floor + the no-waive guard (design D8)
 // + the KYC↔sanctions independence check (design D7); 3.1 (below) the sanctions form's verdict + record-dependent
-// trigger_source options; 3.2/3.3 its write-through + the onboarding-first floor (upcoming).
+// trigger_source options; 3.2 (below) its write-through (verdict × source → the § 15.6 completion event); 3.3 the
+// onboarding-first floor (upcoming).
 //
 // THE KYC VERBS ARE EVENT-SILENT (design D7): the only events are the coupled CustomerHoldPlaced/Lifted (from the
 // auto-Hold) + CustomerSuspended/Reactivated (from the coupling); RecordKycRejected records NOTHING. No
@@ -36,9 +37,12 @@ use App\Modules\Parties\Enums\HoldStatus;
 use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\SanctionsStatus;
+use App\Modules\Parties\Enums\ScreeningTriggerSource;
 use App\Modules\Parties\Events\CustomerHoldLifted;
 use App\Modules\Parties\Events\CustomerHoldPlaced;
+use App\Modules\Parties\Events\CustomerOnboardingScreeningPassed;
 use App\Modules\Parties\Events\CustomerReactivated;
+use App\Modules\Parties\Events\CustomerRescreeningFailed;
 use App\Modules\Parties\Events\CustomerSuspended;
 use App\Modules\Parties\Exceptions\IllegalKycTransition;
 use App\Modules\Parties\Models\Customer;
@@ -371,3 +375,96 @@ it('exposes the recordScreening form — all four SanctionsStatus verdicts, with
         ->assertFormFieldExists('trigger_source', fn (Select $field): bool => array_keys($field->getOptions())
             === ['compliance_ad_hoc']);
 });
+
+// ── 3.2 · The recordScreening write-through (design D3/D6/D7) ──────────────────────────────────────────────────────
+// recordScreening's ->action() narrows the verdict + trigger_source operands (the Holds is_string form-data discipline)
+// and routes them into the Parties RecordCustomerScreening action — the SOLE sanctions writer: it sets sanctions_status,
+// stamps the 12-month re-screen window (last_screening_at / next_rescreen_at), records the screening_trigger_source and
+// (on a passed/failed COMPLETION) the matching § 15.6 event, all in ONE transaction. The console writes nothing itself
+// (the no-Eloquent-write rule); surfaceLifecycleOutcome renders the success / action_failed notification. The screening
+// event — unlike the event-silent KYC verbs (design D7) — carries the operator audit envelope (NewcoOps + the operator
+// id) resolved from the `operator` guard. The phase (onboarding vs rescreening) is keyed by trigger_source, the outcome
+// by verdict; under_review / pending is not a completion and records nothing (§ 15.6 names only the passed/failed pairs).
+
+it('records an onboarding screening through the console on a never-screened Customer — passed, the 12-month window stamped, one CustomerOnboardingScreeningPassed; kyc_status untouched (design D6/D7)', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    // A never-screened Customer (last_screening_at NULL — the factory sets no screening column) that already holds a
+    // concrete KYC state: a screening must move ONLY the sanctions fields and never touch kyc_status (the two FSMs are
+    // independent — § 9.4, design D7). `onboarding` is the legal first-screen source while last_screening_at IS NULL.
+    $customer = Customer::factory()->create(['kyc_status' => KycStatus::Verified]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        // callAction asserts-visible-first (recordScreening is always present — no from-state gate), fills the form and
+        // drives RecordCustomerScreening by the customer id; the console writes nothing itself (the no-Eloquent-write rule).
+        ->callAction('recordScreening', data: ['verdict' => 'passed', 'trigger_source' => 'onboarding'])
+        ->assertNotified((string) __('operator_console.customer.notifications.screening_recorded'));
+
+    $fresh = Customer::findOrFail($customer->id);
+    expect($fresh->sanctions_status)->toBe(SanctionsStatus::Passed)
+        ->and($fresh->screening_trigger_source)->toBe(ScreeningTriggerSource::Onboarding)
+        ->and($fresh->last_screening_at)->not->toBeNull()
+        // next_rescreen_at is exactly 12 months past last_screening_at (one captured instant — design L4/D6).
+        ->and($fresh->next_rescreen_at?->toDateTimeString())
+        ->toBe($fresh->last_screening_at?->addMonths(12)?->toDateTimeString())
+        // … and kyc_status is exactly as arranged — a screening never touches the KYC FSM (independence — design D7).
+        ->and($fresh->kyc_status)->toBe(KycStatus::Verified);
+
+    // Exactly one screening event — the onboarding-passed completion — carrying the operator audit envelope resolved
+    // from the `operator` guard (the console constructs no envelope itself; the chain test re-proves it at 4.1).
+    $event = DomainEvent::query()->where('name', CustomerOnboardingScreeningPassed::NAME)->sole();
+    expect($event->module)->toBe('parties')
+        ->and($event->entity_type)->toBe('Customer')
+        ->and($event->entity_id)->toBe((string) $customer->id)
+        ->and($event->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($event->actor_id)->toEqual($operator->id);  // loose: PG returns a numeric string for the bigint
+
+    // … and it is the ONLY screening event (all four screening event names contain "creening").
+    expect(DomainEvent::query()->where('name', 'like', 'Customer%creening%')->count())->toBe(1);
+});
+
+it('records a re-screen through the console on an already-screened Customer — failed, one CustomerRescreeningFailed (design D6)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // An already-screened Customer (last_screening_at stamped, previously `passed`): onboarding has DROPPED from the form
+    // (covered by 3.1), so the operator path is compliance_ad_hoc — a RE-SCREEN, admissible from any prior state and able
+    // to flip the verdict (`passed → failed`). The phase is keyed by trigger_source → the rescreening event family.
+    $customer = Customer::factory()->create([
+        'sanctions_status' => SanctionsStatus::Passed,
+        'last_screening_at' => now(),
+    ]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->callAction('recordScreening', data: ['verdict' => 'failed', 'trigger_source' => 'compliance_ad_hoc'])
+        ->assertNotified((string) __('operator_console.customer.notifications.screening_recorded'));
+
+    $fresh = Customer::findOrFail($customer->id);
+    expect($fresh->sanctions_status)->toBe(SanctionsStatus::Failed)
+        ->and($fresh->screening_trigger_source)->toBe(ScreeningTriggerSource::ComplianceAdHoc);
+
+    // A re-screen completion records the RESCREENING family — exactly one CustomerRescreeningFailed and no onboarding
+    // event (the phase is keyed by trigger_source, not by verdict), and it is the only screening event.
+    expect(DomainEvent::query()->where('name', CustomerRescreeningFailed::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', 'like', 'Customer%creening%')->count())->toBe(1);
+});
+
+it('records a non-completion verdict through the console — sanctions_status updated, ZERO screening events (design L4)', function (string $verdict, SanctionsStatus $expected) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // under_review (a possible-match awaiting manual review) and pending are NOT completions: the § 15.6 catalog names
+    // only the passed/failed pairs, so RecordCustomerScreening records NO event for them — yet sanctions_status still
+    // moves and the screening window is still stamped. A never-screened Customer keeps `onboarding` a legal source.
+    $customer = Customer::factory()->create();
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->callAction('recordScreening', data: ['verdict' => $verdict, 'trigger_source' => 'onboarding'])
+        ->assertNotified((string) __('operator_console.customer.notifications.screening_recorded'));
+
+    expect(Customer::findOrFail($customer->id)->sanctions_status)->toBe($expected)
+        // No screening event of any phase/outcome — a non-completion verdict records nothing (design L4).
+        ->and(DomainEvent::query()->where('name', 'like', 'Customer%creening%')->count())->toBe(0);
+})->with([
+    'under_review → no event' => ['under_review', SanctionsStatus::UnderReview],
+    'pending → no event' => ['pending', SanctionsStatus::Pending],
+]);
