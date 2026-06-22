@@ -521,3 +521,5 @@
 ## [2026-06-22 18:59] ralph | operator-console-parties-kyc-sanctions 3.3 | green | 1 file (test-only) | onboarding-first floor: form drops onboarding + domain toThrow IllegalSanctionsTransition, state+log unchanged; suite 1494/1494, filter 32/32
 
 ## [2026-06-22 19:09] ralph | operator-console-parties-kyc-sanctions 4.1 | green | 1 file (new CustomerKycSanctionsChainTest — PG17 closing-chain SQLite half; 5-event multiset, no KYC event, widget lift hidden); suite 1495/1495
+
+## [2026-06-22 19:14] ralph | operator-console-parties-kyc-sanctions 4.2 | green | PG17 ritual verify-only: Parties OperatorPanel + Catalog i18n 372/372 (1854 assn) under postgres:17, no push/merge | 0 files
