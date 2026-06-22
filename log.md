@@ -471,3 +471,29 @@
 ## [2026-06-22 08:41] close-ritual §2.7 | operator-console-parties-customer | PG17 full 1397/1397 (7683 assn) → no-ff merge to main (eaec03c) → semantic-verify clean (0 CRIT/WARN, 2 SUGGEST forward to compliance/profile slices) → archived 2026-06-22 (+3 reqs into operator-console spec). Push awaits human.
 
 ## [2026-06-22 08:45] push §2.7 | main → origin/main | Giovanni approved; pushed 109e12d..e30aa1b (9 commits: merged Customer slice + merge + archive + hygiene), main in sync; merged ralph branch deleted.
+
+## [2026-06-22 09:21] spec-to-change | operator-console-parties-holds | APPROVED. Holds-first split of Customer-compliance console (KYC+sanctions next). Delta on operator-console: 1 ADDED + 2 MODIFIED reqs (17 scn), 12 tasks. Operand-enum carve-out exercised, no ModuleBoundariesTest widening. validate --strict green. Ready for ralph.
+
+## [2026-06-22 10:04] ralph | operator-console-parties-holds 1.1 | green | 1 file: dropped stale placeHold/liftHold absence guards in CustomerLifecycleConsoleTest, kept requireKyc; 1397/1397
+
+## [2026-06-22 10:44] ralph | operator-console-parties-holds 1.2 | green | 3 files (CustomerHoldsTable TableWidget vehicle + ViewCustomer getFooterWidgets + test); Filament 5.6.7 API re-verified; full 1399/1399, phpstan 0
+
+## [2026-06-22 10:56] ralph | operator-console-parties-holds 1.3 | green | 3 files — 17 EN+IT Hold i18n keys (actions/fields/holds.columns/notifications) front-loaded + enumerated in CustomerConsoleI18nTest; 88/88 filtered, full 1433/1433, phpstan 0
+
+## [2026-06-22 11:12] ralph | operator-console-parties-holds 2.1 | green | 2 files | Holds read table over scope-set union (customer ∪ Account ∪ Profiles), 8 cast-rendered columns, no edit/delete; 1434/1434, phpstan max 0
+
+## [2026-06-22 11:28] ralph | operator-console-parties-holds 3.1 | green | placeHold header action + form (6 HoldType/3 HoldScope Selects, profile_id gated on profile scope) on ViewCustomer; 4/4 filtered, 1435 full, phpstan 0 | 2 files
+
+## [2026-06-22 11:44] ralph | operator-console-parties-holds 3.2 | green | 3 files: placeHold write-through via surfaceLifecycleOutcome+PlaceHold, holdScopeId resolver, +3 tests (a/b/c). suite 1438/1438, phpstan max 0, arch guards unchanged
+
+## [2026-06-22 12:04] ralph | operator-console-parties-holds 4.1 | green | 2 files: per-row lift action on CustomerHoldsTable (reuses SurfacesDomainActions; visible iff active && !autoLiftable via cast ->value, no HoldStatus import; keys off $record->id). full 1439/1439, phpstan max 0, arch 4/4 unchanged
+
+## [2026-06-22 12:29] ralph | operator-console-parties-holds 4.2 | green | 1 file (test-only) | lift+restore coupling + kyc reject; action_failed-via-widget infeasible (hidden action unreachable), tested as domain-throw+hidden — see NOTE/lessons; full 1441/1441, phpstan max 0
+
+## [2026-06-22 12:40] ralph | operator-console-parties-holds 5.1 | green | 1 file (CustomerHoldsChainTest, +1 test/+82 assn) | full suite 1442/1442 SQLite; PG17 = task 5.2
+
+## [2026-06-22 14:36] ralph | operator-console-parties-holds 5.2 | green | PG17 ritual: Parties OperatorPanel folder 319/319 (1541 assn) under postgres:17; verify-only, 0 code files
+
+## [2026-06-22 14:48] ralph | operator-console-parties-holds 6.1 | green | 0 files (verify-only): pint clean, phpstan-max 0, arch 4/4 unchanged, full suite 1442/1442, validate --strict valid; main-diff audit clean (no spec/openspec-specs/composer/migration)
+
+## [2026-06-22 16:02] ralph | operator-console-parties-holds 6.2 | green | validate --strict valid; pint/phpstan-max/pest 1442 all green; main-diff audit clean (no spec/specs/composer/migration/arch touch); carve-out pattern consolidated; CHANGE_COMPLETE 12/12
