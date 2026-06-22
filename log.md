@@ -519,3 +519,5 @@
 ## [2026-06-22 18:51] ralph | operator-console-parties-kyc-sanctions 3.2 | green | 2 files | recordScreening write-through→RecordCustomerScreening; suite 1493/1493, phpstan max 0, validate strict ok (8/13)
 
 ## [2026-06-22 18:59] ralph | operator-console-parties-kyc-sanctions 3.3 | green | 1 file (test-only) | onboarding-first floor: form drops onboarding + domain toThrow IllegalSanctionsTransition, state+log unchanged; suite 1494/1494, filter 32/32
+
+## [2026-06-22 19:09] ralph | operator-console-parties-kyc-sanctions 4.1 | green | 1 file (new CustomerKycSanctionsChainTest — PG17 closing-chain SQLite half; 5-event multiset, no KYC event, widget lift hidden); suite 1495/1495
