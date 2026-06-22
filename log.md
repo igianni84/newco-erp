@@ -511,3 +511,5 @@
 ## [2026-06-22 18:08] ralph | operator-console-parties-kyc-sanctions 2.1 | green | 2 files | 3 form-less visibility-gated KYC verbs on ViewCustomer + kycRequirable/kycPending cast-value predicates; CustomerKycSanctionsConsoleTest 10/10; full suite 1472/1472; phpstan max 0; no KycStatus/IllegalKycTransition import
 
 ## [2026-06-22 18:18] ralph | operator-console-parties-kyc-sanctions 2.2 | green | 1 file (test) | KYC write-through + auto-Hold coupling: require→pending+kyc-Hold+suspend, verify→lift+reactivate, reject→audit-only; zero CustomerKyc%; suite 1475/1475
+
+## [2026-06-22 18:29] ralph | operator-console-parties-kyc-sanctions 2.3 | green | 1 file (test-only) | reject-floor + no-waive + KYC↔sanctions independence; suite 1488/1488, filter 26/26, phpstan max 0

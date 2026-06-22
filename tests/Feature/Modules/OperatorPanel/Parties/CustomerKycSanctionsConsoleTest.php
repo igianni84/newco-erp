@@ -11,7 +11,8 @@
 // COMPLEMENT of the domain from-state guard, a rejected transition is UNREACHABLE through the surface — the verb is
 // simply hidden; its reject is proven by a domain toThrow + assertActionHidden (task 2.3), never an action_failed
 // the page can't raise (the Filament hidden-action landmine, lessons.md 2026-06-22). Task 2.1 pins the VISIBILITY
-// contract; 2.2 (below) adds the write-through + auto-Hold coupling, 2.3 the reject-floor, 3.x the sanctions form.
+// contract; 2.2 the write-through + auto-Hold coupling; 2.3 (below) the reject-floor + the no-waive guard (design D8)
+// + the KYC↔sanctions independence check (design D7); 3.x the sanctions form (upcoming).
 //
 // THE KYC VERBS ARE EVENT-SILENT (design D7): the only events are the coupled CustomerHoldPlaced/Lifted (from the
 // auto-Hold) + CustomerSuspended/Reactivated (from the coupling); RecordKycRejected records NOTHING. No
@@ -25,16 +26,20 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\ViewCustomer;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\RecordKycRejected;
+use App\Modules\Parties\Actions\RecordKycVerified;
 use App\Modules\Parties\Actions\RequireKyc;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldStatus;
 use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Enums\KycStatus;
+use App\Modules\Parties\Enums\SanctionsStatus;
 use App\Modules\Parties\Events\CustomerHoldLifted;
 use App\Modules\Parties\Events\CustomerHoldPlaced;
 use App\Modules\Parties\Events\CustomerReactivated;
 use App\Modules\Parties\Events\CustomerSuspended;
+use App\Modules\Parties\Exceptions\IllegalKycTransition;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Platform\Events\ActorRole;
@@ -205,4 +210,125 @@ it('records KYC rejected through the console on a pending Customer — rejected,
         ->and($kyc->refresh()->status)->toBe(HoldStatus::Active)
         // … and the reject recorded NOTHING (audit-only; RecordKycRejected touches no recorder — design D7).
         ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+// ── 2.3 · The reject FLOOR (design D4 — the hidden-action landmine) ──────────────────────────────────────────────
+// Each KYC verb's ->visible() predicate is the EXACT COMPLEMENT of its domain from-state guard, so an out-of-state
+// transition is UNREACHABLE through the surface: the verb is simply HIDDEN, and a hidden Filament action can't be
+// mounted/invoked (callAction asserts-visible-FIRST; mountAction is a server-side no-op — task 1.2's pinned landmine).
+// So — unlike the always-present Producer KYC verbs whose reject surfaces as `action_failed` (cf. ProducerKycConsoleTest's
+// "surfaces an illegal KYC transition…") — the Customer verbs' reject is proven the only way the surface allows: the
+// surface HIDES it (assertActionHidden) AND the domain INDEPENDENTLY rejects an out-of-band call (a domain toThrow),
+// with kyc_status and the (empty) event log unchanged — NEVER an assertNotified(action_failed) the page can't raise.
+// Bare-factory Customers (no Hold, no event) keep "unchanged" a clean post-condition (no baseline arithmetic).
+
+it('proves the requireKyc reject floor — hidden out of its from-state AND the domain rejects an out-of-band call, kyc_status + the event log unchanged (design D4)', function (KycStatus $from) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // requireKyc OPENS the FSM (legal only from `not_required`/NULL); every advanced state is out-of-from-state.
+    $customer = Customer::factory()->create(['kyc_status' => $from]);
+
+    // Half 1 — the surface HIDES the verb (callAction would assert-visible-FIRST and fail).
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->assertActionHidden('requireKyc');
+
+    // Half 2 — the domain FLOOR: an out-of-band call throws IllegalKycTransition (imported freely in the test) and
+    // rolls back BEFORE any write (RequireKyc guards the from-state before placing the `kyc` Hold).
+    expect(fn () => app(RequireKyc::class)->handle($customer->id))->toThrow(IllegalKycTransition::class);
+
+    // Nothing moved: kyc_status is exactly as arranged and the event log is still empty (the transaction rolled back).
+    expect(Customer::findOrFail($customer->id)->kyc_status)->toBe($from)
+        ->and(DomainEvent::query()->count())->toBe(0);
+})->with([
+    'pending → hidden + rejected' => [KycStatus::Pending],
+    'verified → hidden + rejected' => [KycStatus::Verified],
+    'rejected → hidden + rejected' => [KycStatus::Rejected],
+]);
+
+it('proves the recordKycVerified reject floor — hidden out of pending AND the domain rejects an out-of-band call, unchanged (design D4)', function (?KycStatus $from) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // recordKycVerified is legal ONLY from `pending`; the surface hides it for every other state — including NULL
+    // (un-screened — DEC-071), which the domain renders with the `unset` sentinel when it throws.
+    $customer = Customer::factory()->create(['kyc_status' => $from]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->assertActionHidden('recordKycVerified');
+
+    expect(fn () => app(RecordKycVerified::class)->handle($customer->id))->toThrow(IllegalKycTransition::class);
+
+    expect(Customer::findOrFail($customer->id)->kyc_status)->toBe($from)
+        ->and(DomainEvent::query()->count())->toBe(0);
+})->with([
+    'not_required → hidden + rejected' => [KycStatus::NotRequired],
+    'verified → hidden + rejected' => [KycStatus::Verified],
+    'rejected → hidden + rejected' => [KycStatus::Rejected],
+    'never-screened (NULL) → hidden + rejected' => [null],
+]);
+
+it('proves the recordKycRejected reject floor — hidden out of pending AND the domain rejects an out-of-band call, unchanged (design D4)', function (?KycStatus $from) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // recordKycRejected is legal ONLY from `pending` too; the surface hides it for every other state — including NULL.
+    $customer = Customer::factory()->create(['kyc_status' => $from]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->assertActionHidden('recordKycRejected');
+
+    expect(fn () => app(RecordKycRejected::class)->handle($customer->id))->toThrow(IllegalKycTransition::class);
+
+    expect(Customer::findOrFail($customer->id)->kyc_status)->toBe($from)
+        ->and(DomainEvent::query()->count())->toBe(0);
+})->with([
+    'not_required → hidden + rejected' => [KycStatus::NotRequired],
+    'verified → hidden + rejected' => [KycStatus::Verified],
+    'rejected → hidden + rejected' => [KycStatus::Rejected],
+    'never-screened (NULL) → hidden + rejected' => [null],
+]);
+
+it('exposes no Customer KYC waive verb — there is no WaiveCustomerKyc Action (design D8)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // `pending` is where a waive would be most tempting (the Producer console offers waiveKyc from any outstanding
+    // state), but the Customer KYC FSM has NO waive: only WaiveProducerKyc exists (producer-only — design D8). The
+    // console registers neither `waiveKyc` nor any waive id, so the action is ABSENT (assertActionDoesNotExist), not
+    // merely hidden — there is nothing to evaluate a ->visible() closure on.
+    $customer = Customer::factory()->create(['kyc_status' => KycStatus::Pending]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->assertActionDoesNotExist('waiveKyc')
+        ->assertActionDoesNotExist('waive');
+});
+
+it('keeps sanctions_status untouched through a console require→verify KYC cycle — no screening event (design D7 independence)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // An `active` Customer already screened `passed`: KYC and sanctions are SEPARATE FSMs (§ 9.4), so a full
+    // require→verify KYC cycle driven through the console must move ONLY kyc_status and its coupled Hold/status events
+    // — never sanctions_status or the screening timestamps, and recording NO screening event. (sanctions_status is set
+    // on the fixture via the operand enum, imported freely — the carve-out governs production code, not tests.)
+    $customer = Customer::factory()->create([
+        'status' => CustomerStatus::Active,
+        'sanctions_status' => SanctionsStatus::Passed,
+    ]);
+
+    // require → `pending` (the coupled `kyc` Hold suspends the active Customer). A FRESH mount re-reads the now-`pending`
+    // record so recordKycVerified is visible → `verified` (the system-lift reactivates the Customer). Two mounts: the
+    // second verb's visibility depends on the first having committed (each Livewire::test re-reads the record).
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->callAction('requireKyc')
+        ->assertNotified((string) __('operator_console.customer.notifications.kyc_required'));
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->callAction('recordKycVerified')
+        ->assertNotified((string) __('operator_console.customer.notifications.kyc_verified'));
+
+    $fresh = Customer::findOrFail($customer->id);
+    // KYC ran its full cycle and the coupling restored the Customer to `active` …
+    expect($fresh->kyc_status)->toBe(KycStatus::Verified)
+        ->and($fresh->status)->toBe(CustomerStatus::Active)
+        // … but the sanctions FSM is exactly as arranged — never screened by the cycle (last_screening_at still NULL),
+        // and NO screening event fired (all four screening event names match the LIKE — design D7 independence).
+        ->and($fresh->sanctions_status)->toBe(SanctionsStatus::Passed)
+        ->and($fresh->last_screening_at)->toBeNull()
+        ->and(DomainEvent::query()->where('name', 'like', 'Customer%creening%')->count())->toBe(0);
 });
