@@ -475,3 +475,5 @@
 ## [2026-06-22 09:21] spec-to-change | operator-console-parties-holds | APPROVED. Holds-first split of Customer-compliance console (KYC+sanctions next). Delta on operator-console: 1 ADDED + 2 MODIFIED reqs (17 scn), 12 tasks. Operand-enum carve-out exercised, no ModuleBoundariesTest widening. validate --strict green. Ready for ralph.
 
 ## [2026-06-22 10:04] ralph | operator-console-parties-holds 1.1 | green | 1 file: dropped stale placeHold/liftHold absence guards in CustomerLifecycleConsoleTest, kept requireKyc; 1397/1397
+
+## [2026-06-22 10:44] ralph | operator-console-parties-holds 1.2 | green | 3 files (CustomerHoldsTable TableWidget vehicle + ViewCustomer getFooterWidgets + test); Filament 5.6.7 API re-verified; full 1399/1399, phpstan 0

@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\
 use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\ReactivateCustomer;
@@ -12,6 +13,7 @@ use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Models\Customer;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Widgets\WidgetConfiguration;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -31,9 +33,13 @@ use Illuminate\Database\Eloquent\Model;
  * (`active | suspended → closed`). All four are FORM-LESS and carry NO confirmation affordance (design D3): the
  * Customer FSM has no separation-of-duties floor (Admin_Panel § 5.2), so no verb collects notes or a
  * "second actor" modal. The Hold-mediated suspend/restore path (`PlaceHold` / `LiftHold`, whose coupling also
- * moves `status` — ADR 2026-06-19) is the compliance slice's surface and coexists ADDITIVELY; it is NOT
- * duplicated here. No Hold / KYC / sanctions / Account / Profile verb belongs on this page — each is its own
- * future slice (design Non-Goals).
+ * moves `status` — ADR 2026-06-19) is THIS slice's surface (operator-console-parties-holds) and coexists
+ * ADDITIVELY with the four verbs: the verbs above never recompute suspension — the Hold surface calls only
+ * `PlaceHold` / `LiftHold` and lets the domain move `status`. The Holds READ table is hosted as a FOOTER WIDGET —
+ * {@see CustomerHoldsTable}, a non-relation Filament 5 `TableWidget` (a Hold is no Eloquent relation of Customer;
+ * the vehicle pinned in task 1.2 against the installed Filament 5.6.7) — registered in {@see getFooterWidgets()};
+ * its `placeHold` header action + per-row `lift` land on it in tasks 3–4. KYC / sanctions / Account / Profile
+ * remain their own future slices (design Non-Goals).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -80,6 +86,20 @@ class ViewCustomer extends ViewRecord
             $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('close', 'closed', fn (Model $record, string $notes) => app(CloseCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
+        ];
+    }
+
+    /**
+     * The Holds READ table, hosted as a footer widget — {@see CustomerHoldsTable}, the non-relation Filament 5
+     * TableWidget vehicle pinned in task 1.2 (a Hold is no Eloquent relation of Customer). The page passes its
+     * record EXPLICITLY: a ViewRecord does not auto-inject `record` into widgets (base `getWidgetData()` is `[]`).
+     *
+     * @return array<int, WidgetConfiguration>
+     */
+    protected function getFooterWidgets(): array
+    {
+        return [
+            CustomerHoldsTable::make(['record' => $this->getRecord()]),
         ];
     }
 }
