@@ -53,17 +53,18 @@ it('hosts the Holds table as a footer widget on the Customer view', function () 
         ->assertSee('Holds widget integration probe');
 });
 
-it('renders the customer-scope Holds with the placeholder per-row action', function () {
+it('renders the customer-scope Holds with the per-row lift action', function () {
     actingAs(Operator::factory()->create(), 'operator');
     $customer = Customer::factory()->create();
 
     // The HoldFactory default is an `active` `admin` Hold at `customer` scope; pin its scope_id onto this Customer
-    // so the widget's customer-scope query (task 1.2) surfaces it.
+    // so the widget's scope-set query surfaces it. `admin` + `active` is operator-liftable (design D5/D6), so the
+    // per-row `lift` action (task 4.1, which replaced the task-1.2 placeholder) is visible on its row.
     $hold = Hold::factory()->create(['scope_id' => $customer->id]);
 
     Livewire::test(CustomerHoldsTable::class, ['record' => $customer])
         ->assertCanSeeTableRecords([$hold])
-        ->assertTableActionExists('placeholder', record: $hold);
+        ->assertTableActionVisible('lift', record: $hold);
 });
 
 it('renders Holds across the customer, account and profile scopes read-only (no inline edit or delete)', function () {
@@ -229,4 +230,37 @@ it('resolves account scope to the Customer Account id when placing a Hold throug
     $hold = Hold::query()->sole();
     expect($hold->scope_type)->toBe(HoldScope::Account)
         ->and($hold->scope_id)->toBe($account->id);
+});
+
+it('shows the per-row lift only on active operator-liftable Holds (admin/fraud/compliance/credit), hiding it on auto-managed and already-lifted Holds', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $customer = Customer::factory()->create();
+
+    // The HoldFactory bypasses the domain Actions (no coupling, no event) — bare customer-scope rows that exercise
+    // the per-row visibility predicate in isolation (task 4.1; design D5/D6). Operator-liftable = `active` AND not
+    // auto-managed: `admin`/`fraud`/`compliance`/`credit` lift through the operator path…
+    $admin = Hold::factory()->create(['hold_type' => HoldType::Admin, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+    $fraud = Hold::factory()->create(['hold_type' => HoldType::Fraud, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+    $compliance = Hold::factory()->create(['hold_type' => HoldType::Compliance, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+    $credit = Hold::factory()->create(['hold_type' => HoldType::Credit, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+
+    // …while `kyc`/`payment` are auto-managed (HoldType::autoLiftable()) — they lift only on their system clearing
+    // signal, so the operator path HIDES them (and LiftHold rejects an operator lift of them — task 4.2).
+    $kyc = Hold::factory()->create(['hold_type' => HoldType::Kyc, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+    $payment = Hold::factory()->create(['hold_type' => HoldType::Payment, 'status' => HoldStatus::Active, 'scope_id' => $customer->id]);
+
+    // An already-`lifted` Hold lifts once — the status half of the predicate hides lift regardless of the (otherwise
+    // liftable) `admin` type.
+    $lifted = Hold::factory()->create(['hold_type' => HoldType::Admin, 'status' => HoldStatus::Lifted, 'scope_id' => $customer->id]);
+
+    Livewire::test(CustomerHoldsTable::class, ['record' => $customer])
+        // Visible on every active operator-liftable row…
+        ->assertTableActionVisible('lift', record: $admin)
+        ->assertTableActionVisible('lift', record: $fraud)
+        ->assertTableActionVisible('lift', record: $compliance)
+        ->assertTableActionVisible('lift', record: $credit)
+        // …hidden on the auto-managed rows (kyc / payment) and on the already-lifted row.
+        ->assertTableActionHidden('lift', record: $kyc)
+        ->assertTableActionHidden('lift', record: $payment)
+        ->assertTableActionHidden('lift', record: $lifted);
 });

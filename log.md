@@ -485,3 +485,5 @@
 ## [2026-06-22 11:28] ralph | operator-console-parties-holds 3.1 | green | placeHold header action + form (6 HoldType/3 HoldScope Selects, profile_id gated on profile scope) on ViewCustomer; 4/4 filtered, 1435 full, phpstan 0 | 2 files
 
 ## [2026-06-22 11:44] ralph | operator-console-parties-holds 3.2 | green | 3 files: placeHold write-through via surfaceLifecycleOutcome+PlaceHold, holdScopeId resolver, +3 tests (a/b/c). suite 1438/1438, phpstan max 0, arch guards unchanged
+
+## [2026-06-22 12:04] ralph | operator-console-parties-holds 4.1 | green | 2 files: per-row lift action on CustomerHoldsTable (reuses SurfacesDomainActions; visible iff active && !autoLiftable via cast ->value, no HoldStatus import; keys off $record->id). full 1439/1439, phpstan max 0, arch 4/4 unchanged
