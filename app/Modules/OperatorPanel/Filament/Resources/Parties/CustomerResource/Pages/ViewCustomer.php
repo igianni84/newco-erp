@@ -8,6 +8,7 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
+use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Actions\ReactivateCustomer;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\HoldScope;
@@ -46,9 +47,10 @@ use Illuminate\Database\Eloquent\Model;
  * the vehicle pinned in task 1.2 against the installed Filament 5.6.7) — registered in {@see getFooterWidgets()}.
  * The `placeHold` form action is a HEADER action on THIS page — {@see placeHoldAction()} — targeting the page's
  * Customer (NOT a table row), built BESPOKE because it carries a Hold-type / scope / Profile form the kit's
- * form-less {@see SurfacesDomainActions::lifecycleAction()} cannot thread; its write-through into `PlaceHold`
- * lands in task 3.2, while the per-row `lift` lands on the widget's table (task 4). KYC / sanctions / Account /
- * Profile remain their own future slices (design Non-Goals).
+ * form-less {@see SurfacesDomainActions::lifecycleAction()} cannot thread; its write-through routes the form
+ * operands into the Parties `PlaceHold` action through {@see SurfacesDomainActions::surfaceLifecycleOutcome()}
+ * (task 3.2), while the per-row `lift` lands on the widget's table (task 4). KYC / sanctions / Account / Profile
+ * remain their own future slices (design Non-Goals).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -116,11 +118,14 @@ class ViewCustomer extends ViewRecord
     }
 
     /**
-     * The `placeHold` header action — the operator's place-a-Hold surface (operator-console-parties-holds, task
-     * 3.1; design L1/L5). Built BESPOKE rather than through {@see SurfacesDomainActions::lifecycleAction()}: a Hold
-     * carries operands the form-less verb helper cannot thread — a {@see HoldType}, a {@see HoldScope} and (for a
-     * profile-scope Hold) the target Profile. The form only COLLECTS here; the write-through routing the data into
-     * the Parties `PlaceHold` action lands in task 3.2.
+     * The `placeHold` header action — the operator's place-a-Hold surface (operator-console-parties-holds, tasks
+     * 3.1/3.2; design L1/L5/D3/D4). Built BESPOKE rather than through {@see SurfacesDomainActions::lifecycleAction()}:
+     * a Hold carries operands the form-less verb helper cannot thread — a {@see HoldType}, a {@see HoldScope} and (for
+     * a profile-scope Hold) the target Profile. The `->action()` narrows the form operands, resolves the scope target
+     * via {@see holdScopeId()} and routes them into the Parties `PlaceHold` action through
+     * {@see SurfacesDomainActions::surfaceLifecycleOutcome()} — REUSING the trait's uniform
+     * success / `RuntimeException`→`action_failed` notification, never an Eloquent write (design D3). The console
+     * invokes ONLY `PlaceHold`; the Hold→`suspended` coupling it triggers is domain-owned and additive (design D7).
      *
      * The two enum Selects offer the raw operand-enum tokens as both value and label (the resource's
      * currency/locale-code Selects precedent — domain data, not UI chrome, so no per-value i18n key); importing the
@@ -150,8 +155,55 @@ class ViewCustomer extends ViewRecord
                 Textarea::make('reason')
                     ->label((string) __('operator_console.customer.fields.reason')),
             ])
-            // The write-through into the Parties PlaceHold action lands in task 3.2; this surface only collects.
-            ->action(function (): void {});
+            ->action(
+                /** @param  array<string, mixed>  $data */
+                function (array $data): void {
+                    $customer = $this->recordOf(Customer::class, $this->getRecord());
+
+                    // The form state arrives stringly-typed (Filament Select values serialize to strings); narrow
+                    // EVERY operand with the slice's `is_string` discipline before constructing the typed PlaceHold
+                    // inputs. hold_type / scope_type are `->required()` → present on the happy path (the `: ''` floors
+                    // satisfy the type system, the trait's `$notes` idiom). `profile_id` is the int-keyed Select's
+                    // chosen key (present only for a profile-scope Hold) → narrowed to `?string` here and cast to int
+                    // in holdScopeId(). reason is optional and normalizes blank → NULL (a system/empty reason is NULL,
+                    // never '' — the CustomerHoldPlaced payload contract).
+                    $type = is_string($data['hold_type'] ?? null) ? $data['hold_type'] : '';
+                    $scope = is_string($data['scope_type'] ?? null) ? $data['scope_type'] : '';
+                    $profileId = is_string($data['profile_id'] ?? null) ? $data['profile_id'] : null;
+                    $reason = is_string($data['reason'] ?? null) && $data['reason'] !== '' ? $data['reason'] : null;
+
+                    $holdScope = HoldScope::from($scope);
+
+                    // The console invokes ONLY PlaceHold (never a Suspend* verb): the Hold→`suspended` coupling is
+                    // domain-owned and additive (design D7). surfaceLifecycleOutcome renders the success/`action_failed`
+                    // notification and never writes Eloquent.
+                    $this->surfaceLifecycleOutcome(
+                        fn () => app(PlaceHold::class)->handle(
+                            HoldType::from($type),
+                            $holdScope,
+                            $this->holdScopeId($customer, $holdScope, $profileId),
+                            $reason,
+                        ),
+                        (string) __('operator_console.customer.notifications.hold_placed'),
+                    );
+                }
+            );
+    }
+
+    /**
+     * Resolve the within-module scope-target id for a placement from the page's Customer (design L4/D4): a
+     * `customer`-scope Hold targets the Customer itself, an `account`-scope Hold its co-provisioned Account
+     * (always present in production — CreateCustomer provisions the 1:1), a `profile`-scope Hold the selected
+     * Club-membership Profile (its already-narrowed Select key, cast to int). The Hold scope carries NO DB FK
+     * (design L1); the id is a within-module reference `PlaceHold` writes verbatim.
+     */
+    private function holdScopeId(Customer $customer, HoldScope $scope, ?string $profileId): int
+    {
+        return match ($scope) {
+            HoldScope::Customer => $customer->id,
+            HoldScope::Account => (int) $customer->account?->id,
+            HoldScope::Profile => (int) $profileId,
+        };
     }
 
     /**

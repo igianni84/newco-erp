@@ -20,12 +20,18 @@
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\ViewCustomer;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Enums\HoldStatus;
 use App\Modules\Parties\Enums\HoldType;
+use App\Modules\Parties\Events\CustomerHoldPlaced;
+use App\Modules\Parties\Events\CustomerSuspended;
 use App\Modules\Parties\Models\Account;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Modules\Parties\Models\Profile;
+use App\Platform\Events\ActorRole;
+use App\Platform\Events\DomainEvent;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
@@ -131,4 +137,96 @@ it('exposes the placeHold form with the six Hold types, three scopes and a profi
         ->assertFormFieldVisible('profile_id')
         ->setActionData(['scope_type' => HoldScope::Account->value])
         ->assertFormFieldHidden('profile_id');
+});
+
+it('places an admin Hold on an active Customer through the console — one active Hold + CustomerHoldPlaced + CustomerSuspended, now suspended', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    // An `active` Customer is in the suspendable from-state, so the domain-owned Hold→`suspended` coupling fires
+    // (PlaceHold invokes SuspendCustomer in the same transaction — the console invokes ONLY PlaceHold, design D7).
+    // The factory co-provisions no Profile, so the suspension cascade is silent (no ProfileSuspended noise) and
+    // CustomerSuspended is the only status event.
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        // callAction mounts placeHold, fills the form with this data, then calls it — the write-through routes the
+        // operands into PlaceHold (task 3.2). The console never writes the Hold row itself.
+        ->callAction('placeHold', [
+            'hold_type' => HoldType::Admin->value,
+            'scope_type' => HoldScope::Customer->value,
+            'reason' => 'manual review',
+        ])
+        ->assertNotified((string) __('operator_console.customer.notifications.hold_placed'));
+
+    // Exactly one `active` Hold on the Customer scope, carrying the submitted reason — written by PlaceHold.
+    $hold = Hold::query()->sole();
+    expect($hold->hold_type)->toBe(HoldType::Admin)
+        ->and($hold->scope_type)->toBe(HoldScope::Customer)
+        ->and($hold->scope_id)->toBe($customer->id)
+        ->and($hold->status)->toBe(HoldStatus::Active)
+        ->and($hold->reason)->toBe('manual review');
+
+    // The coupling drove the active Customer to `suspended` (the view's status badge reflects it through the cast).
+    expect(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Suspended);
+
+    // Exactly one CustomerHoldPlaced, carrying the operator audit envelope (newco_ops + the operator id) resolved
+    // by the Action from the `operator` guard — the console constructs no envelope itself.
+    $placed = DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->sole();
+    expect($placed->module)->toBe('parties')
+        ->and($placed->entity_type)->toBe('Hold')
+        ->and($placed->entity_id)->toBe((string) $hold->id)
+        ->and($placed->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($placed->actor_id)->toEqual($operator->id);  // loose: PG returns a numeric string for the bigint
+
+    // … AND exactly one CustomerSuspended (the coupling's root status event).
+    expect(DomainEvent::query()->where('name', CustomerSuspended::NAME)->count())->toBe(1);
+});
+
+it('places an admin Hold on a pending Customer through the console — Hold recorded, no suspension', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A fresh factory Customer is born `pending` — NOT in the suspendable from-state, so the coupling's from-state
+    // pre-check records the Hold and drives NO transition (the status FSM stays independent of onboarding).
+    $customer = Customer::factory()->create();
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        // No `reason` field submitted → the write-through normalizes the blank operand to NULL (never '').
+        ->callAction('placeHold', [
+            'hold_type' => HoldType::Admin->value,
+            'scope_type' => HoldScope::Customer->value,
+        ])
+        ->assertNotified((string) __('operator_console.customer.notifications.hold_placed'));
+
+    // The Hold is recorded on the Customer scope, with a NULL reason (the un-submitted optional operand).
+    $hold = Hold::query()->sole();
+    expect($hold->scope_type)->toBe(HoldScope::Customer)
+        ->and($hold->scope_id)->toBe($customer->id)
+        ->and($hold->reason)->toBeNull();
+
+    // The pending Customer is untouched, and only CustomerHoldPlaced is recorded — no CustomerSuspended.
+    expect(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Pending)
+        ->and(DomainEvent::query()->where('name', CustomerHoldPlaced::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', CustomerSuspended::NAME)->count())->toBe(0);
+});
+
+it('resolves account scope to the Customer Account id when placing a Hold through the console', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A factory Customer carries no Account (CreateCustomer co-provisions it in production); stand one up so the
+    // account-scope target resolution ($record->account->id — design D4) has the co-provisioned Account to find.
+    $customer = Customer::factory()->create();
+    $account = Account::factory()->for($customer)->create();
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->callAction('placeHold', [
+            'hold_type' => HoldType::Fraud->value,
+            'scope_type' => HoldScope::Account->value,
+        ])
+        ->assertNotified((string) __('operator_console.customer.notifications.hold_placed'));
+
+    // The scope-target resolution routed `account` scope to the Account id (NOT the Customer id) — design D4.
+    $hold = Hold::query()->sole();
+    expect($hold->scope_type)->toBe(HoldScope::Account)
+        ->and($hold->scope_id)->toBe($account->id);
 });
