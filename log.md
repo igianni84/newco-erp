@@ -455,3 +455,15 @@
 ## [2026-06-21 11:28] ralph | operator-console-parties-supply-side 11.1 | green | 1 file (ProducerAgreementConsoleChainTest) | CHANGE COMPLETE 19/19 | SQLite 1325 + PG17 202 green
 
 ## [2026-06-21 20:44] close-ritual | operator-console-parties-supply-side | PG17 full suite 1325/1325 green; semantic-verify 0 CRITICAL (faithful to delta spec); merged --no-ff to main + archived (4 reqs -> living operator-console spec, 19 total). Push to origin/main deferred to human (classifier-gated); local ralph branch retained.
+
+## [2026-06-21 21:41] spec-to-change | operator-console-parties-customer | Authored + APPROVED: Customer operator console (3 reqs, 5 task groups, PG17 chain). ADR 2026-06-21 closes rule-of-three/D10 (continue trait, no verb-list base). No domain code/migration/boundary change.
+
+## [2026-06-21 22:01] ralph | operator-console-parties-customer 1.1/1.2/1.3 | green | 7 files | Customer read-only console (Resource+List+real Create+View stub) + EN/IT i18n; SQLite 1330/1330, phpstan 0, boundary untouched (D6 operands platform-level)
+
+## [2026-06-21 22:12] ralph | operator-console-parties-customer 2.1/2.2 | green | 3 files (CustomerResource::form + create-field i18n EN/IT + CustomerCreateConsoleTest); SQLite 1333/1333, phpstan 0, boundary 3/3 unchanged (D6), validate strict ok
+
+## [2026-06-21 22:23] ralph | operator-console-parties-customer 3.1/3.2 | green | ViewCustomer 4 form-less status verbs (activate/suspend/reactivate/close) via SurfacesDomainActions + EN/IT actions/notifications i18n + CustomerLifecycleConsoleTest 9/9; full 1342/1342, phpstan 0, boundary 3/3 unchanged | 4 files
+
+## [2026-06-21 22:32] ralph | operator-console-parties-customer 4.1 | green | 1 file (CustomerConsoleI18nTest 54/54: 26 EN-baseline+24 IT-differs+2 fallback+1 IT⊆EN+1 sink; full 1396/1396; mutation-proved non-vacuous)
+
+## [2026-06-22 08:26] ralph | operator-console-parties-customer 5.1 | green | 1 new test (CustomerConsoleChainTest, PG17 closing-chain) | SQLite 1397/1397, PG17 274/274, phpstan 0, boundary 3/3 unchanged | ALL 9 tasks done

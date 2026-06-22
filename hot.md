@@ -1,30 +1,29 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-21
+updated: 2026-06-22
 ---
 
 # Hot Cache
 
 ## Last Updated
-**2026-06-21 (`operator-console-parties-supply-side` — CLOSED: merged + archived via GUIDE §2.7).** The change shipped the **Club + ProducerAgreement** operator consoles (read / create / lifecycle / i18n / closing-chain each), completing the Parties supply-side console trio (Producer archived 2026-06-20). Closing ritual run end-to-end: branch reviewed (12 commits, clean diff, no composer drift) → **PG17 full suite 1325/1325** (7360 assn) → **semantic-verification 0 CRITICAL** (fresh-context subagent; faithful to delta spec, all 22 scenarios test-mapped) → `git merge --no-ff` to **main** (48f2f78) → `openspec archive` (b913a73; 4 reqs merged into living `openspec/specs/operator-console/spec.md` → 19 total; change moved to `changes/archive/2026-06-21-operator-console-parties-supply-side`). Built on the operand-enum carve-out (ADR 2026-06-21, extends 2026-06-19).
+**2026-06-22 (`operator-console-parties-customer` — COMPLETE: 9/9 tasks → `<promise>CHANGE_COMPLETE</promise>`).** Group 5 (task 5.1) added `CustomerConsoleChainTest` — the PG17 closing-chain integration proof. One `it()` drives a Customer through the console PAGES per D9: **(a)** create via `CreateCustomer` page → `pending` + 1 `CustomerCreated`, then a gate-UNMET `activate` via `ViewCustomer` → `action_failed`, stays `pending`, **records no event** (an intermediate `toEqual(['CustomerCreated'])` localises the D5 cross-slice-gate claim); **(b)** factory-seed a gate-MET, profile-less Customer (3 acceptances + `sanctions_status=Passed`, `kyc_required` null) and drive activate→suspend→reactivate→close → emergent set `toEqualCanonicalizing(['CustomerCreated','CustomerActivated','CustomerSuspended','CustomerReactivated','CustomerClosed'])` (5 events; profile-less seed kept the Profile cascade silent), every event `parties`/`NewcoOps`/actor non-null, representative actor_id loose-`toEqual` operator. Test-only iteration.
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (level max) · Pint 1.29.1. SQLite dev; prod PG17.
-- **GREEN:** SQLite suite **1325/1325**; **PG17 full-suite 1325/1325** (7360 assn) as the production-engine close gate; phpstan 0; pint + pint --test clean; `openspec validate` valid pre-archive; composer diff vs `main` empty.
-- **main is 2 commits ahead of origin/main, UNPUSHED** (merge + archive). Push to origin/main was **classifier-denied** (bypasses review; not in the user's 4-step ask) — deferred to human. Local branch `ralph/operator-console-parties-supply-side` **retained** (merged, not deleted).
-- **Run-cmd gotchas:** full suite OOMs under bare `php artisan test` → use `php -d memory_limit=-1 vendor/bin/pest`. PG17 container `newco-pg17-test` **removed** post-ritual (recreate per GUIDE §2.7 recipe when next needed).
+- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (max) · Pint 1.29.1. SQLite dev; prod PG17.
+- **Last GREEN: SQLite 1397/1397 (7683 assn, +1 test/+54 assn), filtered `CustomerConsoleChainTest` 1/1 (54 assn); PG17 folder run 274/274 (1274 assn — Parties console folder + Catalog sink-helper loader, `postgres:17` on 55432, container torn down); phpstan 0; pint clean; `ModuleBoundariesTest` 3/3 (189 assn) UNCHANGED; validate --strict valid; composer diff vs main empty.**
+- **main is 2 commits ahead of origin/main, UNPUSHED** (supply-side merge+archive; push classifier-denied earlier) — deferred to human. This change's branch `ralph/operator-console-parties-customer` is NOT yet merged.
+- Run-cmd: full `php -d memory_limit=-1 vendor/bin/pest`. PG17 = GUIDE §2.7 ritual: `docker run -d --name pg … postgres:17 -p 55432:5432` → poll `pg_isready` → `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 … vendor/bin/pest <folder>` (append a Catalog i18n test so the shared sink helper loads) → `docker rm -f pg`. i18n tests via `--filter`/full suite, NEVER a bare path.
 
 ## Active Change & Next Task
-- **Active: NONE.** No in-flight change. Parties supply-side console trio complete (Producer + Club + ProducerAgreement).
-- **Next (human picks)** per Build Workplan F2: demand-side `operator-console-parties-customer` (Customer's 3 orthogonal FSMs + Account + multi-Profile — the rule-of-three trigger for the `OperatorConsoleViewRecord` verb-list generalization, deliberately deferred here per design.md D10); or `operator-console-parties-compliance` (Hold registry + sanctions; crosses object-storage ADR gate if it stores KYC docs); or another F2 K/0 slice via `/spec-to-change`.
+- **`operator-console-parties-customer` COMPLETE — 9 of 9 tasks done.** Branch `ralph/operator-console-parties-customer` awaits **human review → merge to main → semantic-verify (GUIDE §2.7) → `openspec archive`** — the loop does NOT archive/merge/push.
+- **No next task in this change.** Forward note: the next slice `operator-console-parties-compliance` will surface `PlaceHold`/`LiftHold`, whose coupling ALSO moves Customer status — its design MUST reference D4 here and treat the Hold-driven transition as additive to (not a replacement of) the direct activate/suspend/reactivate/close verbs shipped here.
 
 ## Blockers & Decisions Needed
-- **Push decision (human):** main holds the merge + archive commits locally; origin/main not updated. Decide push-to-main vs PR vs hold, then optionally `git branch -d ralph/operator-console-parties-supply-side`.
+- **Push decision (human, carried over):** main holds the supply-side merge+archive locally (2 commits); origin/main not updated. This Customer change adds further local commits on its ralph branch (also unpushed).
 - Otherwise none.
 
 ## Open Patterns
-- **Closing-chain integration test (thrice-proven: Producer + Club + ProducerAgreement).** One `it()`, `DatabaseMigrations`, drive the slice through the PAGES (not raw Actions); assert the emergent `DomainEvent` set `toEqualCanonicalizing` + foreach the newco_ops envelope + representative loose `actor_id`/`causation_id` (PG numeric strings). ALWAYS grep `app/` for the events first to prove no listener/projector leaks. `toEqualCanonicalizing` is a multiset compare (duplicates preserved). Re-instantiate the View page per `callAction`.
-- **Supersession = side-effect not verb (D8), proven end-to-end.** Activate B in A's NULL-safe `(producer_id,club_id)` scope → A superseded; `ProducerAgreementSuperseded` (entity_id=A) carries B's activation id as `causation_id`. Find B's activation among siblings via `where('entity_id',(string)$b->id)`.
-- **i18n five-guard kit completeness (four-times-proven).** Test count = |kit| + |differs| + 2 + 1 + 1; trailing-dot `str_starts_with` filter load-bearing; run via `--filter` (sink helper lives in another file).
-- **Rule-of-three deferred:** verb-list generalization of `OperatorConsoleViewRecord` waits for a demand-side console (Customer) before committing the abstraction.
+- **Two-part closing-chain for a cross-slice-gated FSM:** drive the gate-UNMET path through the REAL create page (proves graceful reject, D5), then a factory-seeded gate-MET record through the full FSM; an intermediate single-element `toEqual([...])` localises the gate claim before the global `toEqualCanonicalizing`. Recipe in the change's `progress.md` §5.1.
+- **Console i18n completeness test = enumerate kit contract + 5 guards (proven 5×).** Full recipe + the 2 gotchas in `progress.md` §Codebase Patterns.
+- **Non-catalog status-FSM view page = `ViewRecord` + `use SurfacesDomainActions` + bespoke `getHeaderActions()`** (D8 CLOSED). The cross-slice activation gate (D5) is a test-seed concern, not code.
