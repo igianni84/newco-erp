@@ -513,3 +513,5 @@
 ## [2026-06-22 18:18] ralph | operator-console-parties-kyc-sanctions 2.2 | green | 1 file (test) | KYC write-through + auto-Hold coupling: require→pending+kyc-Hold+suspend, verify→lift+reactivate, reject→audit-only; zero CustomerKyc%; suite 1475/1475
 
 ## [2026-06-22 18:29] ralph | operator-console-parties-kyc-sanctions 2.3 | green | 1 file (test-only) | reject-floor + no-waive + KYC↔sanctions independence; suite 1488/1488, filter 26/26, phpstan max 0
+
+## [2026-06-22 18:40] ralph | operator-console-parties-kyc-sanctions 3.1 | green | 2 files — recordScreening bespoke form action (verdict + record-dependent trigger_source, onboarding-first drop D6); suite 1489/1489, phpstan max 0, ModuleBoundaries unchanged

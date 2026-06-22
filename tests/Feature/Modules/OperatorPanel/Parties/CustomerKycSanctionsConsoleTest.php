@@ -12,7 +12,8 @@
 // simply hidden; its reject is proven by a domain toThrow + assertActionHidden (task 2.3), never an action_failed
 // the page can't raise (the Filament hidden-action landmine, lessons.md 2026-06-22). Task 2.1 pins the VISIBILITY
 // contract; 2.2 the write-through + auto-Hold coupling; 2.3 (below) the reject-floor + the no-waive guard (design D8)
-// + the KYC↔sanctions independence check (design D7); 3.x the sanctions form (upcoming).
+// + the KYC↔sanctions independence check (design D7); 3.1 (below) the sanctions form's verdict + record-dependent
+// trigger_source options; 3.2/3.3 its write-through + the onboarding-first floor (upcoming).
 //
 // THE KYC VERBS ARE EVENT-SILENT (design D7): the only events are the coupled CustomerHoldPlaced/Lifted (from the
 // auto-Hold) + CustomerSuspended/Reactivated (from the coupling); RecordKycRejected records NOTHING. No
@@ -44,6 +45,7 @@ use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -331,4 +333,41 @@ it('keeps sanctions_status untouched through a console require→verify KYC cycl
         ->and($fresh->sanctions_status)->toBe(SanctionsStatus::Passed)
         ->and($fresh->last_screening_at)->toBeNull()
         ->and(DomainEvent::query()->where('name', 'like', 'Customer%creening%')->count())->toBe(0);
+});
+
+// ── 3.1 · The sanctions-screening form (design D3/D6) ─────────────────────────────────────────────────────────────
+// recordScreening is a BESPOKE form header action (the placeHold precedent — NOT a form-less verb): a screening
+// carries a SanctionsStatus verdict + a ScreeningTriggerSource operand. The verdict Select offers all four states;
+// the trigger_source Select offers a RECORD-DEPENDENT subset — `onboarding` ONLY while the Customer has never been
+// screened (design D6 — onboarding-is-first), `compliance_ad_hoc` always (the deferred cadence/aml_threshold
+// automation sources are never operator-offered, § 9.5). The write-through into RecordCustomerScreening lands in 3.2;
+// here the form only collects, so the action body is a no-op and this test only mounts-and-inspects the schema.
+
+it('exposes the recordScreening form — all four SanctionsStatus verdicts, with trigger_source dropping onboarding once screened (design D6)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A never-screened Customer: the bare factory sets none of the additive screening columns, so last_screening_at
+    // is NULL — trigger_source offers BOTH onboarding (the first-screen source) and compliance_ad_hoc.
+    $neverScreened = Customer::factory()->create();
+
+    Livewire::test(ViewCustomer::class, ['record' => $neverScreened->id])
+        // recordScreening is a HEADER form action on the page (always present — no from-state gate); mount it to
+        // inspect its schema (the form only collects here — the write-through lands in 3.2).
+        ->mountAction('recordScreening')
+        // verdict exposes EXACTLY the four SanctionsStatus operand-enum tokens (value-keyed, in enum order).
+        ->assertFormFieldExists('verdict', fn (Select $field): bool => array_keys($field->getOptions())
+            === array_map(static fn (SanctionsStatus $status): string => $status->value, SanctionsStatus::cases()))
+        // trigger_source on a never-screened Customer offers onboarding FIRST, then compliance_ad_hoc (design D6).
+        ->assertFormFieldExists('trigger_source', fn (Select $field): bool => array_keys($field->getOptions())
+            === ['onboarding', 'compliance_ad_hoc']);
+
+    // An already-screened Customer (last_screening_at stamped): onboarding-is-first means the option DROPS — only
+    // compliance_ad_hoc remains offerable, the EXACT COMPLEMENT of RecordCustomerScreening's onboarding-already-
+    // screened floor (the option-set narrows; the domain still enforces — the surface-hides + domain-enforces split).
+    $screened = Customer::factory()->create(['last_screening_at' => now()]);
+
+    Livewire::test(ViewCustomer::class, ['record' => $screened->id])
+        ->mountAction('recordScreening')
+        ->assertFormFieldExists('trigger_source', fn (Select $field): bool => array_keys($field->getOptions())
+            === ['compliance_ad_hoc']);
 });
