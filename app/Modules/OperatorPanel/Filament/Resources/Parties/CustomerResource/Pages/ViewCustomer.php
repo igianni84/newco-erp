@@ -10,9 +10,15 @@ use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\ReactivateCustomer;
 use App\Modules\Parties\Actions\SuspendCustomer;
+use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Models\Customer;
+use App\Modules\Parties\Models\Profile;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Widgets\WidgetConfiguration;
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,9 +43,12 @@ use Illuminate\Database\Eloquent\Model;
  * ADDITIVELY with the four verbs: the verbs above never recompute suspension — the Hold surface calls only
  * `PlaceHold` / `LiftHold` and lets the domain move `status`. The Holds READ table is hosted as a FOOTER WIDGET —
  * {@see CustomerHoldsTable}, a non-relation Filament 5 `TableWidget` (a Hold is no Eloquent relation of Customer;
- * the vehicle pinned in task 1.2 against the installed Filament 5.6.7) — registered in {@see getFooterWidgets()};
- * its `placeHold` header action + per-row `lift` land on it in tasks 3–4. KYC / sanctions / Account / Profile
- * remain their own future slices (design Non-Goals).
+ * the vehicle pinned in task 1.2 against the installed Filament 5.6.7) — registered in {@see getFooterWidgets()}.
+ * The `placeHold` form action is a HEADER action on THIS page — {@see placeHoldAction()} — targeting the page's
+ * Customer (NOT a table row), built BESPOKE because it carries a Hold-type / scope / Profile form the kit's
+ * form-less {@see SurfacesDomainActions::lifecycleAction()} cannot thread; its write-through into `PlaceHold`
+ * lands in task 3.2, while the per-row `lift` lands on the widget's table (task 4). KYC / sanctions / Account /
+ * Profile remain their own future slices (design Non-Goals).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -72,10 +81,12 @@ class ViewCustomer extends ViewRecord
     }
 
     /**
-     * The Customer's four status header actions — activate / suspend / reactivate / close, the manual status-FSM
-     * path (design D4). All are form-less and carry no confirmation affordance (design D3); each routes to its
-     * typed Parties action by the customer `int $id`, never an Eloquent write. `activate` is cross-slice-gated by
-     * the Action — a gate-unmet attempt rejects gracefully as a danger notification (design D5).
+     * The Customer's header actions: the four status verbs — activate / suspend / reactivate / close, the manual
+     * status-FSM path (design D4) — plus the `placeHold` form action. The four verbs are form-less and carry no
+     * confirmation affordance (design D3); each routes to its typed Parties action by the customer `int $id`, never
+     * an Eloquent write. `activate` is cross-slice-gated by the Action — a gate-unmet attempt rejects gracefully as
+     * a danger notification (design D5). `placeHold` ({@see placeHoldAction()}) is bespoke — it carries a Hold-type
+     * / scope / Profile form, so it is NOT a form-less status verb.
      *
      * @return array<int, Action>
      */
@@ -86,6 +97,7 @@ class ViewCustomer extends ViewRecord
             $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('close', 'closed', fn (Model $record, string $notes) => app(CloseCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
+            $this->placeHoldAction(),
         ];
     }
 
@@ -101,5 +113,85 @@ class ViewCustomer extends ViewRecord
         return [
             CustomerHoldsTable::make(['record' => $this->getRecord()]),
         ];
+    }
+
+    /**
+     * The `placeHold` header action — the operator's place-a-Hold surface (operator-console-parties-holds, task
+     * 3.1; design L1/L5). Built BESPOKE rather than through {@see SurfacesDomainActions::lifecycleAction()}: a Hold
+     * carries operands the form-less verb helper cannot thread — a {@see HoldType}, a {@see HoldScope} and (for a
+     * profile-scope Hold) the target Profile. The form only COLLECTS here; the write-through routing the data into
+     * the Parties `PlaceHold` action lands in task 3.2.
+     *
+     * The two enum Selects offer the raw operand-enum tokens as both value and label (the resource's
+     * currency/locale-code Selects precedent — domain data, not UI chrome, so no per-value i18n key); importing the
+     * {@see HoldType} / {@see HoldScope} OPERAND enums is the {Models, Actions, Enums} carve-out (ADR 2026-06-21 —
+     * a namespace-prefix allow, no allow-list widening). The `profile_id` Select is populated from the Customer's
+     * Club-membership Profiles and shown ONLY for a profile-scope Hold — the `scope_type` Select is `->live()` so
+     * the dependency re-evaluates. Labels resolve the DESCRIPTIVE `fields.*` form group (invariant 12).
+     */
+    protected function placeHoldAction(): Action
+    {
+        return Action::make('placeHold')
+            ->label((string) __('operator_console.customer.actions.place_hold'))
+            ->schema([
+                Select::make('hold_type')
+                    ->label((string) __('operator_console.customer.fields.hold_type'))
+                    ->options($this->holdTypeOptions())
+                    ->required(),
+                Select::make('scope_type')
+                    ->label((string) __('operator_console.customer.fields.hold_scope'))
+                    ->options($this->holdScopeOptions())
+                    ->required()
+                    ->live(),
+                Select::make('profile_id')
+                    ->label((string) __('operator_console.customer.fields.profile'))
+                    ->options(fn (): array => $this->profileOptions())
+                    ->visible(fn (Get $get): bool => $get('scope_type') === HoldScope::Profile->value),
+                Textarea::make('reason')
+                    ->label((string) __('operator_console.customer.fields.reason')),
+            ])
+            // The write-through into the Parties PlaceHold action lands in task 3.2; this surface only collects.
+            ->action(function (): void {});
+    }
+
+    /**
+     * The `hold_type` Select options — the six {@see HoldType} operand-enum tokens keyed value → value (the
+     * resource's currency/locale-code Selects precedent: domain data, not UI chrome, so no per-value i18n key).
+     *
+     * @return array<string, string>
+     */
+    private function holdTypeOptions(): array
+    {
+        return collect(HoldType::cases())
+            ->mapWithKeys(static fn (HoldType $type): array => [$type->value => $type->value])
+            ->all();
+    }
+
+    /**
+     * The `scope_type` Select options — the three {@see HoldScope} operand-enum tokens keyed value → value.
+     *
+     * @return array<string, string>
+     */
+    private function holdScopeOptions(): array
+    {
+        return collect(HoldScope::cases())
+            ->mapWithKeys(static fn (HoldScope $scope): array => [$scope->value => $scope->value])
+            ->all();
+    }
+
+    /**
+     * The `profile_id` Select options for a profile-scope Hold — the page Customer's Club-membership Profiles, keyed
+     * by Profile id → its Club's display name (the within-Parties read the infolist already uses). Evaluated lazily
+     * (a Closure on the Select) so it reads the resolved record at render time; empty when the Customer holds no
+     * Profiles.
+     *
+     * @return array<int, string>
+     */
+    private function profileOptions(): array
+    {
+        return $this->recordOf(Customer::class, $this->getRecord())
+            ->profiles
+            ->mapWithKeys(static fn (Profile $profile): array => [$profile->id => $profile->club->display_name])
+            ->all();
     }
 }

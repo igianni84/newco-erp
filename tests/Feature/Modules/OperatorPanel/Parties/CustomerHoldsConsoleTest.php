@@ -21,10 +21,12 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Enums\HoldType;
 use App\Modules\Parties\Models\Account;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Modules\Parties\Models\Profile;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -102,4 +104,31 @@ it('renders Holds across the customer, account and profile scopes read-only (no 
         // `lift`, landing in task 4.1).
         ->assertTableActionDoesNotExist('edit', record: $customerHold)
         ->assertTableActionDoesNotExist('delete', record: $customerHold);
+});
+
+it('exposes the placeHold form with the six Hold types, three scopes and a profile field gated on a profile-scope Hold', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A Customer with one Club-membership Profile so the profile-scope branch resolves a real option
+    // ($profile->club->display_name) once profile_id is shown — exercising profileOptions() end to end.
+    $customer = Customer::factory()->create();
+    Profile::factory()->for($customer)->create();
+
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        // placeHold is a HEADER action on the page (task 3.1), targeting the page's Customer — mount it to inspect
+        // its form schema (the form only collects here; the write-through into PlaceHold lands in task 3.2).
+        ->mountAction('placeHold')
+        // hold_type exposes EXACTLY the six HoldType operand-enum tokens (value-keyed, in enum order).
+        ->assertFormFieldExists('hold_type', fn (Select $field): bool => array_keys($field->getOptions())
+            === array_map(static fn (HoldType $type): string => $type->value, HoldType::cases()))
+        // scope_type exposes EXACTLY the three HoldScope tokens.
+        ->assertFormFieldExists('scope_type', fn (Select $field): bool => array_keys($field->getOptions())
+            === array_map(static fn (HoldScope $scope): string => $scope->value, HoldScope::cases()))
+        // profile_id is gated on a profile-scope Hold: hidden by default (scope unset), shown only for `profile`,
+        // and hidden again for any other scope (the `scope_type` Select is `->live()`).
+        ->assertFormFieldHidden('profile_id')
+        ->setActionData(['scope_type' => HoldScope::Profile->value])
+        ->assertFormFieldVisible('profile_id')
+        ->setActionData(['scope_type' => HoldScope::Account->value])
+        ->assertFormFieldHidden('profile_id');
 });

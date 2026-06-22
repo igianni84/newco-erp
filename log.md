@@ -481,3 +481,5 @@
 ## [2026-06-22 10:56] ralph | operator-console-parties-holds 1.3 | green | 3 files — 17 EN+IT Hold i18n keys (actions/fields/holds.columns/notifications) front-loaded + enumerated in CustomerConsoleI18nTest; 88/88 filtered, full 1433/1433, phpstan 0
 
 ## [2026-06-22 11:12] ralph | operator-console-parties-holds 2.1 | green | 2 files | Holds read table over scope-set union (customer ∪ Account ∪ Profiles), 8 cast-rendered columns, no edit/delete; 1434/1434, phpstan max 0
+
+## [2026-06-22 11:28] ralph | operator-console-parties-holds 3.1 | green | placeHold header action + form (6 HoldType/3 HoldScope Selects, profile_id gated on profile scope) on ViewCustomer; 4/4 filtered, 1435 full, phpstan 0 | 2 files
