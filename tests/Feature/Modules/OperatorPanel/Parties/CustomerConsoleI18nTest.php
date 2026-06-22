@@ -54,7 +54,13 @@ use Illuminate\Support\Facades\Lang;
  *   - ListCustomers: actions.create (the header create-LINK label);
  *   - SurfacesDomainActions: actions.{activate,suspend,reactivate,close} +
  *     notifications.{activated,suspended,reactivated,closed} (the four verbs) + notifications.action_failed
- *     (the rejection title).
+ *     (the rejection title);
+ *   - the Holds surface (operator-console-parties-holds): the place-Hold header action + the per-row lift action
+ *     (actions.{place_hold,lift_hold}) with their form inputs (fields.{hold_type,hold_scope,profile,reason,
+ *     lift_reason}) and outcome titles (notifications.{hold_placed,hold_lifted}; action_failed is reused), plus
+ *     the read-only Holds table column headers (holds.columns.{hold_type,scope_type,status,reason,placed_by,
+ *     placed_at,lifted_by,lifted_at}). Front-loaded here (this change, task 1.3) ahead of the resolving code in
+ *     tasks 2–4, so the i18n contract is green before the surface lands.
  * A console that resolves all of these MUST author them all or a label renders as a raw key under any locale.
  *
  * @return list<string> dot-paths WITHOUT the `operator_console.customer.` prefix
@@ -65,8 +71,12 @@ function customerConsoleKitKeys(): array
         'label', 'plural_label',
         'columns.name', 'columns.email', 'columns.status', 'columns.kyc_status', 'columns.sanctions_status', 'columns.account_status', 'columns.profiles', 'columns.version',
         'fields.email', 'fields.name', 'fields.phone', 'fields.date_of_birth', 'fields.preferred_currency', 'fields.preferred_locale',
+        'fields.hold_type', 'fields.hold_scope', 'fields.profile', 'fields.reason', 'fields.lift_reason',
         'actions.create', 'actions.activate', 'actions.suspend', 'actions.reactivate', 'actions.close',
+        'actions.place_hold', 'actions.lift_hold',
+        'holds.columns.hold_type', 'holds.columns.scope_type', 'holds.columns.status', 'holds.columns.reason', 'holds.columns.placed_by', 'holds.columns.placed_at', 'holds.columns.lifted_by', 'holds.columns.lifted_at',
         'notifications.activated', 'notifications.suspended', 'notifications.reactivated', 'notifications.closed', 'notifications.action_failed',
+        'notifications.hold_placed', 'notifications.hold_lifted',
     ];
 }
 

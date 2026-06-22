@@ -477,3 +477,5 @@
 ## [2026-06-22 10:04] ralph | operator-console-parties-holds 1.1 | green | 1 file: dropped stale placeHold/liftHold absence guards in CustomerLifecycleConsoleTest, kept requireKyc; 1397/1397
 
 ## [2026-06-22 10:44] ralph | operator-console-parties-holds 1.2 | green | 3 files (CustomerHoldsTable TableWidget vehicle + ViewCustomer getFooterWidgets + test); Filament 5.6.7 API re-verified; full 1399/1399, phpstan 0
+
+## [2026-06-22 10:56] ralph | operator-console-parties-holds 1.3 | green | 3 files — 17 EN+IT Hold i18n keys (actions/fields/holds.columns/notifications) front-loaded + enumerated in CustomerConsoleI18nTest; 88/88 filtered, full 1433/1433, phpstan 0

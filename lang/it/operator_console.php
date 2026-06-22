@@ -450,6 +450,13 @@ return [
             'date_of_birth' => 'Data di nascita',
             'preferred_currency' => 'Valuta preferita',
             'preferred_locale' => 'Lingua preferita',
+            // Input del form Applica/Rimuovi blocco (operator-console-parties-holds). «Hold» → «blocco» (non
+            // «sospensione»: il blocco è distinto dal verbo di stato Sospendi, che un blocco può però innescare).
+            'hold_type' => 'Tipo di blocco',
+            'hold_scope' => 'Ambito del blocco',
+            'profile' => 'Profilo',
+            'reason' => 'Motivo',
+            'lift_reason' => 'Motivo della rimozione',
         ],
 
         'actions' => [
@@ -458,6 +465,8 @@ return [
             'suspend' => 'Sospendi',
             'reactivate' => 'Riattiva',
             'close' => 'Chiudi',
+            'place_hold' => 'Applica blocco',
+            'lift_hold' => 'Rimuovi blocco',
         ],
 
         'notifications' => [
@@ -465,7 +474,22 @@ return [
             'suspended' => 'Cliente sospeso.',
             'reactivated' => 'Cliente riattivato.',
             'closed' => 'Cliente chiuso.',
+            'hold_placed' => 'Blocco applicato al cliente.',
+            'hold_lifted' => 'Blocco rimosso dal cliente.',
             'action_failed' => 'Impossibile completare l’azione.',
+        ],
+
+        'holds' => [
+            'columns' => [
+                'hold_type' => 'Tipo',
+                'scope_type' => 'Ambito',
+                'status' => 'Stato',
+                'reason' => 'Motivo',
+                'placed_by' => 'Applicato da',
+                'placed_at' => 'Applicato il',
+                'lifted_by' => 'Rimosso da',
+                'lifted_at' => 'Rimosso il',
+            ],
         ],
     ],
 

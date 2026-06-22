@@ -707,29 +707,64 @@ return [
             'date_of_birth' => 'Date of birth',
             'preferred_currency' => 'Preferred currency',
             'preferred_locale' => 'Preferred locale',
+            // The place-Hold / lift-Hold form inputs (operator-console-parties-holds, tasks 3.1/4.1). `hold_type`
+            // selects over HoldType::cases(), `hold_scope` over HoldScope::cases(); `profile` is the Profile
+            // picker shown only for a profile-scope Hold; `reason` is the optional place-Hold note and
+            // `lift_reason` the optional lift note (controlled business strings, never PII — Hold model design L5).
+            'hold_type' => 'Hold type',
+            'hold_scope' => 'Hold scope',
+            'profile' => 'Profile',
+            'reason' => 'Reason',
+            'lift_reason' => 'Lift reason',
         ],
 
         // Create-page header link + the four write-through status-FSM verb labels on the ViewCustomer page
-        // (activate / suspend / reactivate / close — the manual path, design D4). Each routes through a Parties
-        // domain action, never a Filament default mutating path (ADR 2026-06-19; design D1).
+        // (activate / suspend / reactivate / close — the manual path, design D4), plus the two Hold-surface verbs
+        // (operator-console-parties-holds): `place_hold` (the ViewCustomer header action, task 3.1) and
+        // `lift_hold` (the per-row action on the Holds table, task 4.1). Each routes through a Parties domain
+        // action (the status verbs + PlaceHold / LiftHold), never a Filament default mutating path (ADR
+        // 2026-06-19; design D1).
         'actions' => [
             'create' => 'New Customer',
             'activate' => 'Activate',
             'suspend' => 'Suspend',
             'reactivate' => 'Reactivate',
             'close' => 'Close',
+            'place_hold' => 'Place hold',
+            'lift_hold' => 'Lift hold',
         ],
 
-        // Outcome notifications for the four write-through status verbs. The success titles confirm the domain
-        // transition; `action_failed` is the danger title shown when the domain rejects a transition — an
-        // out-of-state call, or the cross-slice activation gate not yet met (design D5) — with the rejection's
-        // own localized message (from lang/*/parties.php) rendered as the body.
+        // Outcome notifications for the four write-through status verbs + the two Hold-surface verbs
+        // (operator-console-parties-holds). The success titles confirm the domain transition; `hold_placed` /
+        // `hold_lifted` confirm the place / lift; `action_failed` is the shared danger title shown when the domain
+        // rejects ANY of these — an out-of-state call, the cross-slice activation gate not yet met, or an illegal
+        // Hold lift (design D5) — with the rejection's own localized message (from lang/*/parties.php) as the body.
         'notifications' => [
             'activated' => 'Customer activated.',
             'suspended' => 'Customer suspended.',
             'reactivated' => 'Customer reactivated.',
             'closed' => 'Customer closed.',
+            'hold_placed' => 'Hold placed on the customer.',
+            'hold_lifted' => 'Hold lifted from the customer.',
             'action_failed' => 'The action could not be completed.',
+        ],
+
+        // The read-only Holds table on the ViewCustomer page (operator-console-parties-holds, tasks 2.1/4.1) — a
+        // non-relation table sourced by a direct Hold::query() over the Customer's scope-set (customer ∪ Account ∪
+        // Profiles). Terse column headers for the Hold registry: `hold_type` / `scope_type` / `status` render the
+        // model's BackedEnum casts; `reason` is the place note; `placed_by` / `lifted_by` render the actor (role +
+        // id); `placed_at` is the Hold's created_at and `lifted_at` its lift timestamp (null while active).
+        'holds' => [
+            'columns' => [
+                'hold_type' => 'Type',
+                'scope_type' => 'Scope',
+                'status' => 'Status',
+                'reason' => 'Reason',
+                'placed_by' => 'Placed by',
+                'placed_at' => 'Placed at',
+                'lifted_by' => 'Lifted by',
+                'lifted_at' => 'Lifted at',
+            ],
         ],
     ],
 
