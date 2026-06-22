@@ -509,3 +509,5 @@
 ## [2026-06-22 17:58] ralph | operator-console-parties-kyc-sanctions 1.3 | green | 3 files | front-loaded 10 KYC/sanctions i18n keys EN+IT (IT≠EN) + test key-contract; suite 1462/1462, phpstan/pint/openspec clean
 
 ## [2026-06-22 18:08] ralph | operator-console-parties-kyc-sanctions 2.1 | green | 2 files | 3 form-less visibility-gated KYC verbs on ViewCustomer + kycRequirable/kycPending cast-value predicates; CustomerKycSanctionsConsoleTest 10/10; full suite 1472/1472; phpstan max 0; no KycStatus/IllegalKycTransition import
+
+## [2026-06-22 18:18] ralph | operator-console-parties-kyc-sanctions 2.2 | green | 1 file (test) | KYC write-through + auto-Hold coupling: require→pending+kyc-Hold+suspend, verify→lift+reactivate, reject→audit-only; zero CustomerKyc%; suite 1475/1475
