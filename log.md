@@ -499,3 +499,7 @@
 ## [2026-06-22 16:02] ralph | operator-console-parties-holds 6.2 | green | validate --strict valid; pint/phpstan-max/pest 1442 all green; main-diff audit clean (no spec/specs/composer/migration/arch touch); carve-out pattern consolidated; CHANGE_COMPLETE 12/12
 
 ## [2026-06-22 16:26] archive | operator-console-parties-holds | §2.7 close: PG17 full 1442/1442 (exit 0); semantic verify (2 agents) no CRITICAL; merged --no-ff to main + openspec archive (delta→specs/operator-console, +1/~2 req); change→archive/2026-06-22. Push to origin + branch -d PENDING (gate).
+
+## [2026-06-22 17:28] spec-to-change | operator-console-parties-kyc-sanctions | authored+validated(--strict green)+APPROVED, ralph NOT launched (Giovanni 'approva solo'). operator-console delta: 2 ADDED (KYC 3 verbs / sanctions screening) + 2 MODIFIED Customer reqs, 21 scenarios, 13 tasks/5 groups. Reuses Holds kit; no ADR/migration/dep.
+
+## [2026-06-22 17:35] ralph | operator-console-parties-kyc-sanctions 1.1 | green | 1 file — dropped stale requireKyc absence guard + fixed self-contradictory header/title; full suite 1442/1442, phpstan/pint/validate green
