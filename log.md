@@ -517,3 +517,5 @@
 ## [2026-06-22 18:40] ralph | operator-console-parties-kyc-sanctions 3.1 | green | 2 files — recordScreening bespoke form action (verdict + record-dependent trigger_source, onboarding-first drop D6); suite 1489/1489, phpstan max 0, ModuleBoundaries unchanged
 
 ## [2026-06-22 18:51] ralph | operator-console-parties-kyc-sanctions 3.2 | green | 2 files | recordScreening write-through→RecordCustomerScreening; suite 1493/1493, phpstan max 0, validate strict ok (8/13)
+
+## [2026-06-22 18:59] ralph | operator-console-parties-kyc-sanctions 3.3 | green | 1 file (test-only) | onboarding-first floor: form drops onboarding + domain toThrow IllegalSanctionsTransition, state+log unchanged; suite 1494/1494, filter 32/32

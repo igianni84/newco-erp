@@ -13,8 +13,8 @@
 // the page can't raise (the Filament hidden-action landmine, lessons.md 2026-06-22). Task 2.1 pins the VISIBILITY
 // contract; 2.2 the write-through + auto-Hold coupling; 2.3 (below) the reject-floor + the no-waive guard (design D8)
 // + the KYC↔sanctions independence check (design D7); 3.1 (below) the sanctions form's verdict + record-dependent
-// trigger_source options; 3.2 (below) its write-through (verdict × source → the § 15.6 completion event); 3.3 the
-// onboarding-first floor (upcoming).
+// trigger_source options; 3.2 (below) its write-through (verdict × source → the § 15.6 completion event); 3.3 (below)
+// the onboarding-first floor.
 //
 // THE KYC VERBS ARE EVENT-SILENT (design D7): the only events are the coupled CustomerHoldPlaced/Lifted (from the
 // auto-Hold) + CustomerSuspended/Reactivated (from the coupling); RecordKycRejected records NOTHING. No
@@ -28,6 +28,7 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\ViewCustomer;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\RecordCustomerScreening;
 use App\Modules\Parties\Actions\RecordKycRejected;
 use App\Modules\Parties\Actions\RecordKycVerified;
 use App\Modules\Parties\Actions\RequireKyc;
@@ -45,6 +46,7 @@ use App\Modules\Parties\Events\CustomerReactivated;
 use App\Modules\Parties\Events\CustomerRescreeningFailed;
 use App\Modules\Parties\Events\CustomerSuspended;
 use App\Modules\Parties\Exceptions\IllegalKycTransition;
+use App\Modules\Parties\Exceptions\IllegalSanctionsTransition;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Platform\Events\ActorRole;
@@ -468,3 +470,48 @@ it('records a non-completion verdict through the console — sanctions_status up
     'under_review → no event' => ['under_review', SanctionsStatus::UnderReview],
     'pending → no event' => ['pending', SanctionsStatus::Pending],
 ]);
+
+// ── 3.3 · The onboarding-first floor (design D6 — the D4 twin at the form-option level) ───────────────────────────
+// onboarding-is-first (design L4): a screening carrying `trigger_source = onboarding` is legal ONLY while the Customer
+// has never been screened (last_screening_at IS NULL). Once screened, the SAME surface-hides + domain-enforces split
+// as the KYC reject floor (D4) applies — one level down: there the surface hides the VERB; here it drops the OPTION.
+// The form withdraws `onboarding` (only compliance_ad_hoc remains — covered by 3.1) so the operator can't reach a
+// re-onboarding through the console; and the domain is the INDEPENDENT floor — an out-of-band onboarding call throws
+// IllegalSanctionsTransition (imported freely in the test) and rolls back BEFORE any write, leaving the sanctions
+// state and the event log unchanged. So — exactly like the KYC reject floor — the floor is proven the only way the
+// surface allows: the option is GONE AND the domain rejects, NEVER an assertNotified(action_failed) the withdrawn
+// option can't raise. Seeded via the bare factory (records no event) so "the event log unchanged" is a clean zero.
+
+it('proves the onboarding-first floor — the form drops onboarding once screened AND the domain rejects an out-of-band onboarding call, sanctions_status + the event log unchanged (design D6)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // An already-screened Customer (last_screening_at stamped, previously `passed` via onboarding): onboarding-is-first
+    // makes a re-onboarding illegal. The bare factory records no event, so the event log starts — and must stay — empty.
+    $customer = Customer::factory()->create([
+        'sanctions_status' => SanctionsStatus::Passed,
+        'last_screening_at' => now(),
+        'screening_trigger_source' => ScreeningTriggerSource::Onboarding,
+    ]);
+
+    // Half 1 — the SURFACE drops the option: the form offers only compliance_ad_hoc (onboarding withdrawn once screened
+    // — the EXACT COMPLEMENT of the domain floor, covered by 3.1), so the console can't drive an onboarding re-screen.
+    Livewire::test(ViewCustomer::class, ['record' => $customer->id])
+        ->mountAction('recordScreening')
+        ->assertFormFieldExists('trigger_source', fn (Select $field): bool => array_keys($field->getOptions())
+            === ['compliance_ad_hoc']);
+
+    // Half 2 — the domain FLOOR: even an out-of-band onboarding call (the option the form withholds) throws
+    // IllegalSanctionsTransition — the guard fires before any write and the transaction rolls back (design L4).
+    expect(fn () => app(RecordCustomerScreening::class)->handle(
+        $customer->id,
+        SanctionsStatus::Passed,
+        ScreeningTriggerSource::Onboarding,
+    ))->toThrow(IllegalSanctionsTransition::class);
+
+    // Nothing moved: sanctions_status + screening_trigger_source are exactly as arranged and the event log is still
+    // empty (the rejected onboarding call rolled back before any write — the sanctions state is unchanged).
+    $fresh = Customer::findOrFail($customer->id);
+    expect($fresh->sanctions_status)->toBe(SanctionsStatus::Passed)
+        ->and($fresh->screening_trigger_source)->toBe(ScreeningTriggerSource::Onboarding)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
