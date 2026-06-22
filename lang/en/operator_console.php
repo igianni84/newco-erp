@@ -716,6 +716,13 @@ return [
             'profile' => 'Profile',
             'reason' => 'Reason',
             'lift_reason' => 'Lift reason',
+            // The sanctions-screening form inputs (operator-console-parties-kyc-sanctions, task 3.1).
+            // `screening_verdict` labels the verdict Select over SanctionsStatus::cases(); `screening_source`
+            // labels the trigger-source Select, whose options are record-dependent — {onboarding,
+            // compliance_ad_hoc}, `onboarding` only on a never-screened Customer (design D6). The three KYC verbs
+            // are form-less (no inputs).
+            'screening_verdict' => 'Screening verdict',
+            'screening_source' => 'Trigger source',
         ],
 
         // Create-page header link + the four write-through status-FSM verb labels on the ViewCustomer page
@@ -732,6 +739,16 @@ return [
             'close' => 'Close',
             'place_hold' => 'Place hold',
             'lift_hold' => 'Lift hold',
+            // The KYC + sanctions write-through verbs (operator-console-parties-kyc-sanctions, tasks 2.1/3.1):
+            // three form-less, visibility-gated KYC verbs — `require_kyc` (RequireKyc auto-places a `kyc` Hold +
+            // suspends), `record_kyc_verified` (RecordKycVerified auto-lifts + reactivates), `record_kyc_rejected`
+            // (RecordKycRejected, audit-only) — design D2/D4/D7, plus the one form-bearing `record_screening`
+            // (RecordCustomerScreening). No Customer KYC waive verb exists (design D8). Each routes through a
+            // Parties domain action, never a Filament default mutating path (ADR 2026-06-19).
+            'require_kyc' => 'Require KYC',
+            'record_kyc_verified' => 'Record KYC verified',
+            'record_kyc_rejected' => 'Record KYC rejected',
+            'record_screening' => 'Record sanctions screening',
         ],
 
         // Outcome notifications for the four write-through status verbs + the two Hold-surface verbs
@@ -746,6 +763,14 @@ return [
             'closed' => 'Customer closed.',
             'hold_placed' => 'Hold placed on the customer.',
             'hold_lifted' => 'Hold lifted from the customer.',
+            // The KYC + sanctions success titles (operator-console-parties-kyc-sanctions, tasks 2/3):
+            // `kyc_required` (the customer is suspended + a `kyc` Hold placed), `kyc_verified` (the Hold lifted +
+            // the customer reactivated), `kyc_rejected` (the customer stays on hold), `screening_recorded` (the
+            // screening logged). The shared `action_failed` below covers their domain rejections too (design D5/D7).
+            'kyc_required' => 'KYC required; the customer is suspended pending verification.',
+            'kyc_verified' => 'KYC verified; the customer is reactivated.',
+            'kyc_rejected' => 'KYC rejected; the customer stays on hold.',
+            'screening_recorded' => 'Sanctions screening recorded.',
             'action_failed' => 'The action could not be completed.',
         ],
 

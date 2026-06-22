@@ -505,3 +505,5 @@
 ## [2026-06-22 17:35] ralph | operator-console-parties-kyc-sanctions 1.1 | green | 1 file — dropped stale requireKyc absence guard + fixed self-contradictory header/title; full suite 1442/1442, phpstan/pint/validate green
 
 ## [2026-06-22 17:46] ralph | operator-console-parties-kyc-sanctions 1.2 | green | 1 file — pinned Filament 5.6.7 page header-action visibility API (assertActionVisible/Hidden, mount path, D4 not-mountable landmine) vs installed source + throwaway probe; ViewCustomer docblock note
+
+## [2026-06-22 17:58] ralph | operator-console-parties-kyc-sanctions 1.3 | green | 3 files | front-loaded 10 KYC/sanctions i18n keys EN+IT (IT≠EN) + test key-contract; suite 1462/1462, phpstan/pint/openspec clean

@@ -61,6 +61,12 @@ use Illuminate\Support\Facades\Lang;
  *     the read-only Holds table column headers (holds.columns.{hold_type,scope_type,status,reason,placed_by,
  *     placed_at,lifted_by,lifted_at}). Front-loaded here (this change, task 1.3) ahead of the resolving code in
  *     tasks 2–4, so the i18n contract is green before the surface lands.
+ *   - the KYC + sanctions surface (operator-console-parties-kyc-sanctions): the three form-less KYC verbs + the
+ *     one form-bearing screening verb (actions.{require_kyc,record_kyc_verified,record_kyc_rejected,
+ *     record_screening}) with the screening form inputs (fields.{screening_verdict,screening_source}) and the four
+ *     success titles (notifications.{kyc_required,kyc_verified,kyc_rejected,screening_recorded}; action_failed is
+ *     reused). Front-loaded here (this change, task 1.3) ahead of the resolving code in tasks 2–3, so the i18n
+ *     contract is green before the surface lands.
  * A console that resolves all of these MUST author them all or a label renders as a raw key under any locale.
  *
  * @return list<string> dot-paths WITHOUT the `operator_console.customer.` prefix
@@ -72,11 +78,14 @@ function customerConsoleKitKeys(): array
         'columns.name', 'columns.email', 'columns.status', 'columns.kyc_status', 'columns.sanctions_status', 'columns.account_status', 'columns.profiles', 'columns.version',
         'fields.email', 'fields.name', 'fields.phone', 'fields.date_of_birth', 'fields.preferred_currency', 'fields.preferred_locale',
         'fields.hold_type', 'fields.hold_scope', 'fields.profile', 'fields.reason', 'fields.lift_reason',
+        'fields.screening_verdict', 'fields.screening_source',
         'actions.create', 'actions.activate', 'actions.suspend', 'actions.reactivate', 'actions.close',
         'actions.place_hold', 'actions.lift_hold',
+        'actions.require_kyc', 'actions.record_kyc_verified', 'actions.record_kyc_rejected', 'actions.record_screening',
         'holds.columns.hold_type', 'holds.columns.scope_type', 'holds.columns.status', 'holds.columns.reason', 'holds.columns.placed_by', 'holds.columns.placed_at', 'holds.columns.lifted_by', 'holds.columns.lifted_at',
         'notifications.activated', 'notifications.suspended', 'notifications.reactivated', 'notifications.closed', 'notifications.action_failed',
         'notifications.hold_placed', 'notifications.hold_lifted',
+        'notifications.kyc_required', 'notifications.kyc_verified', 'notifications.kyc_rejected', 'notifications.screening_recorded',
     ];
 }
 
