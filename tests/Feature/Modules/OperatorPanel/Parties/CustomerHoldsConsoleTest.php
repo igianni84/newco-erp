@@ -20,8 +20,11 @@
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\ViewCustomer;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Enums\HoldScope;
+use App\Modules\Parties\Models\Account;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
+use App\Modules\Parties\Models\Profile;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -53,4 +56,50 @@ it('renders the customer-scope Holds with the placeholder per-row action', funct
     Livewire::test(CustomerHoldsTable::class, ['record' => $customer])
         ->assertCanSeeTableRecords([$hold])
         ->assertTableActionExists('placeholder', record: $hold);
+});
+
+it('renders Holds across the customer, account and profile scopes read-only (no inline edit or delete)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A factory Customer carries no Account/Profiles (CreateCustomer co-provisions them in production); stand up
+    // one of each within-Parties so the widget's scope-set union (task 2.1: customer ∪ Account ∪ Profiles) has a
+    // row to surface at every scope.
+    $customer = Customer::factory()->create();
+    $account = Account::factory()->for($customer)->create();
+    $profile = Profile::factory()->for($customer)->create();
+
+    // One `active` `admin` Hold (the HoldFactory default) at each of the three scopes, pinned onto this Customer's
+    // own id / its Account id / its Profile id, each carrying a distinctive reason so the read renders per-scope.
+    $customerHold = Hold::factory()->create([
+        'scope_type' => HoldScope::Customer,
+        'scope_id' => $customer->id,
+        'reason' => 'customer-scope probe',
+    ]);
+    $accountHold = Hold::factory()->create([
+        'scope_type' => HoldScope::Account,
+        'scope_id' => $account->id,
+        'reason' => 'account-scope probe',
+    ]);
+    $profileHold = Hold::factory()->create([
+        'scope_type' => HoldScope::Profile,
+        'scope_id' => $profile->id,
+        'reason' => 'profile-scope probe',
+    ]);
+
+    Livewire::test(CustomerHoldsTable::class, ['record' => $customer])
+        // All three scope rows surface through the union query.
+        ->assertCanSeeTableRecords([$customerHold, $accountHold, $profileHold])
+        // type / scope / status / reason render through the cast (`->value`) per row.
+        ->assertSee('admin')              // hold_type cast value (HoldType::Admin), shared across the three
+        ->assertSee('active')             // status cast value (HoldStatus::Active), shared across the three
+        ->assertSee('customer')           // scope_type cast value of the customer-scope row
+        ->assertSee('account')            // scope_type cast value of the account-scope row
+        ->assertSee('profile')            // scope_type cast value of the profile-scope row
+        ->assertSee('customer-scope probe')
+        ->assertSee('account-scope probe')
+        ->assertSee('profile-scope probe')
+        // Read-only: the table exposes no Filament default mutating row action (the only mutation is the per-row
+        // `lift`, landing in task 4.1).
+        ->assertTableActionDoesNotExist('edit', record: $customerHold)
+        ->assertTableActionDoesNotExist('delete', record: $customerHold);
 });
