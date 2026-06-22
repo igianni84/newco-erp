@@ -467,3 +467,5 @@
 ## [2026-06-21 22:32] ralph | operator-console-parties-customer 4.1 | green | 1 file (CustomerConsoleI18nTest 54/54: 26 EN-baseline+24 IT-differs+2 fallback+1 IT⊆EN+1 sink; full 1396/1396; mutation-proved non-vacuous)
 
 ## [2026-06-22 08:26] ralph | operator-console-parties-customer 5.1 | green | 1 new test (CustomerConsoleChainTest, PG17 closing-chain) | SQLite 1397/1397, PG17 274/274, phpstan 0, boundary 3/3 unchanged | ALL 9 tasks done
+
+## [2026-06-22 08:41] close-ritual §2.7 | operator-console-parties-customer | PG17 full 1397/1397 (7683 assn) → no-ff merge to main (eaec03c) → semantic-verify clean (0 CRIT/WARN, 2 SUGGEST forward to compliance/profile slices) → archived 2026-06-22 (+3 reqs into operator-console spec). Push awaits human.
