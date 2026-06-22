@@ -465,3 +465,5 @@
 ## [2026-06-21 22:23] ralph | operator-console-parties-customer 3.1/3.2 | green | ViewCustomer 4 form-less status verbs (activate/suspend/reactivate/close) via SurfacesDomainActions + EN/IT actions/notifications i18n + CustomerLifecycleConsoleTest 9/9; full 1342/1342, phpstan 0, boundary 3/3 unchanged | 4 files
 
 ## [2026-06-21 22:32] ralph | operator-console-parties-customer 4.1 | green | 1 file (CustomerConsoleI18nTest 54/54: 26 EN-baseline+24 IT-differs+2 fallback+1 IT⊆EN+1 sink; full 1396/1396; mutation-proved non-vacuous)
+
+## [2026-06-22 08:26] ralph | operator-console-parties-customer 5.1 | green | 1 new test (CustomerConsoleChainTest, PG17 closing-chain) | SQLite 1397/1397, PG17 274/274, phpstan 0, boundary 3/3 unchanged | ALL 9 tasks done
