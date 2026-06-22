@@ -491,3 +491,5 @@
 ## [2026-06-22 12:29] ralph | operator-console-parties-holds 4.2 | green | 1 file (test-only) | lift+restore coupling + kyc reject; action_failed-via-widget infeasible (hidden action unreachable), tested as domain-throw+hidden — see NOTE/lessons; full 1441/1441, phpstan max 0
 
 ## [2026-06-22 12:40] ralph | operator-console-parties-holds 5.1 | green | 1 file (CustomerHoldsChainTest, +1 test/+82 assn) | full suite 1442/1442 SQLite; PG17 = task 5.2
+
+## [2026-06-22 14:36] ralph | operator-console-parties-holds 5.2 | green | PG17 ritual: Parties OperatorPanel folder 319/319 (1541 assn) under postgres:17; verify-only, 0 code files
