@@ -70,6 +70,15 @@ use Illuminate\Database\Eloquent\Model;
  * invokes (the {Models, Actions} carve-out), never a `Parties\Exceptions` type (named here in PROSE so Pint's
  * `fully_qualified_strict_types` cannot re-add a forbidden import — lessons.md, 2026-06-20). All copy is
  * localized through `i18nKey()` (invariant 12).
+ *
+ * HEADER-ACTION VISIBILITY-TEST API (pinned against installed Filament 5.6.7, kyc-sanctions slice task 1.2 — the
+ * header-action twin of the Holds table's `assertTableActionVisible/Hidden`): on `Livewire::test(self::class,
+ * ['record' => $id])`, `assertActionVisible('verb')` / `assertActionHidden('verb')` resolve a page header action by
+ * name and evaluate its `->visible()` closure against THIS page's record (per-record — confirmed empirically); the
+ * mount-and-inspect-form path is `mountAction('verb')` + `assertFormFieldExists/Visible/Hidden` + `setActionData([…])`
+ * (the placeHold precedent). LANDMINE (design D4): `callAction()` asserts-visible-FIRST, and a `->visible()`-false
+ * header verb never mounts server-side — so a hidden verb's reject is UNREACHABLE through the surface; prove it via a
+ * domain `toThrow(...)` + `assertActionHidden('verb')`, NEVER an `assertNotified(action_failed)` the page can't raise.
  */
 class ViewCustomer extends ViewRecord
 {
