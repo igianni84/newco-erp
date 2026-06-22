@@ -497,3 +497,5 @@
 ## [2026-06-22 14:48] ralph | operator-console-parties-holds 6.1 | green | 0 files (verify-only): pint clean, phpstan-max 0, arch 4/4 unchanged, full suite 1442/1442, validate --strict valid; main-diff audit clean (no spec/openspec-specs/composer/migration)
 
 ## [2026-06-22 16:02] ralph | operator-console-parties-holds 6.2 | green | validate --strict valid; pint/phpstan-max/pest 1442 all green; main-diff audit clean (no spec/specs/composer/migration/arch touch); carve-out pattern consolidated; CHANGE_COMPLETE 12/12
+
+## [2026-06-22 16:26] archive | operator-console-parties-holds | §2.7 close: PG17 full 1442/1442 (exit 0); semantic verify (2 agents) no CRITICAL; merged --no-ff to main + openspec archive (delta→specs/operator-console, +1/~2 req); change→archive/2026-06-22. Push to origin + branch -d PENDING (gate).
