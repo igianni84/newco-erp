@@ -471,3 +471,7 @@
 ## [2026-06-22 08:41] close-ritual §2.7 | operator-console-parties-customer | PG17 full 1397/1397 (7683 assn) → no-ff merge to main (eaec03c) → semantic-verify clean (0 CRIT/WARN, 2 SUGGEST forward to compliance/profile slices) → archived 2026-06-22 (+3 reqs into operator-console spec). Push awaits human.
 
 ## [2026-06-22 08:45] push §2.7 | main → origin/main | Giovanni approved; pushed 109e12d..e30aa1b (9 commits: merged Customer slice + merge + archive + hygiene), main in sync; merged ralph branch deleted.
+
+## [2026-06-22 09:21] spec-to-change | operator-console-parties-holds | APPROVED. Holds-first split of Customer-compliance console (KYC+sanctions next). Delta on operator-console: 1 ADDED + 2 MODIFIED reqs (17 scn), 12 tasks. Operand-enum carve-out exercised, no ModuleBoundariesTest widening. validate --strict green. Ready for ralph.
+
+## [2026-06-22 10:04] ralph | operator-console-parties-holds 1.1 | green | 1 file: dropped stale placeHold/liftHold absence guards in CustomerLifecycleConsoleTest, kept requireKyc; 1397/1397

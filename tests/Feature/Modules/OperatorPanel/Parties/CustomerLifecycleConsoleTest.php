@@ -5,8 +5,10 @@
 // `pending → active`, suspend `active → suspended`, reactivate `suspended → active`, close
 // `active | suspended → closed`) the ViewCustomer page assembles via the SurfacesDomainActions trait — NOT the
 // catalog OperatorConsoleViewRecord base (design D1/D8), so the five catalog governance verbs (submit/reject/
-// reopen), the compliance Hold verbs (placeHold/liftHold) and the KYC verb (requireKyc) are deliberately ABSENT
-// (scope guard — each is its own future slice). Each verb routes through a Parties domain action by the customer
+// reopen) and the KYC verb (requireKyc) are deliberately ABSENT (scope guard — each is its own future slice).
+// The Hold surface (placeHold header action + per-row lift) DOES land on this page in this slice but is pinned
+// in CustomerHoldsConsoleTest, not here — this file fixes only the status verbs. Each verb routes through a
+// Parties domain action by the customer
 // id (design D4) and NEVER writes `status` itself (the no-Eloquent-write rule); the console SURFACES the domain's
 // decision — an out-of-state transition becomes the `action_failed` danger notification. The Customer FSM has no
 // separation-of-duties floor, so every verb is form-less and carries NO confirmation affordance (design D3).
@@ -174,7 +176,7 @@ it('surfaces an out-of-state status verb as a danger notification, changing noth
     'close a pending Customer (needs active|suspended)' => ['close', CustomerStatus::Pending],
 ]);
 
-it('exposes only the four form-less status verbs and none of the catalog governance, Hold, or KYC verbs', function () {
+it('exposes the four form-less status verbs without the catalog governance or KYC verbs', function () {
     actingAs(Operator::factory()->create(), 'operator');
     $customer = Customer::factory()->create();
 
@@ -195,9 +197,7 @@ it('exposes only the four form-less status verbs and none of the catalog governa
         ->assertActionDoesNotExist('submit')
         ->assertActionDoesNotExist('reject')
         ->assertActionDoesNotExist('reopen')
-        // … no Hold verbs (the Hold-mediated path is the compliance slice's surface — design D4 / Non-Goals) …
-        ->assertActionDoesNotExist('placeHold')
-        ->assertActionDoesNotExist('liftHold')
-        // … and no KYC verb (the compliance slice's surface).
+        // … and no KYC verb (still the kyc-sanctions slice's surface — the Hold place/lift surface DOES land in
+        // this slice but is pinned in CustomerHoldsConsoleTest).
         ->assertActionDoesNotExist('requireKyc');
 });
