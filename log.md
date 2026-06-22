@@ -487,3 +487,5 @@
 ## [2026-06-22 11:44] ralph | operator-console-parties-holds 3.2 | green | 3 files: placeHold write-through via surfaceLifecycleOutcome+PlaceHold, holdScopeId resolver, +3 tests (a/b/c). suite 1438/1438, phpstan max 0, arch guards unchanged
 
 ## [2026-06-22 12:04] ralph | operator-console-parties-holds 4.1 | green | 2 files: per-row lift action on CustomerHoldsTable (reuses SurfacesDomainActions; visible iff active && !autoLiftable via cast ->value, no HoldStatus import; keys off $record->id). full 1439/1439, phpstan max 0, arch 4/4 unchanged
+
+## [2026-06-22 12:29] ralph | operator-console-parties-holds 4.2 | green | 1 file (test-only) | lift+restore coupling + kyc reject; action_failed-via-widget infeasible (hidden action unreachable), tested as domain-throw+hidden — see NOTE/lessons; full 1441/1441, phpstan max 0

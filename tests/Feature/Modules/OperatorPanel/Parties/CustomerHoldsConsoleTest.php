@@ -20,12 +20,17 @@
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\ViewCustomer;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\LiftHold;
+use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldStatus;
 use App\Modules\Parties\Enums\HoldType;
+use App\Modules\Parties\Events\CustomerHoldLifted;
 use App\Modules\Parties\Events\CustomerHoldPlaced;
+use App\Modules\Parties\Events\CustomerReactivated;
 use App\Modules\Parties\Events\CustomerSuspended;
+use App\Modules\Parties\Exceptions\IllegalHoldLift;
 use App\Modules\Parties\Models\Account;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
@@ -263,4 +268,92 @@ it('shows the per-row lift only on active operator-liftable Holds (admin/fraud/c
         ->assertTableActionHidden('lift', record: $kyc)
         ->assertTableActionHidden('lift', record: $payment)
         ->assertTableActionHidden('lift', record: $lifted);
+});
+
+it('lifts one of two covering Holds without restoring, then restores the Customer on lifting the last — CustomerHoldLifted ×2, one CustomerReactivated', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    // Arrange the suspendable precondition through the REAL domain coupling, NOT the bare factory (which records
+    // no event and never suspends). PlaceHold suspends the `active` Customer on the FIRST Hold (CustomerSuspended);
+    // the SECOND Hold lands on the now-`suspended` Customer and drives no further transition (BR-K-Hold-1 admits
+    // concurrent Holds, the from-state pre-check skips the re-suspend). Both are `active` Customer-scope Holds, so
+    // both cover the Customer — the multi-Hold partial-lift case the restore coupling must get right (design D7).
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+    $admin = app(PlaceHold::class)->handle(HoldType::Admin, HoldScope::Customer, $customer->id, 'manual review');
+    $fraud = app(PlaceHold::class)->handle(HoldType::Fraud, HoldScope::Customer, $customer->id, 'fraud review');
+
+    expect(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Suspended);
+
+    $component = Livewire::test(CustomerHoldsTable::class, ['record' => $customer]);
+
+    // Lift the `admin` Hold through the per-row action (admin is operator-liftable, so `lift` is visible and the
+    // standard callTableAction path drives it). The `fraud` Hold STILL covers the Customer, so the restore coupling
+    // does NOT fire: exactly one CustomerHoldLifted, the Customer stays `suspended`, NO CustomerReactivated.
+    $component->callTableAction('lift', $admin, ['lift_reason' => 'admin cleared'])
+        ->assertNotified((string) __('operator_console.customer.notifications.hold_lifted'));
+
+    expect($admin->refresh()->status)->toBe(HoldStatus::Lifted)
+        ->and($admin->lift_reason)->toBe('admin cleared')           // the optional operand flowed widget → LiftHold
+        ->and($fraud->refresh()->status)->toBe(HoldStatus::Active)   // the second Hold still covers the Customer
+        ->and(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Suspended)
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', CustomerReactivated::NAME)->count())->toBe(0);
+
+    // Lift the LAST covering Hold (`fraud`). Now no active Hold covers the Customer, so the restore coupling fires
+    // in the same transaction: a second CustomerHoldLifted AND exactly one CustomerReactivated, Customer → `active`.
+    $component->callTableAction('lift', $fraud, ['lift_reason' => 'fraud cleared'])
+        ->assertNotified((string) __('operator_console.customer.notifications.hold_lifted'));
+
+    expect($fraud->refresh()->status)->toBe(HoldStatus::Lifted)
+        ->and(Customer::findOrFail($customer->id)->status)->toBe(CustomerStatus::Active)
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(2);
+
+    // The emergent restore records exactly one CustomerReactivated carrying the Customer envelope + the operator
+    // audit envelope resolved from the `operator` guard — the console invoked ONLY LiftHold; the restore is the
+    // domain coupling's own additive event (design D7), never a Reactivate verb the console called.
+    $reactivated = DomainEvent::query()->where('name', CustomerReactivated::NAME)->sole();
+    expect($reactivated->module)->toBe('parties')
+        ->and($reactivated->entity_type)->toBe('Customer')
+        ->and($reactivated->entity_id)->toBe((string) $customer->id)
+        ->and($reactivated->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($reactivated->actor_id)->toEqual($operator->id);  // loose: PG returns a numeric string for the bigint
+});
+
+it('hides lift on an auto-managed kyc Hold and the domain independently rejects an operator lift of it — Hold unchanged, no event (defense in depth)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $customer = Customer::factory()->create();
+
+    // An `active` `kyc` Hold: auto-managed (HoldType::autoLiftable()), so it lifts ONLY on its system clearing
+    // signal (RecordKycVerified), never by hand. Design D6 is DEFENSE IN DEPTH — the lift discipline is SURFACED by
+    // visibility AND ENFORCED by the domain — and this test evidences BOTH halves the console can demonstrate.
+    $kyc = Hold::factory()->create([
+        'hold_type' => HoldType::Kyc,
+        'status' => HoldStatus::Active,
+        'scope_type' => HoldScope::Customer,
+        'scope_id' => $customer->id,
+    ]);
+
+    // The SURFACE half: the kyc row renders read-only — its per-row `lift` is HIDDEN ({@see isOperatorLiftable}
+    // excludes auto-managed types). There is NO widget path that reaches the lift's surfaceLifecycleOutcome for a
+    // kyc Hold: Filament re-resolves record-action visibility on EVERY resolution and drops a hidden action server
+    // side (empirically — a hidden lift never mounts; a row lifted out-of-band stops invoking mid-flight), and the
+    // lift's visibility predicate is the EXACT complement of LiftHold's rejection conditions (notActive/autoManaged),
+    // so the widget's `action_failed` branch is structurally unreachable for a lift rejection. The kit's
+    // RuntimeException→`action_failed` surfacing is a SHARED guarantee (proven on the catalog/page consoles and
+    // reused verbatim here — the success half fires in this widget's Livewire context above), not re-asserted here.
+    Livewire::test(CustomerHoldsTable::class, ['record' => $customer])
+        ->assertCanSeeTableRecords([$kyc])
+        ->assertTableActionHidden('lift', record: $kyc);
+
+    // The ENFORCEMENT half: even an operator lift that BYPASSES the hidden UI (invoked straight on the domain) is
+    // rejected by LiftHold with IllegalHoldLift::autoManaged — a RuntimeException, the base type the kit catches.
+    expect(fn () => app(LiftHold::class)->handle($kyc->id))->toThrow(IllegalHoldLift::class);
+
+    // The rejection rolled back: the Hold is untouched (still `active`, no lift actor/moment) and no lift event was
+    // recorded (the recorder's open-transaction guard makes a rejected lift record nothing).
+    expect($kyc->refresh()->status)->toBe(HoldStatus::Active)
+        ->and($kyc->lifted_actor_role)->toBeNull()
+        ->and($kyc->lifted_at)->toBeNull()
+        ->and(DomainEvent::query()->where('name', CustomerHoldLifted::NAME)->count())->toBe(0);
 });
