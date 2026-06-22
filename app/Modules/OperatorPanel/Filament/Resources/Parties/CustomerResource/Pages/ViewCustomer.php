@@ -10,6 +10,9 @@ use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Actions\ReactivateCustomer;
+use App\Modules\Parties\Actions\RecordKycRejected;
+use App\Modules\Parties\Actions\RecordKycVerified;
+use App\Modules\Parties\Actions\RequireKyc;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldType;
@@ -49,8 +52,11 @@ use Illuminate\Database\Eloquent\Model;
  * Customer (NOT a table row), built BESPOKE because it carries a Hold-type / scope / Profile form the kit's
  * form-less {@see SurfacesDomainActions::lifecycleAction()} cannot thread; its write-through routes the form
  * operands into the Parties `PlaceHold` action through {@see SurfacesDomainActions::surfaceLifecycleOutcome()}
- * (task 3.2), while the per-row `lift` lands on the widget's table (task 4). KYC / sanctions / Account / Profile
- * remain their own future slices (design Non-Goals).
+ * (task 3.2), while the per-row `lift` lands on the widget's table (task 4). The three form-less KYC verbs
+ * (`requireKyc` / `recordKycVerified` / `recordKycRejected`) now land on THIS page in the kyc-sanctions slice
+ * (design D2/D4 — each visibility-gated to its legal `kyc_status` from-state; see {@see getHeaderActions()}); the
+ * sanctions-screening verb is the next task in the same slice. Account / Profile remain their own future slices
+ * (design Non-Goals).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -93,11 +99,29 @@ class ViewCustomer extends ViewRecord
 
     /**
      * The Customer's header actions: the four status verbs — activate / suspend / reactivate / close, the manual
-     * status-FSM path (design D4) — plus the `placeHold` form action. The four verbs are form-less and carry no
-     * confirmation affordance (design D3); each routes to its typed Parties action by the customer `int $id`, never
-     * an Eloquent write. `activate` is cross-slice-gated by the Action — a gate-unmet attempt rejects gracefully as
-     * a danger notification (design D5). `placeHold` ({@see placeHoldAction()}) is bespoke — it carries a Hold-type
-     * / scope / Profile form, so it is NOT a form-less status verb.
+     * status-FSM path (design D4) — the three form-less KYC verbs (requireKyc / recordKycVerified /
+     * recordKycRejected, kyc-sanctions slice task 2.1), plus the `placeHold` form action. The four status verbs are
+     * form-less and carry no confirmation affordance (design D3); each routes to its typed Parties action by the
+     * customer `int $id`, never an Eloquent write. `activate` is cross-slice-gated by the Action — a gate-unmet
+     * attempt rejects gracefully as a danger notification (design D5).
+     *
+     * The three KYC verbs are ALSO form-less — each KYC Action takes only the customer `int $id` (design D2), so the
+     * trait's bare-`int $id` {@see SurfacesDomainActions::lifecycleAction()} fits directly (no notes, no
+     * confirmation) — but additionally VISIBILITY-GATED to their legal `kyc_status` from-state via a chained
+     * `->visible()` (design D4): `requireKyc` iff {@see kycRequirable()} (`kyc_status` NULL or `not_required`),
+     * `recordKycVerified` / `recordKycRejected` iff {@see kycPending()} (`kyc_status` `pending`). The predicate is
+     * the EXACT COMPLEMENT of each Action's domain from-state guard, so a rejected KYC transition is unreachable
+     * through the surface — the verb is simply HIDDEN (the Filament hidden-action landmine: a `->visible()`-false
+     * header verb never mounts, so its reject branch can't be reached from the page; lessons.md 2026-06-22). An
+     * out-of-band call still throws `IllegalKycTransition` (a `RuntimeException`, named here in PROSE so Pint's
+     * `fully_qualified_strict_types` cannot re-add a forbidden `Parties\Exceptions` import — lessons.md 2026-06-20);
+     * the page surfaces no `action_failed` for it because the verb is never invocable. The KYC verbs are
+     * EVENT-SILENT (design D7): `requireKyc` auto-places a `kyc` Hold (→ `CustomerHoldPlaced` + the `CustomerSuspended`
+     * coupling), `recordKycVerified` auto-lifts it (→ `CustomerHoldLifted` + `CustomerReactivated`),
+     * `recordKycRejected` records nothing and leaves the Hold in place — none records a KYC-named event.
+     *
+     * `placeHold` ({@see placeHoldAction()}) is bespoke — it carries a Hold-type / scope / Profile form, so it is
+     * NOT a form-less verb.
      *
      * @return array<int, Action>
      */
@@ -108,8 +132,39 @@ class ViewCustomer extends ViewRecord
             $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('close', 'closed', fn (Model $record, string $notes) => app(CloseCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
+            $this->lifecycleAction('requireKyc', 'kyc_required', fn (Model $record, string $notes) => app(RequireKyc::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycRequirable($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('recordKycVerified', 'kyc_verified', fn (Model $record, string $notes) => app(RecordKycVerified::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('recordKycRejected', 'kyc_rejected', fn (Model $record, string $notes) => app(RecordKycRejected::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
             $this->placeHoldAction(),
         ];
+    }
+
+    /**
+     * Is the Customer's KYC requirable — i.e. does `kyc_status` sit in `requireKyc`'s legal from-state (design D4)?
+     * True when un-screened (NULL — DEC-071) or the explicit `not_required`. This is the EXACT COMPLEMENT of
+     * {@see RequireKyc}'s domain from-state guard, so the verb is hidden precisely when the Action would reject it
+     * (the visibility predicate lives in ONE place — design D4). Predicated on the model CAST VALUE: `kyc_status`
+     * is a STATE enum, read through the cast and NEVER imported (design D5) — the literal `not_required` token is
+     * compared straight off `->value` (non-nullsafe: the `=== null` short-circuit narrows the operand to non-null).
+     */
+    private function kycRequirable(Customer $customer): bool
+    {
+        return $customer->kyc_status === null || $customer->kyc_status->value === 'not_required';
+    }
+
+    /**
+     * Is the Customer's KYC `pending` — the legal from-state for BOTH `recordKycVerified` and `recordKycRejected`
+     * (§ 9.1; design D4)? The EXACT COMPLEMENT of {@see RecordKycVerified}'s / {@see RecordKycRejected}'s domain
+     * from-state guard, so each verb is hidden precisely when its Action would reject. Predicated on the model CAST
+     * VALUE via the nullsafe operator (a NULL `kyc_status` is un-screened, not `pending`); the STATE enum is never
+     * imported (design D5).
+     */
+    private function kycPending(Customer $customer): bool
+    {
+        return $customer->kyc_status?->value === 'pending';
     }
 
     /**

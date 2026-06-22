@@ -6,7 +6,7 @@
 
 ## 2. KYC verbs — three form-less header actions (design D2/D4/D7/D8)
 
-- [ ] 2.1 On `ViewCustomer`, append three verbs to `getHeaderActions()` built with the kit's `lifecycleAction($verb, $successKey, $invoke)` (form-less, `$form = null`), each chaining `->visible(...)` for its from-state gate:
+- [x] 2.1 On `ViewCustomer`, append three verbs to `getHeaderActions()` built with the kit's `lifecycleAction($verb, $successKey, $invoke)` (form-less, `$form = null`), each chaining `->visible(...)` for its from-state gate:
   - `lifecycleAction('requireKyc', 'kyc_required', fn (Model $record, string $notes) => app(RequireKyc::class)->handle($this->recordOf(Customer::class, $record)->id))->visible(fn (): bool => $this->kycRequirable($this->recordOf(Customer::class, $this->getRecord())))`
   - `lifecycleAction('recordKycVerified', 'kyc_verified', fn (Model $record, string $notes) => app(RecordKycVerified::class)->handle($this->recordOf(Customer::class, $record)->id))->visible(fn (): bool => $this->kycPending(...))`
   - `lifecycleAction('recordKycRejected', 'kyc_rejected', fn (Model $record, string $notes) => app(RecordKycRejected::class)->handle($this->recordOf(Customer::class, $record)->id))->visible(fn (): bool => $this->kycPending(...))`
