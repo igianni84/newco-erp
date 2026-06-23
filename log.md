@@ -559,3 +559,5 @@
 ## [2026-06-23 12:40] ralph | club-credit 5.2 | green | 2 files — club_credit i18n group (9 keys) + ClubCreditExceptionsTest 19/19; full suite 1560/1560, PHPStan max 0, Pint clean, openspec valid
 
 ## [2026-06-23 12:55] ralph | club-credit 5.3 | green | docs: CONTEXT.md glossary+seams de-staled, 6 docblocks, knowledge/module-k | 11 files | suite 1560/1560
+
+## [2026-06-23 13:01] ralph | club-credit 5.4 | green | full-suite gate: pest 1560/1560 SQLite, PHPStan max 0, Pint clean, openspec valid; PG17 by-construction + CI on push. CHANGE_COMPLETE (15/15) | 1 file
