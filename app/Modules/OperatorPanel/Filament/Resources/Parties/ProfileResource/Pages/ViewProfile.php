@@ -4,8 +4,11 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\P
 
 use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
+use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
 use App\Modules\Parties\Actions\DeclineProfile;
+use App\Modules\Parties\Actions\ReactivateProfile;
+use App\Modules\Parties\Actions\SuspendProfile;
 use App\Modules\Parties\Models\Profile;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
@@ -26,9 +29,12 @@ use Illuminate\Database\Eloquent\Model;
  * (design D4): the predicate is the exact complement of `ApproveProfile` / `DeclineProfile`'s `applied` from-state
  * guard, so an out-of-state reject is structurally unreachable through the surface (a hidden verb cannot be driven —
  * lesson 2026-06-22). The domain still floors it (`IllegalProfileTransition`, named in PROSE so Pint cannot re-add a
- * boundary-breaching `Parties\Exceptions` import — lesson 2026-06-20). activate / suspend / reactivate (group 4) and
- * lapse / renew / cancel / deactivate (group 5) follow. The empty-set scaffold the resource's `getPages()` needed to
- * boot (the eager page-reference coupling — design Risks) is now populated.
+ * boundary-breaching `Parties\Exceptions` import — lesson 2026-06-20). Group 4 (landed) appends the status verbs —
+ * activate (`approved → active`, UNCAPPED — the Hero-Package capacity cap is a deferred Module-A seam, design
+ * Non-Goals), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit untouched,
+ * AC-K-FSM-2a) and reactivate (`suspended → active`). lapse / renew / cancel / deactivate (group 5) follow. The
+ * empty-set scaffold the resource's `getPages()` needed to boot (the eager page-reference coupling — design Risks) is
+ * now populated.
  */
 class ViewProfile extends ViewRecord
 {
@@ -50,7 +56,11 @@ class ViewProfile extends ViewRecord
      * is unreachable through the surface (lesson 2026-06-22). A rejection still floors at the domain
      * (`IllegalProfileTransition`, a `RuntimeException` caught by base type in the trait — named in PROSE, never a
      * `{@see}`/`@throws` type, so Pint cannot add a forbidden `Parties\Exceptions` import, lesson 2026-06-20).
-     * activate / suspend / reactivate (group 4) and lapse / renew / cancel / deactivate (group 5) append here next.
+     * Group 4 appends the three status verbs, each gated to its own from-state via {@see stateIs()}: activate
+     * (`approved → active`, UNCAPPED — the Hero-Package cap is a deferred Module-A seam, design Non-Goals; records
+     * `ProfileActivated`), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit
+     * untouched, AC-K-FSM-2a; records `ProfileSuspended`) and reactivate (`suspended → active`; records
+     * `ProfileReactivated`). lapse / renew / cancel / deactivate (group 5) append here next.
      *
      * @return array<int, Action>
      */
@@ -61,6 +71,12 @@ class ViewProfile extends ViewRecord
                 ->visible(fn (): bool => $this->stateIs('applied')),
             $this->lifecycleAction('decline', 'declined', fn (Model $record, string $notes) => app(DeclineProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
                 ->visible(fn (): bool => $this->stateIs('applied')),
+            $this->lifecycleAction('activate', 'activated', fn (Model $record, string $notes) => app(ActivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('approved')),
+            $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('active')),
+            $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('suspended')),
         ];
     }
 

@@ -22,11 +22,11 @@
 
 ## 4. Profile activation + suspension/restoration (ViewProfile)
 
-- [ ] 4.1 Append three header actions to `ViewProfile` (form-less, `lifecycleAction`, visibility-gated):
+- [x] 4.1 Append three header actions to `ViewProfile` (form-less, `lifecycleAction`, visibility-gated):
   - `activate` → `app(ActivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id)`, visible iff `state == 'approved'`. **Uncapped** — drive `ActivateProfile` with no capacity check (the Hero-Package cap is a deferred Module-A seam, design Non-Goals); invent no cap.
   - `suspend` → `app(SuspendProfile::class)->handle(...)`, visible iff `state == 'active'`.
   - `reactivate` → `app(ReactivateProfile::class)->handle(...)`, visible iff `state == 'suspended'`.
-- [ ] 4.2 Add `operator_console.profile.actions.{activate, suspend, reactivate}` + `notifications.{activated, suspended, reactivated}` to `lang/en` + `lang/it`.
+- [x] 4.2 Add `operator_console.profile.actions.{activate, suspend, reactivate}` + `notifications.{activated, suspended, reactivated}` to `lang/en` + `lang/it`.
 - **Tests** (`ProfileActivationConsoleTest.php`): activate an `Approved` Profile → `Active` + exactly one `ProfileActivated` (newco_ops); suspend an `Active` Profile → `Suspended` + one `ProfileSuspended`, and assert a co-existing `activeClubCredit` (seed via the ClubCredit factory) is **unchanged** — suspension changes only `state` (state-preservation, AC-K-FSM-2a); reactivate a `Suspended` Profile → `Active` + one `ProfileReactivated`; visibility complements via `assertActionVisible/Hidden`; illegal transitions are **domain-direct throws** + `assertActionHidden` (lesson 2026-06-22). Typecheck passes; tests pass.
 
 ## 5. Profile lapse / renew / terminal (ViewProfile)

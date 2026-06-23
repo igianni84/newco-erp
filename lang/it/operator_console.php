@@ -530,20 +530,28 @@ return [
             'all' => 'Tutti',
         ],
 
-        // Verbi del ciclo di vita: `approve`/`decline` (gruppo 3) sull'azione di approvazione dell'adesione.
-        // «decline» → «Rifiuta» (rifiuto della candidatura, distinto da «Termina»/«Ritira» di altri domini).
+        // Verbi del ciclo di vita: `approve`/`decline` (gruppo 3) sull'azione di approvazione dell'adesione;
+        // `activate`/`suspend`/`reactivate` (gruppo 4) sui verbi di stato. «decline» → «Rifiuta» (rifiuto della
+        // candidatura, distinto da «Termina»/«Ritira» di altri domini); «reactivate» → «Riattiva».
         'actions' => [
             'create' => 'Nuovo Profilo',
             'approve' => 'Approva',
             'decline' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'suspend' => 'Sospendi',
+            'reactivate' => 'Riattiva',
         ],
 
         // Notifiche di esito per i verbi di membership. «membership» → «adesione» (parola italiana naturale, come
         // «cliente» per Customer). `action_failed` è il titolo di errore condiviso (corpo dal messaggio localizzato
-        // della rejection — lang/*/parties.php).
+        // della rejection — lang/*/parties.php). Gruppo 4 aggiunge `activated`/`suspended`/`reactivated` (i passaggi
+        // di stato dell'adesione).
         'notifications' => [
             'approved' => 'Adesione approvata.',
             'declined' => 'Candidatura all’adesione rifiutata.',
+            'activated' => 'Adesione attivata.',
+            'suspended' => 'Adesione sospesa.',
+            'reactivated' => 'Adesione riattivata.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],

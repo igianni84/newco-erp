@@ -831,13 +831,17 @@ return [
 
         // Header / lifecycle action labels. `create` is the list-header link to the write-through create surface;
         // the membership lifecycle verbs append here across groups 3–5. Group 3 adds the approval pair: `approve`
-        // (`applied → approved`) and `decline` (`applied → rejected`), both form-less ViewProfile header verbs
-        // visibility-gated to `applied` (design D4); activate/suspend/reactivate (group 4) and
+        // (`applied → approved`) and `decline` (`applied → rejected`); group 4 adds the status verbs: `activate`
+        // (`approved → active`), `suspend` (`active → suspended`) and `reactivate` (`suspended → active`) — all
+        // form-less ViewProfile header verbs visibility-gated to their from-state (design D4);
         // lapse/renew/cancel/deactivate (group 5) follow.
         'actions' => [
             'create' => 'New Profile',
             'approve' => 'Approve',
             'decline' => 'Decline',
+            'activate' => 'Activate',
+            'suspend' => 'Suspend',
+            'reactivate' => 'Reactivate',
         ],
 
         // Outcome notifications for the write-through membership verbs. The success titles confirm the domain
@@ -845,10 +849,14 @@ return [
         // own localized message (from lang/*/parties.php, e.g. the illegal-from-state text) is rendered as the body,
         // so the console owns only this title (design D5/D9). Group 3 adds `approved` (the membership application is
         // approved — the Originating Club locks on the Customer's first-ever approval) and `declined` (the
-        // application is rejected, audit-only); the group-4/5 success titles append here next.
+        // application is rejected, audit-only); group 4 adds `activated`, `suspended` and `reactivated` (the
+        // status edges); the group-5 success titles append here next.
         'notifications' => [
             'approved' => 'Membership approved.',
             'declined' => 'Membership application declined.',
+            'activated' => 'Membership activated.',
+            'suspended' => 'Membership suspended.',
+            'reactivated' => 'Membership reactivated.',
             'action_failed' => 'The action could not be completed.',
         ],
     ],
