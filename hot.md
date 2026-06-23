@@ -7,7 +7,7 @@ updated: 2026-06-23
 # Hot Cache
 
 ## Last Updated
-**2026-06-23 (`club-credit` CLOSED — merged + archived, local).** The GUIDE §2.7 close ritual ran end-to-end: cold branch review → real PG17 full-suite re-verify → `git merge --no-ff ralph/club-credit` into `main` → 3-agent semantic verification (all clean) → `openspec archive club-credit`. The delta (**5 added + 1 modified** requirement) is merged into the living spec `openspec/specs/party-registry/spec.md`; the change moved to `openspec/changes/archive/2026-06-23-club-credit/`. **`main` is ahead of `origin/main`, UNPUSHED** — push is classifier-gated, awaiting Giovanni's go.
+**2026-06-23 (`club-credit` CLOSED — merged + archived, local).** The GUIDE §2.7 close ritual ran end-to-end: cold branch review → real PG17 full-suite re-verify → `git merge --no-ff ralph/club-credit` into `main` → 3-agent semantic verification (all clean) → `openspec archive club-credit`. The delta (**5 added + 1 modified** requirement) is merged into the living spec `openspec/specs/party-registry/spec.md`; the change moved to `openspec/changes/archive/2026-06-23-club-credit/`. **`main` is PUSHED to `origin/main`** (commit `f4055d1`); the `ralph/club-credit` branch is deleted and CI is running both lanes (quality + tests-pgsql).
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (max) · Pint 1.29.1. SQLite dev; prod PG17.
@@ -17,11 +17,11 @@ updated: 2026-06-23
 
 ## Active Change & Next Task
 - **No in-flight change.** `club-credit` is archived (`2026-06-23-club-credit`); `openspec list` shows no active change.
-- **Immediate next step (human): push `main`** → CI both lanes (quality + tests-pgsql) green → then `git branch -d ralph/club-credit` (kept as the safety net until push lands).
-- **After push:** the next slice is a human-driven `/spec-to-change` — Module K continuation or whatever `spec/05-release/Build_Workplan_v0.3-MVP.md` calls next. The loop picks up nothing until a new change has an `APPROVED` file + unchecked tasks.
+- **Pushed.** `main` is in sync with `origin/main`; `ralph/club-credit` deleted. CI run `archive: club-credit` is in progress — confirm both lanes go green.
+- **Next slice:** a human-driven `/spec-to-change` — Module K continuation or whatever `spec/05-release/Build_Workplan_v0.3-MVP.md` calls next. The loop picks up nothing until a new change has an `APPROVED` file + unchecked tasks.
 
 ## Blockers & Decisions Needed
-- **No blocker.** The only pending action is the gated push (the merge + archive commits sit on local `main`, ahead of origin).
+- **No blocker.** Push is done; the only thing to watch is the in-flight CI run going green on both lanes.
 - Deferred SEAMS (NOT blockers; now in the LIVING spec): Module-E `MembershipFeePaid` listener + `ClubCredit*` consumers (F6); Module-S checkout redemption + DEC-110/111 mutual-exclusion + DEC-043 closure-conversion + order-cancellation restore; year-end forfeiture scheduler; Profile-cancellation forfeit cascade.
 
 ## Open Patterns

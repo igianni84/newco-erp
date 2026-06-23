@@ -563,3 +563,5 @@
 ## [2026-06-23 13:01] ralph | club-credit 5.4 | green | full-suite gate: pest 1560/1560 SQLite, PHPStan max 0, Pint clean, openspec valid; PG17 by-construction + CI on push. CHANGE_COMPLETE (15/15) | 1 file
 
 ## [2026-06-23 14:13] close-ritual | club-credit | GUIDE §2.7: cold review → PG17 (postgres:17 Docker) suite 1560/1560 → merge --no-ff to main → 3-agent semantic verify clean → openspec archive 2026-06-23-club-credit (5 added+1 mod → living spec). main ahead, UNPUSHED (push gated).
+
+## [2026-06-23 14:28] push | main | club-credit close pushed (f4ef823..f4055d1); ralph/club-credit branch deleted; CI run 'archive: club-credit' in progress (quality + tests-pgsql).
