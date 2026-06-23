@@ -793,4 +793,39 @@ return [
         ],
     ],
 
+    // The demand-side MEMBERSHIP console (operator-console-parties-membership) — a standalone read-only
+    // ProfileResource whose list is the cross-Customer approval queue (ProfileResource's i18nKey is `profile`).
+    'profile' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Profile',
+        'plural_label' => 'Profiles',
+
+        // List-table + view-infolist column labels. `customer` renders the membership's Customer (email + name),
+        // `club` its Club (display name); `state` is the 9-state membership-FSM badge (via the BackedEnum cast);
+        // `version` is the optimistic lock.
+        'columns' => [
+            'customer' => 'Customer',
+            'club' => 'Club',
+            'state' => 'State',
+            'version' => 'Version',
+        ],
+
+        // View-infolist labels for the demand-side lifecycle attributes the list omits + (from group 2) the
+        // create-form input labels. `tier` is the single-tier-at-launch attribute (DEC-062); `lapsed_at` is the
+        // grace-window anchor `LapseProfile` stamps; `cancellation_reason` is the optional Producer-initiated
+        // cancellation reason. The create form (group 2) adds `customer` / `club` select labels here.
+        'fields' => [
+            'tier' => 'Tier',
+            'lapsed_at' => 'Lapsed at',
+            'cancellation_reason' => 'Cancellation reason',
+        ],
+
+        // The approval-queue tabs on the Profile list: "Pending" (the default — `applied` Profiles awaiting an
+        // approve/decline decision) and "All" (every membership state).
+        'tabs' => [
+            'pending' => 'Pending',
+            'all' => 'All',
+        ],
+    ],
+
 ];

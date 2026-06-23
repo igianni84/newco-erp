@@ -1,0 +1,28 @@
+# Progress — operator-console-parties-membership
+
+## Codebase Patterns
+(consolidated reusable patterns — read first each iteration)
+
+- **Group 1 is one atomic commit (Resource + 3 Pages + i18n + tests).** `ProfileResource::getPages()` eager-references `Pages\{ListProfiles,CreateProfile,ViewProfile}`, so the Resource cannot boot until all three page classes exist — they ship together (the precedent `991de04` committed Customer 1.1/1.2/1.3 as one unit). Flip 1.1/1.2/1.3 together.
+- **State badge via the cast, no enum import (design D2).** A private `static stateBadgeState(): Closure` reads `$record->getAttribute('state')` and returns `$state instanceof BackedEnum ? (string) $state->value : ''`. Used by both `table()` and `infolist()` via `self::stateBadgeState()`. Mirrors `CustomerResource::enumBadgeState()`. **Never** call the base `lifecycleStateColumn()` (that's the catalog `lifecycle_state` column).
+- **Relation columns use a typed closure, never dot-notation.** `TextColumn::make('customer')->getStateUsing(fn (Profile $record): string => $record->customer->email)->description(fn (Profile $record): string => $record->customer->name)`; `make('club')->getStateUsing(fn (Profile $record) => $record->club->display_name)`. `make()` keys can be arbitrary (relation names / non-columns) when `getStateUsing` overrides — Filament does not require a real attribute.
+- **Approval-queue tabs = `ListRecords::getTabs()`** returning `array<string, Filament\Schemas\Components\Tabs\Tab>`. The FIRST key is the default active tab (`HasTabs::getDefaultActiveTab()` = `array_key_first`). Filter with `Tab::make()->label(...)->modifyQueryUsing(fn (Builder $q) => $q->where('state', 'applied'))` — a **string literal**, no enum import. **Test tabs by `->set('activeTab', 'pending'|'all')`** (the public `HasTabs::$activeTab` property) + `assertCanSeeTableRecords` / `assertCanNotSeeTableRecords`; don't rely on mount-default ordering.
+- **Non-catalog View page = `extends \Filament\Resources\Pages\ViewRecord` + `use SurfacesDomainActions`** (NOT `OperatorConsoleViewRecord`), with `protected function i18nKey(): string` and `getHeaderActions(): array`. Header verbs are **appended** across groups, each a form-less `lifecycleAction($verb, $successKey, fn (Model $r, string $notes) => app(X::class)->handle($this->recordOf(Profile::class, $r)->id))` visibility-gated to its from-state. Reference exceptions (`IllegalProfileTransition` etc.) as **prose only**, never `{@see FQCN}` (Pint adds a boundary-breaching `use`, lesson 2026-06-20).
+- **DEC-127 i18n:** EN authors every key incl. `label`/`plural_label`; IT omits `label`/`plural_label` (per-key EN fallback) and authors the rest. Assert in a test: EN `label` == 'Profile'; IT `label` falls back to 'Profile', IT `columns.customer` == 'Cliente'.
+
+---
+
+## [2026-06-23 22:21] — 1.1/1.2/1.3 ProfileResource read-only + approval-queue list + page scaffold + resource/infolist i18n
+
+- **What was implemented:** Group 1 of the demand-side membership console as one atomic green unit (the `getPages()` eager-reference coupling — precedent `991de04`).
+  - `ProfileResource` (read-only over `Parties\Models\Profile`): `table()` (customer email+name via `description`, club `display_name`, `state` badge via `stateBadgeState()` cast helper, `versionColumn()`); `infolist()` (customer/club/state badge + `tier`/`lapsed_at`/`cancellation_reason`/`version`, all read-only); `getPages()` → index/create/view; **no** `lifecycleStateColumn()`, **no** `Parties\Enums` import (design D2).
+  - `ListProfiles` — the **approval queue**: `getTabs()` with default "Pending" (`where('state','applied')`, string literal) + "All".
+  - `ViewProfile` — `ViewRecord` + `SurfacesDomainActions`, `i18nKey() => 'profile'`, `getHeaderActions(): []` (verbs land groups 3–5).
+  - `CreateProfile` — group-1 scaffold extending `OperatorConsoleCreateRecord`; `createRejectionField() => 'club_id'`; `createViaAction()` throws a "wired in task 2.1" `LogicException` (no create path exercised this group; never hit by group-1 tests). Real wiring + form land in 2.1.
+  - i18n: `operator_console.profile.{label,plural_label,columns,fields,tabs}` in EN; IT per-key minus `label`/`plural_label` (DEC-127).
+- **Files changed:** `app/Modules/OperatorPanel/Filament/Resources/Parties/ProfileResource.php` (new) + `ProfileResource/Pages/{ListProfiles,CreateProfile,ViewProfile}.php` (new); `lang/{en,it}/operator_console.php` (+`profile` block); `tests/Feature/Modules/OperatorPanel/Parties/ProfileResourceTest.php` (new, 5 tests); `tasks.md` (1.1/1.2/1.3 flipped).
+- **Quality loop:** green — Pint clean; filtered 5/5; full suite **1565/1565** (8522 assertions); PHPStan max 0; `pint --test` clean; `openspec validate --strict` valid. Arch `NoEloquentWriteInOperatorPanelRule` + `ModuleBoundariesTest` green over the new classes.
+- **Learnings for future iterations:**
+  - Next task **2.1**: fill `CreateProfile` — first read `app/Modules/Parties/Actions/CreateProfile.php` to confirm `handle()` signature/gate, then `createViaAction(array $data): Model => app(CreateProfile::class)->handle((int) $data['customer_id'], (int) $data['club_id'])`, and add the two Selects (Customer, Club) to `ProfileResource::form()`. Replace the group-1 `LogicException` throw. Add a list-header create LINK + `actions.create` i18n alongside the create surface (deferred out of group 1 — task 1.3's i18n list had no `actions.*`).
+  - `OperatorConsoleCreateRecord` has two abstract methods (`createViaAction`, `createRejectionField`) — both must be satisfied even in a scaffold. `Resource::form()` has a Filament default, so group 1 omits it cleanly (form lands in 2.1).
+---

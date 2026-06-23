@@ -507,4 +507,26 @@ return [
         ],
     ],
 
+    // Console MEMBERSHIP lato domanda (operator-console-parties-membership). `label`/`plural_label` omessi →
+    // fallback EN per-chiave (DEC-127); tutte le altre chiavi tradotte.
+    'profile' => [
+        'columns' => [
+            'customer' => 'Cliente',
+            'club' => 'Club',
+            'state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'tier' => 'Livello',
+            'lapsed_at' => 'Scaduto il',
+            'cancellation_reason' => 'Motivo di cancellazione',
+        ],
+
+        'tabs' => [
+            'pending' => 'In attesa',
+            'all' => 'Tutti',
+        ],
+    ],
+
 ];
