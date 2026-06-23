@@ -565,3 +565,5 @@
 ## [2026-06-23 14:13] close-ritual | club-credit | GUIDE §2.7: cold review → PG17 (postgres:17 Docker) suite 1560/1560 → merge --no-ff to main → 3-agent semantic verify clean → openspec archive 2026-06-23-club-credit (5 added+1 mod → living spec). main ahead, UNPUSHED (push gated).
 
 ## [2026-06-23 14:28] push | main | club-credit close pushed (f4ef823..f4055d1); ralph/club-credit branch deleted; CI run 'archive: club-credit' in progress (quality + tests-pgsql).
+
+## [2026-06-23 22:00] spec-to-change | operator-console-parties-membership | APPROVED (Module K demand-side membership console): standalone ProfileResource (approval queue + 9 Profile verbs) + Profile create + Account 3 verbs on ViewCustomer. Delta operator-console 4 ADDED+2 MODIFIED req/25 scn. Pure console, 0 domain code. strict-valid 4/4.
