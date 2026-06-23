@@ -581,3 +581,5 @@
 ## [2026-06-23 23:35] ralph | operator-console-parties-membership 6.1/6.2 | green | 4 files | Account suspend/reactivate/close verbs on ViewCustomer + EN/IT i18n + AccountLifecycleConsoleTest; suite 1645/1645, PHPStan max 0
 
 ## [2026-06-23 23:44] ralph | operator-console-parties-membership 7.1 | green | 1 file (new ProfileConsoleI18nTest, 80/80) | suite 1725/1725, PHPStan 0, Pint clean, openspec valid
+
+## [2026-06-23 23:56] ralph | operator-console-parties-membership 8.1 | green | 1 file (ProfileMembershipChainTest) — full Profile FSM + orthogonal Account FSM through the pages; SQLite 1726/1726 + PG17 filtered 98 assertions GREEN
