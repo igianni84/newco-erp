@@ -368,12 +368,13 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // here. These writers are AUDIT-ONLY — § 11.4 makes `ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` (and the
     // `MembershipFeePaid` trigger) MODULE E's events, so they record state and emit NO Parties event — but they are
     // still non-Create Actions, so they ARE whitelisted (mirroring the audit-only Account/CancelProfile entries). The
-    // list grows as the change's later tasks land `ForfeitClubCredit` (4.1) / `RestoreClubCredit` (4.2), each
-    // declaring its writer here. `ApplyClubCredit` (task 3.1) — the redemption decrement / `active → redeemed`
-    // writer — is added here.
+    // list grows as the change's last writer task lands `RestoreClubCredit` (4.2), declaring its writer here.
+    // `ApplyClubCredit` (task 3.1) — the redemption decrement / `active → redeemed` writer — and `ForfeitClubCredit`
+    // (task 4.1) — the `active → forfeited` writer — are added here.
     $clubCreditWriters = [
         'IssueClubCredit',
         'ApplyClubCredit',
+        'ForfeitClubCredit',
     ];
 
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +

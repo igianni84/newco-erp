@@ -20,8 +20,8 @@ use RuntimeException;
  * FSM from-state guard ONLY; the redemption value/context preconditions on an otherwise-`active` credit
  * (currency-match, over-application, the frozen-while-suspended freeze) are the sibling
  * {@see ClubCreditRedemptionPrecondition}, mirroring how issuance splits its from-state-less preconditions into
- * {@see ClubCreditIssuancePrecondition}. The forfeit/restore from-state factories land with their Actions
- * (tasks 4.1 / 4.2); this slice (task 3.1) ships {@see cannotApply}.
+ * {@see ClubCreditIssuancePrecondition}. The restore from-state factory lands with its Action (task 4.2); this
+ * exception ships {@see cannotApply} (task 3.1) and {@see cannotForfeit} (task 4.1).
  *
  * The reason is localized through Laravel's translator (CLAUDE.md invariant 12 — no hardcoded user-facing
  * strings): the English baseline lives in the `club_credit` group of `lang/en/parties.php` (key `cannot_apply`,
@@ -40,6 +40,19 @@ class IllegalClubCreditTransition extends RuntimeException
     public static function cannotApply(ClubCreditState $from): self
     {
         return new self((string) __('parties.club_credit.cannot_apply', [
+            'state' => $from->value,
+        ]));
+    }
+
+    /**
+     * Forfeiture ({@see ForfeitClubCredit}) rejected because the credit is not `active` — the only from-state a
+     * credit can be forfeited from (§ 11.3; design L4). A `redeemed` credit cannot be forfeited, and `forfeited`
+     * is absolutely terminal (at most one forfeiture per Club Credit lifetime), so this also rejects a second
+     * forfeit on an already-`forfeited` credit.
+     */
+    public static function cannotForfeit(ClubCreditState $from): self
+    {
+        return new self((string) __('parties.club_credit.cannot_forfeit', [
             'state' => $from->value,
         ]));
     }
