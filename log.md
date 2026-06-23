@@ -551,3 +551,5 @@
 ## [2026-06-23 11:52] ralph | club-credit 4.1 | green | 5 files | ForfeitClubCredit (active→forfeited, audit-only) + cannotForfeit + forfeiture test 4/4; suite 1533/1533, phpstan 0, validate ok
 
 ## [2026-06-23 12:07] ralph | club-credit 4.2 | green | 6 files | RestoreClubCredit redeemed→active (remaining=amount per spec L7) + ClubCreditRestorePrecondition + cannotRestore; suite 1536/1536, PHPStan 0, 4-writer set complete
+
+## [2026-06-23 12:17] ralph | club-credit 4.3 | green | 2 files | forfeiture/restoration tests complete (forfeit-before-issue ordering, restore-after-forfeit terminal edge, no-event delta); 1539/1539, PHPStan 0, Pint clean

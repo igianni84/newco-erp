@@ -2,13 +2,18 @@
 
 use App\Modules\Parties\Actions\ApplyClubCredit;
 use App\Modules\Parties\Actions\ForfeitClubCredit;
+use App\Modules\Parties\Actions\IssueClubCredit;
 use App\Modules\Parties\Actions\RestoreClubCredit;
 use App\Modules\Parties\Enums\ClubCreditState;
 use App\Modules\Parties\Exceptions\ClubCreditRestorePrecondition;
 use App\Modules\Parties\Exceptions\IllegalClubCreditTransition;
+use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\ClubCredit;
+use App\Modules\Parties\Models\Profile;
+use App\Platform\Events\DomainEvent;
 use App\Platform\Money\Currency;
 use App\Platform\Money\Money;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -29,14 +34,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *
  * Rejections are asserted by exception CLASS, not message — the localized `parties.club_credit.*` keys land in task
  * 5.2, so until then `__()` returns the key string and the class is the pinned contract (the redemption-test idiom).
- * Task 4.3 completes this file's matrix with the forfeit-before-issue ordering pair (the one-active invariant makes
- * `IssueClubCredit` reject while `active`, so re-issue requires forfeit-then-issue), the restore-after-forfeit
- * terminal edge (restore on a forfeited credit is rejected), and the § 11.4 audit-only guarantee (no `domain_events`
- * row — delta 0 — across the writers). RefreshDatabase per the directory convention; forfeiture touches only the
- * credit while restoration re-reads the owning Profile (the one-active check), neither asserting a clock-sensitive
- * validity window. The factories bypass the Actions, so each credit is a pure fixture; Money is asserted via
- * `Money::equals()` / the integer `minorUnits`, never a float (invariant 6). Each Action opens its OWN
- * `DB::transaction` (a SAVEPOINT under RefreshDatabase's wrapper), so the file holds on PostgreSQL 17 as well as SQLite.
+ * Task 4.3 completes this file's matrix with the three cases the 4.1/4.2 set did not yet cover:
+ *   - FORFEIT-BEFORE-ISSUE ordering (§ 11.3; design L5): with an `active` credit, a re-issue is rejected by the
+ *     one-active partial index ({@see IssueClubCredit}), then `ForfeitClubCredit` frees the slot and a re-issue mints
+ *     a FRESH `active` credit — the exact ordering the Module-E renewal listener will perform (forfeit-then-issue);
+ *   - the RESTORE-AFTER-FORFEIT terminal edge (§ 11.3): a restore on a `forfeited` credit is rejected — the THIRD and
+ *     last terminal edge (a second forfeit and an apply are exercised above), so `forfeited` is absolutely terminal;
+ *   - the § 11.4 AUDIT-ONLY guarantee: forfeiture AND restoration record no `domain_events` row (delta 0 across both
+ *     writers), Module K recording state with the lifecycle events owned by Module E.
+ * RefreshDatabase per the directory convention; forfeiture touches only the credit while restoration re-reads the
+ * owning Profile (the one-active check), neither asserting a clock-sensitive validity window (the forfeit-before-issue
+ * case calls {@see IssueClubCredit}, which sets the window from the live clock, but asserts only `state`/identity, not
+ * the window — so no frozen clock is needed). The factories bypass the Actions, so each credit is a pure fixture;
+ * Money is asserted via `Money::equals()` / the integer `minorUnits`, never a float (invariant 6). Each Action opens
+ * its OWN `DB::transaction` (a SAVEPOINT under RefreshDatabase's wrapper) — so the re-issue's partial-index violation
+ * aborts only that SAVEPOINT and the file holds on PostgreSQL 17 as well as SQLite.
  */
 uses(RefreshDatabase::class);
 
@@ -179,4 +191,86 @@ it('rejects restoration when the Profile already holds another active credit (th
     $read = ClubCredit::findOrFail($redeemed->id);
     expect($read->state)->toBe(ClubCreditState::Redeemed)
         ->and($read->remaining->minorUnits)->toBe(0);
+});
+
+it('allows re-issue only after forfeiture — the forfeit-before-issue ordering (one-active invariant; design L5)', function () {
+    // a credit-generating Club (factory default: generates_credit = true, fee = 25000 EUR) and a Profile on it — the
+    // issuance-test idiom, so the REAL IssueClubCredit can mint a credit (it gates on generates_credit + a non-null fee).
+    $club = Club::factory()->create();
+    $profile = Profile::factory()->create(['club_id' => $club->id]);
+
+    // issue the Profile's one `active` credit through the REAL Action.
+    $first = app(IssueClubCredit::class)->handle($profile->id);
+    expect($first->state)->toBe(ClubCreditState::Active);
+
+    // a re-issue WHILE that credit is `active` violates the partial unique index `(profile_id) WHERE state = 'active'`
+    // (design L1): the one-active invariant rejects a second active credit — the renewal flow cannot simply stack one.
+    // IssueClubCredit wraps its work in DB::transaction, so the violation aborts only that SAVEPOINT and PostgreSQL
+    // stays isolated under RefreshDatabase's outer transaction (the issuance-test one-active idiom).
+    expect(fn () => app(IssueClubCredit::class)->handle($profile->id))
+        ->toThrow(QueryException::class);
+    expect(ClubCredit::query()->where('profile_id', $profile->id)
+        ->where('state', ClubCreditState::Active->value)->count())->toBe(1);
+
+    // forfeit the active credit (the forfeit-before-issue step — design L5): the slot frees, and a re-issue now mints
+    // a FRESH `active` credit, leaving the original `forfeited` (outside the index). This is the exact ordering the
+    // Module-E renewal listener will perform (ForfeitClubCredit then IssueClubCredit), provable at launch without it.
+    app(ForfeitClubCredit::class)->handle($first->id);
+    $second = app(IssueClubCredit::class)->handle($profile->id);
+
+    expect($second->state)->toBe(ClubCreditState::Active)
+        ->and($second->id)->not->toBe($first->id)
+        ->and(ClubCredit::findOrFail($first->id)->state)->toBe(ClubCreditState::Forfeited)   // the original is terminal
+        ->and(Profile::findOrFail($profile->id)->activeClubCredit?->is($second))->toBeTrue() // the new one is the active
+        ->and(ClubCredit::query()->where('profile_id', $profile->id)->count())->toBe(2)
+        ->and(ClubCredit::query()->where('profile_id', $profile->id)
+            ->where('state', ClubCreditState::Active->value)->count())->toBe(1);
+});
+
+it('treats forfeited as terminal — a restore on a forfeited credit is rejected, leaving it forfeited', function () {
+    // forfeit an `active` credit through the REAL Action, then attempt to RESTORE it: RestoreClubCredit's from-state
+    // guard requires `redeemed`, so a `forfeited` credit is rejected via `cannotRestore` — the THIRD and last terminal
+    // edge (a second forfeit and an apply are the other two, above). Forfeiture is absolutely terminal: no edge leaves it.
+    $credit = ClubCredit::factory()->create([
+        'amount' => Money::of(25000, Currency::EUR),
+        'remaining' => Money::of(25000, Currency::EUR),
+    ]);
+
+    app(ForfeitClubCredit::class)->handle($credit->id);
+
+    expect(fn () => app(RestoreClubCredit::class)->handle($credit->id))
+        ->toThrow(IllegalClubCreditTransition::class);
+
+    // the from-state guard fired before any write — `state` stays `forfeited` and `remaining` is untouched.
+    $read = ClubCredit::findOrFail($credit->id);
+    expect($read->state)->toBe(ClubCreditState::Forfeited)
+        ->and($read->remaining->equals(Money::of(25000, Currency::EUR)))->toBeTrue();
+});
+
+it('records no domain event — forfeiture and restoration are audit-only (§ 11.4; design L3)', function () {
+    // an `active` credit to forfeit and a fully-redeemed credit to restore — each on its OWN Profile (the factory
+    // default spins up a fresh Profile per credit), so the redeemed one's one-active slot is free for the restore.
+    // These are the two writers this file owns.
+    $active = ClubCredit::factory()->create([
+        'amount' => Money::of(25000, Currency::EUR),
+        'remaining' => Money::of(25000, Currency::EUR),
+    ]);
+    $redeemed = ClubCredit::factory()->create([
+        'amount' => Money::of(25000, Currency::EUR),
+        'remaining' => Money::of(0, Currency::EUR),
+        'state' => ClubCreditState::Redeemed,
+    ]);
+
+    // the factories bypass the Actions, so the event log starts empty; snapshot to assert the DELTA across BOTH
+    // writers is exactly 0 (honest if a fixture ever emits), not merely a final count.
+    $before = DomainEvent::query()->count();
+
+    $forfeited = app(ForfeitClubCredit::class)->handle($active->id);
+    $restored = app(RestoreClubCredit::class)->handle($redeemed->id);
+    expect($forfeited->state)->toBe(ClubCreditState::Forfeited)   // the writers actually ran
+        ->and($restored->state)->toBe(ClubCreditState::Active);
+
+    // § 11.4 makes `ClubCreditForfeited` / `ClubCreditRestored` MODULE E's events; these within-module writers record
+    // NONE — they inject no DomainEventRecorder (mirrors IssueClubCredit/ApplyClubCredit). Delta = 0.
+    expect(DomainEvent::query()->count())->toBe($before);
 });
