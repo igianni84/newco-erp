@@ -571,3 +571,5 @@
 ## [2026-06-23 22:21] ralph | operator-console-parties-membership 1.1/1.2/1.3 | green | group 1: ProfileResource (read-only) + ListProfiles approval-queue tabs + ViewProfile/CreateProfile scaffolds + EN/IT profile i18n + 5 tests; full suite 1565/1565
 
 ## [2026-06-23 22:36] ralph | operator-console-parties-membership 2.1/2.2 | green | 7 files | Profile create surface (write-through) + Customer/Club selects + i18n + list-header link; suite 1569/1569, phpstan 0, pint clean
+
+## [2026-06-23 22:49] ralph | operator-console-parties-membership 3.1/3.2 | green | 4 files | approve/decline ViewProfile verbs gated to applied + EN/IT i18n; full suite 1589/1589, phpstan max 0

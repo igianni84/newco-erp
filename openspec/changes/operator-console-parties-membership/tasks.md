@@ -13,11 +13,11 @@
 
 ## 3. Profile membership approval — approve / decline (ViewProfile)
 
-- [ ] 3.1 On `ViewProfile`, append two header actions via the kit's `lifecycleAction($verb, $successKey, $invoke)` (form-less, `$form = null`), each `->visible(...)` gated to `state == 'applied'`:
+- [x] 3.1 On `ViewProfile`, append two header actions via the kit's `lifecycleAction($verb, $successKey, $invoke)` (form-less, `$form = null`), each `->visible(...)` gated to `state == 'applied'`:
   - `approve` → `fn (Model $record, string $notes) => app(ApproveProfile::class)->handle($this->recordOf(Profile::class, $record)->id)`, `->visible(fn (): bool => $this->recordOf(Profile::class, $this->getRecord())->state->value === 'applied')`
   - `decline` → `app(DeclineProfile::class)->handle(...)`, same `->visible(...)`.
   Catch domain rejections by base `\RuntimeException` (the kit's `surfaceLifecycleOutcome`); reference `IllegalProfileTransition` only as **prose** (never `{@see FQCN}`/`@throws FQCN` — Pint adds a boundary-violating `use`, lesson 2026-06-20).
-- [ ] 3.2 Add `operator_console.profile.actions.{approve, decline}` + `notifications.{approved, declined}` to `lang/en` + `lang/it`.
+- [x] 3.2 Add `operator_console.profile.actions.{approve, decline}` + `notifications.{approved, declined}` to `lang/en` + `lang/it`.
 - **Tests** (`ProfileApprovalConsoleTest.php`): approve an `Applied` Profile of a Customer whose `originating_club_id` is null → `approved` + exactly one `OriginatingClubLocked` (actor_role newco_ops) + Customer `originating_club_id` set to that Club; approve a **second** Club's `Applied` Profile for the same Customer → `approved` + **no further** `OriginatingClubLocked` (assert count unchanged — one-shot lock); decline an `Applied` → `rejected` + **zero** new domain events (audit-only); `assertActionVisible('approve'/'decline')` iff `Applied`, else `assertActionHidden`; an out-of-state approve/decline is a **domain throw** — `expect(fn () => app(ApproveProfile::class)->handle($nonApplied->id))->toThrow(IllegalProfileTransition::class)` **+** `assertActionHidden` (a hidden action is undriveable through the widget — assert the domain rejection directly, lesson 2026-06-22). Typecheck passes; tests pass.
 
 ## 4. Profile activation + suspension/restoration (ViewProfile)
