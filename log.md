@@ -537,3 +537,5 @@
 ## [2026-06-23 10:33] ralph | club-credit 1.2 | green | 4 files | parties_club_credits migration + one-active partial unique index + raw-insert schema test (7/7); suite 1507/1507, phpstan max 0, pint clean
 
 ## [2026-06-23 10:41] ralph | club-credit 1.3 | green | 3 files (ClubCredit model + factory + feature test); full suite 1510/1510, PHPStan max 0, pint clean, openspec valid
+
+## [2026-06-23 10:52] ralph | club-credit 1.4 Profile::activeClubCredit() | green | 3 files | scoped within-module hasOne(active); 5 tests; suite 1515/1515, PHPStan max 0, validate strict ok

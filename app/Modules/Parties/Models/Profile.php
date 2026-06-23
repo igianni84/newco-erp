@@ -3,6 +3,7 @@
 namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateProfile;
+use App\Modules\Parties\Enums\ClubCreditState;
 use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Events\ProfileCreated;
 use Carbon\CarbonImmutable;
@@ -11,6 +12,7 @@ use Database\Factories\Parties\ProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Profile — the membership in one Club (parties-core, design D2/D4/D8; party-registry — Requirement: Profile —
@@ -18,7 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * NO separate Membership entity, § 3); it belongs to EXACTLY ONE Customer and EXACTLY ONE Club (§ 4.2), both
  * required. Both relations are WITHIN-module `belongsTo` (the boundary law forbids only CROSS-module relations —
  * Customer and Club are in the same module): the {@see customer()} and {@see club()} links are required (both
- * non-nullable FKs).
+ * non-nullable FKs). The {@see activeClubCredit()} inverse is the at-most-one `active` Club Credit on this Profile
+ * (a within-module `hasOne` scoped to `state = 'active'` — the structural one-active invariant, change club-credit).
  *
  * Persistence-only by design (D7): the {@see CreateProfile} action is the sole writer — it runs the
  * non-terminal-duplicate pre-check, inserts the row (born `applied`) and records {@see ProfileCreated} in one
@@ -49,6 +52,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface $updated_at
  * @property-read Customer $customer
  * @property-read Club $club
+ * @property-read ClubCredit|null $activeClubCredit
  */
 class Profile extends Model
 {
@@ -84,6 +88,22 @@ class Profile extends Model
     public function club(): BelongsTo
     {
         return $this->belongsTo(Club::class, 'club_id');
+    }
+
+    /**
+     * The at-most-one `active` Club Credit on this Profile — a WITHIN-module `hasOne` SCOPED to `state = 'active'`
+     * (both entities are Module K, so the cross-module relation ban does not apply). It is the inverse of
+     * {@see ClubCredit::profile()}. The one-active invariant is structural — the partial unique index
+     * `(profile_id) WHERE state = 'active'` (change club-credit design L1) — so the scope resolves to a single
+     * credit or `null`: a Profile whose credits are all `redeemed`/`forfeited`, or which has none, returns `null`.
+     * The four within-module Club Credit writer Actions are the sole writers of the underlying `state`; the
+     * relation adds no writer (the model stays persistence-only).
+     *
+     * @return HasOne<ClubCredit, $this>
+     */
+    public function activeClubCredit(): HasOne
+    {
+        return $this->hasOne(ClubCredit::class)->where('state', ClubCreditState::Active->value);
     }
 
     /**
