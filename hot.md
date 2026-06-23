@@ -7,23 +7,24 @@ updated: 2026-06-23
 # Hot Cache
 
 ## Last Updated
-**2026-06-23 (`operator-console-parties-kyc-sanctions` — §2.7 closure ritual DONE: reviewed → merged `--no-ff` → semantic-verified → archived).** The change is ARCHIVED (`openspec/changes/archive/2026-06-23-operator-console-parties-kyc-sanctions`); its delta is merged into the living `openspec/specs/operator-console/spec.md` (+2 req ADDED — Customer KYC console + sanctions-screening console; ~2 req MODIFIED — status verbs + read-only context). `openspec list` → **no active changes**. Semantic verify (2 independent subagents) returned **NO CRITICAL**: completeness COMPLETE (every normative scenario asserted, 13/13 tasks proven in merged code), correctness/coherence CLEAN (both KYC visibility predicates the exact complement of their domain guards, screening option-set the exact complement of the onboarding floor, `KycStatus` never imported, D1–D11 realized). Two accepted non-blocking WARNINGs (per-verb `!isConfirmationRequired()` not pinned; Req-4 read-only scenarios live in the prior customer slice).
+**2026-06-23 (`club-credit` COMPLETE — 15/15, `CHANGE_COMPLETE` emitted).** Task 5.4 was the final full-suite gate: verification-only, **no new code** (just the 5.4 checkbox flip + memory files). All gates green and every task's acceptance re-verified at a glance. The change now awaits the human: push → CI both lanes → review → merge → `openspec archive club-credit` (the ralph loop never archives/merges/pushes).
 
 ## Build & Quality Status
 - Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (max) · Pint 1.29.1. SQLite dev; prod PG17.
-- **Last GREEN (loop 5.x): full suite 1495/1495 (8263 assn, exit 0) on SQLite; PHPStan max 0 err; `pint --test` clean.** PG17 gate met IN-LOOP at task 4.2 (Parties OperatorPanel folder 372/372, 1854 assn) — NOT re-run post-merge (this change adds NO migration / schema / new query, so untouched tests can't newly fail on PG).
-- Full suite OOMs at PHP default 128 MB in result parsing — run pest with `php -d memory_limit=-1`.
+- **Last GREEN (5.4 gate, 2026-06-23 13:00):** full suite **1560/1560 (8500 assn)** via `php -d memory_limit=-1 vendor/bin/pest`; PHPStan max **0**; `pint --test` clean; `openspec validate club-credit --strict` valid. Working tree clean.
+- **Full suite: `php -d memory_limit=-1 vendor/bin/pest` — NOT `artisan test`** (laravel/pao OOMs at 128 MB; lessons.md 2026-06-20).
+- **PG17:** no local PG for this project by design (`psql`/`pg_ctl` absent; the running `invoicing-system-db-1` container is a DIFFERENT project — do NOT co-opt). The change's DDL is Postgres-truthful by construction (engine-identical raw partial index + driver-guarded CHECK; Actions pure Eloquent). CI `tests-pgsql` lane (`postgres:17` service container) runs on the human push.
 
 ## Active Change & Next Task
-- **NONE active — change ARCHIVED.** Module K Parties console now covers: status verbs (customer slice) + Holds place/lift (holds slice) + 3 KYC verbs + sanctions screening (this slice). All write-through domain Actions, no Eloquent write.
-- **`main` is +16 commits ahead of `origin/main`, UNPUSHED** (14 ralph commits + `merge:` + `archive:` + the memory refresh). Local `ralph/operator-console-parties-kyc-sanctions` branch still present.
-- **Next: `/spec-to-change` for Module K Club Credit — core domain** (PRD `Module_K_PRD_v0.3-MVP.md` §11: ClubCredit entity + auto-issuance on `MembershipFeePaid` when `Club.generates_credit` + one-active-per-Profile invariant + K.17 carry-forward; lifecycle `active → redeemed | forfeited`). Greenfield (no `ClubCredit` code). DOMAIN slice, not console. Cross-module seam: trigger is Module E's `MembershipFeePaid` — **Module E not built** (F6); `ActivateProfile`/`RenewProfile` already reference the fee-paid signal — resolve the trigger in the interview. (club+membership domain ALREADY shipped 06-19; GDPR/retention is the other K tail, F7-leaning.)
+- **`club-credit` — 15/15 DONE. `<promise>CHANGE_COMPLETE</promise>` returned.** No further ralph task remains in this change. Branch `ralph/club-credit` carries the 15 local commits (last: 5.4 gate). **Next human steps:** push → CI green (quality + tests-pgsql) → review → merge → `openspec archive club-credit`.
+- **After archive:** no in-flight change. The next slice is a human-driven `/spec-to-change` (Module K continues, or whatever the build-workplan calls next). The loop has nothing to pick up until a new change has an `APPROVED` file + unchecked tasks.
 
 ## Blockers & Decisions Needed
-- **Push gate (close-ritual convention):** `git push` (origin/main) + `git branch -d ralph/operator-console-parties-kyc-sanctions` await Giovanni's explicit go (classifier-gated — ask, do local steps first). All local steps done.
-- RESOLVED: the earlier "Holds push gate" — Holds is already on `origin/main` (verified 2026-06-23, branch already deleted). No backlog beyond this change's push.
+- **No blocker.** No open ADR gate stepped through this change. `main` in sync with `origin/main`; the work lives on `ralph/club-credit` unpushed.
+- Deferred SEAMS recorded in CONTEXT.md + the glossary (NOT blockers, future modules): Module-E `MembershipFeePaid` listener + `ClubCredit*` consumers (F6); Module-S checkout redemption + DEC-110/111 mutual-exclusion + DEC-043 closure-conversion + order-cancellation restore; year-end forfeiture scheduler; Profile-cancellation forfeit cascade.
 
 ## Open Patterns
-- **§2.7 closure run interactively:** review diff → merge `--no-ff` → semantic-verify via 2 independent subagents (completeness vs correctness/coherence), classify CRITICAL/WARNING/SUGGESTION → archive only if no CRITICAL. The 2-agent split found nothing CRITICAL (the change was over-covered).
-- **Verify-only / memory-only closing task** (loop 5.2 mirrors 4.2/5.1): the validation/sweep IS the deliverable; the full suite subsumes per-task `--filter` runs.
-- **Recalled-memory staleness:** a hot.md / team-memory flag can lag reality — verify before acting (the "Holds push pending" note was already false).
+- **The 4 writers (Issue/Apply/Forfeit/Restore) are COMPLETE, audit-only, i18n-wired, docs-landed** — all in `SupplyLifecycleChainTest`'s `$clubCreditWriters` allow-list. Any new non-`Create` Parties Action MUST be added there or the exact-match `toEqualCanonicalizing` reds.
+- **A gate-task's PG17 proof is structural, not local (NEW, 5.4):** engine-identical raw SQL + driver-guarded CHECK + pure-Eloquent Actions ⇒ "by construction + CI on push." There is no local PG for this project; don't fake a run against another project's stray container.
+- **Closing a seam = grep + de-stale every breadcrumb** (5.3): a deferred-seam claim scatters across many docblocks; `grep -rniE -A1 "<entity>" app/… | grep unbuilt` finds them all. Module S/E will inherit many.
+- **The freeze is enforced at the REDEMPTION site, not suspension:** `Suspend*` stays state-preserving; `ApplyClubCredit` reads the owning Profile's live `state`.

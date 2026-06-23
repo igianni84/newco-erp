@@ -529,3 +529,35 @@
 ## [2026-06-23 07:53] ralph | operator-console-parties-kyc-sanctions 5.2 | green | CHANGE_COMPLETE — validate --strict + final sweep 1495/1495, phpstan max 0, pint clean; 5 durable patterns verified consolidated; 13/13 done
 
 ## [2026-06-23 08:08] §2.7 closure | operator-console-parties-kyc-sanctions | merged --no-ff + archived (delta → openspec/specs/operator-console: +2 ADDED, ~2 MODIFIED req). Semantic verify (2 agents) NO CRITICAL, 2 accepted WARNINGs. PG17 gate met in-loop @4.2; full SQLite 1495/1495. main +16 unpushed; push + branch-d gated.
+
+## [2026-06-23 10:10] spec-to-change | club-credit | APPROVED (Module K §11, greenfield): ClubCredit entity + one-active partial-index + 4 audit-only writers (issue/apply/forfeit/restore); §11.4 events stay Module E's. strict-valid 6req/20scn/15tasks. Gate: audit-only, Club.fee verbatim, full FSM+seams.
+
+## [2026-06-23 10:16] ralph | club-credit 1.1 | green | ClubCreditState enum (active/redeemed/forfeited) + isActive/isTerminal predicates + 5-test ClubCreditEnumsTest; suite 1500/1500, phpstan 0, pint clean | 3 files
+
+## [2026-06-23 10:33] ralph | club-credit 1.2 | green | 4 files | parties_club_credits migration + one-active partial unique index + raw-insert schema test (7/7); suite 1507/1507, phpstan max 0, pint clean
+
+## [2026-06-23 10:41] ralph | club-credit 1.3 | green | 3 files (ClubCredit model + factory + feature test); full suite 1510/1510, PHPStan max 0, pint clean, openspec valid
+
+## [2026-06-23 10:52] ralph | club-credit 1.4 Profile::activeClubCredit() | green | 3 files | scoped within-module hasOne(active); 5 tests; suite 1515/1515, PHPStan max 0, validate strict ok
+
+## [2026-06-23 11:13] ralph | club-credit 2.1 | green | IssueClubCredit audit-only writer + ClubCreditIssuancePrecondition; happy+one-active tests; registered in SupplyLifecycleChainTest whitelist; suite 1517/1517, phpstan 0, pint clean
+
+## [2026-06-23 11:21] ralph | club-credit 2.2 | green | 2 files — IssueClubCredit test matrix (reject no-credit/null-fee no-row, §11.2 Hold-asymmetry, §11.4 no-event delta 0); suite 1521/1521, PHPStan max 0, Pint clean, openspec valid
+
+## [2026-06-23 11:34] ralph | club-credit 3.1 | green | ApplyClubCredit Action + IllegalClubCreditTransition + ClubCreditRedemptionPrecondition + 6 redemption tests; suite 1527/1527, phpstan 0, pint clean | 6 files
+
+## [2026-06-23 11:42] ralph | club-credit 3.2 | green | 2 files; ClubCreditRedemptionTest +2 tests (freeze-then-restore round-trip, §11.4 no-event delta); suite 1529/1529, phpstan max 0, pint clean
+
+## [2026-06-23 11:52] ralph | club-credit 4.1 | green | 5 files | ForfeitClubCredit (active→forfeited, audit-only) + cannotForfeit + forfeiture test 4/4; suite 1533/1533, phpstan 0, validate ok
+
+## [2026-06-23 12:07] ralph | club-credit 4.2 | green | 6 files | RestoreClubCredit redeemed→active (remaining=amount per spec L7) + ClubCreditRestorePrecondition + cannotRestore; suite 1536/1536, PHPStan 0, 4-writer set complete
+
+## [2026-06-23 12:17] ralph | club-credit 4.3 | green | 2 files | forfeiture/restoration tests complete (forfeit-before-issue ordering, restore-after-forfeit terminal edge, no-event delta); 1539/1539, PHPStan 0, Pint clean
+
+## [2026-06-23 12:29] ralph | club-credit 5.1 | green | 3 files — §11.4 event-ownership guard test (class-absence glob loop + 4-writer zero-event FSM walk); suite 1541/1541, PHPStan 0
+
+## [2026-06-23 12:40] ralph | club-credit 5.2 | green | 2 files — club_credit i18n group (9 keys) + ClubCreditExceptionsTest 19/19; full suite 1560/1560, PHPStan max 0, Pint clean, openspec valid
+
+## [2026-06-23 12:55] ralph | club-credit 5.3 | green | docs: CONTEXT.md glossary+seams de-staled, 6 docblocks, knowledge/module-k | 11 files | suite 1560/1560
+
+## [2026-06-23 13:01] ralph | club-credit 5.4 | green | full-suite gate: pest 1560/1560 SQLite, PHPStan max 0, Pint clean, openspec valid; PG17 by-construction + CI on push. CHANGE_COMPLETE (15/15) | 1 file

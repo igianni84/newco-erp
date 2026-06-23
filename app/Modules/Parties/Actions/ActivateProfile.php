@@ -30,8 +30,9 @@ use Illuminate\Support\Facades\DB;
  * K consumes Module E's `MembershipFeePaid` to drive this"). `ActivateProfile` ships as the within-module writer of
  * the transition, invoked by the free-club / operator path now and directly in tests — exactly as
  * {@see ActivateProducer} ships the transition with its upstream KYC gate as a seam. Club Credit (also fee-paid-
- * coupled) is an independent downstream consumer (`club-credit`); `ProfileActivated` provisions no credit inline,
- * so the split across slices breaks no ordering.
+ * coupled) is now BUILT as an independent Module K entity (`club-credit`) with `IssueClubCredit` as its writer;
+ * `ProfileActivated` still provisions no credit inline (the production issuance trigger is Module E's
+ * `MembershipFeePaid` listener — the same deferred Phase-6 seam), so the split across slices breaks no ordering.
  *
  * HERO PACKAGE CAPACITY GATE — DEFERRED MODULE-A SEAM (design L7; § 13.1 / AC-K-J-13 / AC-K-XM-18): § 13.1 mandates
  * the membership no-oversell ceiling at "every Profile transition into `active`", but § 13.2 puts the cap on Module

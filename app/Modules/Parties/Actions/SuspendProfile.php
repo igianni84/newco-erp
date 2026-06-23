@@ -24,10 +24,11 @@ use Illuminate\Support\Facades\DB;
  *
  * STATE-PRESERVING (design L9; § 10.1 / AC-K-FSM-2a): suspension writes ONLY `Profile.state`. It does NOT cancel
  * vouchers, pending orders or allocation reservations, nor mutate any Club Credit balance — active vouchers stay
- * ACTIVE, pending orders stay pending, reservations stay reserved. Those entities live in Module S/B/E and are
- * unbuilt, so the "Club Credit frozen while suspended" guarantee is a deferred `club-credit` seam (the credit entity
- * will read `state` when it exists): there is nothing to freeze here, and nothing destructive happens — only this
- * one row's `state` changes.
+ * ACTIVE, pending orders stay pending, reservations stay reserved. Vouchers/orders/reservations live in Module S/B/E
+ * and are unbuilt; the Club Credit entity is now BUILT (Module K, `club-credit`) and the "Club Credit frozen while
+ * suspended" guarantee (§ 10.1 / AC-K-FSM-2a) is CLOSED — but enforced at the redemption site, not here:
+ * `ApplyClubCredit` reads the owning Profile's live `state` and rejects redemption while `Suspended`. There is
+ * nothing to freeze here, and nothing destructive happens — only this one row's `state` changes.
  *
  * HOLD COUPLING — DRIVEN IN PRODUCTION (design L6; ADR 2026-06-19; § 10.1): in production this transition is driven
  * by the Hold→`suspended` coupling — a Profile-scope Hold, or a cascading Customer-scope Hold (via the deferred

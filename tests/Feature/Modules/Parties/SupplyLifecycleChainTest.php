@@ -362,15 +362,31 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'CloseAccount',
     ];
 
+    // ...and the Club Credit within-module writers (change club-credit — the per-Profile prepayment FSM
+    // `active → redeemed | forfeited`). `IssueClubCredit` (task 2.1) creates an `active` credit; it is named
+    // `Issue*` not `Create*`, so the Create-filter below treats it as a transition Action and it MUST be whitelisted
+    // here. These writers are AUDIT-ONLY — § 11.4 makes `ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` (and the
+    // `MembershipFeePaid` trigger) MODULE E's events, so they record state and emit NO Parties event — but they are
+    // still non-Create Actions, so they ARE whitelisted (mirroring the audit-only Account/CancelProfile entries). With
+    // task 4.2 the FOUR-writer set is COMPLETE: `IssueClubCredit` (2.1) creates the `active` credit, `ApplyClubCredit`
+    // (3.1) is the redemption decrement / `active → redeemed` writer, `ForfeitClubCredit` (4.1) the `active →
+    // forfeited` writer, and `RestoreClubCredit` (4.2) the `redeemed → active` order-cancellation restore writer.
+    $clubCreditWriters = [
+        'IssueClubCredit',
+        'ApplyClubCredit',
+        'ForfeitClubCredit',
+        'RestoreClubCredit',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status ones. With task 3.2 the demand-side status set is complete; the only
-    // names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8) and the deferred seams
-    // `WaitingList`/segment/Hero-cap (no Action class) and `LockOriginatingClub`/`SetOriginatingClub` (the
-    // Originating-Club lock lives inside `ApproveProfile`, never a standalone Action). If a deferred-seam Action were
-    // added without declaring it here, it would appear in this set and fail the assertion (the whitelist grew one
-    // slice at a time).
+    // demand-side activation + demand-side status + Club Credit-writer ones. With task 3.2 the demand-side status set
+    // is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8)
+    // and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
+    // `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock lives inside `ApproveProfile`, never a
+    // standalone Action). If a deferred-seam Action were added without declaring it here, it would appear in this set
+    // and fail the assertion (the whitelist grew one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

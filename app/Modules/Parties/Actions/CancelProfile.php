@@ -39,7 +39,9 @@ use Illuminate\Support\Facades\DB;
  * writes `cancelled` + the reason. A call on a Profile not in `active`/`lapsed` throws
  * {@see IllegalProfileTransition::cannotCancel()} BEFORE any write, and the transaction rolls back leaving the Profile
  * and the event log unchanged. State-preserving (design L9): the cancellation writes ONLY `state` + `cancellation_reason`
- * — it touches no voucher/order/reservation/Club Credit (those entities live in Module S/B/E and are unbuilt).
+ * — it touches no voucher/order/reservation/Club Credit (vouchers/orders/reservations live in Module S/B/E and are
+ * unbuilt; the Club Credit entity is built in Module K, but the Profile-cancellation → forfeit cascade is a deferred
+ * seam — `CancelProfile` does not call `ForfeitClubCredit`, design L5).
  * `version` is NOT bumped (parties-core identity-revision semantics). The Model stays persistence-only; this Action is
  * the sole state writer. The actor is resolved from the {@see ActorContext} seam at the operator/offboarding caller —
  * but, being audit-only, this Action records no envelope of its own.

@@ -30,8 +30,10 @@ use Illuminate\Support\Facades\DB;
  *
  * STATE-PRESERVING (design L9; § 10.1 / AC-K-FSM-2a): the lapse writes ONLY `Profile.state` and the additive
  * `lapsed_at` anchor — it does NOT cancel vouchers, pending orders or allocation reservations, nor mutate any Club
- * Credit balance. Those entities live in Module S/B/E and are unbuilt, so nothing destructive happens — only this one
- * row changes.
+ * Credit balance. Vouchers/orders/reservations live in Module S/B/E and are unbuilt; the Club Credit entity is built
+ * (Module K, `club-credit`), but lapse mutates no credit — the year-end forfeiture past `valid_to` is a deferred
+ * scheduler seam owned by `ForfeitClubCredit`, never inline here. Nothing destructive happens — only this one row
+ * changes.
  *
  * From-state guarded and race-safe (design L4, mirroring {@see SuspendProfile}): inside ONE {@see DB::transaction} it
  * re-reads the Profile `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state
