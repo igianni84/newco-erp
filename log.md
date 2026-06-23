@@ -555,3 +555,5 @@
 ## [2026-06-23 12:17] ralph | club-credit 4.3 | green | 2 files | forfeiture/restoration tests complete (forfeit-before-issue ordering, restore-after-forfeit terminal edge, no-event delta); 1539/1539, PHPStan 0, Pint clean
 
 ## [2026-06-23 12:29] ralph | club-credit 5.1 | green | 3 files — §11.4 event-ownership guard test (class-absence glob loop + 4-writer zero-event FSM walk); suite 1541/1541, PHPStan 0
+
+## [2026-06-23 12:40] ralph | club-credit 5.2 | green | 2 files — club_credit i18n group (9 keys) + ClubCreditExceptionsTest 19/19; full suite 1560/1560, PHPStan max 0, Pint clean, openspec valid

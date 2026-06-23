@@ -122,4 +122,31 @@ return [
         'cannot_lift_auto_managed' => 'Cannot lift this :type Hold from the operator path. An auto-managed Hold lifts only on its system clearing signal, never by an operator.',
         'cannot_lift_not_active' => 'Cannot lift a Hold from state :state. A Hold lifts only from active.',
     ],
+    'club_credit' => [
+        // Club Credit FSM `active → redeemed | forfeited`, with the order-cancellation restore edge
+        // `redeemed → active` (change club-credit, design L4/L6/L7; party-registry — Requirements: Club
+        // Credit Redemption and Carry-Forward, Club Credit Forfeiture and Restoration; § 11). The four
+        // within-module writer Actions (Issue/Apply/Forfeit/Restore) throw these on a rejected call.
+        // :state is the offending from-state token (a business enum value, not PII).
+        'cannot_apply' => 'Cannot apply this Club Credit from state :state. A Club Credit is applied only from active.',
+        'cannot_forfeit' => 'Cannot forfeit this Club Credit from state :state. A Club Credit is forfeited only from active.',
+        'cannot_restore' => 'Cannot restore this Club Credit from state :state. A Club Credit is restored only from redeemed.',
+        // Issuance preconditions (§ 11.1; design L2): issuance is gated on the owning Club's credit policy
+        // and fee. :club is the operator-facing club-id reference (not PII); the credit amount is the Club
+        // fee verbatim (full-fee → full-credit; K.18 scaling deferred), so a fee-less Club cannot define one.
+        'issuance_no_credit_policy' => 'Cannot issue a Club Credit: Club :club does not generate credit. Club Credit issuance requires a Club with a credit policy.',
+        'issuance_no_fee' => 'Cannot issue a Club Credit: Club :club has no membership fee. The credit amount is the Club fee, so a Club without a fee cannot issue credit.',
+        // Redemption preconditions on an otherwise-active credit (§ 11.2 / § 10.1; design L6).
+        // currency_mismatch names the two ISO 4217 codes (:expected = credit currency, :actual = redeemed
+        // currency) — there is no FX in Module K. over_application / frozen_while_suspended name the
+        // operator-facing :credit id (not PII); the money balance is DELIBERATELY kept out of every message
+        // (a balance is customer financial data).
+        'currency_mismatch' => 'Cannot apply this Club Credit: the redeemed amount is in :actual but the credit is held in :expected. A Club Credit is redeemed only in its own currency — there is no currency conversion.',
+        'over_application' => 'Cannot apply Club Credit :credit: the redeemed amount exceeds its remaining balance. A redemption may not exceed the remaining credit.',
+        'frozen_while_suspended' => 'Cannot apply Club Credit :credit: the owning Profile is suspended, which freezes the credit. No redemption is allowed while the Profile is suspended.',
+        // Restoration precondition (§ 11; design L1/L7): restoring a redeemed credit would breach the
+        // one-active-per-Profile partial index if a replacement was already issued. :credit is the
+        // operator-facing id (not PII).
+        'restore_active_conflict' => 'Cannot restore Club Credit :credit: the owning Profile already holds another active Club Credit. A Profile may hold at most one active Club Credit at a time.',
+    ],
 ];
