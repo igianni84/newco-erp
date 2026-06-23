@@ -17,7 +17,7 @@ updated: 2026-06-23
 ## Active Change & Next Task
 - **NONE active — change ARCHIVED.** Module K Parties console now covers: status verbs (customer slice) + Holds place/lift (holds slice) + 3 KYC verbs + sanctions screening (this slice). All write-through domain Actions, no Eloquent write.
 - **`main` is +16 commits ahead of `origin/main`, UNPUSHED** (14 ralph commits + `merge:` + `archive:` + the memory refresh). Local `ralph/operator-console-parties-kyc-sanctions` branch still present.
-- **Next: pick the next slice from `spec/05-release/Build_Workplan_v0.3-MVP.md`** via `/spec-to-change`. Parties remaining workplan candidates: club+membership, club credit, GDPR/retention. Confirm the exact next cut against the workplan before proposing.
+- **Next: `/spec-to-change` for Module K Club Credit — core domain** (PRD `Module_K_PRD_v0.3-MVP.md` §11: ClubCredit entity + auto-issuance on `MembershipFeePaid` when `Club.generates_credit` + one-active-per-Profile invariant + K.17 carry-forward; lifecycle `active → redeemed | forfeited`). Greenfield (no `ClubCredit` code). DOMAIN slice, not console. Cross-module seam: trigger is Module E's `MembershipFeePaid` — **Module E not built** (F6); `ActivateProfile`/`RenewProfile` already reference the fee-paid signal — resolve the trigger in the interview. (club+membership domain ALREADY shipped 06-19; GDPR/retention is the other K tail, F7-leaning.)
 
 ## Blockers & Decisions Needed
 - **Push gate (close-ritual convention):** `git push` (origin/main) + `git branch -d ralph/operator-console-parties-kyc-sanctions` await Giovanni's explicit go (classifier-gated — ask, do local steps first). All local steps done.
