@@ -173,3 +173,19 @@
   - To prove a PHPStan custom rule's 0-errors is MEANINGFUL (not vacuous), grep `phpstan.neon` for the rule registration (`rules:` / `services:` `class:`) — don't just trust the exit code; an unregistered rule would silently "pass". Same idea for the arch tests: confirm `tests/Architecture/` is UNCHANGED via `git diff --stat main` rather than assuming.
   - Next (task 5.2 — the change's LAST): `openspec validate … --strict` (already green this iteration), then the memory consolidation called out in the task. After 5.2, all 13 done → final pass → `<promise>CHANGE_COMPLETE</promise>` (humans review/merge/archive).
 ---
+
+## [2026-06-23 07:52] — 5.2 openspec validate --strict + memory consolidation (the change's LAST task)
+- The change's closing task: validation + memory work, NO source change. `openspec validate operator-console-parties-kyc-sanctions --strict` → **valid, exit 0** (the explicit acceptance).
+- **Memory consolidation (the task's named deliverable):** verified all FIVE durable patterns the task calls out are already present, accurate, and general/reusable in `## Codebase Patterns` above — no padding added (redundancy would bloat the section):
+  1. *form-less verb = `lifecycleAction` + chained `->visible()` from-state gate* → the "Form-less, visibility-gated lifecycle verb" pattern.
+  2. *state-enum cast-value predicate vs operand-enum import* → same pattern (the cast-value predicate, design D5) + the "Bespoke form header action" pattern (the `Parties\Enums\*` operand-enum carve-out; `KycStatus` never imported).
+  3. *record-dependent option-set drop for onboarding-first* → the "Bespoke form header action" pattern (`->options(Closure)` narrowing by cast value, EXACT COMPLEMENT of the domain floor — drop `onboarding` once `last_screening_at !== null`).
+  4. *event-silent KYC verbs → coupled Hold/status events + absence of any KYC event* → the "Cross-slice closing-chain test" pattern (assert the coupled `CustomerHoldPlaced/Suspended/…` + `where('name','like','CustomerKyc%')->count()===0`, design D7).
+  5. *cross-slice chain proven through the shipped Holds table* → the "Cross-slice closing-chain test through a SHIPPED widget" pattern (drive page actions, render `CustomerHoldsTable`).
+- **Final pass (CHANGE_COMPLETE gate — all 13 tasks done):** re-ran the full sweep rather than trusting 5.1's note (this gate hands off to humans): `vendor/bin/pint --test` clean · `vendor/bin/phpstan analyse` (max) **0 errors** · `php -d memory_limit=-1 vendor/bin/pest` **1495/1495, 8263 assn, exit 0** (~41s). Diff-shape re-confirmed: `git diff --name-only main | grep -E '^(spec/|openspec/specs/|tests/Architecture/)'` → NONE; no composer dep; no migration added. Every group 1–5 acceptance bullet re-verified at a glance against the per-task progress narratives (all green).
+- Files changed: NONE beyond the memory trio (`log.md`, `hot.md`, this `progress.md`) + the 5.2 checkbox flip in `tasks.md`. Verify+memory only.
+- Quality loop: **green** — the validation + full sweep IS this task's verification.
+- **Learnings for future iterations:**
+  - A change's closing memory-consolidation task is often a VERIFY of the running `## Codebase Patterns` (each iteration already consolidated its own durable pattern), not a fresh write — confirm each named pattern is present/accurate and resist re-authoring redundant copies. The per-iteration consolidation discipline pays off here: 5.2 had nothing to add.
+  - All 13 tasks complete → `<promise>CHANGE_COMPLETE</promise>`. Do NOT archive or merge — humans review → semantic-verify (GUIDE §2.7) → `openspec archive`. (Separate pending: the Holds-slice origin/main push gate still awaits Giovanni — unrelated to this change.)
+---
