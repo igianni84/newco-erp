@@ -1,12 +1,15 @@
 <?php
 
 use App\Modules\Parties\Actions\ApplyClubCredit;
+use App\Modules\Parties\Actions\ReactivateProfile;
+use App\Modules\Parties\Actions\SuspendProfile;
 use App\Modules\Parties\Enums\ClubCreditState;
 use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Exceptions\ClubCreditRedemptionPrecondition;
 use App\Modules\Parties\Exceptions\IllegalClubCreditTransition;
 use App\Modules\Parties\Models\ClubCredit;
 use App\Modules\Parties\Models\Profile;
+use App\Platform\Events\DomainEvent;
 use App\Platform\Money\Currency;
 use App\Platform\Money\Money;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,4 +140,60 @@ it('rejects redemption while the owning Profile is suspended (the freeze), leavi
     $read = ClubCredit::findOrFail($credit->id);
     expect($read->state)->toBe(ClubCreditState::Active)
         ->and($read->remaining->equals(Money::of(25000, Currency::EUR)))->toBeTrue();
+});
+
+it('redeems the same credit once the suspended Profile is restored — the freeze lifts on reactivation (round-trip)', function () {
+    // An `active` credit on an `active` Profile; the SAME 9000 EUR redemption is attempted twice — once while the
+    // Profile is suspended (frozen → rejected) and once after it is restored to `active` (succeeds). This proves the
+    // freeze is a LIVE read of the owning Profile's state, not a permanent property of the credit: suspension freezes
+    // it, restoration makes it mutable again (AC-K-FSM-2a; § 10.1). Both transitions go through the REAL Profile
+    // lifecycle Actions (a genuine `active → suspended → active` round-trip), not a Hold fixture or a raw state flip.
+    $profile = Profile::factory()->create(['state' => ProfileState::Active]);
+    $credit = ClubCredit::factory()->create([
+        'profile_id' => $profile->id,
+        'amount' => Money::of(25000, Currency::EUR),
+        'remaining' => Money::of(25000, Currency::EUR),
+    ]);
+
+    // Suspend the owning Profile via the REAL `active → suspended` transition — the credit is now frozen.
+    app(SuspendProfile::class)->handle($profile->id);
+
+    // While suspended, the redemption is rejected (the freeze guard) and the credit is left untouched.
+    expect(fn () => app(ApplyClubCredit::class)->handle($credit->id, Money::of(9000, Currency::EUR)))
+        ->toThrow(ClubCreditRedemptionPrecondition::class);
+    $frozen = ClubCredit::findOrFail($credit->id);
+    expect($frozen->state)->toBe(ClubCreditState::Active)
+        ->and($frozen->remaining->equals(Money::of(25000, Currency::EUR)))->toBeTrue();
+
+    // Restore the Profile via the REAL `suspended → active` transition (ReactivateProfile); the freeze lifts.
+    app(ReactivateProfile::class)->handle($profile->id);
+
+    // The SAME 9000 EUR redemption now succeeds: remaining 25000 − 9000 = 16000 EUR, the credit stays `active` (K.17).
+    $applied = app(ApplyClubCredit::class)->handle($credit->id, Money::of(9000, Currency::EUR));
+    expect($applied->state)->toBe(ClubCreditState::Active)
+        ->and($applied->remaining->equals(Money::of(16000, Currency::EUR)))->toBeTrue();
+
+    $read = ClubCredit::findOrFail($credit->id);
+    expect($read->state)->toBe(ClubCreditState::Active)
+        ->and($read->remaining->equals(Money::of(16000, Currency::EUR)))->toBeTrue();
+});
+
+it('records no domain event — redemption is audit-only (§ 11.4; design L3)', function () {
+    // An `active` credit redeemed IN FULL → it transitions `active → redeemed`, the redemption's event-worthy moment;
+    // if any redemption were to emit an event, this FSM transition would be it.
+    $credit = ClubCredit::factory()->create([
+        'amount' => Money::of(16000, Currency::EUR),
+        'remaining' => Money::of(16000, Currency::EUR),
+    ]);
+
+    // The factories bypass the Actions, so the event log starts empty; snapshot to assert the DELTA across the redeem
+    // is exactly 0 (not merely a final count, so the assertion stays honest if a fixture ever emits).
+    $before = DomainEvent::query()->count();
+
+    $applied = app(ApplyClubCredit::class)->handle($credit->id, Money::of(16000, Currency::EUR));
+    expect($applied->state)->toBe(ClubCreditState::Redeemed);   // the full redemption (the FSM transition) happened
+
+    // § 11.4 makes `ClubCreditApplied` MODULE E's event; this within-module writer records NONE — it injects no
+    // DomainEventRecorder (mirrors IssueClubCredit / SuspendAccount / RecordKycVerified). Delta = 0.
+    expect(DomainEvent::query()->count())->toBe($before);
 });

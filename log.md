@@ -545,3 +545,5 @@
 ## [2026-06-23 11:21] ralph | club-credit 2.2 | green | 2 files — IssueClubCredit test matrix (reject no-credit/null-fee no-row, §11.2 Hold-asymmetry, §11.4 no-event delta 0); suite 1521/1521, PHPStan max 0, Pint clean, openspec valid
 
 ## [2026-06-23 11:34] ralph | club-credit 3.1 | green | ApplyClubCredit Action + IllegalClubCreditTransition + ClubCreditRedemptionPrecondition + 6 redemption tests; suite 1527/1527, phpstan 0, pint clean | 6 files
+
+## [2026-06-23 11:42] ralph | club-credit 3.2 | green | 2 files; ClubCreditRedemptionTest +2 tests (freeze-then-restore round-trip, §11.4 no-event delta); suite 1529/1529, phpstan max 0, pint clean
