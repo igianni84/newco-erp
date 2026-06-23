@@ -529,3 +529,7 @@
 ## [2026-06-23 07:53] ralph | operator-console-parties-kyc-sanctions 5.2 | green | CHANGE_COMPLETE — validate --strict + final sweep 1495/1495, phpstan max 0, pint clean; 5 durable patterns verified consolidated; 13/13 done
 
 ## [2026-06-23 08:08] §2.7 closure | operator-console-parties-kyc-sanctions | merged --no-ff + archived (delta → openspec/specs/operator-console: +2 ADDED, ~2 MODIFIED req). Semantic verify (2 agents) NO CRITICAL, 2 accepted WARNINGs. PG17 gate met in-loop @4.2; full SQLite 1495/1495. main +16 unpushed; push + branch-d gated.
+
+## [2026-06-23 10:10] spec-to-change | club-credit | APPROVED (Module K §11, greenfield): ClubCredit entity + one-active partial-index + 4 audit-only writers (issue/apply/forfeit/restore); §11.4 events stay Module E's. strict-valid 6req/20scn/15tasks. Gate: audit-only, Club.fee verbatim, full FSM+seams.
+
+## [2026-06-23 10:16] ralph | club-credit 1.1 | green | ClubCreditState enum (active/redeemed/forfeited) + isActive/isTerminal predicates + 5-test ClubCreditEnumsTest; suite 1500/1500, phpstan 0, pint clean | 3 files
