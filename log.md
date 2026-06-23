@@ -553,3 +553,5 @@
 ## [2026-06-23 12:07] ralph | club-credit 4.2 | green | 6 files | RestoreClubCredit redeemed→active (remaining=amount per spec L7) + ClubCreditRestorePrecondition + cannotRestore; suite 1536/1536, PHPStan 0, 4-writer set complete
 
 ## [2026-06-23 12:17] ralph | club-credit 4.3 | green | 2 files | forfeiture/restoration tests complete (forfeit-before-issue ordering, restore-after-forfeit terminal edge, no-event delta); 1539/1539, PHPStan 0, Pint clean
+
+## [2026-06-23 12:29] ralph | club-credit 5.1 | green | 3 files — §11.4 event-ownership guard test (class-absence glob loop + 4-writer zero-event FSM walk); suite 1541/1541, PHPStan 0

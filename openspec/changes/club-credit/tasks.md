@@ -38,7 +38,7 @@
 
 ## 5. §11.4 boundary, i18n, docs & gate
 
-- [ ] 5.1 **§11.4 audit-only guard test** (`tests/Feature/Modules/Parties/ClubCreditEventOwnershipTest.php`): assert **no** event class named `MembershipFeePaid` / `ClubCreditIssued` / `ClubCreditApplied` / `ClubCreditRestored` / `ClubCreditForfeited` exists under `app/Modules/Parties/Events` (mirror the `SupplyLifecycleChainTest` event-non-existence loop), and assert that running each of the four writers records **zero** `domain_events` rows. (No shipped forbidden-list pre-names these — design L9 — so this is a NEW guard, not a realignment.)
+- [x] 5.1 **§11.4 audit-only guard test** (`tests/Feature/Modules/Parties/ClubCreditEventOwnershipTest.php`): assert **no** event class named `MembershipFeePaid` / `ClubCreditIssued` / `ClubCreditApplied` / `ClubCreditRestored` / `ClubCreditForfeited` exists under `app/Modules/Parties/Events` (mirror the `SupplyLifecycleChainTest` event-non-existence loop), and assert that running each of the four writers records **zero** `domain_events` rows. (No shipped forbidden-list pre-names these — design L9 — so this is a NEW guard, not a realignment.)
   - Acceptance: the class-absence loop + the zero-event assertions pass. Typecheck passes; tests pass.
 - [ ] 5.2 **i18n** (`lang/en/parties.php`): add a `club_credit` group with the localized exception messages (issuance refused — no credit policy / no fee; illegal transition; currency mismatch; over-application; frozen-while-suspended; restore one-active-conflict). No hardcoded user-facing strings (invariant 12).
   - Acceptance: every thrown localized message resolves via `__('parties.club_credit.…')`; English baseline only (DEC-127). Typecheck passes; tests pass.
