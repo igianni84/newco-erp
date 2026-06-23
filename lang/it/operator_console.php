@@ -521,11 +521,17 @@ return [
             'tier' => 'Livello',
             'lapsed_at' => 'Scaduto il',
             'cancellation_reason' => 'Motivo di cancellazione',
+            'customer' => 'Cliente',
+            'club' => 'Club',
         ],
 
         'tabs' => [
             'pending' => 'In attesa',
             'all' => 'Tutti',
+        ],
+
+        'actions' => [
+            'create' => 'Nuovo Profilo',
         ],
     ],
 

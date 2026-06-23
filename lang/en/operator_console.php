@@ -810,14 +810,16 @@ return [
             'version' => 'Version',
         ],
 
-        // View-infolist labels for the demand-side lifecycle attributes the list omits + (from group 2) the
-        // create-form input labels. `tier` is the single-tier-at-launch attribute (DEC-062); `lapsed_at` is the
-        // grace-window anchor `LapseProfile` stamps; `cancellation_reason` is the optional Producer-initiated
-        // cancellation reason. The create form (group 2) adds `customer` / `club` select labels here.
+        // View-infolist labels for the demand-side lifecycle attributes the list omits + the create-form select
+        // labels. `tier` is the single-tier-at-launch attribute (DEC-062); `lapsed_at` is the grace-window anchor
+        // `LapseProfile` stamps; `cancellation_reason` is the optional Producer-initiated cancellation reason.
+        // `customer` / `club` label the create-form selects (the membership's Customer and its Club).
         'fields' => [
             'tier' => 'Tier',
             'lapsed_at' => 'Lapsed at',
             'cancellation_reason' => 'Cancellation reason',
+            'customer' => 'Customer',
+            'club' => 'Club',
         ],
 
         // The approval-queue tabs on the Profile list: "Pending" (the default — `applied` Profiles awaiting an
@@ -825,6 +827,12 @@ return [
         'tabs' => [
             'pending' => 'Pending',
             'all' => 'All',
+        ],
+
+        // Header / lifecycle action labels. `create` is the list-header link to the write-through create surface;
+        // the membership lifecycle verbs (approve/decline/activate/…) append here in groups 3–5.
+        'actions' => [
+            'create' => 'New Profile',
         ],
     ],
 

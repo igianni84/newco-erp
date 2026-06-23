@@ -4,9 +4,12 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages;
+use App\Modules\Parties\Models\Club;
+use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Profile;
 use BackedEnum;
 use Closure;
+use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Schema;
@@ -47,6 +50,31 @@ class ProfileResource extends OperatorConsoleResource
     protected static function i18nKey(): string
     {
         return 'profile';
+    }
+
+    /**
+     * The create form — the membership-application inputs the Parties `CreateProfile` action consumes: a Customer
+     * select (the within-Parties Customer registry, labelled email + name) and a Club select (labelled by the
+     * Club's `display_name`). Both are WITHIN-Parties reads (the boundary law forbids only CROSS-module relations —
+     * Customer and Club are Module K). It deliberately exposes NO `state` / `tier` / `role`: a Profile is born
+     * `applied` by the action and single-tier/role at launch (DEC-062, design D6); the lifecycle verbs live on
+     * {@see Pages\ViewProfile} (groups 3–5), never as a create-form input. The form only COLLECTS; the write routes
+     * through the action in {@see Pages\CreateProfile::createViaAction()}, which narrows the selected ids to the
+     * action's typed int contract. All labels localized (invariant 12).
+     */
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('customer_id')
+                    ->label((string) __('operator_console.profile.fields.customer'))
+                    ->options(self::customerOptions(...))
+                    ->required(),
+                Select::make('club_id')
+                    ->label((string) __('operator_console.profile.fields.club'))
+                    ->options(self::clubOptions(...))
+                    ->required(),
+            ]);
     }
 
     /**
@@ -135,5 +163,44 @@ class ProfileResource extends OperatorConsoleResource
 
             return $state instanceof BackedEnum ? (string) $state->value : '';
         };
+    }
+
+    /**
+     * Create-form Customer-select options, keyed by Customer id → the email + name label. A WITHIN-Parties read off
+     * the {@see Customer} registry (no cross-module access — Customer is Module K); {@see Pages\CreateProfile}
+     * narrows the selected id to the `CreateProfile` action's typed int contract. The id/email/name are domain data
+     * (like a read column), not UI chrome, so no per-value i18n key is introduced — only the Select's own `label` is
+     * localized.
+     *
+     * @return array<int, string>
+     */
+    private static function customerOptions(): array
+    {
+        $options = [];
+
+        foreach (Customer::query()->orderBy('email')->get() as $customer) {
+            $options[$customer->id] = $customer->email.' — '.$customer->name;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Create-form Club-select options, keyed by Club id → the `display_name` label. A WITHIN-Parties read off the
+     * {@see Club} registry (no cross-module access — Club is Module K); {@see Pages\CreateProfile} narrows the
+     * selected id to the action's typed int contract. Domain data, not UI chrome — only the Select's own `label` is
+     * localized.
+     *
+     * @return array<int, string>
+     */
+    private static function clubOptions(): array
+    {
+        $options = [];
+
+        foreach (Club::query()->orderBy('display_name')->get() as $club) {
+            $options[$club->id] = $club->display_name;
+        }
+
+        return $options;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages;
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,13 +15,31 @@ use Illuminate\Database\Eloquent\Builder;
  * tab drops the filter and shows every membership state.
  *
  * The tab filter is a literal `where('state', 'applied')` — the persisted `ProfileState::Applied` backing token —
- * never an imported `Parties\Enums` symbol (the {Models, Actions} read surface — design D2). No create header
- * affordance lands here in this group: the write-through create surface ({@see CreateProfile}) and its header link
- * arrive with the create slice (group 2); the lifecycle verbs live on {@see ViewProfile}.
+ * never an imported `Parties\Enums` symbol (the {Models, Actions} read surface — design D2). The single header
+ * affordance is a navigation LINK to the write-through create surface ({@see CreateProfile}); the lifecycle verbs
+ * live on {@see ViewProfile}.
  */
 class ListProfiles extends ListRecords
 {
     protected static string $resource = ProfileResource::class;
+
+    /**
+     * The single header affordance is a navigation LINK to the dedicated write-through Create page (mirrors
+     * `ListCustomers`) — deliberately NOT a Filament CreateAction, whose inline-modal path does `new Model;
+     * $record->save()` and would bypass the Parties `CreateProfile` action (ADR 2026-06-19; the no-Eloquent-write
+     * rule). A plain url() action renders as a link: no modal, no model write — creation routes through
+     * {@see CreateProfile}.
+     *
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('create')
+                ->label((string) __('operator_console.profile.actions.create'))
+                ->url(ProfileResource::getUrl('create')),
+        ];
+    }
 
     /**
      * The approval-queue tabs: "Pending" (the default — `applied` Profiles awaiting a decision) and "All" (every
