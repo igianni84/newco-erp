@@ -539,3 +539,5 @@
 ## [2026-06-23 10:41] ralph | club-credit 1.3 | green | 3 files (ClubCredit model + factory + feature test); full suite 1510/1510, PHPStan max 0, pint clean, openspec valid
 
 ## [2026-06-23 10:52] ralph | club-credit 1.4 Profile::activeClubCredit() | green | 3 files | scoped within-module hasOne(active); 5 tests; suite 1515/1515, PHPStan max 0, validate strict ok
+
+## [2026-06-23 11:13] ralph | club-credit 2.1 | green | IssueClubCredit audit-only writer + ClubCreditIssuancePrecondition; happy+one-active tests; registered in SupplyLifecycleChainTest whitelist; suite 1517/1517, phpstan 0, pint clean
