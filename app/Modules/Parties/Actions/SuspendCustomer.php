@@ -42,9 +42,10 @@ use Illuminate\Support\Facades\DB;
  *
  * STATE-PRESERVING (design L9; § 10.1 / AC-K-FSM-2a): the suspension writes ONLY the `status`/`state` fields (and the
  * cascade) — it does NOT cancel vouchers, pending orders or allocation reservations, nor mutate any Club Credit
- * balance. Those entities live in Module S/B/E and are unbuilt, so the "Club Credit frozen while suspended" guarantee
- * is a deferred `club-credit` seam (the credit entity will read `state`/`status` when it exists): nothing destructive
- * happens here.
+ * balance. Vouchers/orders/reservations live in Module S/B/E and are unbuilt; the Club Credit entity is now BUILT
+ * (Module K, `club-credit`) and the "Club Credit frozen while suspended" guarantee (§ 10.1 / AC-K-FSM-2a) is CLOSED,
+ * enforced at the redemption site — `ApplyClubCredit` reads the owning Profile's live `state` (which a cascaded
+ * `ProfileSuspended` here sets to `Suspended`) and rejects redemption: nothing destructive happens here.
  *
  * From-state guarded and race-safe (design L4, mirroring {@see ActivateCustomer}): inside ONE {@see DB::transaction}
  * it re-reads the Customer `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state

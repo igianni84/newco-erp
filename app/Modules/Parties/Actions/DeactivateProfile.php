@@ -28,8 +28,10 @@ use Illuminate\Support\Facades\DB;
  * predicate).
  *
  * STATE-PRESERVING (design L9): deactivation writes ONLY `Profile.state` — it does NOT cancel vouchers, pending
- * orders or allocation reservations, nor mutate any Club Credit balance. Those entities live in Module S/B/E and are
- * unbuilt, so nothing destructive happens — only this one row's `state` changes.
+ * orders or allocation reservations, nor mutate any Club Credit balance. Vouchers/orders/reservations live in Module
+ * S/B/E and are unbuilt; the Club Credit entity is built (Module K, `club-credit`), but `Active → Inactive` mutates
+ * no credit — a credit's own state is written only by its dedicated within-module writers. Nothing destructive
+ * happens — only this one row's `state` changes.
  *
  * From-state guarded and race-safe (design L4, mirroring {@see SuspendProfile}): inside ONE {@see DB::transaction}
  * it re-reads the Profile `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state
