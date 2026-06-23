@@ -457,6 +457,10 @@ return [
             'profile' => 'Profilo',
             'reason' => 'Motivo',
             'lift_reason' => 'Motivo della rimozione',
+            // Input del form di screening sanzioni (operator-console-parties-kyc-sanctions). «Screening» resta
+            // invariato (termine di dominio, come «KYC»); «verdict» → «esito», «trigger source» → «origine».
+            'screening_verdict' => 'Esito screening',
+            'screening_source' => 'Origine screening',
         ],
 
         'actions' => [
@@ -467,6 +471,12 @@ return [
             'close' => 'Chiudi',
             'place_hold' => 'Applica blocco',
             'lift_hold' => 'Rimuovi blocco',
+            // Verbi KYC + sanzioni (operator-console-parties-kyc-sanctions). «record» → «Registra» (verbi di
+            // registrazione audit, distinti dal «Verifica/Rifiuta KYC» del Producer); «screening» invariato.
+            'require_kyc' => 'Richiedi KYC',
+            'record_kyc_verified' => 'Registra KYC verificato',
+            'record_kyc_rejected' => 'Registra KYC rifiutato',
+            'record_screening' => 'Registra screening sanzioni',
         ],
 
         'notifications' => [
@@ -476,6 +486,10 @@ return [
             'closed' => 'Cliente chiuso.',
             'hold_placed' => 'Blocco applicato al cliente.',
             'hold_lifted' => 'Blocco rimosso dal cliente.',
+            'kyc_required' => 'KYC richiesto; il cliente è sospeso in attesa di verifica.',
+            'kyc_verified' => 'KYC verificato; il cliente è riattivato.',
+            'kyc_rejected' => 'KYC rifiutato; il cliente resta bloccato.',
+            'screening_recorded' => 'Screening sanzioni registrato.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 

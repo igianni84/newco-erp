@@ -10,9 +10,15 @@ use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Actions\ReactivateCustomer;
+use App\Modules\Parties\Actions\RecordCustomerScreening;
+use App\Modules\Parties\Actions\RecordKycRejected;
+use App\Modules\Parties\Actions\RecordKycVerified;
+use App\Modules\Parties\Actions\RequireKyc;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldType;
+use App\Modules\Parties\Enums\SanctionsStatus;
+use App\Modules\Parties\Enums\ScreeningTriggerSource;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Profile;
 use Filament\Actions\Action;
@@ -49,8 +55,11 @@ use Illuminate\Database\Eloquent\Model;
  * Customer (NOT a table row), built BESPOKE because it carries a Hold-type / scope / Profile form the kit's
  * form-less {@see SurfacesDomainActions::lifecycleAction()} cannot thread; its write-through routes the form
  * operands into the Parties `PlaceHold` action through {@see SurfacesDomainActions::surfaceLifecycleOutcome()}
- * (task 3.2), while the per-row `lift` lands on the widget's table (task 4). KYC / sanctions / Account / Profile
- * remain their own future slices (design Non-Goals).
+ * (task 3.2), while the per-row `lift` lands on the widget's table (task 4). The three form-less KYC verbs
+ * (`requireKyc` / `recordKycVerified` / `recordKycRejected`) now land on THIS page in the kyc-sanctions slice
+ * (design D2/D4 — each visibility-gated to its legal `kyc_status` from-state; see {@see getHeaderActions()}); the
+ * sanctions-screening verb (`recordScreening`, a bespoke form action — {@see recordScreeningAction()}) now lands on
+ * THIS page too in the same slice (design D3/D6). Account / Profile remain their own future slices (design Non-Goals).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -70,6 +79,15 @@ use Illuminate\Database\Eloquent\Model;
  * invokes (the {Models, Actions} carve-out), never a `Parties\Exceptions` type (named here in PROSE so Pint's
  * `fully_qualified_strict_types` cannot re-add a forbidden import — lessons.md, 2026-06-20). All copy is
  * localized through `i18nKey()` (invariant 12).
+ *
+ * HEADER-ACTION VISIBILITY-TEST API (pinned against installed Filament 5.6.7, kyc-sanctions slice task 1.2 — the
+ * header-action twin of the Holds table's `assertTableActionVisible/Hidden`): on `Livewire::test(self::class,
+ * ['record' => $id])`, `assertActionVisible('verb')` / `assertActionHidden('verb')` resolve a page header action by
+ * name and evaluate its `->visible()` closure against THIS page's record (per-record — confirmed empirically); the
+ * mount-and-inspect-form path is `mountAction('verb')` + `assertFormFieldExists/Visible/Hidden` + `setActionData([…])`
+ * (the placeHold precedent). LANDMINE (design D4): `callAction()` asserts-visible-FIRST, and a `->visible()`-false
+ * header verb never mounts server-side — so a hidden verb's reject is UNREACHABLE through the surface; prove it via a
+ * domain `toThrow(...)` + `assertActionHidden('verb')`, NEVER an `assertNotified(action_failed)` the page can't raise.
  */
 class ViewCustomer extends ViewRecord
 {
@@ -84,11 +102,30 @@ class ViewCustomer extends ViewRecord
 
     /**
      * The Customer's header actions: the four status verbs — activate / suspend / reactivate / close, the manual
-     * status-FSM path (design D4) — plus the `placeHold` form action. The four verbs are form-less and carry no
-     * confirmation affordance (design D3); each routes to its typed Parties action by the customer `int $id`, never
-     * an Eloquent write. `activate` is cross-slice-gated by the Action — a gate-unmet attempt rejects gracefully as
-     * a danger notification (design D5). `placeHold` ({@see placeHoldAction()}) is bespoke — it carries a Hold-type
-     * / scope / Profile form, so it is NOT a form-less status verb.
+     * status-FSM path (design D4) — the three form-less KYC verbs (requireKyc / recordKycVerified /
+     * recordKycRejected, kyc-sanctions slice task 2.1), plus the `placeHold` form action. The four status verbs are
+     * form-less and carry no confirmation affordance (design D3); each routes to its typed Parties action by the
+     * customer `int $id`, never an Eloquent write. `activate` is cross-slice-gated by the Action — a gate-unmet
+     * attempt rejects gracefully as a danger notification (design D5).
+     *
+     * The three KYC verbs are ALSO form-less — each KYC Action takes only the customer `int $id` (design D2), so the
+     * trait's bare-`int $id` {@see SurfacesDomainActions::lifecycleAction()} fits directly (no notes, no
+     * confirmation) — but additionally VISIBILITY-GATED to their legal `kyc_status` from-state via a chained
+     * `->visible()` (design D4): `requireKyc` iff {@see kycRequirable()} (`kyc_status` NULL or `not_required`),
+     * `recordKycVerified` / `recordKycRejected` iff {@see kycPending()} (`kyc_status` `pending`). The predicate is
+     * the EXACT COMPLEMENT of each Action's domain from-state guard, so a rejected KYC transition is unreachable
+     * through the surface — the verb is simply HIDDEN (the Filament hidden-action landmine: a `->visible()`-false
+     * header verb never mounts, so its reject branch can't be reached from the page; lessons.md 2026-06-22). An
+     * out-of-band call still throws `IllegalKycTransition` (a `RuntimeException`, named here in PROSE so Pint's
+     * `fully_qualified_strict_types` cannot re-add a forbidden `Parties\Exceptions` import — lessons.md 2026-06-20);
+     * the page surfaces no `action_failed` for it because the verb is never invocable. The KYC verbs are
+     * EVENT-SILENT (design D7): `requireKyc` auto-places a `kyc` Hold (→ `CustomerHoldPlaced` + the `CustomerSuspended`
+     * coupling), `recordKycVerified` auto-lifts it (→ `CustomerHoldLifted` + `CustomerReactivated`),
+     * `recordKycRejected` records nothing and leaves the Hold in place — none records a KYC-named event.
+     *
+     * `placeHold` ({@see placeHoldAction()}) and `recordScreening` ({@see recordScreeningAction()}) are bespoke — each
+     * carries a form the form-less verb helper cannot thread (a Hold-type / scope / Profile form; a sanctions
+     * verdict / trigger-source form), so neither is a form-less verb.
      *
      * @return array<int, Action>
      */
@@ -99,8 +136,40 @@ class ViewCustomer extends ViewRecord
             $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
             $this->lifecycleAction('close', 'closed', fn (Model $record, string $notes) => app(CloseCustomer::class)->handle($this->recordOf(Customer::class, $record)->id)),
+            $this->lifecycleAction('requireKyc', 'kyc_required', fn (Model $record, string $notes) => app(RequireKyc::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycRequirable($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('recordKycVerified', 'kyc_verified', fn (Model $record, string $notes) => app(RecordKycVerified::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('recordKycRejected', 'kyc_rejected', fn (Model $record, string $notes) => app(RecordKycRejected::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
             $this->placeHoldAction(),
+            $this->recordScreeningAction(),
         ];
+    }
+
+    /**
+     * Is the Customer's KYC requirable — i.e. does `kyc_status` sit in `requireKyc`'s legal from-state (design D4)?
+     * True when un-screened (NULL — DEC-071) or the explicit `not_required`. This is the EXACT COMPLEMENT of
+     * {@see RequireKyc}'s domain from-state guard, so the verb is hidden precisely when the Action would reject it
+     * (the visibility predicate lives in ONE place — design D4). Predicated on the model CAST VALUE: `kyc_status`
+     * is a STATE enum, read through the cast and NEVER imported (design D5) — the literal `not_required` token is
+     * compared straight off `->value` (non-nullsafe: the `=== null` short-circuit narrows the operand to non-null).
+     */
+    private function kycRequirable(Customer $customer): bool
+    {
+        return $customer->kyc_status === null || $customer->kyc_status->value === 'not_required';
+    }
+
+    /**
+     * Is the Customer's KYC `pending` — the legal from-state for BOTH `recordKycVerified` and `recordKycRejected`
+     * (§ 9.1; design D4)? The EXACT COMPLEMENT of {@see RecordKycVerified}'s / {@see RecordKycRejected}'s domain
+     * from-state guard, so each verb is hidden precisely when its Action would reject. Predicated on the model CAST
+     * VALUE via the nullsafe operator (a NULL `kyc_status` is un-screened, not `pending`); the STATE enum is never
+     * imported (design D5).
+     */
+    private function kycPending(Customer $customer): bool
+    {
+        return $customer->kyc_status?->value === 'pending';
     }
 
     /**
@@ -245,5 +314,116 @@ class ViewCustomer extends ViewRecord
             ->profiles
             ->mapWithKeys(static fn (Profile $profile): array => [$profile->id => $profile->club->display_name])
             ->all();
+    }
+
+    /**
+     * The `recordScreening` header action — the operator's record-a-sanctions-screening-verdict surface
+     * (operator-console-parties-kyc-sanctions, tasks 3.1/3.2; design D3/D6/D7). Built BESPOKE rather than through
+     * {@see SurfacesDomainActions::lifecycleAction()} (the {@see placeHoldAction()} precedent): a screening carries
+     * operands the form-less verb helper cannot thread — a {@see SanctionsStatus} verdict and a
+     * {@see ScreeningTriggerSource}. The `->action()` narrows both form operands (the `is_string` discipline) and
+     * routes them into the Parties `RecordCustomerScreening` action through
+     * {@see SurfacesDomainActions::surfaceLifecycleOutcome()} — REUSING the trait's uniform
+     * success / `RuntimeException`→`action_failed` notification, never an Eloquent write (design D3). The console
+     * invokes ONLY `RecordCustomerScreening`, the SOLE writer of the sanctions fields: it sets `sanctions_status`,
+     * stamps the 12-month re-screen window (`last_screening_at` / `next_rescreen_at`), records the
+     * `screening_trigger_source` and — on a `passed`/`failed` COMPLETION — the matching § 15.6 screening event, all in
+     * ONE transaction (design D6/D7). An out-of-band re-onboarding is the domain's floor
+     * (`IllegalSanctionsTransition::onboardingAlreadyScreened`, a `RuntimeException` surfaced as `action_failed`) —
+     * the stale `onboarding` option simply DROPS once a first screening exists (design D6 — the option-set narrows,
+     * the domain still enforces; the exception is named in PROSE so Pint cannot re-add a forbidden import).
+     *
+     * The `verdict` Select offers the four {@see SanctionsStatus} operand-enum tokens (value → value — the
+     * holdType/holdScope Select precedent: domain data, not UI chrome, so no per-value i18n key). The `trigger_source`
+     * Select offers a RECORD-DEPENDENT subset (design D6 — onboarding-is-first): {@see screeningSourceOptions()}
+     * always offers `compliance_ad_hoc` (the operator ad-hoc re-screen path that ships now) and additionally
+     * `onboarding` ONLY while the Customer has never been screened — so the option is the EXACT COMPLEMENT of
+     * `RecordCustomerScreening`'s onboarding-already-screened floor (the deferred `cadence` / `aml_threshold`
+     * automation sources are NEVER operator-offered, § 9.5). The options closure reads the page record at render time.
+     *
+     * Importing the {@see SanctionsStatus} / {@see ScreeningTriggerSource} OPERAND enums is the {Models, Actions,
+     * Enums} carve-out (ADR 2026-06-21 — a namespace-prefix allow, no allow-list widening; the STATE enum `KycStatus`
+     * is never imported). Labels resolve the DESCRIPTIVE `fields.*` form group (invariant 12).
+     */
+    private function recordScreeningAction(): Action
+    {
+        return Action::make('recordScreening')
+            ->label((string) __('operator_console.customer.actions.record_screening'))
+            ->schema([
+                Select::make('verdict')
+                    ->label((string) __('operator_console.customer.fields.screening_verdict'))
+                    ->options($this->screeningVerdictOptions())
+                    ->required(),
+                Select::make('trigger_source')
+                    ->label((string) __('operator_console.customer.fields.screening_source'))
+                    ->options(fn (): array => $this->screeningSourceOptions($this->recordOf(Customer::class, $this->getRecord())))
+                    ->required(),
+            ])
+            ->action(
+                /** @param  array<string, mixed>  $data */
+                function (array $data): void {
+                    $customer = $this->recordOf(Customer::class, $this->getRecord());
+
+                    // The form state arrives stringly-typed (Filament Select values serialize to strings); narrow BOTH
+                    // operands with the slice's `is_string` discipline before constructing the typed verdict /
+                    // trigger-source. verdict / trigger_source are `->required()` → present on the happy path (the `: ''`
+                    // floors satisfy the type system, the trait's `$notes` idiom).
+                    $verdict = is_string($data['verdict'] ?? null) ? $data['verdict'] : '';
+                    $source = is_string($data['trigger_source'] ?? null) ? $data['trigger_source'] : '';
+
+                    // The console invokes ONLY RecordCustomerScreening (the SOLE sanctions writer): it sets the sanctions
+                    // fields, stamps the 12-month re-screen window and records the § 15.6 completion event in ONE
+                    // transaction (design D6/D7). surfaceLifecycleOutcome renders the success/`action_failed` notification
+                    // and never writes Eloquent; the onboarding-already-screened floor surfaces as `action_failed`.
+                    $this->surfaceLifecycleOutcome(
+                        fn () => app(RecordCustomerScreening::class)->handle(
+                            $customer->id,
+                            SanctionsStatus::from($verdict),
+                            ScreeningTriggerSource::from($source),
+                        ),
+                        (string) __('operator_console.customer.notifications.screening_recorded'),
+                    );
+                }
+            );
+    }
+
+    /**
+     * The `verdict` Select options — the four {@see SanctionsStatus} operand-enum tokens keyed value → value (the
+     * holdType/holdScope Select precedent: domain data, not UI chrome, so no per-value i18n key). All four states are
+     * offerable: a verdict can be a `passed`/`failed` completion, an `under_review` possible-match, or `pending`.
+     *
+     * @return array<string, string>
+     */
+    private function screeningVerdictOptions(): array
+    {
+        return collect(SanctionsStatus::cases())
+            ->mapWithKeys(static fn (SanctionsStatus $status): array => [$status->value => $status->value])
+            ->all();
+    }
+
+    /**
+     * The record-dependent `trigger_source` Select options (design D6 — onboarding-is-first): `compliance_ad_hoc`
+     * (the operator ad-hoc re-screen path that ships now) is always offered, and `onboarding` is prepended ONLY while
+     * the Customer has never been screened (`last_screening_at IS NULL`). This is the EXACT COMPLEMENT of
+     * {@see RecordCustomerScreening}'s onboarding-already-screened floor, so a stale `onboarding` simply drops off
+     * once a first screening exists (the option-set narrows; the domain still enforces — the placeHold-style
+     * surface-hides + domain-enforces split). The deferred `cadence` / `aml_threshold` automation sources are NEVER
+     * operator-offered (§ 9.5). Keyed value → value off the {@see ScreeningTriggerSource} operand enum (no magic
+     * strings — the holdType/holdScope precedent).
+     *
+     * @return array<string, string>
+     */
+    private function screeningSourceOptions(Customer $customer): array
+    {
+        if ($customer->last_screening_at === null) {
+            return [
+                ScreeningTriggerSource::Onboarding->value => ScreeningTriggerSource::Onboarding->value,
+                ScreeningTriggerSource::ComplianceAdHoc->value => ScreeningTriggerSource::ComplianceAdHoc->value,
+            ];
+        }
+
+        return [
+            ScreeningTriggerSource::ComplianceAdHoc->value => ScreeningTriggerSource::ComplianceAdHoc->value,
+        ];
     }
 }

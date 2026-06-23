@@ -4,8 +4,8 @@
 // 2026-06-21) — the Customer console's write-through STATUS surface. These pin the four status verbs (activate
 // `pending → active`, suspend `active → suspended`, reactivate `suspended → active`, close
 // `active | suspended → closed`) the ViewCustomer page assembles via the SurfacesDomainActions trait — NOT the
-// catalog OperatorConsoleViewRecord base (design D1/D8), so the five catalog governance verbs (submit/reject/
-// reopen) and the KYC verb (requireKyc) are deliberately ABSENT (scope guard — each is its own future slice).
+// catalog OperatorConsoleViewRecord base (design D1/D8), so the catalog governance verbs (submit/reject/reopen)
+// stay deliberately ABSENT (the Customer FSM is not review-governed); KYC + sanctions now land in their own slice.
 // The Hold surface (placeHold header action + per-row lift) DOES land on this page in this slice but is pinned
 // in CustomerHoldsConsoleTest, not here — this file fixes only the status verbs. Each verb routes through a
 // Parties domain action by the customer
@@ -176,7 +176,7 @@ it('surfaces an out-of-state status verb as a danger notification, changing noth
     'close a pending Customer (needs active|suspended)' => ['close', CustomerStatus::Pending],
 ]);
 
-it('exposes the four form-less status verbs without the catalog governance or KYC verbs', function () {
+it('exposes the four form-less status verbs without the catalog governance verbs', function () {
     actingAs(Operator::factory()->create(), 'operator');
     $customer = Customer::factory()->create();
 
@@ -193,11 +193,9 @@ it('exposes the four form-less status verbs without the catalog governance or KY
         ->assertActionExists('reactivate', fn (Action $action): bool => ! $action->isConfirmationRequired())
         ->assertActionExists('close', fn (Action $action): bool => ! $action->isConfirmationRequired())
         // … none of the catalog governance verbs leak in (this page is NOT OperatorConsoleViewRecord — design
-        // D1/D8) …
+        // D1/D8). The KYC + sanctions verbs DO now land on this page (the kyc-sanctions slice) — pinned in
+        // CustomerKycSanctionsConsoleTest — so this file no longer guards their absence.
         ->assertActionDoesNotExist('submit')
         ->assertActionDoesNotExist('reject')
-        ->assertActionDoesNotExist('reopen')
-        // … and no KYC verb (still the kyc-sanctions slice's surface — the Hold place/lift surface DOES land in
-        // this slice but is pinned in CustomerHoldsConsoleTest).
-        ->assertActionDoesNotExist('requireKyc');
+        ->assertActionDoesNotExist('reopen');
 });

@@ -499,3 +499,31 @@
 ## [2026-06-22 16:02] ralph | operator-console-parties-holds 6.2 | green | validate --strict valid; pint/phpstan-max/pest 1442 all green; main-diff audit clean (no spec/specs/composer/migration/arch touch); carve-out pattern consolidated; CHANGE_COMPLETE 12/12
 
 ## [2026-06-22 16:26] archive | operator-console-parties-holds | §2.7 close: PG17 full 1442/1442 (exit 0); semantic verify (2 agents) no CRITICAL; merged --no-ff to main + openspec archive (delta→specs/operator-console, +1/~2 req); change→archive/2026-06-22. Push to origin + branch -d PENDING (gate).
+
+## [2026-06-22 17:28] spec-to-change | operator-console-parties-kyc-sanctions | authored+validated(--strict green)+APPROVED, ralph NOT launched (Giovanni 'approva solo'). operator-console delta: 2 ADDED (KYC 3 verbs / sanctions screening) + 2 MODIFIED Customer reqs, 21 scenarios, 13 tasks/5 groups. Reuses Holds kit; no ADR/migration/dep.
+
+## [2026-06-22 17:35] ralph | operator-console-parties-kyc-sanctions 1.1 | green | 1 file — dropped stale requireKyc absence guard + fixed self-contradictory header/title; full suite 1442/1442, phpstan/pint/validate green
+
+## [2026-06-22 17:46] ralph | operator-console-parties-kyc-sanctions 1.2 | green | 1 file — pinned Filament 5.6.7 page header-action visibility API (assertActionVisible/Hidden, mount path, D4 not-mountable landmine) vs installed source + throwaway probe; ViewCustomer docblock note
+
+## [2026-06-22 17:58] ralph | operator-console-parties-kyc-sanctions 1.3 | green | 3 files | front-loaded 10 KYC/sanctions i18n keys EN+IT (IT≠EN) + test key-contract; suite 1462/1462, phpstan/pint/openspec clean
+
+## [2026-06-22 18:08] ralph | operator-console-parties-kyc-sanctions 2.1 | green | 2 files | 3 form-less visibility-gated KYC verbs on ViewCustomer + kycRequirable/kycPending cast-value predicates; CustomerKycSanctionsConsoleTest 10/10; full suite 1472/1472; phpstan max 0; no KycStatus/IllegalKycTransition import
+
+## [2026-06-22 18:18] ralph | operator-console-parties-kyc-sanctions 2.2 | green | 1 file (test) | KYC write-through + auto-Hold coupling: require→pending+kyc-Hold+suspend, verify→lift+reactivate, reject→audit-only; zero CustomerKyc%; suite 1475/1475
+
+## [2026-06-22 18:29] ralph | operator-console-parties-kyc-sanctions 2.3 | green | 1 file (test-only) | reject-floor + no-waive + KYC↔sanctions independence; suite 1488/1488, filter 26/26, phpstan max 0
+
+## [2026-06-22 18:40] ralph | operator-console-parties-kyc-sanctions 3.1 | green | 2 files — recordScreening bespoke form action (verdict + record-dependent trigger_source, onboarding-first drop D6); suite 1489/1489, phpstan max 0, ModuleBoundaries unchanged
+
+## [2026-06-22 18:51] ralph | operator-console-parties-kyc-sanctions 3.2 | green | 2 files | recordScreening write-through→RecordCustomerScreening; suite 1493/1493, phpstan max 0, validate strict ok (8/13)
+
+## [2026-06-22 18:59] ralph | operator-console-parties-kyc-sanctions 3.3 | green | 1 file (test-only) | onboarding-first floor: form drops onboarding + domain toThrow IllegalSanctionsTransition, state+log unchanged; suite 1494/1494, filter 32/32
+
+## [2026-06-22 19:09] ralph | operator-console-parties-kyc-sanctions 4.1 | green | 1 file (new CustomerKycSanctionsChainTest — PG17 closing-chain SQLite half; 5-event multiset, no KYC event, widget lift hidden); suite 1495/1495
+
+## [2026-06-22 19:14] ralph | operator-console-parties-kyc-sanctions 4.2 | green | PG17 ritual verify-only: Parties OperatorPanel + Catalog i18n 372/372 (1854 assn) under postgres:17, no push/merge | 0 files
+
+## [2026-06-22 19:21] ralph | operator-console-parties-kyc-sanctions 5.1 | green | quality gates: pint --test clean, phpstan max 0 err (NoEloquentWrite rule registered), pest 1495/1495 8263 assn; diff vs main no spec/arch/migration/dep | 0 src files
+
+## [2026-06-23 07:53] ralph | operator-console-parties-kyc-sanctions 5.2 | green | CHANGE_COMPLETE — validate --strict + final sweep 1495/1495, phpstan max 0, pint clean; 5 durable patterns verified consolidated; 13/13 done
