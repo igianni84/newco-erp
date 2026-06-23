@@ -749,6 +749,16 @@ return [
             'record_kyc_verified' => 'Record KYC verified',
             'record_kyc_rejected' => 'Record KYC rejected',
             'record_screening' => 'Record sanctions screening',
+            // The Account status-FSM verbs (operator-console-parties-membership, task 6.1) — three form-less,
+            // visibility-gated verbs on ViewCustomer, each routing through a Parties Account action by the
+            // co-provisioned 1:1 Account id: `suspend_account` (SuspendAccount, `active → suspended`),
+            // `reactivate_account` (ReactivateAccount, `suspended → active` — the Account's only `→ active` edge;
+            // there is no ActivateAccount, born active), `close_account` (CloseAccount, `active|suspended → closed`,
+            // terminal). All three are AUDIT-ONLY (§ 15 names no Account event — design L8) and orthogonal to the
+            // Customer status FSM (AC-K-FSM-9). Each routes through a Parties domain action, never a Filament default.
+            'suspend_account' => 'Suspend account',
+            'reactivate_account' => 'Reactivate account',
+            'close_account' => 'Close account',
         ],
 
         // Outcome notifications for the four write-through status verbs + the two Hold-surface verbs
@@ -771,6 +781,12 @@ return [
             'kyc_verified' => 'KYC verified; the customer is reactivated.',
             'kyc_rejected' => 'KYC rejected; the customer stays on hold.',
             'screening_recorded' => 'Sanctions screening recorded.',
+            // The Account status-FSM success titles (operator-console-parties-membership, task 6.1) — the audit-only
+            // Account transitions record no domain event. The shared `action_failed` below covers their domain
+            // rejections too (an out-of-state Account transition — IllegalAccountTransition).
+            'account_suspended' => 'Account suspended.',
+            'account_reactivated' => 'Account reactivated.',
+            'account_closed' => 'Account closed.',
             'action_failed' => 'The action could not be completed.',
         ],
 

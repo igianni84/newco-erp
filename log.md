@@ -577,3 +577,5 @@
 ## [2026-06-23 23:03] ralph | operator-console-parties-membership 4.1/4.2 | green | ViewProfile activate/suspend/reactivate verbs + EN/IT i18n + ProfileActivationConsoleTest 21/21; suite 1610/1610, PHPStan max 0, Pint clean, validate --strict ok; 6 files
 
 ## [2026-06-23 23:18] ralph | operator-console-parties-membership 5.1/5.2 | green | 4 files | lapse/renew/cancel/deactivate on ViewProfile + EN/IT i18n + ProfileLifecycleConsoleTest 24/24; full suite 1634/1634
+
+## [2026-06-23 23:35] ralph | operator-console-parties-membership 6.1/6.2 | green | 4 files | Account suspend/reactivate/close verbs on ViewCustomer + EN/IT i18n + AccountLifecycleConsoleTest; suite 1645/1645, PHPStan max 0

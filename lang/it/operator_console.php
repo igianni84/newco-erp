@@ -477,6 +477,12 @@ return [
             'record_kyc_verified' => 'Registra KYC verificato',
             'record_kyc_rejected' => 'Registra KYC rifiutato',
             'record_screening' => 'Registra screening sanzioni',
+            // Verbi FSM dello stato Account (operator-console-parties-membership). «account» invariato (termine di
+            // dominio, distinto da «cliente»); «suspend/reactivate/close» → «Sospendi/Riattiva/Chiudi» come per il
+            // cliente, ma applicati all'Account co-provisionato.
+            'suspend_account' => 'Sospendi account',
+            'reactivate_account' => 'Riattiva account',
+            'close_account' => 'Chiudi account',
         ],
 
         'notifications' => [
@@ -490,6 +496,12 @@ return [
             'kyc_verified' => 'KYC verificato; il cliente è riattivato.',
             'kyc_rejected' => 'KYC rifiutato; il cliente resta bloccato.',
             'screening_recorded' => 'Screening sanzioni registrato.',
+            // Titoli di esito dei verbi FSM dello stato Account (operator-console-parties-membership) — transizioni
+            // audit-only, nessun evento di dominio. Il condiviso `action_failed` sotto copre anche i loro rifiuti
+            // di dominio (una transizione Account fuori stato — IllegalAccountTransition).
+            'account_suspended' => 'Account sospeso.',
+            'account_reactivated' => 'Account riattivato.',
+            'account_closed' => 'Account chiuso.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 

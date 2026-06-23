@@ -7,13 +7,16 @@ use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\Parties\Actions\ActivateCustomer;
+use App\Modules\Parties\Actions\CloseAccount;
 use App\Modules\Parties\Actions\CloseCustomer;
 use App\Modules\Parties\Actions\PlaceHold;
+use App\Modules\Parties\Actions\ReactivateAccount;
 use App\Modules\Parties\Actions\ReactivateCustomer;
 use App\Modules\Parties\Actions\RecordCustomerScreening;
 use App\Modules\Parties\Actions\RecordKycRejected;
 use App\Modules\Parties\Actions\RecordKycVerified;
 use App\Modules\Parties\Actions\RequireKyc;
+use App\Modules\Parties\Actions\SuspendAccount;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldType;
@@ -59,7 +62,11 @@ use Illuminate\Database\Eloquent\Model;
  * (`requireKyc` / `recordKycVerified` / `recordKycRejected`) now land on THIS page in the kyc-sanctions slice
  * (design D2/D4 — each visibility-gated to its legal `kyc_status` from-state; see {@see getHeaderActions()}); the
  * sanctions-screening verb (`recordScreening`, a bespoke form action — {@see recordScreeningAction()}) now lands on
- * THIS page too in the same slice (design D3/D6). Account / Profile remain their own future slices (design Non-Goals).
+ * THIS page too in the same slice (design D3/D6). The three form-less Account status verbs (`suspendAccount` /
+ * `reactivateAccount` / `closeAccount`) now land on THIS page too in the membership slice
+ * (operator-console-parties-membership; design D4 — each visibility-gated to its co-provisioned 1:1 Account's legal
+ * `status` from-state; all three AUDIT-ONLY, recording no event — § 15 names none, design L8). The Profile surface is
+ * the demand-side ProfileResource console (design Non-Goals here).
  *
  * ACTIVATION IS CROSS-SLICE-GATED (design D5; § 4.1): {@see ActivateCustomer} guards a composite onboarding gate
  * — email-verified ∧ T&C/privacy accepted ∧ `sanctions_status = passed` ∧ KYC-cleared-if-required — that THIS
@@ -123,6 +130,17 @@ class ViewCustomer extends ViewRecord
      * coupling), `recordKycVerified` auto-lifts it (→ `CustomerHoldLifted` + `CustomerReactivated`),
      * `recordKycRejected` records nothing and leaves the Hold in place — none records a KYC-named event.
      *
+     * The three form-less Account status verbs (`suspendAccount` / `reactivateAccount` / `closeAccount`, membership
+     * slice task 6.1) ALSO land here — each routing through its typed Parties Account action by the co-provisioned 1:1
+     * Account's `int $id` (`->account?->id`), never an Eloquent write. Each is VISIBILITY-GATED to its legal Account
+     * `status` from-state via {@see accountStatusIs()} (design D4): `suspendAccount` iff `active`, `reactivateAccount`
+     * iff `suspended`, `closeAccount` iff `active` or `suspended` — there is NO `activateAccount` (the Account is born
+     * `active`; its only `→ active` edge is the restore, AC-K-FSM-9). The Account status FSM is ORTHOGONAL to the
+     * Customer status FSM (§ 4.7): an Account transition moves only `Account.status`, never the Customer or its
+     * Profiles. All three are AUDIT-ONLY — the § 15 catalog names no Account event (design L8) — so a success raises
+     * only the localized notification, and an out-of-band illegal call throws `IllegalAccountTransition` (a
+     * `RuntimeException`, named in PROSE so Pint cannot re-add a forbidden import), unreachable through the hidden verb.
+     *
      * `placeHold` ({@see placeHoldAction()}) and `recordScreening` ({@see recordScreeningAction()}) are bespoke — each
      * carries a form the form-less verb helper cannot thread (a Hold-type / scope / Profile form; a sanctions
      * verdict / trigger-source form), so neither is a form-less verb.
@@ -142,6 +160,12 @@ class ViewCustomer extends ViewRecord
                 ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
             $this->lifecycleAction('recordKycRejected', 'kyc_rejected', fn (Model $record, string $notes) => app(RecordKycRejected::class)->handle($this->recordOf(Customer::class, $record)->id))
                 ->visible(fn (): bool => $this->kycPending($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('suspendAccount', 'account_suspended', fn (Model $record, string $notes) => app(SuspendAccount::class)->handle((int) $this->recordOf(Customer::class, $record)->account?->id))
+                ->visible(fn (): bool => $this->accountStatusIs('active')),
+            $this->lifecycleAction('reactivateAccount', 'account_reactivated', fn (Model $record, string $notes) => app(ReactivateAccount::class)->handle((int) $this->recordOf(Customer::class, $record)->account?->id))
+                ->visible(fn (): bool => $this->accountStatusIs('suspended')),
+            $this->lifecycleAction('closeAccount', 'account_closed', fn (Model $record, string $notes) => app(CloseAccount::class)->handle((int) $this->recordOf(Customer::class, $record)->account?->id))
+                ->visible(fn (): bool => $this->accountStatusIs('active') || $this->accountStatusIs('suspended')),
             $this->placeHoldAction(),
             $this->recordScreeningAction(),
         ];
@@ -170,6 +194,23 @@ class ViewCustomer extends ViewRecord
     private function kycPending(Customer $customer): bool
     {
         return $customer->kyc_status?->value === 'pending';
+    }
+
+    /**
+     * Is the page Customer's co-provisioned 1:1 Account in the given status token — the Account-verb visibility gate
+     * (design D4)? Reads the {@see Account}'s `status` through the model CAST VALUE; the AccountStatus STATE enum is
+     * never imported (the {Models, Actions} carve-out — the {@see kycPending} precedent). The nullsafe `?->` tolerates
+     * a (co-provisioning-guaranteed, so production-impossible) absent Account: a NULL `account` yields NULL ≠ any
+     * token, so every Account verb simply hides. This is the EXACT COMPLEMENT of each Account Action's domain
+     * from-state guard (`suspendAccount` iff `active`, `reactivateAccount` iff `suspended`, `closeAccount` iff `active`
+     * or `suspended` — and there is NO `activateAccount`, the Account being born `active`; AC-K-FSM-9), so a rejected
+     * Account transition is unreachable through the surface — the verb is simply HIDDEN (the Filament hidden-action
+     * landmine). An out-of-band call still throws `IllegalAccountTransition` (a `RuntimeException`, named here in PROSE
+     * so Pint's `fully_qualified_strict_types` cannot re-add a forbidden `Parties\Exceptions` import).
+     */
+    private function accountStatusIs(string $status): bool
+    {
+        return $this->recordOf(Customer::class, $this->getRecord())->account?->status->value === $status;
     }
 
     /**

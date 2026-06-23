@@ -41,12 +41,12 @@
 
 ## 6. Account lifecycle on ViewCustomer (suspend / reactivate / close)
 
-- [ ] 6.1 On `CustomerResource/Pages/ViewCustomer.php` `getHeaderActions()`, append three form-less Account verbs via `lifecycleAction`, visibility-gated by the 1:1 Account's status (`$customer->account` is non-null by co-provisioning):
+- [x] 6.1 On `CustomerResource/Pages/ViewCustomer.php` `getHeaderActions()`, append three form-less Account verbs via `lifecycleAction`, visibility-gated by the 1:1 Account's status (`$customer->account` is non-null by co-provisioning):
   - `suspendAccount` → `app(SuspendAccount::class)->handle($this->recordOf(Customer::class, $record)->account->id)`, visible iff `…->account->status->value === 'active'`.
   - `reactivateAccount` → `app(ReactivateAccount::class)->handle(...)`, visible iff `…->account->status->value === 'suspended'`.
   - `closeAccount` → `app(CloseAccount::class)->handle(...)`, visible iff status ∈ `{'active','suspended'}`.
   Reference `IllegalAccountTransition` as **prose** only (Pint trap, lesson 2026-06-20). No `Parties\Enums` import added (Account Actions take an int; status read via `->status->value`).
-- [ ] 6.2 Add `operator_console.customer.actions.{suspend_account, reactivate_account, close_account}` + `notifications.{account_suspended, account_reactivated, account_closed}` to `lang/en` + `lang/it`.
+- [x] 6.2 Add `operator_console.customer.actions.{suspend_account, reactivate_account, close_account}` + `notifications.{account_suspended, account_reactivated, account_closed}` to `lang/en` + `lang/it`.
 - **Tests** (`AccountLifecycleConsoleTest.php`): suspend an `active` Account → `suspended` + **zero** domain events (audit-only) + the Customer status and its Profiles **unchanged** (orthogonality, AC-K-FSM-9 / AC-K-BR-Customer-1); reactivate → `active`; close → `closed`; no Account activation verb exists; visibility complements via `assertActionVisible/Hidden`; an illegal Account transition is a domain-direct throw (`IllegalAccountTransition`) + `assertActionHidden` (lesson 2026-06-22). Typecheck passes; tests pass.
 
 ## 7. i18n kit-key completeness (EN/IT)
