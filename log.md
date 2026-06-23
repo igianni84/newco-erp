@@ -561,3 +561,5 @@
 ## [2026-06-23 12:55] ralph | club-credit 5.3 | green | docs: CONTEXT.md glossary+seams de-staled, 6 docblocks, knowledge/module-k | 11 files | suite 1560/1560
 
 ## [2026-06-23 13:01] ralph | club-credit 5.4 | green | full-suite gate: pest 1560/1560 SQLite, PHPStan max 0, Pint clean, openspec valid; PG17 by-construction + CI on push. CHANGE_COMPLETE (15/15) | 1 file
+
+## [2026-06-23 14:13] close-ritual | club-credit | GUIDE §2.7: cold review → PG17 (postgres:17 Docker) suite 1560/1560 → merge --no-ff to main → 3-agent semantic verify clean → openspec archive 2026-06-23-club-credit (5 added+1 mod → living spec). main ahead, UNPUSHED (push gated).
