@@ -543,3 +543,5 @@
 ## [2026-06-23 11:13] ralph | club-credit 2.1 | green | IssueClubCredit audit-only writer + ClubCreditIssuancePrecondition; happy+one-active tests; registered in SupplyLifecycleChainTest whitelist; suite 1517/1517, phpstan 0, pint clean
 
 ## [2026-06-23 11:21] ralph | club-credit 2.2 | green | 2 files — IssueClubCredit test matrix (reject no-credit/null-fee no-row, §11.2 Hold-asymmetry, §11.4 no-event delta 0); suite 1521/1521, PHPStan max 0, Pint clean, openspec valid
+
+## [2026-06-23 11:34] ralph | club-credit 3.1 | green | ApplyClubCredit Action + IllegalClubCreditTransition + ClubCreditRedemptionPrecondition + 6 redemption tests; suite 1527/1527, phpstan 0, pint clean | 6 files
