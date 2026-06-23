@@ -6,8 +6,12 @@ use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
 use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
+use App\Modules\Parties\Actions\CancelProfile;
+use App\Modules\Parties\Actions\DeactivateProfile;
 use App\Modules\Parties\Actions\DeclineProfile;
+use App\Modules\Parties\Actions\LapseProfile;
 use App\Modules\Parties\Actions\ReactivateProfile;
+use App\Modules\Parties\Actions\RenewProfile;
 use App\Modules\Parties\Actions\SuspendProfile;
 use App\Modules\Parties\Models\Profile;
 use Filament\Actions\Action;
@@ -32,9 +36,13 @@ use Illuminate\Database\Eloquent\Model;
  * boundary-breaching `Parties\Exceptions` import — lesson 2026-06-20). Group 4 (landed) appends the status verbs —
  * activate (`approved → active`, UNCAPPED — the Hero-Package capacity cap is a deferred Module-A seam, design
  * Non-Goals), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit untouched,
- * AC-K-FSM-2a) and reactivate (`suspended → active`). lapse / renew / cancel / deactivate (group 5) follow. The
- * empty-set scaffold the resource's `getPages()` needed to boot (the eager page-reference coupling — design Risks) is
- * now populated.
+ * AC-K-FSM-2a) and reactivate (`suspended → active`). Group 5 (landed) appends the lapse / renew / terminal verbs:
+ * lapse (`active → lapsed`, recording `ProfileExpired`), renew (`lapsed → active` within the 30-day grace, recording
+ * `ProfileRenewed`) — the ONE verb whose reject is UI-reachable (design D5: the predicate can only check `state ==
+ * lapsed`, so a past-grace renew is visible, the domain rejects it on the grace sub-gate, and `surfaceLifecycleOutcome`
+ * surfaces `action_failed`), cancel (`active|lapsed → cancelled`, AUDIT-ONLY — no event exists; terminal soft-delete,
+ * AC-K-FSM-13) and deactivate (`active → inactive`, recording `ProfileInactive`). The empty-set scaffold the resource's
+ * `getPages()` needed to boot (the eager page-reference coupling — design Risks) is now populated.
  */
 class ViewProfile extends ViewRecord
 {
@@ -60,7 +68,12 @@ class ViewProfile extends ViewRecord
      * (`approved → active`, UNCAPPED — the Hero-Package cap is a deferred Module-A seam, design Non-Goals; records
      * `ProfileActivated`), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit
      * untouched, AC-K-FSM-2a; records `ProfileSuspended`) and reactivate (`suspended → active`; records
-     * `ProfileReactivated`). lapse / renew / cancel / deactivate (group 5) append here next.
+     * `ProfileReactivated`). Group 5 appends the lapse / renew / terminal verbs, each gated to its from-state via
+     * {@see stateIs()}: lapse (`active → lapsed`; records `ProfileExpired`), renew (`lapsed → active`; records
+     * `ProfileRenewed`) — the SOLE verb whose reject is UI-reachable: the predicate can only see `state == lapsed`, so a
+     * past-grace renew is visible and the domain rejects it on the grace sub-gate, surfacing `action_failed` (design D5),
+     * cancel (`active|lapsed → cancelled`; AUDIT-ONLY — no event, the `state` write IS the record) and deactivate
+     * (`active → inactive`; records `ProfileInactive`).
      *
      * @return array<int, Action>
      */
@@ -77,6 +90,14 @@ class ViewProfile extends ViewRecord
                 ->visible(fn (): bool => $this->stateIs('active')),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
                 ->visible(fn (): bool => $this->stateIs('suspended')),
+            $this->lifecycleAction('lapse', 'lapsed', fn (Model $record, string $notes) => app(LapseProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('active')),
+            $this->lifecycleAction('renew', 'renewed', fn (Model $record, string $notes) => app(RenewProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('lapsed')),
+            $this->lifecycleAction('cancel', 'cancelled', fn (Model $record, string $notes) => app(CancelProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('active') || $this->stateIs('lapsed')),
+            $this->lifecycleAction('deactivate', 'deactivated', fn (Model $record, string $notes) => app(DeactivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
+                ->visible(fn (): bool => $this->stateIs('active')),
         ];
     }
 

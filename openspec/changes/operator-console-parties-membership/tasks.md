@@ -31,12 +31,12 @@
 
 ## 5. Profile lapse / renew / terminal (ViewProfile)
 
-- [ ] 5.1 Append four header actions to `ViewProfile` (form-less, `lifecycleAction`, visibility-gated):
+- [x] 5.1 Append four header actions to `ViewProfile` (form-less, `lifecycleAction`, visibility-gated):
   - `lapse` → `app(LapseProfile::class)->handle(...)`, visible iff `state == 'active'`.
   - `renew` → `app(RenewProfile::class)->handle(...)`, visible iff `state == 'lapsed'`. **Design D5:** the 30-day-grace sub-gate is domain-internal — a past-grace renew is reachable through the surface and the domain rejects it → `surfaceLifecycleOutcome` sends the `action_failed` notification (the one UI-reachable reject in this slice).
   - `cancel` → `app(CancelProfile::class)->handle(...)`, visible iff `state == 'active' || state == 'lapsed'`. **Audit-only — no event.**
   - `deactivate` → `app(DeactivateProfile::class)->handle(...)`, visible iff `state == 'active'`.
-- [ ] 5.2 Add `operator_console.profile.actions.{lapse, renew, cancel, deactivate}` + `notifications.{lapsed, renewed, cancelled, deactivated}` to `lang/en` + `lang/it`.
+- [x] 5.2 Add `operator_console.profile.actions.{lapse, renew, cancel, deactivate}` + `notifications.{lapsed, renewed, cancelled, deactivated}` to `lang/en` + `lang/it`.
 - **Tests** (`ProfileLifecycleConsoleTest.php`): lapse an `Active` Profile → `Lapsed` + one `ProfileExpired`; renew a within-grace `Lapsed` Profile (`lapsed_at = now`) → `Active` + one `ProfileRenewed`; renew a **past-grace** `Lapsed` Profile (`travelTo` 31 days after `lapsed_at`) driven **through the page** → a danger `action_failed` notification (`assertNotified`) + state stays `Lapsed` + no event (design D5 — the sole UI-reachable reject); cancel an `Active`/`Lapsed` Profile → `Cancelled` + **zero** new events (audit-only) + the row stays queryable (soft-delete, AC-K-FSM-13); deactivate an `Active` Profile → `Inactive` + one `ProfileInactive`; visibility complements; the other illegal transitions are domain-direct throws + `assertActionHidden`. Typecheck passes; tests pass.
 
 ## 6. Account lifecycle on ViewCustomer (suspend / reactivate / close)
