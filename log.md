@@ -527,3 +527,5 @@
 ## [2026-06-22 19:21] ralph | operator-console-parties-kyc-sanctions 5.1 | green | quality gates: pint --test clean, phpstan max 0 err (NoEloquentWrite rule registered), pest 1495/1495 8263 assn; diff vs main no spec/arch/migration/dep | 0 src files
 
 ## [2026-06-23 07:53] ralph | operator-console-parties-kyc-sanctions 5.2 | green | CHANGE_COMPLETE — validate --strict + final sweep 1495/1495, phpstan max 0, pint clean; 5 durable patterns verified consolidated; 13/13 done
+
+## [2026-06-23 08:08] §2.7 closure | operator-console-parties-kyc-sanctions | merged --no-ff + archived (delta → openspec/specs/operator-console: +2 ADDED, ~2 MODIFIED req). Semantic verify (2 agents) NO CRITICAL, 2 accepted WARNINGs. PG17 gate met in-loop @4.2; full SQLite 1495/1495. main +16 unpushed; push + branch-d gated.
