@@ -533,3 +533,5 @@
 ## [2026-06-23 10:10] spec-to-change | club-credit | APPROVED (Module K §11, greenfield): ClubCredit entity + one-active partial-index + 4 audit-only writers (issue/apply/forfeit/restore); §11.4 events stay Module E's. strict-valid 6req/20scn/15tasks. Gate: audit-only, Club.fee verbatim, full FSM+seams.
 
 ## [2026-06-23 10:16] ralph | club-credit 1.1 | green | ClubCreditState enum (active/redeemed/forfeited) + isActive/isTerminal predicates + 5-test ClubCreditEnumsTest; suite 1500/1500, phpstan 0, pint clean | 3 files
+
+## [2026-06-23 10:33] ralph | club-credit 1.2 | green | 4 files | parties_club_credits migration + one-active partial unique index + raw-insert schema test (7/7); suite 1507/1507, phpstan max 0, pint clean
