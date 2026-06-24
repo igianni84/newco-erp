@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int $producer_id
+ * @property ?string $producer_name
  * @property ProducerProjectionStatus $status
  * @property int $last_event_id
  * @property CarbonInterface $created_at

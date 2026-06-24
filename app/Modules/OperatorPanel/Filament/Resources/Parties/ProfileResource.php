@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages;
 use App\Modules\Parties\Models\Club;
@@ -47,9 +48,16 @@ class ProfileResource extends OperatorConsoleResource
 {
     protected static ?string $model = Profile::class;
 
+    protected static ?int $navigationSort = 2;
+
     protected static function i18nKey(): string
     {
         return 'profile';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Parties;
     }
 
     /**
@@ -99,8 +107,9 @@ class ProfileResource extends OperatorConsoleResource
                 TextColumn::make('state')
                     ->label((string) __('operator_console.profile.columns.state'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::stateBadgeState()),
-                static::versionColumn(),
             ]);
     }
 
@@ -123,6 +132,8 @@ class ProfileResource extends OperatorConsoleResource
                 TextEntry::make('state')
                     ->label((string) __('operator_console.profile.columns.state'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::stateBadgeState()),
                 TextEntry::make('tier')
                     ->label((string) __('operator_console.profile.fields.tier')),

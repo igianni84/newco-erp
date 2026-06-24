@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 use App\Modules\Catalog\Models\CaseConfiguration;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\SellableSku;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\SellableSkuResource\Pages;
 use Filament\Forms\Components\Select;
@@ -58,9 +59,16 @@ class SellableSkuResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'commercial_name';
 
+    protected static ?int $navigationSort = 5;
+
     protected static function i18nKey(): string
     {
         return 'sellable_sku';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -108,7 +116,6 @@ class SellableSkuResource extends OperatorConsoleResource
                     ->searchable()
                     ->sortable(),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

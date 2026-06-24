@@ -4,6 +4,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\CompositeSku;
 use App\Modules\Catalog\Models\ProductReference;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CompositeSkuResource\Pages;
 use Filament\Forms\Components\Select;
@@ -53,9 +54,16 @@ class CompositeSkuResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'id';
 
+    protected static ?int $navigationSort = 6;
+
     protected static function i18nKey(): string
     {
         return 'composite_sku';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -88,7 +96,6 @@ class CompositeSkuResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.composite_sku.columns.constituent_count'))
                     ->getStateUsing(fn (CompositeSku $record): int => $record->constituents()->count()),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

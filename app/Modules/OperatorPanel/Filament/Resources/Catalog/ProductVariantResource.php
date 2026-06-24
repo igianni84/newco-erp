@@ -4,6 +4,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductVariantResource\Pages;
 use Filament\Forms\Components\Select;
@@ -49,9 +50,16 @@ class ProductVariantResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'variant_identifier';
 
+    protected static ?int $navigationSort = 2;
+
     protected static function i18nKey(): string
     {
         return 'product_variant';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -102,7 +110,6 @@ class ProductVariantResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.product_variant.columns.vintage'))
                     ->getStateUsing(fn (ProductVariant $record): string => self::vintageLabel($record)),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

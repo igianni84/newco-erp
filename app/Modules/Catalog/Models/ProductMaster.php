@@ -3,14 +3,17 @@
 namespace App\Modules\Catalog\Models;
 
 use App\Modules\Catalog\Actions\CreateProductMaster;
+use App\Modules\Catalog\Actions\CreateProductVariant;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Enums\ProductType;
 use App\Modules\Catalog\Events\ProductMasterCreated;
 use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductMasterFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -42,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
  * @property-read ProductMasterWineAttributes|null $wineAttributes
+ * @property-read Collection<int, ProductVariant> $variants
  */
 class ProductMaster extends Model implements HasLifecycleState
 {
@@ -78,6 +82,20 @@ class ProductMaster extends Model implements HasLifecycleState
     public function wineAttributes(): HasOne
     {
         return $this->hasOne(ProductMasterWineAttributes::class);
+    }
+
+    /**
+     * The Product Variants released under this Master — the child spine entities ({@see ProductVariant::master()}
+     * is the inverse). A WITHIN-module relation (the Variant is the same module's child, not another module's
+     * table) — distinct from the forbidden cross-module producer relation (invariant 10). Display-only here (the
+     * operator console's read view lists them); the {@see CreateProductVariant}
+     * action stays the sole writer of the child rows. Default key convention: FK `product_master_id`, local `id`.
+     *
+     * @return HasMany<ProductVariant, $this>
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
     }
 
     /**

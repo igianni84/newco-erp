@@ -3,6 +3,7 @@
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\CaseConfiguration;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CaseConfigurationResource\Pages;
 use Filament\Forms\Components\TextInput;
@@ -42,9 +43,16 @@ class CaseConfigurationResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?int $navigationSort = 7;
+
     protected static function i18nKey(): string
     {
         return 'case_configuration';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -87,7 +95,6 @@ class CaseConfigurationResource extends OperatorConsoleResource
                 TextColumn::make('packaging_type')
                     ->label((string) __('operator_console.case_configuration.columns.packaging_type')),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

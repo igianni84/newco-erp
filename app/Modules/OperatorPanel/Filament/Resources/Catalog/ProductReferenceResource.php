@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 use App\Modules\Catalog\Models\Format;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductReferenceResource\Pages;
 use Filament\Forms\Components\Select;
@@ -50,9 +51,16 @@ class ProductReferenceResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'id';
 
+    protected static ?int $navigationSort = 4;
+
     protected static function i18nKey(): string
     {
         return 'product_reference';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -90,7 +98,6 @@ class ProductReferenceResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.product_reference.columns.format'))
                     ->getStateUsing(fn (ProductReference $record): ?string => $record->format?->name),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ClubResource\Pages;
 use App\Modules\Parties\Enums\ClubRegistrationFlowType;
@@ -50,9 +51,16 @@ class ClubResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'display_name';
 
+    protected static ?int $navigationSort = 3;
+
     protected static function i18nKey(): string
     {
         return 'club';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Parties;
     }
 
     /**
@@ -111,7 +119,6 @@ class ClubResource extends OperatorConsoleResource
                     ->getStateUsing(fn (Club $record): string => $record->producer->name),
                 static::registrationFlowTypeColumn(),
                 static::statusColumn(),
-                static::versionColumn(),
             ]);
     }
 
@@ -170,6 +177,8 @@ class ClubResource extends OperatorConsoleResource
         return TextColumn::make('status')
             ->label((string) __('operator_console.club.columns.status'))
             ->badge()
+            ->color(fn (string $state): string => static::stateBadgeColor($state))
+            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
             ->getStateUsing(function (Model $record): string {
                 $state = $record->getAttribute('status');
 

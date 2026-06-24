@@ -6,6 +6,13 @@
 // English even in Italian copy, per Crurated convention (CRURATED/CLAUDE.md — terminologia tecnica).
 return [
 
+    // Gruppi di navigazione della sidebar (uno per modulo spec esposto come console). A differenza dei termini
+    // di dominio inglese-invarianti (Product Master, Customer…), «Catalogo» e «Anagrafiche» SI traducono.
+    'navigation_group' => [
+        'catalog' => 'Catalogo',
+        'parties' => 'Anagrafiche',
+    ],
+
     'product_master' => [
         // 'label' / 'plural_label' are intentionally ABSENT here: "Product Master" is an English-invariant
         // structural domain term (CONTEXT.md), so per-key EN fallback (DEC-127) renders it from
@@ -18,6 +25,15 @@ return [
             'lifecycle_state' => 'Stato',
             'producer' => 'Produttore',
             'version' => 'Versione',
+        ],
+
+        // Intestazioni delle sezioni della view (infolist raggruppato — UI pass console operatore).
+        'sections' => [
+            'identity' => 'Identità',
+            'classification' => 'Classificazione e stato',
+            'provenance' => 'Provenienza e storia',
+            'variants' => 'Varianti',
+            'metadata' => 'Metadati',
         ],
 
         'fields' => [

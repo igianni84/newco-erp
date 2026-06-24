@@ -591,3 +591,9 @@
 ## [2026-06-24 09:08] push | main | close ritual pushed (0388fc8..e5655f6, 12 commits) + ralph/operator-console-parties-membership branch deleted; origin/main synced
 
 ## [2026-06-24 09:19] knowledge | filament | new domain: operator-console slice recipe promoted to rule (read-projection Resource + write-through pages + lifecycleAction verbs + i18n guard + PG17 chain); 8 dated cross-change confirmations; INDEX row added
+
+## [2026-06-24 10:42] feat | operator-console-navigation-grouping | 12 flat consoles → 2 ordered+localized sidebar groups (Catalog 7 / Parties 5) via HasLabel enum + abstract navigationGroupCase() on kit base; EN/IT labels; full suite 1753/1753, PHPStan 0, Pint clean. Spec-silent IA, locked by OperatorConsoleNavigationTest.
+
+## [2026-06-24 11:11] feat | demo-seeder | DemoSeeder: curated Module 0+K demo data (8 producers,10 clubs,12 customers,18 profiles,9 masters,20 SKUs,3 bundles,6 holds) via direct construction bypassing Create/Activate; re-runnable truncate+reseed; pint+phpstan-max clean; non-destructive (operator/roles kept)
+
+## [2026-06-24 12:04] ui-polish | operator panel (Module 0/K consoles) | CRCLES brand (#A0715A + logo), semantic colored+iconed status badges across 12 consoles, version off lists, producer_name denormalized onto projection (migration+seeder), sectioned PM detail + child variants. 1754/1754 green, PHPStan 0, Pint clean. Uncommitted on main.

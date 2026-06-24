@@ -35,9 +35,18 @@ class AdminPanelProvider extends PanelProvider
                 [AppAuthentication::make()->recoverable()],
                 isRequired: false,
             )
+            // Brand identity (CRCLES). Primary is Pantone 8022 C (#A0715A) — the brand's "bridge between
+            // heritage and distinction", a metallic burgundy-gold sampled from CRURATED/NewCo/Branding. The
+            // brand color drives panel chrome (buttons, links, active nav, focus rings); status badges keep
+            // SEMANTIC colors (green/amber/red) so operator state still reads at a glance.
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#A0715A'),
             ])
+            ->brandName('CRCLES')
+            ->brandLogo(asset('images/brand/crcles-logo.png'))
+            ->darkModeBrandLogo(asset('images/brand/crcles-logo-dark.png'))
+            ->brandLogoHeight('1.75rem')
+            ->sidebarCollapsibleOnDesktop()
             // Discovery is repointed from the shell's default app/Filament/** into the OperatorPanel
             // module (ADR 2026-06-19): the operator surface IS OperatorPanel code, so its resources,
             // pages and widgets live under app/Modules/OperatorPanel/Filament/** — keeping the module

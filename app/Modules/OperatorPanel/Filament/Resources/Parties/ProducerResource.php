@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages;
 use App\Modules\Parties\Models\Producer;
@@ -47,9 +48,16 @@ class ProducerResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?int $navigationSort = 4;
+
     protected static function i18nKey(): string
     {
         return 'producer';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Parties;
     }
 
     /**
@@ -102,7 +110,6 @@ class ProducerResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.producer.columns.country')),
                 static::statusColumn(),
                 static::kycStatusColumn(),
-                static::versionColumn(),
             ]);
     }
 
@@ -153,6 +160,8 @@ class ProducerResource extends OperatorConsoleResource
         return TextColumn::make('status')
             ->label((string) __('operator_console.producer.columns.status'))
             ->badge()
+            ->color(fn (string $state): string => static::stateBadgeColor($state))
+            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
             ->getStateUsing(function (Model $record): string {
                 $state = $record->getAttribute('status');
 
@@ -171,6 +180,8 @@ class ProducerResource extends OperatorConsoleResource
         return TextColumn::make('kyc_status')
             ->label((string) __('operator_console.producer.columns.kyc_status'))
             ->badge()
+            ->color(fn (string $state): string => static::stateBadgeColor($state))
+            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
             ->getStateUsing(function (Model $record): string {
                 $state = $record->getAttribute('kyc_status');
 

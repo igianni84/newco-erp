@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages;
 use App\Modules\Parties\Models\Customer;
@@ -52,9 +53,16 @@ class CustomerResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?int $navigationSort = 1;
+
     protected static function i18nKey(): string
     {
         return 'customer';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Parties;
     }
 
     /**
@@ -111,23 +119,30 @@ class CustomerResource extends OperatorConsoleResource
                 TextColumn::make('status')
                     ->label((string) __('operator_console.customer.columns.status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('status')),
                 TextColumn::make('kyc_status')
                     ->label((string) __('operator_console.customer.columns.kyc_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('kyc_status')),
                 TextColumn::make('sanctions_status')
                     ->label((string) __('operator_console.customer.columns.sanctions_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('sanctions_status')),
                 TextColumn::make('account_status')
                     ->label((string) __('operator_console.customer.columns.account_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::accountStatusState()),
                 TextColumn::make('profiles')
                     ->label((string) __('operator_console.customer.columns.profiles'))
                     ->getStateUsing(fn (Customer $record): int => $record->profiles->count()),
-                static::versionColumn(),
             ]);
     }
 
@@ -150,18 +165,26 @@ class CustomerResource extends OperatorConsoleResource
                 TextEntry::make('status')
                     ->label((string) __('operator_console.customer.columns.status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('status')),
                 TextEntry::make('kyc_status')
                     ->label((string) __('operator_console.customer.columns.kyc_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('kyc_status')),
                 TextEntry::make('sanctions_status')
                     ->label((string) __('operator_console.customer.columns.sanctions_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('sanctions_status')),
                 TextEntry::make('account_status')
                     ->label((string) __('operator_console.customer.columns.account_status'))
                     ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::accountStatusState()),
                 TextEntry::make('profiles')
                     ->label((string) __('operator_console.customer.columns.profiles'))

@@ -3,6 +3,7 @@
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\Format;
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource\Pages;
 use Filament\Forms\Components\TextInput;
@@ -40,9 +41,16 @@ class FormatResource extends OperatorConsoleResource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?int $navigationSort = 3;
+
     protected static function i18nKey(): string
     {
         return 'format';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Catalog;
     }
 
     /**
@@ -84,7 +92,6 @@ class FormatResource extends OperatorConsoleResource
                 TextColumn::make('volume_ml')
                     ->label((string) __('operator_console.format.columns.volume_ml')),
                 static::lifecycleStateColumn(),
-                static::versionColumn(),
             ]);
     }
 

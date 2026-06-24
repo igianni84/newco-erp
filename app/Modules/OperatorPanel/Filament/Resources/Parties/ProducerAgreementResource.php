@@ -2,6 +2,7 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 
+use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResource\Pages;
 use App\Modules\Parties\Models\Club;
@@ -49,9 +50,16 @@ class ProducerAgreementResource extends OperatorConsoleResource
 {
     protected static ?string $model = ProducerAgreement::class;
 
+    protected static ?int $navigationSort = 5;
+
     protected static function i18nKey(): string
     {
         return 'producer_agreement';
+    }
+
+    protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
+    {
+        return OperatorConsoleNavigationGroup::Parties;
     }
 
     /**
@@ -102,7 +110,6 @@ class ProducerAgreementResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.producer_agreement.columns.term_start')),
                 TextColumn::make('term_end')
                     ->label((string) __('operator_console.producer_agreement.columns.term_end')),
-                static::versionColumn(),
             ]);
     }
 
@@ -118,6 +125,9 @@ class ProducerAgreementResource extends OperatorConsoleResource
                     ->getStateUsing(fn (ProducerAgreement $record): string => self::clubLabel($record)),
                 TextEntry::make('status')
                     ->label((string) __('operator_console.producer_agreement.columns.status'))
+                    ->badge()
+                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(fn (Model $record): string => self::statusValue($record)),
                 TextEntry::make('term_start')
                     ->label((string) __('operator_console.producer_agreement.columns.term_start')),
@@ -152,6 +162,8 @@ class ProducerAgreementResource extends OperatorConsoleResource
         return TextColumn::make('status')
             ->label((string) __('operator_console.producer_agreement.columns.status'))
             ->badge()
+            ->color(fn (string $state): string => static::stateBadgeColor($state))
+            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
             ->getStateUsing(fn (Model $record): string => self::statusValue($record));
     }
 

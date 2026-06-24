@@ -27,11 +27,12 @@ use function Pest\Laravel\actingAs;
 
 uses(RefreshDatabase::class);
 
-it('lists Product Masters with their lifecycle state and a projection-resolved producer', function () {
+it('lists Product Masters with their lifecycle state and the projection-resolved producer name', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     ProducerState::create([
         'producer_id' => 7001,
+        'producer_name' => 'Domaine Leflaive',
         'status' => ProducerProjectionStatus::Active,
         'last_event_id' => 1,
     ]);
@@ -45,9 +46,26 @@ it('lists Product Masters with their lifecycle state and a projection-resolved p
     Livewire::test(ListProductMasters::class)
         ->assertCanSeeTableRecords([$master])
         ->assertSee('Château Read-Surface')
-        ->assertSee('reviewed')   // lifecycle_state rendered via the enum cast instance
-        ->assertSee('#7001')      // producer column = the plain id …
-        ->assertSee('active');    // … plus the status read from the producer-state projection
+        ->assertSee('reviewed')              // lifecycle_state rendered via the enum cast instance
+        ->assertSee('Domaine Leflaive');     // producer column = the denormalized projection NAME (not the id)
+});
+
+it('falls back to the bare producer id when the projection row carries no name yet', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A projected producer with NO denormalized name — the event-driven runtime path until the producer
+    // lifecycle events carry the name in their payload. The column degrades gracefully to the bare id.
+    ProducerState::create([
+        'producer_id' => 7002,
+        'status' => ProducerProjectionStatus::Active,
+        'last_event_id' => 1,
+    ]);
+
+    $master = ProductMaster::factory()->create(['producer_id' => 7002, 'name' => 'Château Fallback']);
+
+    Livewire::test(ListProductMasters::class)
+        ->assertCanSeeTableRecords([$master])
+        ->assertSee('#7002');
 });
 
 it('shows a not-projected marker when the producer has no projection row', function () {

@@ -7,6 +7,15 @@
 // invoked Catalog action's exception message is surfaced (tasks 3–5).
 return [
 
+    // Sidebar navigation groups — one per spec module surfaced as a console — resolved by
+    // OperatorConsoleNavigationGroup::getLabel(). Unlike the English-invariant entity labels below (Product
+    // Master, Customer…), the module group names "Catalog"/"Parties" DO localize, so both are authored here as
+    // the EN baseline and translated in lang/it (DEC-127 per-key fallback still applies).
+    'navigation_group' => [
+        'catalog' => 'Catalog',
+        'parties' => 'Parties',
+    ],
+
     'product_master' => [
         // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
         'label' => 'Product Master',
@@ -19,6 +28,15 @@ return [
             'lifecycle_state' => 'Lifecycle state',
             'producer' => 'Producer',
             'version' => 'Version',
+        ],
+
+        // View-page section headings — the premium grouped infolist (operator-console UI pass, 2026-06-24).
+        'sections' => [
+            'identity' => 'Identity',
+            'classification' => 'Classification & state',
+            'provenance' => 'Provenance & story',
+            'variants' => 'Variants',
+            'metadata' => 'Metadata',
         ],
 
         // Create-form input labels + view-infolist labels for the neutral core and the WINE per-type
