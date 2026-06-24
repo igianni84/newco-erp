@@ -585,3 +585,5 @@
 ## [2026-06-23 23:56] ralph | operator-console-parties-membership 8.1 | green | 1 file (ProfileMembershipChainTest) — full Profile FSM + orthogonal Account FSM through the pages; SQLite 1726/1726 + PG17 filtered 98 assertions GREEN
 
 ## [2026-06-24 00:05] ralph | operator-console-parties-membership 8.2 | green | final gate: pest 1726/1726, phpstan max 0, pint clean, openspec valid; no new Parties Action (D8 whitelist unchanged); patterns consolidated; CHANGE_COMPLETE | 4 files
+
+## [2026-06-24 09:01] close-ritual | operator-console-parties-membership | merged --no-ff to main + archived (4 added/2 modified reqs, delta folded into living operator-console spec); PG17 full suite 1726/1726 (9425 assert) GREEN; semantic verify CLEAN (0 CRITICAL, 1 WARN/1 SUGG); no knowledge promotion due; push gated, pending
