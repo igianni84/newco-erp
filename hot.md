@@ -7,7 +7,7 @@ updated: 2026-06-24
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-panel UI PASS #2 (console IA restructure for the Paolo + Taha demo — UNCOMMITTED, awaiting push approval).** Builds on the prior demo-polish (`4ead0b5`: #A0715A brand, semantic badges, producer names). Reshapes the Module 0/K console information architecture per Giovanni's 8 points:
+**2026-06-24 — Operator-panel UI PASS #2 (console IA restructure for the Paolo + Taha demo — COMMITTED + PUSHED, `9edcc49` → origin/main).** Builds on the prior demo-polish (`4ead0b5`: #A0715A brand, semantic badges, producer names). Reshapes the Module 0/K console information architecture per Giovanni's 8 points:
 - **Dashboard:** dropped the Filament Account+Info widgets → two discovered analytics: `CatalogPartiesOverview` (6 KPI stats over Modules 0+K) + `MembershipsByStateChart` (bar, profiles-by-state).
 - **Catalog:** `ProductVariant` hidden from sidebar → seen+created inside `ProductMaster` via `VariantsRelationManager` (replaced the static RepeatableEntry). New `CatalogSettings` Filament **cluster** ("Settings", in the Catalog group) holds Format · CaseConfiguration · ProductReference as tabs (each: `$cluster` + `getNavigationGroup()→null` → flat sub-nav). Sellable/Composite SKU stay top-level.
 - **Parties:** `Club` + `ProducerAgreement` hidden → seen+created inside `Producer` via `ClubsRelationManager` + `ProducerAgreementsRelationManager` (added within-module `Producer::producerAgreements()` hasMany). `Customer` gains a read-only `MembershipsRelationManager` (profiles). `Profile` nav relabelled "Memberships" (model label stays "Profile"). New **`SupplierResource`** (the thin `parties_suppliers` model had no console) — list/view/create via `CreateSupplier`; no lifecycle, plain ViewRecord.
@@ -22,8 +22,8 @@ RM creates route through the owning module's domain action (`->using($this->crea
 - `npm run build` FAILS (`vite` missing from node_modules) → custom Instrument Sans font not compiled; brand color (runtime CSS var) + logo (public/) unaffected, panel renders 200. `npm install` to restore the font.
 
 ## Active Change & Next Task
-- No openspec change. **26 uncommitted files (10 new).** Local server on :8123 (/admin · `operator@newco.test` / `password`); DemoSeeder data present (8 producers, 12 customers, 10 clubs, 9 masters, 3 suppliers, 18 profiles).
-- **NEXT:** await Giovanni's push approval (close-ritual gate), then commit + push.
+- No openspec change. Pushed in `9edcc49` (origin/main) with Giovanni's approval; working tree clean. DemoSeeder data present (8 producers, 12 customers, 10 clubs, 9 masters, 3 suppliers, 18 profiles); demo via `php artisan serve` → /admin · `operator@newco.test` / `password`.
+- **NEXT:** demo to Paolo + Taha. Optional follow-ups in Blockers below.
 
 ## Blockers & Decisions Needed
 - **Color nuance:** Filament generates a SATURATED palette from #A0715A's hue (47, copper) — buttons read more vivid than the muted metallic logo. Offered to pin an explicit muted palette if Giovanni wants an exact logo match. Not blocking.

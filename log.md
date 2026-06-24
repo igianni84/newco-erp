@@ -601,3 +601,5 @@
 ## [2026-06-24 12:23] push | operator-console demo polish | 4ead0b5 -> origin/main (28 files, +1407/-81): branded CRCLES UI + semantic badges + producer names + nav grouping + demo seed. Suite 1754/1754, PHPStan 0, Pint clean.
 
 ## [2026-06-24 14:07] ui-pass | operator-console (modules 0/K) | IA restructure for Paolo+Taha demo: 2 dashboard widgets, Variants/Clubs/Agreements nested in parents, Settings cluster, Supplier resource, Profiles→Memberships, Pantone logo; 1753 green, phpstan/pint clean; uncommitted (push gate)
+
+## [2026-06-24 14:13] close | operator-console UI pass #2 | committed + pushed 9edcc49 → origin/main (32 files); 1753 green
