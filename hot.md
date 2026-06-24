@@ -7,7 +7,7 @@ updated: 2026-06-24
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-console PREMIUM finishing pass (for the Paolo demo).** Builds on UI pass #2 (`9edcc49`). A 360° "make it look like a premium product" sweep over all 13 Filament consoles + the panel chrome, driven by Giovanni's 8 feedback points. Local-only (NOT yet committed/pushed — close-ritual push is classifier-gated; ask first).
+**2026-06-24 — Operator-console PREMIUM finishing pass (for the Paolo demo).** Builds on UI pass #2 (`9edcc49`). A 360° "make it look like a premium product" sweep over all 13 Filament consoles + the panel chrome, driven by Giovanni's 8 feedback points. **COMMITTED + PUSHED** (`9f9cb83` → origin/main).
 
 - **Brand chrome:** hand-tuned **OKLCH copper ramp** for `primary` (hue 47°, chroma muted ~10%, anchored on Pantone 8022 #A0715A at shade 500) — replaced `Color::hex()` whose auto-palette read as loud orange. Neutral chrome → `Color::Stone` (warm). `->font('Instrument Sans')` + custom Filament theme `resources/css/filament/admin/theme.css` (hairlines, softer shadows, branded login backdrop) via `->viteTheme()`. Logo asset was correct but rendered as an illegible sliver → **tight-cropped** the wordmark (glyph fills frame) + raised `brandLogoHeight` to 2.45rem; derived a warm-white dark logo + a clean concentric-circle **favicon/mark** (`public/images/brand/crcles-mark.png`). `->globalSearchKeyBindings(['mod+k'])`.
 - **Shared kit helpers** on `OperatorConsoleResource`: `applyConsoleDefaults()` (newest-first + branded empty state), `stateFilter()` (distinct-token SelectFilter, no enum import), `badgedStateEntry()` (infolist state badge), `metadataSection()`, sortable `lifecycleStateColumn()`. Every console table now has filters + search + sortable cols; every detail page is icon-headed `Section`s + badges + collapsed Metadata.
@@ -20,7 +20,7 @@ updated: 2026-06-24
 - **GREEN:** full suite **1753/1753** (9494 assertions) · PHPStan **0** · Pint clean. Verified LIVE via Playwright screenshots (login/dashboard/PM/variant/SKU/composite/producer).
 
 ## Active Change & Next Task
-- No openspec change open. This was an interactive polish pass on the existing operator console. **Next:** Giovanni reviews screenshots; then commit + push (gated — ask).
+- No openspec change open. This was an interactive polish pass on the existing operator console; shipped to origin/main. **Next:** Giovanni demos to Paolo; any further tweaks are a fresh pass.
 
 ## Blockers & Decisions Needed
 - None blocking. Geography "full cascade" (operator-populatable Country/Region/Appellation reference tables in Settings) was DEFERRED in favour of the light config-cascade — revisit post-demo with an ADR if wanted.
