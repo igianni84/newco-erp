@@ -6,6 +6,7 @@
 |---|---|---|
 | architecture | `knowledge/architecture/` | 2 rules |
 | data-model | `knowledge/data-model/` | 2 rules · 1 hypothesis |
+| filament | `knowledge/filament/` | 1 rule |
 | laravel | `knowledge/laravel/` | 3 rules · 1 hypothesis |
 | module-k | `knowledge/module-k/` | 2 observations |
 | testing | `knowledge/testing/` | 4 rules · 1 hypothesis |

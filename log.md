@@ -589,3 +589,5 @@
 ## [2026-06-24 09:01] close-ritual | operator-console-parties-membership | merged --no-ff to main + archived (4 added/2 modified reqs, delta folded into living operator-console spec); PG17 full suite 1726/1726 (9425 assert) GREEN; semantic verify CLEAN (0 CRITICAL, 1 WARN/1 SUGG); no knowledge promotion due; push gated, pending
 
 ## [2026-06-24 09:08] push | main | close ritual pushed (0388fc8..e5655f6, 12 commits) + ralph/operator-console-parties-membership branch deleted; origin/main synced
+
+## [2026-06-24 09:19] knowledge | filament | new domain: operator-console slice recipe promoted to rule (read-projection Resource + write-through pages + lifecycleAction verbs + i18n guard + PG17 chain); 8 dated cross-change confirmations; INDEX row added
