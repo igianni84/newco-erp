@@ -7,28 +7,24 @@ updated: 2026-06-24
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-panel UI PASS #2 (console IA restructure for the Paolo + Taha demo — COMMITTED + PUSHED, `9edcc49` → origin/main).** Builds on the prior demo-polish (`4ead0b5`: #A0715A brand, semantic badges, producer names). Reshapes the Module 0/K console information architecture per Giovanni's 8 points:
-- **Dashboard:** dropped the Filament Account+Info widgets → two discovered analytics: `CatalogPartiesOverview` (6 KPI stats over Modules 0+K) + `MembershipsByStateChart` (bar, profiles-by-state).
-- **Catalog:** `ProductVariant` hidden from sidebar → seen+created inside `ProductMaster` via `VariantsRelationManager` (replaced the static RepeatableEntry). New `CatalogSettings` Filament **cluster** ("Settings", in the Catalog group) holds Format · CaseConfiguration · ProductReference as tabs (each: `$cluster` + `getNavigationGroup()→null` → flat sub-nav). Sellable/Composite SKU stay top-level.
-- **Parties:** `Club` + `ProducerAgreement` hidden → seen+created inside `Producer` via `ClubsRelationManager` + `ProducerAgreementsRelationManager` (added within-module `Producer::producerAgreements()` hasMany). `Customer` gains a read-only `MembershipsRelationManager` (profiles). `Profile` nav relabelled "Memberships" (model label stays "Profile"). New **`SupplierResource`** (the thin `parties_suppliers` model had no console) — list/view/create via `CreateSupplier`; no lifecycle, plain ViewRecord.
-- **Branding:** light logo was wrongly the BLACK variant → swapped to `CRCLES_Logo Pantone 8022.png` (copper). Color #A0715A already in place.
+**2026-06-24 — Operator-console PREMIUM finishing pass (for the Paolo demo).** Builds on UI pass #2 (`9edcc49`). A 360° "make it look like a premium product" sweep over all 13 Filament consoles + the panel chrome, driven by Giovanni's 8 feedback points. Local-only (NOT yet committed/pushed — close-ritual push is classifier-gated; ask first).
 
-RM creates route through the owning module's domain action (`->using($this->createX(...))`, owner id injected, parent picker dropped) — no Eloquent write; `canCreate()→true` (no per-model policy). i18n EN+IT (new top-level groups: cluster/relations/nav/supplier/dashboard).
+- **Brand chrome:** hand-tuned **OKLCH copper ramp** for `primary` (hue 47°, chroma muted ~10%, anchored on Pantone 8022 #A0715A at shade 500) — replaced `Color::hex()` whose auto-palette read as loud orange. Neutral chrome → `Color::Stone` (warm). `->font('Instrument Sans')` + custom Filament theme `resources/css/filament/admin/theme.css` (hairlines, softer shadows, branded login backdrop) via `->viteTheme()`. Logo asset was correct but rendered as an illegible sliver → **tight-cropped** the wordmark (glyph fills frame) + raised `brandLogoHeight` to 2.45rem; derived a warm-white dark logo + a clean concentric-circle **favicon/mark** (`public/images/brand/crcles-mark.png`). `->globalSearchKeyBindings(['mod+k'])`.
+- **Shared kit helpers** on `OperatorConsoleResource`: `applyConsoleDefaults()` (newest-first + branded empty state), `stateFilter()` (distinct-token SelectFilter, no enum import), `badgedStateEntry()` (infolist state badge), `metadataSection()`, sortable `lifecycleStateColumn()`. Every console table now has filters + search + sortable cols; every detail page is icon-headed `Section`s + badges + collapsed Metadata.
+- **Labels (#5):** killed raw `'#'.$id` from every option builder + `recordTitleAttribute='id'`; PR/SKU/constituent labels now read "Master — vintage — Format". Composite SKU view = `RepeatableEntry` (ordered constituents).
+- **Geography (#3, light-cascade decision):** Country→Region **selects** from `config/wine_geography.php` (curated, NOT a domain table — spec is silent), Region **prefilled** from the producer via new `catalog_producer_states.region/country` columns (seeded in DemoSeeder, same channel as `producer_name`), Appellation = region-scoped **datalist** (free entry preserved — it's in BR-Identity-1).
+- **Variant (#4):** sectioned view + Description (the existing `tasting_notes`); edit stays lifecycle-only (per decision).
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **GREEN:** full suite **1753/1753** · PHPStan **0** · Pint clean. New `OperatorConsoleUiPassTest` (7) + rewritten `OperatorConsoleNavigationTest` (the new IA = source of truth).
-- **Run pest via `php -d memory_limit=1024M vendor/bin/pest`, NOT `artisan test`** (128 MB OOM; the `-d` flag never reaches artisan's child process, then Collision OOMs rendering a failure — masks the real error).
-- `npm run build` FAILS (`vite` missing from node_modules) → custom Instrument Sans font not compiled; brand color (runtime CSS var) + logo (public/) unaffected, panel renders 200. `npm install` to restore the font.
+- **GREEN:** full suite **1753/1753** (9494 assertions) · PHPStan **0** · Pint clean. Verified LIVE via Playwright screenshots (login/dashboard/PM/variant/SKU/composite/producer).
 
 ## Active Change & Next Task
-- No openspec change. Pushed in `9edcc49` (origin/main) with Giovanni's approval; working tree clean. DemoSeeder data present (8 producers, 12 customers, 10 clubs, 9 masters, 3 suppliers, 18 profiles); demo via `php artisan serve` → /admin · `operator@newco.test` / `password`.
-- **NEXT:** demo to Paolo + Taha. Optional follow-ups in Blockers below.
+- No openspec change open. This was an interactive polish pass on the existing operator console. **Next:** Giovanni reviews screenshots; then commit + push (gated — ask).
 
 ## Blockers & Decisions Needed
-- **Color nuance:** Filament generates a SATURATED palette from #A0715A's hue (47, copper) — buttons read more vivid than the muted metallic logo. Offered to pin an explicit muted palette if Giovanni wants an exact logo match. Not blocking.
-- RM header-action create EXECUTION is not unit-tested (Filament's isolated-RM test helpers don't resolve header-action visibility) — verify live.
+- None blocking. Geography "full cascade" (operator-populatable Country/Region/Appellation reference tables in Settings) was DEFERRED in favour of the light config-cascade — revisit post-demo with an ADR if wanted.
 
 ## Open Patterns
-- **Nest a child console in its parent via a RelationManager + create-through-domain-action** (`->using`, `canCreate()→true`, reuse `<Resource>::table()` for columns, row View → resource view URL) — the repeatable recipe for decluttering the sidebar across the 7 remaining module consoles.
-- **Filament cluster for "settings"-type reference data** — clustered resources return a null nav group for flat tabs; the cluster carries the group placement.
+- **Filament gotcha (now a lesson + test guard):** a RelationManager is read-only on a `ViewRecord` page → its header `CreateAction` is DENIED before `canCreate()`; override `isReadOnly()→false` to surface it. `assertTableActionExists` does NOT catch this — live-verify (or assert `isReadOnly()===false`). This was the real cause of "no create button" (#3.4/#8).
+- The DemoSeeder is still NOT chained into `DatabaseSeeder` — demo data needs `db:seed --class=Database\Seeders\DemoSeeder` explicitly.

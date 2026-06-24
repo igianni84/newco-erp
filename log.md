@@ -603,3 +603,5 @@
 ## [2026-06-24 14:07] ui-pass | operator-console (modules 0/K) | IA restructure for Paolo+Taha demo: 2 dashboard widgets, Variants/Clubs/Agreements nested in parents, Settings cluster, Supplier resource, Profiles→Memberships, Pantone logo; 1753 green, phpstan/pint clean; uncommitted (push gate)
 
 ## [2026-06-24 14:13] close | operator-console UI pass #2 | committed + pushed 9edcc49 → origin/main (32 files); 1753 green
+
+## [2026-06-24 16:12] premium-pass | operator-console (13 Filament consoles) | Premium demo finishing: OKLCH copper palette+Stone+Instrument Sans+tight logo+favicon+branded login; sectioned/badged infolists; filters+search+sort everywhere; #id->human labels; Country->Region cascade+prefill; FIXED RM create buttons (isReadOnly opt-out). 1753/1753 green.

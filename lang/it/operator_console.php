@@ -4,7 +4,7 @@
 // Italian baseline for the OperatorPanel Filament surface. Per-key EN fallback: any key absent here
 // resolves to its lang/en/operator_console.php value. Product-domain terms (Product Master) stay in
 // English even in Italian copy, per Crurated convention (CRURATED/CLAUDE.md — terminologia tecnica).
-return [
+return array_replace_recursive([
 
     // Gruppi di navigazione della sidebar (uno per modulo spec esposto come console). A differenza dei termini
     // di dominio inglese-invarianti (Product Master, Customer…), «Catalogo» e «Anagrafiche» SI traducono.
@@ -12,6 +12,15 @@ return [
         'catalog' => 'Catalogo',
         'parties' => 'Anagrafiche',
     ],
+
+    // Empty state condiviso per ogni lista del console (OperatorConsoleResource::applyConsoleDefaults()).
+    'empty' => [
+        'heading' => 'Ancora nessun elemento',
+        'description' => 'Nessun record corrisponde ai filtri attuali. Modifica i filtri o crea il primo record.',
+    ],
+
+    // Trattino lungo mostrato per un valore vuoto/opzionale in tabelle e infolist (copy sink localizzato, invariante 12).
+    'placeholder_none' => '—',
 
     'product_master' => [
         // 'label' / 'plural_label' are intentionally ABSENT here: "Product Master" is an English-invariant
@@ -39,7 +48,9 @@ return [
         'fields' => [
             'name' => 'Nome',
             'producer' => 'Produttore',
+            'country' => 'Paese',
             'appellation' => 'Denominazione',
+            'appellation_help' => 'I suggerimenti variano in base alla regione — è ammesso testo libero per nuove denominazioni.',
             'region' => 'Regione',
             'winery_story' => 'Storia della cantina',
             'winery_story_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
@@ -646,4 +657,152 @@ return [
         ],
     ],
 
-];
+], [
+    // === Premium UI pass (2026-06-24): infolist sections, table/column labels, form helpers and
+    // human-label values added by the operator-console premium pass. Deep-merged onto the base copy
+    // above via array_replace_recursive so the annotated base stays untouched. EN baseline / IT here.
+    'product_variant' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'classification' => 'Classificazione e stato',
+            'attributes' => 'Annata e attributi',
+            'metadata' => 'Metadati',
+        ],
+        'fields' => [
+            'description' => 'Descrizione / Note di degustazione',
+        ],
+    ],
+    'product_reference' => [
+        'columns' => [
+            'master' => 'Wine Master',
+            'format_size' => 'Formato bottiglia',
+        ],
+        'sections' => [
+            'composition' => 'Composizione',
+            'state' => 'Stato',
+        ],
+        'untitled' => 'Senza nome',
+        'values' => [
+            'non_vintage' => 'NV',
+        ],
+    ],
+    'sellable_sku' => [
+        'sections' => [
+            'identity' => 'Identità commerciale',
+            'composition' => 'Composizione',
+            'state' => 'Stato',
+            'metadata' => 'Metadati',
+        ],
+        'placeholders' => [
+            'no_marketing_copy' => 'Nessun testo di marketing',
+        ],
+        'non_vintage' => 'Non-vintage',
+        'unnamed_reference' => 'Reference senza nome',
+    ],
+    'composite_sku' => [
+        'columns' => [
+            'bundle' => 'Bundle',
+            'position' => 'Posizione',
+            'reference' => 'Product Reference',
+            'reference_state' => 'Stato della reference',
+        ],
+        'sections' => [
+            'state' => 'Stato',
+            'constituents' => 'Costituenti',
+            'metadata' => 'Metadati',
+        ],
+        'bundle_summary' => 'Bundle di :count — :first',
+        'bundle_empty' => 'Bundle vuoto',
+        'position_value' => 'Posizione :position',
+        'non_vintage' => 'NV',
+    ],
+    'format' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'state' => 'Stato',
+            'metadata' => 'Metadata',
+        ],
+    ],
+    'case_configuration' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'packaging' => 'Confezionamento',
+            'state' => 'Stato',
+            'metadata' => 'Metadati',
+        ],
+    ],
+    'producer' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'state' => 'Stato',
+            'metadata' => 'Metadati',
+        ],
+    ],
+    'club' => [
+        'fields' => [
+            'amount_help' => 'Importo in unità minori (centesimi): inserisci 5000 per EUR 50,00.',
+            'amount_prefix' => 'centesimi',
+        ],
+        'registration_flow' => [
+            'open_registration' => 'Registrazione aperta',
+            'application_with_approval' => 'Candidatura con approvazione',
+            'invitation_only' => 'Solo su invito',
+            'link_onboarding' => 'Onboarding tramite link',
+        ],
+        'sections' => [
+            'identity' => 'Identità',
+            'membership' => 'Condizioni di membership',
+            'state' => 'Stato',
+            'metadata' => 'Metadati',
+        ],
+        'columns' => [
+            'generates_credit' => 'Genera credito',
+        ],
+        'values' => [
+            'yes' => 'Sì',
+            'no' => 'No',
+            'no_fee' => 'Nessuna quota',
+        ],
+    ],
+    'producer_agreement' => [
+        'sections' => [
+            'parties' => 'Controparti',
+            'terms' => 'Stato e termini',
+            'metadata' => 'Metadati',
+        ],
+        'fields' => [
+            'club_help' => 'Lascia vuoto per un accordo valido per tutto il Producer; seleziona un Club per restringerlo.',
+            'settlement_cadence_help' => 'Facoltativo. Testo libero — la cadenza di liquidazione letta dal Modulo E (es. mensile, trimestrale).',
+        ],
+        'not_set' => 'Non impostato',
+    ],
+    'customer' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'preferences' => 'Preferenze',
+            'compliance' => 'Compliance',
+            'state' => 'Stato',
+            'metadata' => 'Metadati',
+        ],
+    ],
+    'profile' => [
+        'sections' => [
+            'membership' => 'Membership',
+            'status' => 'Stato',
+            'lifecycle' => 'Ciclo di vita',
+            'metadata' => 'Metadati',
+        ],
+        'fields' => [
+            'customer_name' => 'Nome',
+        ],
+    ],
+    'supplier' => [
+        'sections' => [
+            'identity' => 'Identità',
+            'metadata' => 'Metadati',
+        ],
+        'columns' => [
+            'updated_at' => 'Aggiornato',
+        ],
+    ],
+]);

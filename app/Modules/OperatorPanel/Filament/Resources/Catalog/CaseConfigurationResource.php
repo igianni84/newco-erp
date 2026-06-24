@@ -10,6 +10,7 @@ use App\Modules\OperatorPanel\Filament\Resources\Catalog\CaseConfigurationResour
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -99,35 +100,80 @@ class CaseConfigurationResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('name')
                     ->label((string) __('operator_console.case_configuration.columns.name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('units_per_case')
-                    ->label((string) __('operator_console.case_configuration.columns.units_per_case')),
+                    ->label((string) __('operator_console.case_configuration.columns.units_per_case'))
+                    ->numeric()
+                    ->sortable(),
+                // `packaging_type` is a plain string column (no enum cast — the migration declares a `string`),
+                // so it renders directly; it is filterable via the distinct-token state filter.
                 TextColumn::make('packaging_type')
-                    ->label((string) __('operator_console.case_configuration.columns.packaging_type')),
+                    ->label((string) __('operator_console.case_configuration.columns.packaging_type'))
+                    ->badge()
+                    ->color('gray')
+                    ->sortable(),
                 static::lifecycleStateColumn(),
+            ])
+            ->filters([
+                static::stateFilter(),
+                static::stateFilter('packaging_type', 'columns.packaging_type'),
             ]);
     }
 
+    /**
+     * Make the Case Configuration findable from the Cmd/Ctrl+K global search by its name (invariant 12: the
+     * label resolves through {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
+
+    /**
+     * The read-only view (design L1/L4). Grouped into premium, icon-headed sections — Identity (the human name),
+     * Packaging (units per case + packaging type), and State (the `lifecycle_state` rendered as the same semantic
+     * colored + iconed badge the list carries, via {@see badgedStateEntry()}), closing with the collapsed Metadata
+     * section for the optimistic-lock `version`. Every entry is display-only; the model is never written here (the
+     * no-Eloquent-write rule, task 1.2). All copy localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('name')
-                    ->label((string) __('operator_console.case_configuration.columns.name')),
-                TextEntry::make('units_per_case')
-                    ->label((string) __('operator_console.case_configuration.columns.units_per_case')),
-                TextEntry::make('packaging_type')
-                    ->label((string) __('operator_console.case_configuration.columns.packaging_type')),
-                TextEntry::make('lifecycle_state')
-                    ->label((string) __('operator_console.case_configuration.columns.lifecycle_state'))
-                    ->getStateUsing(fn (CaseConfiguration $record): string => $record->lifecycle_state->value),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.case_configuration.columns.version')),
+                Section::make((string) __('operator_console.case_configuration.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label((string) __('operator_console.case_configuration.columns.name'))
+                            ->weight('bold'),
+                    ]),
+                Section::make((string) __('operator_console.case_configuration.sections.packaging'))
+                    ->icon('heroicon-o-cube')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('units_per_case')
+                            ->label((string) __('operator_console.case_configuration.columns.units_per_case'))
+                            ->numeric(),
+                        TextEntry::make('packaging_type')
+                            ->label((string) __('operator_console.case_configuration.columns.packaging_type'))
+                            ->badge()
+                            ->color('gray'),
+                    ]),
+                Section::make((string) __('operator_console.case_configuration.sections.state'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry(),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

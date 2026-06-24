@@ -3,9 +3,16 @@
 namespace App\Modules\OperatorPanel\Filament\Console;
 
 use BackedEnum;
+use Filament\Infolists\Components\Entry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 /**
@@ -80,6 +87,7 @@ abstract class OperatorConsoleResource extends Resource
         return TextColumn::make('lifecycle_state')
             ->label((string) __('operator_console.'.static::i18nKey().'.columns.lifecycle_state'))
             ->badge()
+            ->sortable()
             ->color(fn (string $state): string => static::stateBadgeColor($state))
             ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
             ->getStateUsing(function (Model $record): string {
@@ -87,6 +95,104 @@ abstract class OperatorConsoleResource extends Resource
 
                 return $state instanceof BackedEnum ? (string) $state->value : '';
             });
+    }
+
+    /**
+     * Branded list defaults every console table opts into so the surface is consistent and never reads as an
+     * unstyled stock grid: newest-first ordering and a localized, iconed empty state (the shared
+     * `operator_console.empty.*` copy) instead of Filament's bare "No records". Each resource's `table()`
+     * starts from this and then adds its own columns + {@see stateFilter()}/`->filters([...])`. Pure table
+     * configuration — no Eloquent write (task 1.2).
+     */
+    protected static function applyConsoleDefaults(Table $table): Table
+    {
+        return $table
+            ->defaultSort('created_at', 'desc')
+            ->emptyStateIcon('heroicon-o-circle-stack')
+            ->emptyStateHeading((string) __('operator_console.empty.heading'))
+            ->emptyStateDescription((string) __('operator_console.empty.description'));
+    }
+
+    /**
+     * A SelectFilter over a lifecycle/status column ({@see stateBadgeColor}'s register). Options are derived
+     * from the DISTINCT raw tokens actually present in the table (a query `pluck`, so casts are NOT applied —
+     * the value is the raw string) and humanized via {@see Str::headline()}; this keeps the filter free of any
+     * `Catalog\Enums`/`Parties\Enums` import (the {Models, Actions} surface, ADR 2026-06-19) and needs no
+     * per-state i18n key, mirroring how {@see lifecycleStateColumn()} renders the bare token. `pluck` is a read
+     * (no Eloquent write — task 1.2).
+     */
+    protected static function stateFilter(string $attribute = 'lifecycle_state', ?string $labelKey = null): SelectFilter
+    {
+        $labelKey ??= 'columns.'.$attribute;
+
+        return SelectFilter::make($attribute)
+            ->label((string) __('operator_console.'.static::i18nKey().'.'.$labelKey))
+            ->options(fn (): array => static::getModel()::query()
+                ->select($attribute)
+                ->distinct()
+                ->orderBy($attribute)
+                ->pluck($attribute)
+                ->mapWithKeys(function (mixed $value): array {
+                    $token = match (true) {
+                        $value instanceof BackedEnum => (string) $value->value,
+                        is_string($value) => $value,
+                        is_int($value) => (string) $value,
+                        default => '',
+                    };
+
+                    return [$token => Str::headline($token)];
+                })
+                ->all());
+    }
+
+    /**
+     * The shared infolist entry that renders a lifecycle/status attribute as the SAME semantic colored +
+     * iconed badge the list tables carry ({@see stateBadgeColor()}/{@see stateBadgeIcon()}) — promoted out of
+     * Product Master so every detail page shows state identically (the consistency fix: state was a badge in
+     * lists but plain text in five infolists). Reads the attribute through its cast `->value`, never importing
+     * a module enum.
+     */
+    protected static function badgedStateEntry(string $attribute = 'lifecycle_state', ?string $labelKey = null): TextEntry
+    {
+        $labelKey ??= 'columns.'.$attribute;
+
+        return TextEntry::make($attribute)
+            ->label((string) __('operator_console.'.static::i18nKey().'.'.$labelKey))
+            ->badge()
+            ->color(fn (string $state): string => static::stateBadgeColor($state))
+            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
+            ->getStateUsing(function (Model $record) use ($attribute): string {
+                $state = $record->getAttribute($attribute);
+
+                return match (true) {
+                    $state instanceof BackedEnum => (string) $state->value,
+                    is_string($state) => $state,
+                    default => '',
+                };
+            });
+    }
+
+    /**
+     * The collapsed "Metadata" infolist section every detail page closes with — the optimistic-lock `version`
+     * by default (internal concurrency metadata kept off the at-a-glance table, per {@see lifecycleStateColumn()}'s
+     * note), or any caller-supplied entries (e.g. created/updated timestamps). Centralizing it keeps the
+     * Metadata block identical across consoles.
+     *
+     * @param  array<int, Entry|Component>  $entries
+     */
+    protected static function metadataSection(array $entries = []): Section
+    {
+        if ($entries === []) {
+            $entries = [
+                TextEntry::make('version')
+                    ->label((string) __('operator_console.'.static::i18nKey().'.columns.version')),
+            ];
+        }
+
+        return Section::make((string) __('operator_console.'.static::i18nKey().'.sections.metadata'))
+            ->icon('heroicon-o-clock')
+            ->collapsed()
+            ->schema($entries);
     }
 
     /**

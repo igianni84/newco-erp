@@ -58,9 +58,14 @@ it('renders a Product Master\'s Variants in the relation manager on the view pag
         ->assertCanSeeTableRecords([$variant])
         ->assertSee('GRAND-CRU-2019')
         // The inline create action is wired into the relation-manager header (parent Master implied; routed
-        // through CreateProductVariant). Its end-to-end execution is exercised live in the run/verify step —
-        // Filament's isolated RM-header-action test helpers do not resolve header-action visibility reliably.
+        // through CreateProductVariant), and its end-to-end execution is exercised live in the run/verify step.
         ->assertTableActionExists('create');
+
+    // Regression guard (premium UI pass, 2026-06-24): Filament makes a relation manager READ-ONLY on a
+    // ViewRecord page, which DENIES the header CreateAction before canCreate() is consulted — so the "New
+    // variant" button silently never rendered. assertTableActionExists() does NOT catch this (it checks the
+    // action is defined, not authorized). Pin the opt-out directly so the button can never regress to hidden.
+    expect((new VariantsRelationManager)->isReadOnly())->toBeFalse();
 });
 
 // --- Parties: Clubs + Agreements nested inside Producer ---
@@ -80,6 +85,12 @@ it('renders a Producer\'s Clubs and Agreements in their relation managers, each 
     Livewire::test(ProducerAgreementsRelationManager::class, ['ownerRecord' => $producer, 'pageClass' => ViewProducer::class])
         ->assertCanSeeTableRecords([$agreement])
         ->assertTableActionExists('create');
+
+    // Regression guard: both relation managers must opt out of the read-only-on-ViewRecord default, else the
+    // "New club"/"New agreement" header buttons are denied and never render on the Producer view (the original
+    // bug — assertTableActionExists alone does not catch authorization-suppressed actions).
+    expect((new ClubsRelationManager)->isReadOnly())->toBeFalse();
+    expect((new ProducerAgreementsRelationManager)->isReadOnly())->toBeFalse();
 });
 
 // --- Parties: Customer memberships (read-only) ---

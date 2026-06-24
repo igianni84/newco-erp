@@ -12,10 +12,12 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 /**
  * CustomerHoldsTable — the Customer console's read-only Holds table (operator-console-parties-holds, tasks
@@ -109,6 +111,10 @@ class CustomerHoldsTable extends TableWidget
         $profileIds = $customer === null ? [] : $customer->profiles->pluck('id')->all();
 
         return $table
+            // Newest-first: the most recently placed Hold reads at the top, matching every console list
+            // (OperatorConsoleResource::applyConsoleDefaults()'s default sort — replicated here, as a widget table
+            // does not extend the kit base).
+            ->defaultSort('created_at', 'desc')
             // The full scope-set union (design D5): a Hold "belongs to this Customer" when it is scoped to the
             // Customer's own id, its co-provisioned Account's id, OR any of its Profile ids — an OR-of-scopes over
             // the polymorphic (scope_type, scope_id) with no FK (the DatabaseComplianceStatusReader idiom). A READ
@@ -131,17 +137,31 @@ class CustomerHoldsTable extends TableWidget
                 }),
             )
             ->columns([
+                // hold_type / scope_type / status are real Hold columns rendered through their BackedEnum cast
+                // ->value (castValueState) — the column NAME is the real DB column, so ->sortable() sorts on the
+                // raw stored token (safe; getStateUsing only changes the DISPLAY). status carries the same
+                // semantic colored + iconed badge the rest of the console uses (active = good, lifted = neutral).
                 TextColumn::make('hold_type')
                     ->label((string) __('operator_console.customer.holds.columns.hold_type'))
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
                     ->getStateUsing(self::castValueState('hold_type')),
                 TextColumn::make('scope_type')
                     ->label((string) __('operator_console.customer.holds.columns.scope_type'))
+                    ->sortable()
                     ->getStateUsing(self::castValueState('scope_type')),
                 TextColumn::make('status')
                     ->label((string) __('operator_console.customer.holds.columns.status'))
+                    ->badge()
+                    ->sortable()
+                    ->color(fn (string $state): string => self::holdStatusColor($state))
+                    ->icon(fn (string $state): ?string => self::holdStatusIcon($state))
                     ->getStateUsing(self::castValueState('status')),
                 TextColumn::make('reason')
-                    ->label((string) __('operator_console.customer.holds.columns.reason')),
+                    ->label((string) __('operator_console.customer.holds.columns.reason'))
+                    ->searchable()
+                    ->placeholder((string) __('operator_console.placeholder_none')),
                 TextColumn::make('placed_by')
                     ->label((string) __('operator_console.customer.holds.columns.placed_by'))
                     ->getStateUsing(function (Hold $record): string {
@@ -153,7 +173,8 @@ class CustomerHoldsTable extends TableWidget
                     }),
                 TextColumn::make('created_at')
                     ->label((string) __('operator_console.customer.holds.columns.placed_at'))
-                    ->dateTime(),
+                    ->dateTime()
+                    ->sortable(),
                 TextColumn::make('lifted_by')
                     ->label((string) __('operator_console.customer.holds.columns.lifted_by'))
                     ->getStateUsing(function (Hold $record): string {
@@ -169,7 +190,23 @@ class CustomerHoldsTable extends TableWidget
                     }),
                 TextColumn::make('lifted_at')
                     ->label((string) __('operator_console.customer.holds.columns.lifted_at'))
-                    ->dateTime(),
+                    ->dateTime()
+                    ->sortable()
+                    ->placeholder((string) __('operator_console.placeholder_none')),
+            ])
+            // Filter the Holds by their lifecycle `status` (active vs lifted — the design Open-Questions both-states
+            // table) and by `hold_type` — both real Hold columns. Options derive from the DISTINCT raw tokens present
+            // (a `pluck`, so the cast is NOT applied — the value is the raw string) and are humanized, mirroring the
+            // kit's stateFilter() so the widget needs no `Parties\Enums\HoldStatus` / `HoldType` STATE/TYPE enum import
+            // (the no-state-enum-import discipline — design D2). `pluck` is a read; the no-Eloquent-write rule polices
+            // writes only.
+            ->filters([
+                SelectFilter::make('status')
+                    ->label((string) __('operator_console.customer.holds.columns.status'))
+                    ->options(self::holdColumnOptions('status')),
+                SelectFilter::make('hold_type')
+                    ->label((string) __('operator_console.customer.holds.columns.hold_type'))
+                    ->options(self::holdColumnOptions('hold_type')),
             ])
             ->recordActions([
                 // The per-row `lift` — the console's FIRST per-row action (design D5). Shown only for an
@@ -206,6 +243,58 @@ class CustomerHoldsTable extends TableWidget
                         }
                     ),
             ]);
+    }
+
+    /**
+     * SelectFilter options for one of the Hold's BackedEnum-cast columns (`status` or `hold_type`), derived from the
+     * DISTINCT raw tokens actually present in the table (a query `pluck`, so the cast is NOT applied — the value is
+     * the raw string) and humanized via {@see Str::headline()}. This keeps the filter free of any
+     * `Parties\Enums\HoldStatus` / `HoldType` STATE/TYPE enum import (the no-state-enum-import discipline — design
+     * D2), mirroring how the kit's `stateFilter()` builds its options and how `castValueState()` renders the cells.
+     * `pluck` is a read — the no-Eloquent-write rule polices writes only.
+     *
+     * @return array<string, string>
+     */
+    private static function holdColumnOptions(string $attribute): array
+    {
+        return Hold::query()
+            ->select($attribute)
+            ->distinct()
+            ->orderBy($attribute)
+            ->pluck($attribute)
+            ->mapWithKeys(function (mixed $value): array {
+                $token = match (true) {
+                    $value instanceof BackedEnum => (string) $value->value,
+                    is_string($value) => $value,
+                    default => '',
+                };
+
+                return [$token => Str::headline($token)];
+            })
+            ->all();
+    }
+
+    /**
+     * The Hold `status` badge color, mirroring the console's semantic register ({@see OperatorConsoleResource::
+     * stateBadgeColor()}) for the two-state Hold FSM the widget cannot inherit (it extends Filament's TableWidget,
+     * not the console base): `active` is the live restriction (warning amber — it gates the account), `lifted` is the
+     * cleared/ended state (gray). Keyed on the raw token read off the cast `->value`, so no `HoldStatus` import.
+     */
+    private static function holdStatusColor(string $status): string
+    {
+        return match ($status) {
+            'active' => 'warning',
+            default => 'gray', // lifted, '' …
+        };
+    }
+
+    /**
+     * The heroicon that pairs with {@see holdStatusColor()} — a clock for the live `active` restriction, none for the
+     * neutral `lifted`/empty state (a bare gray badge), mirroring the console base's color → glyph pairing.
+     */
+    private static function holdStatusIcon(string $status): ?string
+    {
+        return self::holdStatusColor($status) === 'warning' ? 'heroicon-m-clock' : null;
     }
 
     /**

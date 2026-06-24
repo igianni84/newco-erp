@@ -13,8 +13,10 @@ use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -72,6 +74,22 @@ class ProfileResource extends OperatorConsoleResource
     }
 
     /**
+     * The human title for a Profile record (breadcrumb / view-page heading / global-search result). A Profile is
+     * keyed by a bare integer id, so the default would read "#42"; instead we build a real label from the
+     * within-Parties relations — the member's email at the Club they joined (e.g. "ada@example.com @ Grand Cru
+     * Club"). A WITHIN-Parties read (Customer + Club are Module K — the boundary law forbids only CROSS-module
+     * relations); display-only, no write. `recordTitleAttribute = 'id'` is banned — this override replaces it.
+     */
+    public static function getRecordTitle(?Model $record): ?string
+    {
+        if (! $record instanceof Profile) {
+            return null;
+        }
+
+        return $record->customer->email.' @ '.$record->club->display_name;
+    }
+
+    /**
      * The create form — the membership-application inputs the Parties `CreateProfile` action consumes: a Customer
      * select (the within-Parties Customer registry, labelled email + name) and a Club select (labelled by the
      * Club's `display_name`). Both are WITHIN-Parties reads (the boundary law forbids only CROSS-module relations —
@@ -98,62 +116,119 @@ class ProfileResource extends OperatorConsoleResource
 
     /**
      * The read list — the cross-Customer membership registry whose {@see Pages\ListProfiles} tabs make it the
-     * approval queue. The `customer` / `club` columns render the within-Parties relations through a closure (the
-     * email primary, the name as a secondary line; the Club's `display_name`); the `state` badge renders the
-     * `ProfileState` cast through {@see stateBadgeState()} (no `Parties\Enums` import — design D2); `version` is the
-     * shared optimistic-lock column. NO mutating row/bulk action — the surface is read-only (the write verbs live
-     * on the view/create pages).
+     * approval queue. The human-identity columns render the within-Parties relations via RELATION-PATH dot
+     * notation (`customer.email`, `customer.name`, `club.display_name`) — NOT a closure — so `->searchable()` and
+     * `->sortable()` push the search/sort to the related tables in the DB query (a closure column has no DB column
+     * to filter/order by and would throw). The member's email is the primary identity, the name a secondary line;
+     * the Club's `display_name` is its own searchable/sortable column. The `state` badge renders the `ProfileState`
+     * cast through {@see stateBadgeState()} (no `Parties\Enums` import — design D2); `tier` is the single-tier launch
+     * attribute. Branded list defaults via {@see applyConsoleDefaults()}; the `state` filter uses the kit's
+     * {@see stateFilter()} (distinct DB tokens, no enum import). NO mutating row/bulk action — the surface is
+     * read-only (the write verbs live on the view/create pages).
      */
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
-                TextColumn::make('customer')
+                TextColumn::make('customer.email')
                     ->label((string) __('operator_console.profile.columns.customer'))
-                    ->getStateUsing(fn (Profile $record): string => $record->customer->email)
-                    ->description(fn (Profile $record): string => $record->customer->name),
-                TextColumn::make('club')
+                    ->description(fn (Profile $record): string => $record->customer->name)
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('club.display_name')
                     ->label((string) __('operator_console.profile.columns.club'))
-                    ->getStateUsing(fn (Profile $record): string => $record->club->display_name),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('state')
                     ->label((string) __('operator_console.profile.columns.state'))
                     ->badge()
+                    ->sortable()
                     ->color(fn (string $state): string => static::stateBadgeColor($state))
                     ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::stateBadgeState()),
+                TextColumn::make('tier')
+                    ->label((string) __('operator_console.profile.fields.tier'))
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
+                    ->placeholder((string) __('operator_console.placeholder_none')),
+            ])
+            ->filters([
+                static::stateFilter('state', 'columns.state'),
+                SelectFilter::make('club_id')
+                    ->label((string) __('operator_console.profile.columns.club'))
+                    ->options(self::clubOptions(...)),
             ]);
     }
 
     /**
-     * The read-only view infolist: the within-Parties customer / club, the `state` badge (the cast `->value`,
-     * never an imported enum — design D2), the single-tier `tier`, the demand-side lifecycle anchors `lapsed_at` /
-     * `cancellation_reason`, and the optimistic-lock `version`. Every entry is display-only — the lifecycle writes
-     * route through the {@see Pages\ViewProfile} header actions (groups 3–5), never an in-place field edit.
+     * Make a membership findable from the Cmd/Ctrl+K global search by its two human-identity handles — the
+     * member's email and the Club name (the operator knows a membership by either). RELATION-PATH attributes
+     * (`customer.email`, `club.display_name`), so the search resolves against the within-Parties related tables.
+     * Pairs with the {@see getRecordTitle()} override (the record has no human title attribute of its own).
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['customer.email', 'club.display_name'];
+    }
+
+    /**
+     * The read-only view (mirrors Product Master / Customer). Grouped into premium, icon-headed Sections:
+     * Membership (the within-Parties customer email + name and the Club, the operator's "who joined what"),
+     * Status (the membership-FSM `state` rendered through the shared {@see badgedStateEntry()} so the detail
+     * shows the SAME semantic colored + iconed badge the list carries — never plain text — plus the single-tier
+     * launch `tier`), Lifecycle (the demand-side anchors the deferred transition verbs stamp — `lapsed_at`'s
+     * grace-window timestamp and the optional Producer-initiated `cancellation_reason`), closing with the
+     * collapsed {@see metadataSection()} for the optimistic-lock `version`. The customer / club entries are
+     * within-Parties reads (Customer + Club are Module K); `badgedStateEntry('state', …)` reads the `ProfileState`
+     * cast `->value`, never an imported `Parties\Enums` symbol (design D2). Every entry is display-only — the
+     * lifecycle writes route through the {@see Pages\ViewProfile} header actions (groups 3–5), never an in-place
+     * field edit. All copy localized (invariant 12).
      */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('customer')
-                    ->label((string) __('operator_console.profile.columns.customer'))
-                    ->getStateUsing(fn (Profile $record): string => $record->customer->email),
-                TextEntry::make('club')
-                    ->label((string) __('operator_console.profile.columns.club'))
-                    ->getStateUsing(fn (Profile $record): string => $record->club->display_name),
-                TextEntry::make('state')
-                    ->label((string) __('operator_console.profile.columns.state'))
-                    ->badge()
-                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                    ->getStateUsing(self::stateBadgeState()),
-                TextEntry::make('tier')
-                    ->label((string) __('operator_console.profile.fields.tier')),
-                TextEntry::make('lapsed_at')
-                    ->label((string) __('operator_console.profile.fields.lapsed_at')),
-                TextEntry::make('cancellation_reason')
-                    ->label((string) __('operator_console.profile.fields.cancellation_reason')),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.profile.columns.version')),
+                Section::make((string) __('operator_console.profile.sections.membership'))
+                    ->icon('heroicon-o-user-group')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('customer.email')
+                            ->label((string) __('operator_console.profile.columns.customer'))
+                            ->weight('bold')
+                            ->copyable(),
+                        TextEntry::make('customer.name')
+                            ->label((string) __('operator_console.profile.fields.customer_name')),
+                        TextEntry::make('club.display_name')
+                            ->label((string) __('operator_console.profile.columns.club'))
+                            ->columnSpanFull(),
+                    ]),
+                Section::make((string) __('operator_console.profile.sections.status'))
+                    ->icon('heroicon-o-flag')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry('state', 'columns.state'),
+                        TextEntry::make('tier')
+                            ->label((string) __('operator_console.profile.fields.tier'))
+                            ->badge()
+                            ->color('gray')
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                    ]),
+                Section::make((string) __('operator_console.profile.sections.lifecycle'))
+                    ->icon('heroicon-o-clock')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('lapsed_at')
+                            ->label((string) __('operator_console.profile.fields.lapsed_at'))
+                            ->dateTime()
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                        TextEntry::make('cancellation_reason')
+                            ->label((string) __('operator_console.profile.fields.cancellation_reason'))
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

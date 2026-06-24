@@ -48,6 +48,19 @@ class ProducerAgreementsRelationManager extends RelationManager
         return true;
     }
 
+    /**
+     * Opt OUT of Filament's default "a relation manager is read-only on a ViewRecord page" rule
+     * (RelationManager::isReadOnly() === is_subclass_of(pageClass, ViewRecord::class)). The Producer view IS a
+     * ViewRecord, so without this the header CreateAction is DENIED before {@see canCreate()} is consulted — the
+     * reason the "New agreement" button did not appear on the Producer view. We surface it; the Parties
+     * CreateProducerAgreement domain action stays the real write-through guard, and no edit/delete actions are
+     * defined, so this enables the create affordance ONLY.
+     */
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function table(Table $table): Table
     {
         return ProducerAgreementResource::table($table)
@@ -88,7 +101,7 @@ class ProducerAgreementsRelationManager extends RelationManager
 
         $options = [];
         foreach ($owner->clubs as $club) {
-            $options[$club->id] = '#'.$club->id.' · '.$club->display_name;
+            $options[$club->id] = $club->display_name;
         }
 
         return $options;

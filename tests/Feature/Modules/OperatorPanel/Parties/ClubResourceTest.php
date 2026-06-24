@@ -66,8 +66,8 @@ it('renders the read-only attributes including the fee on the view page', functi
     Livewire::test(ViewClub::class, ['record' => $club->getKey()])
         ->assertSee('Grand Cercle')
         ->assertSee('Château Infolist')      // the operating Producer
-        ->assertSee('open_registration')     // registration_flow_type via the cast
-        ->assertSee('50000');                // the Money fee minor units (rendered "50000 EUR")
+        ->assertSee('Open Registration')     // registration_flow_type humanized via Str::headline (premium label, no raw token)
+        ->assertSee('500.00');               // the Money fee rendered as human major units + ISO code ("500.00 EUR"), not raw minor units
 });
 
 it('exposes the read pages plus a write-through create page and no edit or delete default action', function () {

@@ -50,6 +50,19 @@ class ClubsRelationManager extends RelationManager
         return true;
     }
 
+    /**
+     * Opt OUT of Filament's default "a relation manager is read-only on a ViewRecord page" rule
+     * (RelationManager::isReadOnly() === is_subclass_of(pageClass, ViewRecord::class)). The Producer view IS a
+     * ViewRecord, so without this the header CreateAction is DENIED before {@see canCreate()} is consulted — the
+     * reason the "New club" button did not appear on the Producer view. We surface it; the Parties CreateClub
+     * domain action stays the real write-through guard, and no edit/delete actions are defined, so this enables
+     * the create affordance ONLY.
+     */
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function table(Table $table): Table
     {
         return ClubResource::table($table)
@@ -68,7 +81,10 @@ class ClubsRelationManager extends RelationManager
                             ->required(),
                         TextInput::make('amount')
                             ->label((string) __('operator_console.club.fields.amount'))
-                            ->numeric(),
+                            ->helperText((string) __('operator_console.club.fields.amount_help'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix((string) __('operator_console.club.fields.amount_prefix')),
                         Select::make('currency')
                             ->label((string) __('operator_console.club.fields.currency'))
                             ->options(self::currencyOptions()),
@@ -128,12 +144,19 @@ class ClubsRelationManager extends RelationManager
     }
 
     /**
+     * The registration-flow select options: each enum case keyed by its raw `->value` (the operand the
+     * {@see CreateClubAction} reconstructs) → a localized human label off `operator_console.club.registration_flow.*`,
+     * so the operator picks "Invitation only" rather than the raw `invitation_only` token. The per-case label key
+     * is the enum `->value` (no `Parties\Enums` symbol leaks into the copy).
+     *
      * @return array<string, string>
      */
     private static function registrationFlowTypeOptions(): array
     {
         return collect(ClubRegistrationFlowType::cases())
-            ->mapWithKeys(static fn (ClubRegistrationFlowType $flow): array => [$flow->value => $flow->value])
+            ->mapWithKeys(static fn (ClubRegistrationFlowType $flow): array => [
+                $flow->value => (string) __('operator_console.club.registration_flow.'.$flow->value),
+            ])
             ->all();
     }
 

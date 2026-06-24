@@ -14,8 +14,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 /**
@@ -80,15 +83,45 @@ class ProductMasterResource extends OperatorConsoleResource
                 Select::make('producer_id')
                     ->label((string) __('operator_console.product_master.fields.producer'))
                     ->options(self::producerOptions(...))
-                    ->required(),
+                    ->required()
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        // Prefill the wine's Country + Region from the chosen producer — a producer is the
+                        // wine's home, so its geography is the sensible (editable) default. Read off Catalog's
+                        // OWN producer-state projection, never Module K (invariant 10).
+                        if (! is_numeric($state)) {
+                            return;
+                        }
+
+                        $geography = self::producerGeography((int) $state);
+                        $set('country', $geography['country']);
+                        $set('region', $geography['region']);
+                    }),
+                // Country is a UI cascade filter only — it scopes the Region options and is prefilled from the
+                // producer. The Catalog domain stores region + appellation (not country), so it is NOT dehydrated.
+                Select::make('country')
+                    ->label((string) __('operator_console.product_master.fields.country'))
+                    ->options(self::countryOptions())
+                    ->searchable()
+                    ->live()
+                    ->dehydrated(false)
+                    ->afterStateUpdated(fn (Set $set) => $set('region', null)),
+                Select::make('region')
+                    ->label((string) __('operator_console.product_master.fields.region'))
+                    ->options(fn (Get $get): array => self::regionOptions(self::str($get('country')), self::str($get('region'))))
+                    ->required()
+                    ->searchable()
+                    ->live(),
                 TextInput::make('appellation')
                     ->label((string) __('operator_console.product_master.fields.appellation'))
                     ->required()
-                    ->maxLength(255),
-                TextInput::make('region')
-                    ->label((string) __('operator_console.product_master.fields.region'))
-                    ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    // Region-scoped autocomplete: suggests known appellations for the chosen region but stays
+                    // FREE text — appellation is part of the BR-Identity-1 key, so a new wine's appellation is
+                    // never blocked by the picklist (the "light cascade" decision, 2026-06-24).
+                    ->datalist(fn (Get $get): array => self::appellationSuggestions(self::str($get('region'))))
+                    ->helperText((string) __('operator_console.product_master.fields.appellation_help')),
                 Textarea::make('winery_story')
                     ->label((string) __('operator_console.product_master.fields.winery_story'))
                     ->helperText((string) __('operator_console.product_master.fields.winery_story_help')),
@@ -97,7 +130,7 @@ class ProductMasterResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('name')
                     ->label((string) __('operator_console.product_master.columns.name'))
@@ -105,11 +138,33 @@ class ProductMasterResource extends OperatorConsoleResource
                     ->sortable(),
                 TextColumn::make('product_type')
                     ->label((string) __('operator_console.product_master.columns.product_type'))
+                    ->badge()
+                    ->color('primary')
+                    ->sortable()
                     ->getStateUsing(fn (ProductMaster $record): string => $record->product_type->value),
                 static::lifecycleStateColumn(),
                 TextColumn::make('producer')
                     ->label((string) __('operator_console.product_master.columns.producer'))
-                    ->getStateUsing(fn (ProductMaster $record): string => self::producerLabel($record)),            ]);
+                    ->getStateUsing(fn (ProductMaster $record): string => self::producerLabel($record)),
+            ])
+            ->filters([
+                static::stateFilter(),
+                static::stateFilter('product_type', 'columns.product_type'),
+                SelectFilter::make('producer_id')
+                    ->label((string) __('operator_console.product_master.columns.producer'))
+                    ->options(self::producerOptions(...)),
+            ]);
+    }
+
+    /**
+     * Make the Master findable from the Cmd/Ctrl+K global search by its name (invariant 12: the label resolves
+     * through {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
     }
 
     /**
@@ -245,5 +300,109 @@ class ProductMasterResource extends OperatorConsoleResource
                 $state->producer_id => $state->producer_name ?? '#'.$state->producer_id,
             ])
             ->all();
+    }
+
+    /**
+     * The chosen producer's geography off Catalog's OWN producer-state projection ({@see ProducerState}) — the
+     * editable defaults the create form prefills into Country + Region. Read-only and Catalog-local; never
+     * Module K (invariant 10). Null members when the producer is unprojected or its geography has not been
+     * denormalized yet (the form then prefills nothing).
+     *
+     * @return array{country: ?string, region: ?string}
+     */
+    private static function producerGeography(int $producerId): array
+    {
+        $state = ProducerState::query()->where('producer_id', $producerId)->first();
+
+        return ['country' => $state?->country, 'region' => $state?->region];
+    }
+
+    /**
+     * The curated geography picklist (config('wine_geography')) — a PRESENTATION concern that constrains the
+     * Country → Region cascade to kill free-text typo-variants of the BR-Identity-1 appellation key, NOT a
+     * domain reference table (the spec is silent on geography vocabularies; the "light cascade" decision,
+     * 2026-06-24). Shape: country => [region => [appellation, ...]].
+     *
+     * @return array<mixed>
+     */
+    private static function geography(): array
+    {
+        $config = config('wine_geography');
+
+        return is_array($config) ? $config : [];
+    }
+
+    /**
+     * Country select options (value === label), in the config's curated order.
+     *
+     * @return array<string, string>
+     */
+    private static function countryOptions(): array
+    {
+        $options = [];
+
+        foreach (self::geography() as $country => $regions) {
+            if (is_string($country)) {
+                $options[$country] = $country;
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * Region select options for the chosen country. The currently-selected region (e.g. a producer-prefilled
+     * value) is always retained so it never disappears from the picker even if it falls outside the curated set.
+     *
+     * @return array<string, string>
+     */
+    private static function regionOptions(?string $country, ?string $current): array
+    {
+        $options = [];
+        $regions = $country !== null ? (self::geography()[$country] ?? null) : null;
+
+        if (is_array($regions)) {
+            foreach ($regions as $region => $appellations) {
+                if (is_string($region)) {
+                    $options[$region] = $region;
+                }
+            }
+        }
+
+        if ($current !== null && ! isset($options[$current])) {
+            $options[$current] = $current;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Region-scoped appellation autocomplete suggestions (the datalist). Free text is still allowed on the
+     * field — these only SUGGEST, so a new appellation is never blocked (it is part of the BR-Identity-1 key).
+     *
+     * @return list<string>
+     */
+    private static function appellationSuggestions(?string $region): array
+    {
+        if ($region === null) {
+            return [];
+        }
+
+        foreach (self::geography() as $regions) {
+            if (is_array($regions) && isset($regions[$region]) && is_array($regions[$region])) {
+                return array_values(array_filter($regions[$region], 'is_string'));
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Narrow a Filament form-state value (mixed) to a non-empty string, or null — used to read the live
+     * Country/Region selections that drive the dependent option lists.
+     */
+    private static function str(mixed $value): ?string
+    {
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

@@ -10,6 +10,7 @@ use App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource\Pages;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -97,35 +98,68 @@ class FormatResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('name')
                     ->label((string) __('operator_console.format.columns.name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('size_label')
-                    ->label((string) __('operator_console.format.columns.size_label')),
+                    ->label((string) __('operator_console.format.columns.size_label'))
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('volume_ml')
-                    ->label((string) __('operator_console.format.columns.volume_ml')),
+                    ->label((string) __('operator_console.format.columns.volume_ml'))
+                    ->sortable(),
                 static::lifecycleStateColumn(),
+            ])
+            ->filters([
+                static::stateFilter(),
             ]);
     }
 
+    /**
+     * Make the Format findable from the Cmd/Ctrl+K global search by its human identity — the size NAME
+     * (e.g. "Magnum") and its size LABEL — never the bare id (invariant 12: the label resolves through
+     * {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'size_label'];
+    }
+
+    /**
+     * The read-only view (design L10). Grouped into premium, icon-headed sections — Identity (the size name,
+     * its label and the volume in millilitres) and State (the `lifecycle_state` rendered as the same semantic
+     * colored + iconed badge the list carries, via {@see badgedStateEntry()}) — and closed with the shared
+     * collapsed Metadata section for the optimistic-lock `version`. Every entry is display-only; all copy
+     * localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('name')
-                    ->label((string) __('operator_console.format.columns.name')),
-                TextEntry::make('size_label')
-                    ->label((string) __('operator_console.format.columns.size_label')),
-                TextEntry::make('volume_ml')
-                    ->label((string) __('operator_console.format.columns.volume_ml')),
-                TextEntry::make('lifecycle_state')
-                    ->label((string) __('operator_console.format.columns.lifecycle_state'))
-                    ->getStateUsing(fn (Format $record): string => $record->lifecycle_state->value),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.format.columns.version')),
+                Section::make((string) __('operator_console.format.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label((string) __('operator_console.format.columns.name'))
+                            ->weight('bold'),
+                        TextEntry::make('size_label')
+                            ->label((string) __('operator_console.format.columns.size_label')),
+                        TextEntry::make('volume_ml')
+                            ->label((string) __('operator_console.format.columns.volume_ml')),
+                    ]),
+                Section::make((string) __('operator_console.format.sections.state'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry(),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

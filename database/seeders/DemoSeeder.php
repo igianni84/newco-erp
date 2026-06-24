@@ -525,6 +525,10 @@ class DemoSeeder extends Seeder
             ProducerState::create([
                 'producer_id' => $producer->id,
                 'producer_name' => $producer->name,
+                // Geography denormalized onto the projection so the Product Master create form prefills
+                // Country + Region from the producer (display-only, never a Module K read — invariant 10).
+                'region' => $producer->region,
+                'country' => $producer->country,
                 'status' => ProducerProjectionStatus::Active,
                 'last_event_id' => ++$watermark,
             ]);

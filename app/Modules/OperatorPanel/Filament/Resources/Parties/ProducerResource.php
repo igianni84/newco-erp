@@ -13,6 +13,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -100,38 +101,80 @@ class ProducerResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('name')
                     ->label((string) __('operator_console.producer.columns.name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('region')
-                    ->label((string) __('operator_console.producer.columns.region')),
+                    ->label((string) __('operator_console.producer.columns.region'))
+                    ->sortable(),
                 TextColumn::make('country')
-                    ->label((string) __('operator_console.producer.columns.country')),
+                    ->label((string) __('operator_console.producer.columns.country'))
+                    ->sortable(),
                 static::statusColumn(),
                 static::kycStatusColumn(),
+            ])
+            ->filters([
+                static::stateFilter('status', 'columns.status'),
+                static::stateFilter('kyc_status', 'columns.kyc_status'),
             ]);
     }
 
+    /**
+     * Make the Producer findable from the Cmd/Ctrl+K global search by its name (invariant 12: the label resolves
+     * through {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
+
+    /**
+     * The read-only view (design D2). Grouped into premium, icon-headed sections mirroring the catalog template —
+     * Identity (the winery's human attributes), State (the Producer's two FSMs `status` + `kyc_status`, each
+     * rendered as the SAME semantic colored badge the list carries through {@see badgedStateEntry()}, never plain
+     * text), the operated Clubs + commercial Agreements (surfaced as relation managers below the infolist on
+     * {@see Pages\ViewProducer}), and a collapsed Metadata section for the optimistic-lock `version`. Every entry
+     * is display-only; the translatable `description` resolves to the current locale. All copy localized
+     * (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('name')
-                    ->label((string) __('operator_console.producer.columns.name')),
-                TextEntry::make('region')
-                    ->label((string) __('operator_console.producer.columns.region')),
-                TextEntry::make('country')
-                    ->label((string) __('operator_console.producer.columns.country')),
-                TextEntry::make('appellation')
-                    ->label((string) __('operator_console.producer.fields.appellation')),
-                TextEntry::make('website')
-                    ->label((string) __('operator_console.producer.fields.website')),
-                TextEntry::make('description')
-                    ->label((string) __('operator_console.producer.fields.description'))
-                    ->getStateUsing(fn (Producer $record): ?string => $record->description?->resolve(app()->getLocale())),
+                Section::make((string) __('operator_console.producer.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label((string) __('operator_console.producer.columns.name'))
+                            ->weight('bold'),
+                        TextEntry::make('region')
+                            ->label((string) __('operator_console.producer.columns.region')),
+                        TextEntry::make('appellation')
+                            ->label((string) __('operator_console.producer.fields.appellation')),
+                        TextEntry::make('country')
+                            ->label((string) __('operator_console.producer.columns.country')),
+                        TextEntry::make('website')
+                            ->label((string) __('operator_console.producer.fields.website'))
+                            ->columnSpanFull(),
+                        TextEntry::make('description')
+                            ->label((string) __('operator_console.producer.fields.description'))
+                            ->columnSpanFull()
+                            ->getStateUsing(fn (Producer $record): ?string => $record->description?->resolve(app()->getLocale())),
+                    ]),
+                Section::make((string) __('operator_console.producer.sections.state'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry('status', 'columns.status'),
+                        static::badgedStateEntry('kyc_status', 'columns.kyc_status'),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

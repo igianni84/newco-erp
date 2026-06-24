@@ -16,10 +16,12 @@ use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * ClubResource — the operator console's READ-ONLY surface over the Parties Club (operator-console-parties-
@@ -119,7 +121,7 @@ class ClubResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('display_name')
                     ->label((string) __('operator_console.club.columns.display_name'))
@@ -130,38 +132,103 @@ class ClubResource extends OperatorConsoleResource
                     ->getStateUsing(fn (Club $record): string => $record->producer->name),
                 static::registrationFlowTypeColumn(),
                 static::statusColumn(),
+                TextColumn::make('generates_credit')
+                    ->label((string) __('operator_console.club.columns.generates_credit'))
+                    ->badge()
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray')
+                    ->formatStateUsing(fn (bool $state): string => $state
+                        ? (string) __('operator_console.club.values.yes')
+                        : (string) __('operator_console.club.values.no'))
+                    ->sortable(),
+            ])
+            ->filters([
+                static::stateFilter('status', 'columns.status'),
+                static::stateFilter('registration_flow_type', 'columns.registration_flow_type'),
             ]);
     }
 
+    /**
+     * Make the Club findable from the Cmd/Ctrl+K global search by its `display_name` (invariant 12: the label
+     * resolves through {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'display_name', so a
+     * search hit reads as the human Club name, never a bare id.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['display_name'];
+    }
+
+    /**
+     * The read-only view (design D2). Grouped into premium, icon-headed sections mirroring the catalog spine
+     * (the `ProductMasterResource` shape): Identity (the Club's `display_name`, its operating Producer NAME — a
+     * within-Parties read — and the registration-flow classifier, humanized from its snake_case token), Membership
+     * terms (the optional `fee` rendered as a readable amount + ISO 4217 code, and the two single-tier flags as
+     * boolean icons), State (the `status` FSM rendered as the SAME semantic colored badge the list carries, via
+     * {@see badgedStateEntry()}), and a collapsed Metadata section for the optimistic-lock `version`. Every entry
+     * is display-only; the producer NAME resolves through the within-Parties `producer()` relation, never a
+     * cross-module join (invariant 10). All copy localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('display_name')
-                    ->label((string) __('operator_console.club.columns.display_name')),
-                TextEntry::make('producer')
-                    ->label((string) __('operator_console.club.columns.producer'))
-                    ->getStateUsing(fn (Club $record): string => $record->producer->name),
-                TextEntry::make('registration_flow_type')
-                    ->label((string) __('operator_console.club.columns.registration_flow_type'))
-                    ->getStateUsing(function (Model $record): string {
-                        $state = $record->getAttribute('registration_flow_type');
+                Section::make((string) __('operator_console.club.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('display_name')
+                            ->label((string) __('operator_console.club.columns.display_name'))
+                            ->weight('bold'),
+                        TextEntry::make('producer')
+                            ->label((string) __('operator_console.club.columns.producer'))
+                            ->getStateUsing(fn (Club $record): string => $record->producer->name),
+                        TextEntry::make('registration_flow_type')
+                            ->label((string) __('operator_console.club.columns.registration_flow_type'))
+                            ->badge()
+                            ->color('primary')
+                            ->getStateUsing(function (Model $record): string {
+                                $state = $record->getAttribute('registration_flow_type');
 
-                        return $state instanceof BackedEnum ? (string) $state->value : '';
-                    }),
-                TextEntry::make('fee')
-                    ->label((string) __('operator_console.club.fields.fee'))
-                    ->getStateUsing(function (Club $record): ?string {
-                        $fee = $record->fee;
+                                // Humanize the snake_case domain token (e.g. `invitation_only` → "Invitation
+                                // Only") with Str::headline — the same import-free presentation the kit's
+                                // stateFilter() applies, so no per-flow enum import or i18n key is needed.
+                                return $state instanceof BackedEnum ? Str::headline((string) $state->value) : '';
+                            }),
+                    ]),
+                Section::make((string) __('operator_console.club.sections.membership'))
+                    ->icon('heroicon-o-banknotes')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('fee')
+                            ->label((string) __('operator_console.club.fields.fee'))
+                            ->placeholder((string) __('operator_console.club.values.no_fee'))
+                            ->getStateUsing(function (Club $record): ?string {
+                                $fee = $record->fee;
 
-                        return $fee === null ? null : $fee->minorUnits.' '.$fee->currency->value;
-                    }),
-                IconEntry::make('generates_credit')
-                    ->label((string) __('operator_console.club.fields.generates_credit'))
-                    ->boolean(),
-                IconEntry::make('invite_only')
-                    ->label((string) __('operator_console.club.fields.invite_only'))
-                    ->boolean(),
+                                if ($fee === null) {
+                                    return null;
+                                }
+
+                                // Money discipline (invariant 6): the amount is held as integer minor units +
+                                // an ISO 4217 code; render the two minor digits readably (e.g. "150.00 EUR")
+                                // without ever coercing to a float for storage.
+                                return number_format($fee->minorUnits / 100, 2).' '.$fee->currency->value;
+                            }),
+                        IconEntry::make('generates_credit')
+                            ->label((string) __('operator_console.club.fields.generates_credit'))
+                            ->boolean(),
+                        IconEntry::make('invite_only')
+                            ->label((string) __('operator_console.club.fields.invite_only'))
+                            ->boolean(),
+                    ]),
+                Section::make((string) __('operator_console.club.sections.state'))
+                    ->icon('heroicon-o-flag')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry('status', 'columns.status'),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

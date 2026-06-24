@@ -8,19 +8,23 @@ use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CompositeSkuResource\Pages;
 use Filament\Forms\Components\Select;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * CompositeSkuResource — the operator console's READ-ONLY surface over the Catalog Composite SKU
- * (operator-console-catalog-spine, task 4.1; design L1/L3/L4; ADR 2026-06-19 + 2026-06-20). The FINAL spine
- * console and the spine's only many-to-many entity: a Composite SKU is a curated bundle of N ≥ 2 ORDERED
- * constituent Product References (Module 0 PRD §3.8, §13.5 BR-SKU-2), so its create form carries a single
- * ORDERED, N≥2 Product-Reference picker (a multi-select) — not a parent FK — and its activation-cascade gate
- * depends on EVERY constituent Product Reference being `active` (§4.4 / BR-Lifecycle-3).
+ * (operator-console-catalog-spine, task 4.1; premium polish operator-console UI pass, 2026-06-24; design
+ * L1/L3/L4; ADR 2026-06-19 + 2026-06-20). The FINAL spine console and the spine's only many-to-many entity: a
+ * Composite SKU is a curated bundle of N ≥ 2 ORDERED constituent Product References (Module 0 PRD §3.8, §13.5
+ * BR-SKU-2), so its create form carries a single ORDERED, N≥2 Product-Reference picker (a multi-select) — not a
+ * parent FK — and its activation-cascade gate depends on EVERY constituent Product Reference being `active`
+ * (§4.4 / BR-Lifecycle-3).
  *
  * It extends {@see OperatorConsoleResource}, which owns the read-only conventions (the
  * `operator_console.<entity>` model labels off {@see i18nKey()}, the shared `lifecycle_state` badge +
@@ -31,6 +35,14 @@ use Filament\Tables\Table;
  * (single-producer admissibility is a Module S Offer-publication rule, never a PIM check). The N-constituent
  * activation-cascade gate (every constituent `active`) is surfaced FOR FREE by the view page's wrapper (design
  * L4), never re-checked here.
+ *
+ * Because a Composite SKU is attribute-free beyond its ordered constituent set (§3.8 — it has no name of its
+ * own), every operator-facing label is DERIVED from the constituents: the list carries a human bundle summary
+ * (`Bundle of N — <first constituent>`) and the view renders the constituents one-per-row through a
+ * {@see RepeatableEntry}, each row showing its bundle position, the constituent Product Reference's human label
+ * (Master — vintage — format, never a bare `#id`) and that reference's own lifecycle as a semantic badge. The
+ * record title is the same human bundle summary ({@see getRecordTitle()}) so breadcrumbs / global links never
+ * read as a bare integer id.
  *
  * Its ONE create guard — the `< 2 distinct constituents` floor — is a localized domain
  * `InsufficientCompositeConstituents` (a `RuntimeException`), so unlike the Product Reference duplicate (a
@@ -52,8 +64,6 @@ class CompositeSkuResource extends OperatorConsoleResource
 {
     protected static ?string $model = CompositeSku::class;
 
-    protected static ?string $recordTitleAttribute = 'id';
-
     protected static ?int $navigationSort = 6;
 
     protected static function i18nKey(): string
@@ -67,13 +77,25 @@ class CompositeSkuResource extends OperatorConsoleResource
     }
 
     /**
+     * The record's human title — a Composite SKU has no name of its own (it is attribute-free beyond its
+     * ordered constituent set, §3.8), so the bare integer id is never shown to an operator. The title is the
+     * same human bundle summary the list carries ({@see bundleSummary()}: `Bundle of N — <first constituent>`),
+     * so breadcrumbs and global links read meaningfully. Replaces a `$recordTitleAttribute = 'id'` (banned).
+     */
+    public static function getRecordTitle(?Model $record): ?string
+    {
+        return $record instanceof CompositeSku ? self::bundleSummary($record) : null;
+    }
+
+    /**
      * The create form (design L3/L8). A Composite SKU is attribute-free beyond its ordered constituent set
      * (§3.8 — "cheap at PIM: registration + lifecycle only"), so the form is a single ORDERED, multi-select
      * Product-Reference picker. The form only COLLECTS; the write routes through the Catalog `CreateCompositeSku`
      * action in `Pages\CreateCompositeSku::createViaAction()` (there is no Edit page). The picker lists EVERY
-     * Product Reference with NO producer filter (producer-agnostic, design D9) and NO `< 2` client check — the
-     * N ≥ 2 floor and the distinct-set normalisation are the domain action's job (surfaced as a form error,
-     * design L5). All labels localized (invariant 12).
+     * Product Reference by its human label (Master — vintage — format, never a bare `#id`) with NO producer
+     * filter (producer-agnostic, design D9) and NO `< 2` client check — the N ≥ 2 floor and the distinct-set
+     * normalisation are the domain action's job (surfaced as a form error, design L5). All labels localized
+     * (invariant 12).
      */
     public static function form(Schema $schema): Schema
     {
@@ -90,30 +112,80 @@ class CompositeSkuResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
-                TextColumn::make('constituent_count')
+                // The derived, READABLE bundle summary — a Composite SKU has no name of its own, so the list
+                // leads with `Bundle of N — <first constituent>` instead of a bare id. A computed column (no DB
+                // column backs it), so it is intentionally neither sortable nor searchable.
+                TextColumn::make('bundle')
+                    ->label((string) __('operator_console.composite_sku.columns.bundle'))
+                    ->weight('bold')
+                    ->getStateUsing(fn (CompositeSku $record): string => self::bundleSummary($record)),
+                // The bundle size, sortable via a `withCount('constituents')` aggregate (the `constituents_count`
+                // attribute) — Filament both resolves the displayed count and orders by it, so no per-row count
+                // query and no non-DB `getStateUsing` sort (which would throw).
+                TextColumn::make('constituents_count')
                     ->label((string) __('operator_console.composite_sku.columns.constituent_count'))
-                    ->getStateUsing(fn (CompositeSku $record): int => $record->constituents()->count()),
+                    ->counts('constituents')
+                    ->badge()
+                    ->color('primary')
+                    ->sortable(),
                 static::lifecycleStateColumn(),
+            ])
+            ->filters([
+                static::stateFilter(),
             ]);
     }
 
+    /**
+     * The read-only view (design L4; premium grouped infolist, operator-console UI pass 2026-06-24). The SKU's
+     * own `lifecycle_state` renders as the SAME semantic colored + iconed badge the list carries
+     * ({@see badgedStateEntry()}); the ordered constituent set is rendered one-per-row through a
+     * {@see RepeatableEntry} over the within-Catalog `constituents()` junction (already ordered by pivot
+     * `position`), each row showing its 1-based bundle position, the constituent Product Reference's human label
+     * ({@see referenceLabel()}: Master — vintage — format, never a bare `#id`) and that reference's OWN
+     * lifecycle as a semantic badge; the view closes with a collapsed Metadata section (the optimistic-lock
+     * `version`). Every entry is display-only and all copy is localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('constituents')
-                    ->label((string) __('operator_console.composite_sku.fields.constituents'))
-                    ->getStateUsing(fn (CompositeSku $record): string => self::constituentsLabel($record)),
-                TextEntry::make('constituent_count')
-                    ->label((string) __('operator_console.composite_sku.columns.constituent_count'))
-                    ->getStateUsing(fn (CompositeSku $record): int => $record->constituents()->count()),
-                TextEntry::make('lifecycle_state')
-                    ->label((string) __('operator_console.composite_sku.columns.lifecycle_state'))
-                    ->getStateUsing(fn (CompositeSku $record): string => $record->lifecycle_state->value),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.composite_sku.columns.version')),
+                Section::make((string) __('operator_console.composite_sku.sections.state'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry(),
+                        TextEntry::make('constituents_count')
+                            ->label((string) __('operator_console.composite_sku.columns.constituent_count'))
+                            ->badge()
+                            ->color('primary')
+                            ->counts('constituents'),
+                    ]),
+                Section::make((string) __('operator_console.composite_sku.sections.constituents'))
+                    ->icon('heroicon-o-squares-2x2')
+                    ->schema([
+                        RepeatableEntry::make('constituents')
+                            ->label((string) __('operator_console.composite_sku.fields.constituents'))
+                            ->columns(3)
+                            ->schema([
+                                TextEntry::make('position')
+                                    ->label((string) __('operator_console.composite_sku.columns.position'))
+                                    ->getStateUsing(fn (ProductReference $record): string => self::positionLabel($record)),
+                                TextEntry::make('reference')
+                                    ->label((string) __('operator_console.composite_sku.columns.reference'))
+                                    ->weight('bold')
+                                    ->columnSpan(2)
+                                    ->getStateUsing(fn (ProductReference $record): string => self::referenceLabel($record)),
+                                TextEntry::make('reference_state')
+                                    ->label((string) __('operator_console.composite_sku.columns.reference_state'))
+                                    ->badge()
+                                    ->color(fn (string $state): string => static::stateBadgeColor($state))
+                                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
+                                    ->getStateUsing(fn (ProductReference $record): string => $record->lifecycle_state->value),
+                            ]),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 
@@ -130,70 +202,138 @@ class CompositeSkuResource extends OperatorConsoleResource
     }
 
     /**
-     * The ordered constituent set rendered as a single display string — each constituent Product Reference's
-     * identity label ({@see referenceLabel()}: its Variant identifier · Format name), read off the within-Catalog
-     * `constituents()` junction (already ordered by pivot `position`, so the bundle order is preserved) and joined
-     * in order. Renders no `Catalog\Enums` import (the {Models, Actions} surface).
+     * The human one-line bundle summary — `Bundle of N — <first constituent>` (e.g. "Bundle of 3 — Romanée-Conti
+     * — 2019 — Bottle (750ml)"). Powers both the list's lead column and {@see getRecordTitle()} so a Composite
+     * SKU is never read as a bare integer id. Reads the ordered within-Catalog `constituents()` junction (already
+     * ordered by pivot `position`); falls back to a localized empty marker when the bundle has no constituents
+     * yet. Renders no `Catalog\Enums` import (the {Models, Actions} surface).
      */
-    private static function constituentsLabel(CompositeSku $compositeSku): string
+    private static function bundleSummary(CompositeSku $compositeSku): string
     {
-        return $compositeSku->constituents
-            ->map(fn (ProductReference $reference): string => self::referenceLabel($reference) ?? '—')
-            ->implode(', ');
+        $constituents = $compositeSku->constituents;
+        $count = $constituents->count();
+
+        if ($count === 0) {
+            return (string) __('operator_console.composite_sku.bundle_empty');
+        }
+
+        $first = $constituents->first();
+        $firstLabel = $first instanceof ProductReference ? self::referenceLabel($first) : '—';
+
+        return (string) __('operator_console.composite_sku.bundle_summary', [
+            'count' => $count,
+            'first' => $firstLabel,
+        ]);
     }
 
     /**
-     * The display label for one constituent Product Reference — its two identity dimensions (the Product Variant
-     * identifier + the Format name), read off the within-Catalog `variant()` / `format()` relations (a PR has no
-     * name of its own). Returns null when the relation is absent. Renders no `Catalog\Enums` import (the {Models,
-     * Actions} surface).
+     * The 1-based bundle position of a constituent, read off the ordered `constituents()` pivot (`position`).
+     * The relation orders by pivot `position`, so the stored value IS the bundle order; rendered with the
+     * localized "Position N" prefix. Null pivot (a malformed link) falls back to a dash.
      */
-    private static function referenceLabel(?ProductReference $reference): ?string
+    private static function positionLabel(ProductReference $reference): string
     {
-        if ($reference === null) {
-            return null;
+        $pivot = $reference->getAttribute('pivot');
+        $position = $pivot instanceof Model ? $pivot->getAttribute('position') : null;
+
+        if (! is_numeric($position)) {
+            return '—';
         }
 
-        // Bind the within-Catalog `variant()` / `format()` relations to locals and narrow each with an explicit
-        // `=== null` ternary before the `->` read (the 3.1 `nullsafe.neverNull` gotcha — a `?->x ?? '—'` is
-        // flagged at phpstan max; the ternary narrows the nullable relation cleanly).
+        return (string) __('operator_console.composite_sku.position_value', ['position' => (int) $position]);
+    }
+
+    /**
+     * The human display label for one constituent Product Reference — its wine identity: the Product Master NAME
+     * (read through the within-Catalog `variant()->master()` chain), the vintage (the WINE attribute set's
+     * `vintage_year`, or a localized "NV" non-vintage marker), and the Format name (with its size label where
+     * present), e.g. "Romanée-Conti — 2019 — Bottle (750ml)". The ` — ` separator mirrors the sibling Product
+     * Reference console's title. A PR has no name of its own, so the label is assembled from its within-Catalog
+     * relations; missing pieces are dropped so the label degrades gracefully to whatever identity is known.
+     * Renders no `Catalog\Enums` import (the {Models, Actions} surface).
+     */
+    private static function referenceLabel(ProductReference $reference): string
+    {
         $variant = $reference->variant;
         $format = $reference->format;
 
-        $variantLabel = $variant === null ? '—' : $variant->variant_identifier;
-        $formatLabel = $format === null ? '—' : $format->name;
+        $parts = [];
 
-        return $variantLabel.' · '.$formatLabel;
+        $master = $variant?->master;
+        if ($master !== null) {
+            $parts[] = $master->name;
+        }
+
+        $vintage = self::vintageLabel($reference);
+        if ($vintage !== null) {
+            $parts[] = $vintage;
+        }
+
+        if ($format !== null) {
+            $parts[] = self::formatLabel($format->name, $format->size_label);
+        }
+
+        return $parts === [] ? '—' : implode(' — ', $parts);
     }
 
     /**
-     * Create-form constituent-Product-Reference options, keyed by `id` → a `#id · variant · format · state`
-     * label, read from Catalog's OWN {@see ProductReference} model (a WITHIN-module reference — a constituent,
-     * never a producer, design L6). Creation lists every Product Reference with NO producer filter
-     * (producer-agnostic, design D9); the activation-cascade gate (a domain rule) is what blocks activating a
-     * Composite SKU whose any constituent is non-active, so the picker need not pre-filter by state. The two
-     * identity dimensions are eager-loaded for the label; the lifecycle state is rendered through its cast
-     * instance (`->value`), so no `Catalog\Enums` import is needed (the {Models, Actions} surface).
+     * The vintage fragment of a constituent's label: the WINE attribute set's `vintage_year` as a string, or a
+     * localized "NV" marker when the variant is explicitly non-vintage, or null when no vintage information is
+     * known (then the label simply omits it). Read off the within-Catalog `variant()->wineAttributes()` 1:1
+     * extension.
+     */
+    private static function vintageLabel(ProductReference $reference): ?string
+    {
+        $wineAttributes = $reference->variant?->wineAttributes;
+
+        if ($wineAttributes === null) {
+            return null;
+        }
+
+        if ($wineAttributes->vintage_year !== null) {
+            return (string) $wineAttributes->vintage_year;
+        }
+
+        if ($wineAttributes->non_vintage) {
+            return (string) __('operator_console.composite_sku.non_vintage');
+        }
+
+        return null;
+    }
+
+    /**
+     * Compose a Format's display fragment — its name, suffixed with the size label in parentheses when one is
+     * present (e.g. "Bottle (750ml)"); the bare name when no size label is set.
+     */
+    private static function formatLabel(string $name, ?string $sizeLabel): string
+    {
+        if ($sizeLabel === null || $sizeLabel === '') {
+            return $name;
+        }
+
+        return $name.' ('.$sizeLabel.')';
+    }
+
+    /**
+     * Create-form constituent-Product-Reference options, keyed by `id` → the PR's human label (Master — vintage —
+     * format, never a bare `#id`, never a trailing state token), read from Catalog's OWN {@see ProductReference}
+     * model (a WITHIN-module reference — a constituent, never a producer, design L6). Creation lists every Product
+     * Reference with NO producer filter (producer-agnostic, design D9); the activation-cascade gate (a domain
+     * rule) is what blocks activating a Composite SKU whose any constituent is non-active, so the picker need not
+     * pre-filter by state. The identity relations are eager-loaded for the label so the option list issues no
+     * per-row queries. Renders no `Catalog\Enums` import (the {Models, Actions} surface).
      *
      * @return array<int, string>
      */
     private static function productReferenceOptions(): array
     {
         return ProductReference::query()
-            ->with(['variant', 'format'])
+            ->with(['variant.master', 'variant.wineAttributes', 'format'])
             ->orderBy('id')
             ->get()
-            ->mapWithKeys(static function (ProductReference $reference): array {
-                $variant = $reference->variant;
-                $format = $reference->format;
-
-                $variantLabel = $variant === null ? '—' : $variant->variant_identifier;
-                $formatLabel = $format === null ? '—' : $format->name;
-
-                return [
-                    $reference->id => '#'.$reference->id.' · '.$variantLabel.' · '.$formatLabel.' · '.$reference->lifecycle_state->value,
-                ];
-            })
+            ->mapWithKeys(static fn (ProductReference $reference): array => [
+                $reference->id => self::referenceLabel($reference),
+            ])
             ->all();
     }
 }

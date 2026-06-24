@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -105,9 +106,21 @@ class CustomerResource extends OperatorConsoleResource
             ]);
     }
 
+    /**
+     * The read list — the demand-side Customer registry. The human-identity columns `name` + `email` are both
+     * searchable (the operator finds a Customer by either) and sortable. The four status axes each render as the
+     * SAME semantic colored + iconed badge the rest of the console uses ({@see stateBadgeColor()} /
+     * {@see stateBadgeIcon()}): `status` / `kyc_status` / `sanctions_status` are real Customer columns (so they
+     * sort and filter); `account_status` is the co-provisioned Account's state read off the within-Parties
+     * `account()` relation (NOT a Customer column — so it neither sorts nor filters), and `profiles` is the
+     * Club-membership COUNT off the `profiles()` relation (likewise relation-derived). The three filters cover the
+     * three real status columns via the kit's {@see stateFilter()} (distinct-token select — no `Parties\Enums`
+     * import; design D2). Branded list defaults via {@see applyConsoleDefaults()}; no mutating row/bulk action —
+     * the surface is read-only (the write verbs live on the view/create pages).
+     */
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('name')
                     ->label((string) __('operator_console.customer.columns.name'))
@@ -115,22 +128,26 @@ class CustomerResource extends OperatorConsoleResource
                     ->sortable(),
                 TextColumn::make('email')
                     ->label((string) __('operator_console.customer.columns.email'))
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('status')
                     ->label((string) __('operator_console.customer.columns.status'))
                     ->badge()
+                    ->sortable()
                     ->color(fn (string $state): string => static::stateBadgeColor($state))
                     ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('status')),
                 TextColumn::make('kyc_status')
                     ->label((string) __('operator_console.customer.columns.kyc_status'))
                     ->badge()
+                    ->sortable()
                     ->color(fn (string $state): string => static::stateBadgeColor($state))
                     ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('kyc_status')),
                 TextColumn::make('sanctions_status')
                     ->label((string) __('operator_console.customer.columns.sanctions_status'))
                     ->badge()
+                    ->sortable()
                     ->color(fn (string $state): string => static::stateBadgeColor($state))
                     ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::enumBadgeState('sanctions_status')),
@@ -142,50 +159,92 @@ class CustomerResource extends OperatorConsoleResource
                     ->getStateUsing(self::accountStatusState()),
                 TextColumn::make('profiles')
                     ->label((string) __('operator_console.customer.columns.profiles'))
+                    ->badge()
                     ->getStateUsing(fn (Customer $record): int => $record->profiles->count()),
+            ])
+            ->filters([
+                static::stateFilter('status', 'columns.status'),
+                static::stateFilter('kyc_status', 'columns.kyc_status'),
+                static::stateFilter('sanctions_status', 'columns.sanctions_status'),
             ]);
     }
 
+    /**
+     * Make the Customer findable from the Cmd/Ctrl+K global search by the two human-identity columns — the name
+     * and the email (the operator knows a Customer by either). Pairs with {@see $recordTitleAttribute} = 'name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'email'];
+    }
+
+    /**
+     * The read-only view (design D2). Grouped into premium, icon-headed Sections mirroring Product Master: Identity
+     * (the personal-data attributes — name / email / phone / date of birth), Preferences (the ISO 4217 currency +
+     * launch-locale preferences), Compliance (the two orthogonal compliance axes `kyc_status` + `sanctions_status`,
+     * each rendered through the shared {@see badgedStateEntry()} so the detail shows the SAME semantic colored badge
+     * the list carries — never plain text), State (the Customer status FSM + the co-provisioned Account's state),
+     * closing with the collapsed {@see metadataSection()} for the optimistic-lock `version`. The Account state is a
+     * within-Parties read off the {@see Customer::account()} relation (NOT a Customer column, so it uses a bespoke
+     * badge entry, not `badgedStateEntry()` which reads a column attribute). All copy localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('name')
-                    ->label((string) __('operator_console.customer.columns.name')),
-                TextEntry::make('email')
-                    ->label((string) __('operator_console.customer.columns.email')),
-                TextEntry::make('phone')
-                    ->label((string) __('operator_console.customer.fields.phone')),
-                TextEntry::make('date_of_birth')
-                    ->label((string) __('operator_console.customer.fields.date_of_birth')),
-                TextEntry::make('preferred_currency')
-                    ->label((string) __('operator_console.customer.fields.preferred_currency')),
-                TextEntry::make('preferred_locale')
-                    ->label((string) __('operator_console.customer.fields.preferred_locale')),
-                TextEntry::make('status')
-                    ->label((string) __('operator_console.customer.columns.status'))
-                    ->badge()
-                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                    ->getStateUsing(self::enumBadgeState('status')),
-                TextEntry::make('kyc_status')
-                    ->label((string) __('operator_console.customer.columns.kyc_status'))
-                    ->badge()
-                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                    ->getStateUsing(self::enumBadgeState('kyc_status')),
-                TextEntry::make('sanctions_status')
-                    ->label((string) __('operator_console.customer.columns.sanctions_status'))
-                    ->badge()
-                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                    ->getStateUsing(self::enumBadgeState('sanctions_status')),
-                TextEntry::make('account_status')
-                    ->label((string) __('operator_console.customer.columns.account_status'))
-                    ->badge()
-                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                    ->getStateUsing(self::accountStatusState()),
+                Section::make((string) __('operator_console.customer.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label((string) __('operator_console.customer.columns.name'))
+                            ->weight('bold'),
+                        TextEntry::make('email')
+                            ->label((string) __('operator_console.customer.columns.email'))
+                            ->copyable(),
+                        TextEntry::make('phone')
+                            ->label((string) __('operator_console.customer.fields.phone'))
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                        TextEntry::make('date_of_birth')
+                            ->label((string) __('operator_console.customer.fields.date_of_birth'))
+                            ->date()
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                    ]),
+                Section::make((string) __('operator_console.customer.sections.preferences'))
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('preferred_currency')
+                            ->label((string) __('operator_console.customer.fields.preferred_currency'))
+                            ->badge()
+                            ->color('gray'),
+                        TextEntry::make('preferred_locale')
+                            ->label((string) __('operator_console.customer.fields.preferred_locale'))
+                            ->badge()
+                            ->color('gray'),
+                    ]),
+                Section::make((string) __('operator_console.customer.sections.compliance'))
+                    ->icon('heroicon-o-shield-check')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry('kyc_status'),
+                        static::badgedStateEntry('sanctions_status'),
+                    ]),
+                Section::make((string) __('operator_console.customer.sections.state'))
+                    ->icon('heroicon-o-flag')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry('status'),
+                        TextEntry::make('account_status')
+                            ->label((string) __('operator_console.customer.columns.account_status'))
+                            ->badge()
+                            ->color(fn (string $state): string => static::stateBadgeColor($state))
+                            ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
+                            ->getStateUsing(self::accountStatusState()),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 

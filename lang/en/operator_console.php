@@ -5,7 +5,7 @@
 // EN is the baseline; lang/it/operator_console.php may be partial and falls back per-key to EN (DEC-127).
 // Domain rejection messages are NOT here — they live in lang/{en,it}/catalog.php and are reused where an
 // invoked Catalog action's exception message is surfaced (tasks 3–5).
-return [
+return array_replace_recursive([
 
     // Sidebar navigation groups — one per spec module surfaced as a console — resolved by
     // OperatorConsoleNavigationGroup::getLabel(). Unlike the English-invariant entity labels below (Product
@@ -15,6 +15,15 @@ return [
         'catalog' => 'Catalog',
         'parties' => 'Parties',
     ],
+
+    // Shared branded empty state for every console list (OperatorConsoleResource::applyConsoleDefaults()).
+    'empty' => [
+        'heading' => 'Nothing here yet',
+        'description' => 'No records match the current filters. Adjust the filters or create the first record.',
+    ],
+
+    // The em-dash shown for an empty/optional value in tables and infolists (a localized copy sink, invariant 12).
+    'placeholder_none' => '—',
 
     'product_master' => [
         // The canonical structural domain term — kept verbatim (CONTEXT.md), untranslated in IT.
@@ -45,7 +54,9 @@ return [
         'fields' => [
             'name' => 'Name',
             'producer' => 'Producer',
+            'country' => 'Country',
             'appellation' => 'Appellation',
+            'appellation_help' => 'Suggestions vary by region — free text is allowed for new appellations.',
             'region' => 'Region',
             'winery_story' => 'Winery story',
             'winery_story_help' => 'Optional. Captured in English, the baseline locale.',
@@ -963,4 +974,152 @@ return [
         ],
     ],
 
-];
+], [
+    // === Premium UI pass (2026-06-24): infolist sections, table/column labels, form helpers and
+    // human-label values added by the operator-console premium pass. Deep-merged onto the base copy
+    // above via array_replace_recursive so the annotated base stays untouched. EN baseline / IT here.
+    'product_variant' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'classification' => 'Classification & state',
+            'attributes' => 'Vintage & attributes',
+            'metadata' => 'Metadata',
+        ],
+        'fields' => [
+            'description' => 'Description / Tasting notes',
+        ],
+    ],
+    'product_reference' => [
+        'columns' => [
+            'master' => 'Wine Master',
+            'format_size' => 'Bottle size',
+        ],
+        'sections' => [
+            'composition' => 'Composition',
+            'state' => 'State',
+        ],
+        'untitled' => 'Untitled',
+        'values' => [
+            'non_vintage' => 'NV',
+        ],
+    ],
+    'sellable_sku' => [
+        'sections' => [
+            'identity' => 'Commercial identity',
+            'composition' => 'Composition',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+        'placeholders' => [
+            'no_marketing_copy' => 'No marketing copy',
+        ],
+        'non_vintage' => 'Non-vintage',
+        'unnamed_reference' => 'Unnamed reference',
+    ],
+    'composite_sku' => [
+        'columns' => [
+            'bundle' => 'Bundle',
+            'position' => 'Position',
+            'reference' => 'Product Reference',
+            'reference_state' => 'Reference state',
+        ],
+        'sections' => [
+            'state' => 'State',
+            'constituents' => 'Constituents',
+            'metadata' => 'Metadata',
+        ],
+        'bundle_summary' => 'Bundle of :count — :first',
+        'bundle_empty' => 'Empty bundle',
+        'position_value' => 'Position :position',
+        'non_vintage' => 'NV',
+    ],
+    'format' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+    ],
+    'case_configuration' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'packaging' => 'Packaging',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+    ],
+    'producer' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+    ],
+    'club' => [
+        'fields' => [
+            'amount_help' => 'Amount in minor units (cents): enter 5000 for EUR 50.00.',
+            'amount_prefix' => 'cents',
+        ],
+        'registration_flow' => [
+            'open_registration' => 'Open registration',
+            'application_with_approval' => 'Application with approval',
+            'invitation_only' => 'Invitation only',
+            'link_onboarding' => 'Link onboarding',
+        ],
+        'sections' => [
+            'identity' => 'Identity',
+            'membership' => 'Membership terms',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+        'columns' => [
+            'generates_credit' => 'Generates credit',
+        ],
+        'values' => [
+            'yes' => 'Yes',
+            'no' => 'No',
+            'no_fee' => 'No fee',
+        ],
+    ],
+    'producer_agreement' => [
+        'sections' => [
+            'parties' => 'Parties',
+            'terms' => 'Status & terms',
+            'metadata' => 'Metadata',
+        ],
+        'fields' => [
+            'club_help' => 'Leave blank for a Producer-wide agreement; select a Club to narrow it.',
+            'settlement_cadence_help' => 'Optional. Free text — the settlement cadence Module E reads (e.g. monthly, quarterly).',
+        ],
+        'not_set' => 'Not set',
+    ],
+    'customer' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'preferences' => 'Preferences',
+            'compliance' => 'Compliance',
+            'state' => 'State',
+            'metadata' => 'Metadata',
+        ],
+    ],
+    'profile' => [
+        'sections' => [
+            'membership' => 'Membership',
+            'status' => 'Status',
+            'lifecycle' => 'Lifecycle',
+            'metadata' => 'Metadata',
+        ],
+        'fields' => [
+            'customer_name' => 'Name',
+        ],
+    ],
+    'supplier' => [
+        'sections' => [
+            'identity' => 'Identity',
+            'metadata' => 'Metadata',
+        ],
+        'columns' => [
+            'updated_at' => 'Updated',
+        ],
+    ],
+]);

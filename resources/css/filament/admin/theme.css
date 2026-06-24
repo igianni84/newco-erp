@@ -1,0 +1,86 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+/* Tailwind must scan the operator console's own Filament classes (the resources live under
+   app/Modules/OperatorPanel/Filament/**, NOT the default app/Filament/**) so utility classes used in
+   custom infolist/table render hooks are not tree-shaken away. */
+@source '../../../../app/Modules/OperatorPanel/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/*
+ | CRCLES operator console — premium finishing theme.
+ |
+ | Brand: Pantone 8022 C copper (#A0715A) drives the panel "primary"; the neutral chrome is warmed to the
+ | Stone palette (both set in AdminPanelProvider::panel() via ->colors()), so the console reads as a warm,
+ | considered luxury surface rather than stock cold-slate Filament. Typography is Instrument Sans, bundled
+ | via Vite and loaded by ->font('Instrument Sans'). Everything below uses ONLY Filament's stable .fi-*
+ | CSS hooks and design tokens — no internal/utility-class targeting that a Filament point release could move.
+ */
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+:root {
+    /* A copper hairline used for the few brand accents below (≈ primary at 14% / 22% alpha). */
+    --crcles-hairline: rgb(160 113 90 / 0.14);
+    --crcles-hairline-strong: rgb(160 113 90 / 0.22);
+}
+
+/* Topbar — give the now-legible wordmark room to breathe and seat it on a faint copper hairline. */
+.fi-topbar > nav {
+    border-bottom: 1px solid var(--crcles-hairline);
+    backdrop-filter: saturate(1.05);
+}
+
+.fi-logo {
+    letter-spacing: 0.01em;
+}
+
+/* Sidebar — softer brand-tinted active item; warm Stone neutrals already supply the base. */
+.fi-sidebar-item-active .fi-sidebar-item-button {
+    box-shadow: inset 2px 0 0 0 var(--primary-500, #a0715a);
+}
+
+.fi-sidebar-group-label {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    opacity: 0.75;
+}
+
+/* Cards / sections / widgets — a touch more radius and a gentler, layered shadow read as "product". */
+.fi-section,
+.fi-wi-stats-overview-stat,
+.fi-ta-ctn {
+    border-radius: 0.9rem;
+}
+
+.fi-section {
+    box-shadow:
+        0 1px 2px rgb(28 16 10 / 0.04),
+        0 4px 16px -8px rgb(28 16 10 / 0.06);
+}
+
+/* Section headings — tighten the label tracking for the luxury register. */
+.fi-section-header-heading {
+    letter-spacing: -0.005em;
+}
+
+/* Login — frame the unbranded stock card with a subtle warm gradient backdrop for a premium first screen. */
+.fi-simple-layout {
+    background:
+        radial-gradient(1200px 600px at 50% -10%, rgb(160 113 90 / 0.06), transparent 60%),
+        var(--color-gray-50, #fafaf9);
+}
+
+.fi-simple-main {
+    border: 1px solid var(--crcles-hairline);
+    box-shadow:
+        0 1px 2px rgb(28 16 10 / 0.05),
+        0 18px 48px -24px rgb(28 16 10 / 0.18);
+}
+
+/* Badges — keep semantic state colors but round them a hair more for the luxury register. */
+.fi-badge {
+    border-radius: 0.5rem;
+}

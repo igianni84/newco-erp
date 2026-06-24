@@ -48,6 +48,20 @@ class VariantsRelationManager extends RelationManager
         return true;
     }
 
+    /**
+     * Opt OUT of Filament's default "a relation manager is read-only on a ViewRecord page" rule
+     * (RelationManager::isReadOnly() === is_subclass_of(pageClass, ViewRecord::class)). The operator console's
+     * parent pages are ViewRecords (read-projection), so without this the header CreateAction is DENIED before
+     * {@see canCreate()} is ever consulted (RelationManager action authorization: CreateAction => isReadOnly ?
+     * deny) — which is exactly why the "New variant" button did not appear on the Master view. We surface it; the
+     * Catalog CreateProductVariant domain action stays the real write-through guard, and no edit/delete actions
+     * are defined, so this enables the create affordance ONLY.
+     */
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function table(Table $table): Table
     {
         return ProductVariantResource::table($table)
@@ -67,7 +81,7 @@ class VariantsRelationManager extends RelationManager
                             ->label((string) __('operator_console.product_variant.fields.non_vintage'))
                             ->default(false),
                         Textarea::make('tasting_notes')
-                            ->label((string) __('operator_console.product_variant.fields.tasting_notes'))
+                            ->label((string) __('operator_console.product_variant.fields.description'))
                             ->helperText((string) __('operator_console.product_variant.fields.tasting_notes_help')),
                     ])
                     ->using($this->createVariant(...)),

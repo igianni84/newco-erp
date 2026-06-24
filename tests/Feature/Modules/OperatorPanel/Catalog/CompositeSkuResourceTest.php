@@ -17,6 +17,7 @@
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Models\CompositeSku;
 use App\Modules\Catalog\Models\Format;
+use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CompositeSkuResource;
@@ -53,11 +54,13 @@ it('renders the ordered constituent set on the view page', function () {
 
     // Two constituents with distinctive identities, attached in a known order (position 1 then 2). The view reads
     // them back off the constituents() junction, which orders by pivot `position`, so the bundle order is shown.
-    $variantA = ProductVariant::factory()->create(['variant_identifier' => 'CONSTIT-A-2019']);
+    $masterA = ProductMaster::factory()->create(['name' => 'Alpha Domaine']);
+    $variantA = ProductVariant::factory()->create(['product_master_id' => $masterA->id, 'variant_identifier' => 'CONSTIT-A-2019']);
     $formatA = Format::factory()->create(['name' => 'Magnum']);
     $prA = ProductReference::factory()->create(['product_variant_id' => $variantA->id, 'format_id' => $formatA->id]);
 
-    $variantB = ProductVariant::factory()->create(['variant_identifier' => 'CONSTIT-B-2020']);
+    $masterB = ProductMaster::factory()->create(['name' => 'Beta Domaine']);
+    $variantB = ProductVariant::factory()->create(['product_master_id' => $masterB->id, 'variant_identifier' => 'CONSTIT-B-2020']);
     $formatB = Format::factory()->create(['name' => 'Jeroboam']);
     $prB = ProductReference::factory()->create(['product_variant_id' => $variantB->id, 'format_id' => $formatB->id]);
 
@@ -67,9 +70,9 @@ it('renders the ordered constituent set on the view page', function () {
         ->create(['lifecycle_state' => LifecycleState::Draft]);
 
     Livewire::test(ViewCompositeSku::class, ['record' => $composite->getKey()])
-        ->assertSee('CONSTIT-A-2019') // the first constituent's Variant identifier, off the within-Catalog relation
+        ->assertSee('Alpha Domaine')  // the first constituent's wine Master name, leading its human reference label (no raw #id)
         ->assertSee('Magnum')         // the first constituent's Format name
-        ->assertSee('CONSTIT-B-2020') // the second constituent's Variant identifier
+        ->assertSee('Beta Domaine')   // the second constituent's wine Master name
         ->assertSee('Jeroboam')       // the second constituent's Format name
         ->assertSee('draft');         // lifecycle_state rendered through its cast
 });

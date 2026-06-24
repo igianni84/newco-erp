@@ -3,7 +3,9 @@
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\CaseConfiguration;
+use App\Modules\Catalog\Models\Format;
 use App\Modules\Catalog\Models\ProductReference;
+use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Models\SellableSku;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
@@ -13,6 +15,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -103,41 +106,79 @@ class SellableSkuResource extends OperatorConsoleResource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
+                TextColumn::make('commercial_name')
+                    ->label((string) __('operator_console.sellable_sku.columns.commercial_name'))
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('reference')
                     ->label((string) __('operator_console.sellable_sku.columns.reference'))
                     ->getStateUsing(fn (SellableSku $record): ?string => self::referenceLabel($record->reference)),
                 TextColumn::make('caseConfiguration')
                     ->label((string) __('operator_console.sellable_sku.columns.case_configuration'))
                     ->getStateUsing(fn (SellableSku $record): ?string => $record->caseConfiguration?->name),
-                TextColumn::make('commercial_name')
-                    ->label((string) __('operator_console.sellable_sku.columns.commercial_name'))
-                    ->searchable()
-                    ->sortable(),
                 static::lifecycleStateColumn(),
+            ])
+            ->filters([
+                static::stateFilter(),
             ]);
     }
 
+    /**
+     * Make the Sellable SKU findable from the Cmd/Ctrl+K global search by its commercial name (invariant 12: the
+     * label resolves through {@see getModelLabel()}). Pairs with {@see $recordTitleAttribute} = 'commercial_name'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['commercial_name'];
+    }
+
+    /**
+     * The read-only view (design L10). Grouped into premium, icon-headed sections — Commercial Identity (the
+     * commercial name + optional marketing copy), Composition (the two within-Catalog parents: the resolved
+     * Product Reference human label + the Case Configuration name), and State (the `lifecycle_state` rendered as
+     * the same semantic colored + iconed badge the list carries, via {@see badgedStateEntry()}), closing with a
+     * collapsed Metadata section for the optimistic-lock `version`. Every entry is display-only; the parent labels
+     * resolve off the within-Catalog `reference()` / `caseConfiguration()` relations (never Module K / Module S).
+     * All copy localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('reference')
-                    ->label((string) __('operator_console.sellable_sku.columns.reference'))
-                    ->getStateUsing(fn (SellableSku $record): ?string => self::referenceLabel($record->reference)),
-                TextEntry::make('caseConfiguration')
-                    ->label((string) __('operator_console.sellable_sku.columns.case_configuration'))
-                    ->getStateUsing(fn (SellableSku $record): ?string => $record->caseConfiguration?->name),
-                TextEntry::make('commercial_name')
-                    ->label((string) __('operator_console.sellable_sku.columns.commercial_name')),
-                TextEntry::make('marketing_copy')
-                    ->label((string) __('operator_console.sellable_sku.fields.marketing_copy')),
-                TextEntry::make('lifecycle_state')
-                    ->label((string) __('operator_console.sellable_sku.columns.lifecycle_state'))
-                    ->getStateUsing(fn (SellableSku $record): string => $record->lifecycle_state->value),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.sellable_sku.columns.version')),
+                Section::make((string) __('operator_console.sellable_sku.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('commercial_name')
+                            ->label((string) __('operator_console.sellable_sku.columns.commercial_name'))
+                            ->weight('bold'),
+                        TextEntry::make('marketing_copy')
+                            ->label((string) __('operator_console.sellable_sku.fields.marketing_copy'))
+                            ->columnSpanFull()
+                            ->placeholder((string) __('operator_console.sellable_sku.placeholders.no_marketing_copy')),
+                    ]),
+                Section::make((string) __('operator_console.sellable_sku.sections.composition'))
+                    ->icon('heroicon-o-cube')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('reference')
+                            ->label((string) __('operator_console.sellable_sku.columns.reference'))
+                            ->getStateUsing(fn (SellableSku $record): ?string => self::referenceLabel($record->reference)),
+                        TextEntry::make('caseConfiguration')
+                            ->label((string) __('operator_console.sellable_sku.columns.case_configuration'))
+                            ->getStateUsing(fn (SellableSku $record): ?string => $record->caseConfiguration?->name),
+                    ]),
+                Section::make((string) __('operator_console.sellable_sku.sections.state'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry(),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 
@@ -154,10 +195,11 @@ class SellableSkuResource extends OperatorConsoleResource
     }
 
     /**
-     * The display label for a Sellable SKU's parent Product Reference — its two identity dimensions (the Product
-     * Variant identifier + the Format name), read off the within-Catalog `variant()` / `format()` relations (a PR
-     * has no name of its own). Returns null when the SKU's `reference()` relation is absent. Renders no
-     * `Catalog\Enums` import (the {Models, Actions} surface).
+     * The HUMAN display label for a Sellable SKU's parent Product Reference — the wine identity a person reads, NOT
+     * an opaque id: the parent Master NAME, the vintage, and the Format (e.g. "Château Margaux — 2019 — Bottle
+     * (750ml)"). A Product Reference has no name of its own, so the label is composed off the within-Catalog
+     * `variant()` → `master()` / `wineAttributes()` and `format()` relations. Returns null when the SKU's
+     * `reference()` relation is absent. Renders no `Catalog\Enums` import (the {Models, Actions} surface).
      */
     private static function referenceLabel(?ProductReference $reference): ?string
     {
@@ -165,55 +207,93 @@ class SellableSkuResource extends OperatorConsoleResource
             return null;
         }
 
-        // Bind the within-Catalog `variant()` / `format()` relations to locals and narrow each with an explicit
-        // `=== null` ternary before the `->` read (the 3.1 `nullsafe.neverNull` gotcha — a `?->x ?? '—'` is
-        // flagged at phpstan max; the ternary narrows the nullable relation cleanly).
+        // Bind the within-Catalog relations to locals and narrow each with an explicit `=== null` check before the
+        // `->` read (the `nullsafe.neverNull` gotcha — a `?->x ?? '—'` is flagged at phpstan max; an explicit
+        // narrow reads the nullable relation cleanly).
         $variant = $reference->variant;
         $format = $reference->format;
 
-        $variantLabel = $variant === null ? '—' : $variant->variant_identifier;
-        $formatLabel = $format === null ? '—' : $format->name;
+        $masterLabel = ($variant === null || $variant->master === null)
+            ? (string) __('operator_console.sellable_sku.unnamed_reference')
+            : $variant->master->name;
 
-        return $variantLabel.' · '.$formatLabel;
+        $vintageLabel = $variant === null ? null : self::vintageLabel($variant);
+        $formatLabel = $format === null ? null : self::formatLabel($format);
+
+        return implode(' — ', array_filter([
+            $masterLabel,
+            $vintageLabel,
+            $formatLabel,
+        ], static fn (?string $part): bool => $part !== null && $part !== ''));
     }
 
     /**
-     * Create-form parent-Product-Reference options, keyed by `product_reference_id` → a
-     * `#id · variant · format · state` label, read from Catalog's OWN {@see ProductReference} model (a
-     * WITHIN-module reference — one of a SKU's two parents, never a producer, design L6). Creation lists every
-     * Product Reference; the activation-cascade gate (a domain rule) is what blocks activating a SKU under a
-     * non-active Product Reference, so the picker need not pre-filter by state. The two identity dimensions are
-     * eager-loaded for the label; the lifecycle state is rendered through its cast instance (`->value`), so no
-     * `Catalog\Enums` import is needed (the {Models, Actions} surface).
+     * The vintage segment of a reference label: the WINE vintage year off the variant's 1:1 attribute set
+     * ({@see ProductVariant::wineAttributes()}), the localized non-vintage marker when the wine is explicitly NV,
+     * or the neutral `variant_identifier` as the fallback when no attribute set is attached. A WITHIN-Catalog read;
+     * no `Catalog\Enums` import.
+     */
+    private static function vintageLabel(ProductVariant $variant): string
+    {
+        $wineAttributes = $variant->wineAttributes;
+
+        if ($wineAttributes === null) {
+            return $variant->variant_identifier;
+        }
+
+        if ($wineAttributes->vintage_year !== null) {
+            return (string) $wineAttributes->vintage_year;
+        }
+
+        if ($wineAttributes->non_vintage) {
+            return (string) __('operator_console.sellable_sku.non_vintage');
+        }
+
+        return $variant->variant_identifier;
+    }
+
+    /**
+     * The Format segment of a label — the bottle-size name with its size in parentheses (e.g. "Bottle (750ml)"),
+     * or the bare name when no size label is set. A WITHIN-Catalog read; no `Catalog\Enums` import.
+     */
+    private static function formatLabel(Format $format): string
+    {
+        $size = $format->size_label;
+
+        return $size === '' ? $format->name : $format->name.' ('.$size.')';
+    }
+
+    /**
+     * Create-form parent-Product-Reference options, keyed by `product_reference_id` → the SAME human wine label the
+     * list + view carry ({@see referenceLabel()}: Master name — vintage — Format, e.g. "Château Margaux — 2019 —
+     * Bottle (750ml)") — NEVER a raw `#id`, which a person cannot recognise (feedback #5). Read from Catalog's OWN
+     * {@see ProductReference} model (a WITHIN-module reference — one of a SKU's two parents, never a producer,
+     * design L6); the within-Catalog `variant.master` / `variant.wineAttributes` / `format` relations are
+     * eager-loaded so the label resolves without an N+1. Creation lists every Product Reference; the
+     * activation-cascade gate (a domain rule) is what blocks activating a SKU under a non-active Product Reference,
+     * so the picker need not pre-filter by state, and the lifecycle is NOT part of a human SKU label. No
+     * `Catalog\Enums` import (the {Models, Actions} surface).
      *
      * @return array<int, string>
      */
     private static function productReferenceOptions(): array
     {
         return ProductReference::query()
-            ->with(['variant', 'format'])
+            ->with(['variant.master', 'variant.wineAttributes', 'format'])
             ->orderBy('id')
             ->get()
-            ->mapWithKeys(static function (ProductReference $reference): array {
-                $variant = $reference->variant;
-                $format = $reference->format;
-
-                $variantLabel = $variant === null ? '—' : $variant->variant_identifier;
-                $formatLabel = $format === null ? '—' : $format->name;
-
-                return [
-                    $reference->id => '#'.$reference->id.' · '.$variantLabel.' · '.$formatLabel.' · '.$reference->lifecycle_state->value,
-                ];
-            })
+            ->mapWithKeys(static fn (ProductReference $reference): array => [
+                $reference->id => self::referenceLabel($reference) ?? '',
+            ])
             ->all();
     }
 
     /**
-     * Create-form parent-Case-Configuration options, keyed by `case_configuration_id` → a `#id · name · state`
-     * label, read from Catalog's OWN {@see CaseConfiguration} model (a WITHIN-module reference — the SKU's second
-     * parent). Like the Product Reference picker it lists every Case Configuration; the activation-cascade gate (a
-     * domain rule) blocks activating a SKU under a non-active Case Configuration. The lifecycle state is rendered
-     * through its cast instance (`->value`), so no `Catalog\Enums` import is needed (the {Models, Actions}
+     * Create-form parent-Case-Configuration options, keyed by `case_configuration_id` → the Case Configuration's
+     * human NAME — NEVER a raw `#id` (feedback #5). Read from Catalog's OWN {@see CaseConfiguration} model (a
+     * WITHIN-module reference — the SKU's second parent). Like the Product Reference picker it lists every Case
+     * Configuration; the activation-cascade gate (a domain rule) blocks activating a SKU under a non-active Case
+     * Configuration, so the picker need not pre-filter by state. No `Catalog\Enums` import (the {Models, Actions}
      * surface).
      *
      * @return array<int, string>
@@ -221,10 +301,10 @@ class SellableSkuResource extends OperatorConsoleResource
     private static function caseConfigurationOptions(): array
     {
         return CaseConfiguration::query()
-            ->orderBy('id')
+            ->orderBy('name')
             ->get()
             ->mapWithKeys(static fn (CaseConfiguration $caseConfiguration): array => [
-                $caseConfiguration->id => '#'.$caseConfiguration->id.' · '.$caseConfiguration->name.' · '.$caseConfiguration->lifecycle_state->value,
+                $caseConfiguration->id => $caseConfiguration->name,
             ])
             ->all();
     }

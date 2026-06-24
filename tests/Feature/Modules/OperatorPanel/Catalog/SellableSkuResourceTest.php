@@ -17,6 +17,7 @@
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Models\CaseConfiguration;
 use App\Modules\Catalog\Models\Format;
+use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Models\SellableSku;
@@ -35,7 +36,8 @@ uses(RefreshDatabase::class);
 it('lists Sellable SKUs with their parent Product Reference, Case Configuration, commercial name, lifecycle state and version', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
-    $variant = ProductVariant::factory()->create(['variant_identifier' => 'GRAND-CRU-2019']);
+    $master = ProductMaster::factory()->create(['name' => 'Margaux Grand Vin']);
+    $variant = ProductVariant::factory()->create(['product_master_id' => $master->id, 'variant_identifier' => 'GRAND-CRU-2019']);
     $format = Format::factory()->create(['name' => 'Magnum', 'size_label' => '1.5L']);
     $reference = ProductReference::factory()->create([
         'product_variant_id' => $variant->id,
@@ -53,7 +55,7 @@ it('lists Sellable SKUs with their parent Product Reference, Case Configuration,
 
     Livewire::test(ListSellableSkus::class)
         ->assertCanSeeTableRecords([$sku])
-        ->assertSee('GRAND-CRU-2019')        // the parent PR's Variant identifier, off the within-Catalog reference() relation
+        ->assertSee('Margaux Grand Vin')     // the parent PR's wine Master name, now leading the human reference label (no raw #id)
         ->assertSee('Magnum')                // the parent PR's Format name
         ->assertSee('OWC-6')                 // the parent Case Configuration name, off caseConfiguration()
         ->assertSee('Barolo Riserva Magnum') // the SKU's commercial name
@@ -63,7 +65,8 @@ it('lists Sellable SKUs with their parent Product Reference, Case Configuration,
 it('renders the read-only attribute set including the marketing copy on the view page', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
-    $variant = ProductVariant::factory()->create(['variant_identifier' => 'VIEW-2018']);
+    $master = ProductMaster::factory()->create(['name' => 'Cote Beaune Estate']);
+    $variant = ProductVariant::factory()->create(['product_master_id' => $master->id, 'variant_identifier' => 'VIEW-2018']);
     $format = Format::factory()->create(['name' => 'Double Magnum', 'size_label' => '3L']);
     $reference = ProductReference::factory()->create([
         'product_variant_id' => $variant->id,
@@ -80,7 +83,7 @@ it('renders the read-only attribute set including the marketing copy on the view
     ]);
 
     Livewire::test(ViewSellableSku::class, ['record' => $sku->getKey()])
-        ->assertSee('VIEW-2018')                                   // the parent PR, off the within-Catalog relation
+        ->assertSee('Cote Beaune Estate')                          // the parent PR's wine Master name, leading the human composition label
         ->assertSee('CARTON-12')                                   // the parent Case Configuration
         ->assertSee('Reserve Selection')                           // the commercial name
         ->assertSee('A legendary vintage from a storied estate.')  // the optional marketing copy

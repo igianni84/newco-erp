@@ -13,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -101,14 +102,14 @@ class ProductVariantResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.product_variant.fields.non_vintage'))
                     ->default(false),
                 Textarea::make('tasting_notes')
-                    ->label((string) __('operator_console.product_variant.fields.tasting_notes'))
+                    ->label((string) __('operator_console.product_variant.fields.description'))
                     ->helperText((string) __('operator_console.product_variant.fields.tasting_notes_help')),
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table
+        return static::applyConsoleDefaults($table)
             ->columns([
                 TextColumn::make('variant_identifier')
                     ->label((string) __('operator_console.product_variant.columns.variant_identifier'))
@@ -121,34 +122,73 @@ class ProductVariantResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.product_variant.columns.vintage'))
                     ->getStateUsing(fn (ProductVariant $record): string => self::vintageLabel($record)),
                 static::lifecycleStateColumn(),
+            ])
+            ->filters([
+                static::stateFilter(),
             ]);
     }
 
+    /**
+     * Make the Variant findable from the Cmd/Ctrl+K global search by its `variant_identifier` (the human
+     * identity column; invariant 12: the label resolves through {@see getModelLabel()}). Pairs with
+     * {@see $recordTitleAttribute} = 'variant_identifier'.
+     *
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['variant_identifier'];
+    }
+
+    /**
+     * The read-only view (design L1/L4; FEEDBACK #4). Grouped into premium, icon-headed sections mirroring
+     * Product Master — Identity (the type-neutral `variant_identifier` + the parent Master name), Classification
+     * & State (the `lifecycle_state` rendered as the SAME semantic colored badge the list carries, via
+     * {@see badgedStateEntry()}), Vintage & Attributes (the WINE attribute set: the vintage year, the non-vintage
+     * marker, and the per-locale tasting-notes prose surfaced as the Variant's Description, resolved to the
+     * active locale), and a collapsed Metadata section for the optimistic-lock `version`. Every entry is
+     * display-only; the WINE attributes resolve through the within-Catalog {@see ProductVariant::wineAttributes()}
+     * relation (never a `Catalog\Enums` import — the {Models, Actions} surface). All copy localized (invariant 12).
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextEntry::make('variant_identifier')
-                    ->label((string) __('operator_console.product_variant.columns.variant_identifier')),
-                TextEntry::make('master')
-                    ->label((string) __('operator_console.product_variant.columns.master'))
-                    ->getStateUsing(fn (ProductVariant $record): ?string => $record->master?->name),
-                TextEntry::make('lifecycle_state')
-                    ->label((string) __('operator_console.product_variant.columns.lifecycle_state'))
-                    ->getStateUsing(fn (ProductVariant $record): string => $record->lifecycle_state->value),
-                TextEntry::make('version')
-                    ->label((string) __('operator_console.product_variant.columns.version')),
-                TextEntry::make('vintage_year')
-                    ->label((string) __('operator_console.product_variant.fields.vintage_year'))
-                    ->getStateUsing(fn (ProductVariant $record): ?int => $record->wineAttributes?->vintage_year),
-                TextEntry::make('non_vintage')
-                    ->label((string) __('operator_console.product_variant.fields.non_vintage'))
-                    ->getStateUsing(fn (ProductVariant $record): string => $record->wineAttributes?->non_vintage
-                        ? (string) __('operator_console.product_variant.values.yes')
-                        : (string) __('operator_console.product_variant.values.no')),
-                TextEntry::make('tasting_notes')
-                    ->label((string) __('operator_console.product_variant.fields.tasting_notes'))
-                    ->getStateUsing(fn (ProductVariant $record): ?string => $record->wineAttributes?->tasting_notes?->resolve(app()->getLocale())),
+                Section::make((string) __('operator_console.product_variant.sections.identity'))
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('variant_identifier')
+                            ->label((string) __('operator_console.product_variant.columns.variant_identifier'))
+                            ->weight('bold'),
+                        TextEntry::make('master')
+                            ->label((string) __('operator_console.product_variant.columns.master'))
+                            ->getStateUsing(fn (ProductVariant $record): ?string => $record->master?->name),
+                    ]),
+                Section::make((string) __('operator_console.product_variant.sections.classification'))
+                    ->icon('heroicon-o-check-badge')
+                    ->columns(2)
+                    ->schema([
+                        static::badgedStateEntry(),
+                    ]),
+                Section::make((string) __('operator_console.product_variant.sections.attributes'))
+                    ->icon('heroicon-o-beaker')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('vintage_year')
+                            ->label((string) __('operator_console.product_variant.fields.vintage_year'))
+                            ->getStateUsing(fn (ProductVariant $record): ?int => $record->wineAttributes?->vintage_year),
+                        TextEntry::make('non_vintage')
+                            ->label((string) __('operator_console.product_variant.fields.non_vintage'))
+                            ->getStateUsing(fn (ProductVariant $record): string => $record->wineAttributes?->non_vintage
+                                ? (string) __('operator_console.product_variant.values.yes')
+                                : (string) __('operator_console.product_variant.values.no')),
+                        TextEntry::make('tasting_notes')
+                            ->label((string) __('operator_console.product_variant.fields.description'))
+                            ->columnSpanFull()
+                            ->getStateUsing(fn (ProductVariant $record): ?string => $record->wineAttributes?->tasting_notes?->resolve(app()->getLocale())),
+                    ]),
+                static::metadataSection(),
             ]);
     }
 
@@ -185,22 +225,23 @@ class ProductVariantResource extends OperatorConsoleResource
     }
 
     /**
-     * Create-form parent-Master options, keyed by `product_master_id` → a `#id · name · state` label, read from
-     * Catalog's OWN {@see ProductMaster} model (a WITHIN-module reference — a Variant's single parent, never a
-     * producer, design L6). Creation lists every Master; the activation-cascade gate (a domain rule) is what
-     * blocks activating a Variant under a non-active Master, so the picker need not pre-filter by state. The
-     * Master's lifecycle state is rendered through its cast instance (`->value`), so no `Catalog\Enums` import is
-     * needed (the {Models, Actions} surface).
+     * Create-form parent-Master options, keyed by `product_master_id` → a human `name · state` label (the
+     * Master's display NAME leading, never a bare `#id` — the premium picker convention), read from Catalog's
+     * OWN {@see ProductMaster} model (a WITHIN-module reference — a Variant's single parent, never a producer,
+     * design L6). Creation lists every Master; the activation-cascade gate (a domain rule) is what blocks
+     * activating a Variant under a non-active Master, so the picker need not pre-filter by state. The Master's
+     * lifecycle state is rendered through its cast instance (`->value`), so no `Catalog\Enums` import is needed
+     * (the {Models, Actions} surface).
      *
      * @return array<int, string>
      */
     private static function productMasterOptions(): array
     {
         return ProductMaster::query()
-            ->orderBy('id')
+            ->orderBy('name')
             ->get()
             ->mapWithKeys(static fn (ProductMaster $master): array => [
-                $master->id => '#'.$master->id.' · '.$master->name.' · '.$master->lifecycle_state->value,
+                $master->id => $master->name.' · '.$master->lifecycle_state->value,
             ])
             ->all();
     }
