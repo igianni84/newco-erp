@@ -7,7 +7,7 @@ updated: 2026-06-24
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-panel DEMO POLISH for Paolo (interactive, UNCOMMITTED on `main`).** Third thread atop nav-grouping + DemoSeeder; goal = raise PERCEIVED quality of the Module 0/K consoles before a Paolo demo, no structural rework. Delivered:
+**2026-06-24 — Operator-panel DEMO POLISH for Paolo (COMMITTED + PUSHED — `4ead0b5` → origin/main).** Bundled with the prior nav-grouping + DemoSeeder threads in one demo-prep commit; goal = raise PERCEIVED quality of the Module 0/K consoles before a Paolo demo, no structural rework. Delivered:
 - **Brand (CRCLES):** `AdminPanelProvider` primary = `Color::hex('#A0715A')` (Pantone 8022 C, pixel-sampled from `CRURATED/NewCo/Branding`), brandName "CRCLES", light + dark brand logos (copied to `public/images/brand/`), collapsible sidebar.
 - **Semantic status badges** across all 12 consoles: shared `stateBadgeColor()` / `stateBadgeIcon()` on the kit (string-keyed → NO enum import, keeps {Models, Actions} surface). green=active/verified, blue=reviewed, amber=pending/suspended, red=rejected/closed/failed, gray=draft/retired + heroicon. Brand on chrome, SEMANTIC on badges (at-a-glance, the actual ask).
 - **`version` removed** from every list table (optimistic-lock noise); survives in the PM detail "Metadata" section.
@@ -22,12 +22,12 @@ updated: 2026-06-24
 - **Run the suite via `php -d memory_limit=-1 vendor/bin/pest`, NOT `artisan test`** (128 MB OOM; lesson 2026-06-20).
 
 ## Active Change & Next Task
-- No openspec change (`openspec list` empty). THREE interactive threads UNCOMMITTED on `main`, all Module 0/K operator-panel demo prep: (1) nav-grouping, (2) `DemoSeeder`, (3) this UI polish.
-- **Giovanni must refresh his dev DB to see producer names:** `php artisan migrate` (applies the `producer_name` column) then re-run the DemoSeeder (`php artisan db:seed --class='Database\Seeders\DemoSeeder'`, idempotent). View at /admin (`operator@newco.test` / `password`).
+- No openspec change (`openspec list` empty). The three demo-prep threads (nav-grouping + `DemoSeeder` + UI polish) are COMMITTED + PUSHED in `4ead0b5` (origin/main). Working tree clean.
+- Dev DB already refreshed (`migrate` applied `producer_name` + DemoSeeder reseeded). Local dev server running on :8000 for the demo — /admin (`operator@newco.test` / `password`).
 
 ## Blockers & Decisions Needed
-- **Decision (Giovanni):** (a) approve the look visually — brand color + badge icons are both easily vetoable; (b) commit/push all three threads (push is classifier-gated — ask first, per `close-ritual-push-gate`). No code blocker.
-- **Flagged follow-up:** runtime `producer_name` needs a 1-line `ProducerActivated`/`ProducerRetired` payload enrichment — currently demo/seed-only; the runtime projector path leaves it null and the console degrades to `#id`.
+- No blocker — committed + pushed to origin/main with Giovanni's explicit approval.
+- **Flagged follow-up:** runtime `producer_name` needs a 1-line `ProducerActivated`/`ProducerRetired` payload enrichment — currently demo/seed-only; the runtime projector path leaves it null and the console degrades to `#id`. Badge icons (4 per row on Customer) are easily vetoable if Giovanni finds them busy.
 
 ## Open Patterns
 - **Brand-on-chrome + semantic-on-status** badge split. A single string-keyed color/icon helper on the console kit serves all 12 consoles without importing any `*\Enums` — the presentation concern stays in OperatorPanel, the boundary stays intact.

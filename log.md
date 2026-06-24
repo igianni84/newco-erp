@@ -597,3 +597,5 @@
 ## [2026-06-24 11:11] feat | demo-seeder | DemoSeeder: curated Module 0+K demo data (8 producers,10 clubs,12 customers,18 profiles,9 masters,20 SKUs,3 bundles,6 holds) via direct construction bypassing Create/Activate; re-runnable truncate+reseed; pint+phpstan-max clean; non-destructive (operator/roles kept)
 
 ## [2026-06-24 12:04] ui-polish | operator panel (Module 0/K consoles) | CRCLES brand (#A0715A + logo), semantic colored+iconed status badges across 12 consoles, version off lists, producer_name denormalized onto projection (migration+seeder), sectioned PM detail + child variants. 1754/1754 green, PHPStan 0, Pint clean. Uncommitted on main.
+
+## [2026-06-24 12:23] push | operator-console demo polish | 4ead0b5 -> origin/main (28 files, +1407/-81): branded CRCLES UI + semantic badges + producer names + nav grouping + demo seed. Suite 1754/1754, PHPStan 0, Pint clean.
