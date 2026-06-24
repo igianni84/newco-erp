@@ -5,8 +5,8 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\RelationManagers\MembershipsRelationManager;
 use App\Modules\Parties\Models\Customer;
-use App\Modules\Parties\Models\Profile;
 use App\Platform\I18n\SupportedLocale;
 use App\Platform\Money\Currency;
 use BackedEnum;
@@ -186,11 +186,6 @@ class CustomerResource extends OperatorConsoleResource
                     ->color(fn (string $state): string => static::stateBadgeColor($state))
                     ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
                     ->getStateUsing(self::accountStatusState()),
-                TextEntry::make('profiles')
-                    ->label((string) __('operator_console.customer.columns.profiles'))
-                    ->getStateUsing(fn (Customer $record): string => $record->profiles
-                        ->map(fn (Profile $profile): string => $profile->club->display_name)
-                        ->implode(', ')),
             ]);
     }
 
@@ -203,6 +198,21 @@ class CustomerResource extends OperatorConsoleResource
             'index' => Pages\ListCustomers::route('/'),
             'create' => Pages\CreateCustomer::route('/create'),
             'view' => Pages\ViewCustomer::route('/{record}'),
+        ];
+    }
+
+    /**
+     * The Customer's Club memberships (Profiles), surfaced READ-ONLY as a sub-table on the view page
+     * (operator-console UI pass, 2026-06-24) — the per-Customer view of the Netflix-style membership model
+     * (one Profile per Club). Creation/lifecycle live on the cross-Customer approval queue (ProfileResource),
+     * not here. ViewRecord renders relation managers below the infolist.
+     *
+     * @return array<int, class-string>
+     */
+    public static function getRelations(): array
+    {
+        return [
+            MembershipsRelationManager::class,
         ];
     }
 

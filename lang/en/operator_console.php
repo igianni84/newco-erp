@@ -905,4 +905,62 @@ return [
         ],
     ],
 
+    // --- Operator-console UI pass (2026-06-24) — cluster / relation-manager / supplier / dashboard copy ---
+
+    // The Catalog "Settings" cluster sidebar entry ({@see CatalogSettings}).
+    'cluster' => [
+        'catalog_settings' => 'Settings',
+    ],
+
+    // Relation-manager tab headings + inline create-action labels: child entities surfaced inside their parent's
+    // view page (Variants in a Product Master; Clubs / Agreements in a Producer; Memberships in a Customer).
+    'relations' => [
+        'variants' => 'Variants',
+        'create_variant' => 'New variant',
+        'clubs' => 'Clubs',
+        'create_club' => 'New club',
+        'agreements' => 'Agreements',
+        'create_agreement' => 'New agreement',
+        'memberships' => 'Memberships',
+    ],
+
+    // Sidebar-label overrides distinct from the model label (Profile's nav entry reads "Memberships").
+    'nav' => [
+        'memberships' => 'Memberships',
+    ],
+
+    // Supplier — the thin commercial-counterpart Party subtype (§ 4.5). label / plural_label are EN-invariant
+    // canonical terms (omitted from IT — per-key EN fallback, DEC-127).
+    'supplier' => [
+        'label' => 'Supplier',
+        'plural_label' => 'Suppliers',
+        'columns' => [
+            'legal_name' => 'Legal name',
+            'party_type' => 'Type',
+            'created_at' => 'Created',
+        ],
+        'fields' => [
+            'legal_name' => 'Legal name',
+        ],
+        'actions' => [
+            'create' => 'New Supplier',
+        ],
+    ],
+
+    // Dashboard analytics widgets (the {@see CatalogPartiesOverview} KPI band + the {@see MembershipsByStateChart}).
+    'dashboard' => [
+        'stats' => [
+            'product_masters' => 'Product Masters',
+            'sellable_skus' => 'Sellable SKUs',
+            'producers' => 'Producers',
+            'clubs' => 'Clubs',
+            'customers' => 'Customers',
+            'active_memberships' => 'Active memberships',
+        ],
+        'memberships_by_state' => [
+            'heading' => 'Memberships by state',
+            'dataset' => 'Memberships',
+        ],
+    ],
+
 ];

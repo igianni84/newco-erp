@@ -11,8 +11,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -53,13 +51,13 @@ class AdminPanelProvider extends PanelProvider
             // self-contained and setting the pattern for the seven module consoles still to come.
             ->discoverResources(in: app_path('Modules/OperatorPanel/Filament/Resources'), for: 'App\Modules\OperatorPanel\Filament\Resources')
             ->discoverPages(in: app_path('Modules/OperatorPanel/Filament/Pages'), for: 'App\Modules\OperatorPanel\Filament\Pages')
+            ->discoverClusters(in: app_path('Modules/OperatorPanel/Filament/Clusters'), for: 'App\Modules\OperatorPanel\Filament\Clusters')
+            // Dashboard analytics (operator-console UI pass, 2026-06-24): the default Account + Filament-info
+            // widgets are gone — discovery now finds two real, module-scoped analytics in the Widgets namespace
+            // (the CatalogPartiesOverview KPI band, then the MembershipsByStateChart, in discovery order).
+            ->discoverWidgets(in: app_path('Modules/OperatorPanel/Filament/Widgets'), for: 'App\Modules\OperatorPanel\Filament\Widgets')
             ->pages([
                 Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Modules/OperatorPanel/Filament/Widgets'), for: 'App\Modules\OperatorPanel\Filament\Widgets')
-            ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

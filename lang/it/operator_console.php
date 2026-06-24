@@ -596,4 +596,54 @@ return [
         ],
     ],
 
+    // --- Pass UI operator-console (2026-06-24) — copy cluster / relation-manager / supplier / dashboard ---
+
+    'cluster' => [
+        'catalog_settings' => 'Impostazioni',
+    ],
+
+    'relations' => [
+        'variants' => 'Varianti',
+        'create_variant' => 'Nuova variante',
+        'clubs' => 'Club',
+        'create_club' => 'Nuovo club',
+        'agreements' => 'Accordi',
+        'create_agreement' => 'Nuovo accordo',
+        'memberships' => 'Iscrizioni',
+    ],
+
+    'nav' => [
+        'memberships' => 'Iscrizioni',
+    ],
+
+    // Supplier — label / plural_label EN-invarianti (omessi: fallback per-chiave a EN, DEC-127).
+    'supplier' => [
+        'columns' => [
+            'legal_name' => 'Ragione sociale',
+            'party_type' => 'Tipo',
+            'created_at' => 'Creato',
+        ],
+        'fields' => [
+            'legal_name' => 'Ragione sociale',
+        ],
+        'actions' => [
+            'create' => 'Nuovo fornitore',
+        ],
+    ],
+
+    'dashboard' => [
+        'stats' => [
+            'product_masters' => 'Product Master',
+            'sellable_skus' => 'Sellable SKU',
+            'producers' => 'Produttori',
+            'clubs' => 'Club',
+            'customers' => 'Clienti',
+            'active_memberships' => 'Iscrizioni attive',
+        ],
+        'memberships_by_state' => [
+            'heading' => 'Iscrizioni per stato',
+            'dataset' => 'Iscrizioni',
+        ],
+    ],
+
 ];

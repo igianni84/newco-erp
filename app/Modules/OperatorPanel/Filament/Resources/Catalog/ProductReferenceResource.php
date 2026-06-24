@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 use App\Modules\Catalog\Models\Format;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\OperatorPanel\Filament\Clusters\CatalogSettings;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductReferenceResource\Pages;
@@ -53,6 +54,11 @@ class ProductReferenceResource extends OperatorConsoleResource
 
     protected static ?int $navigationSort = 4;
 
+    // Grouped into the Catalog "Settings" cluster (operator-console UI pass, 2026-06-24): a Product Reference is
+    // a lower-level building block (Variant × Format), surfaced as a tab under Settings rather than a flat
+    // top-level Catalog console.
+    protected static ?string $cluster = CatalogSettings::class;
+
     protected static function i18nKey(): string
     {
         return 'product_reference';
@@ -61,6 +67,16 @@ class ProductReferenceResource extends OperatorConsoleResource
     protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
     {
         return OperatorConsoleNavigationGroup::Catalog;
+    }
+
+    /**
+     * Clustered into {@see CatalogSettings}: the cluster carries the sidebar group, so the resource reports NO
+     * navigation group — keeping the cluster's sub-navigation a flat tab strip. navigationGroupCase() stays
+     * declared (the kit base requires it) but is unused for placement once $cluster is set.
+     */
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return null;
     }
 
     /**

@@ -64,6 +64,17 @@ class ClubResource extends OperatorConsoleResource
     }
 
     /**
+     * Hidden from the sidebar (operator-console UI pass, 2026-06-24): a Club is seen and created INSIDE its
+     * operating Producer (see ProducerResource's ClubsRelationManager), not as a flat top-level console. The
+     * resource stays fully registered — its list / view / create routes remain reachable (the relation manager's
+     * row View action links to the view page) — only its navigation entry is suppressed.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    /**
      * The create form (design D6/D7/D11). Collects the inputs the Parties `CreateClub` action consumes — the
      * required display_name, the operating Producer (a WITHIN-Parties picker; a Club belongs to exactly one
      * Producer, BR-K-Club-1), the required `registration_flow_type` classifier, the OPTIONAL fee (an amount in

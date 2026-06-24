@@ -61,6 +61,17 @@ class ProfileResource extends OperatorConsoleResource
     }
 
     /**
+     * Sidebar label override (operator-console UI pass, 2026-06-24): this standalone cross-Customer console IS the
+     * membership APPROVAL QUEUE, so it reads "Memberships" in the navigation — clearer than the structural model
+     * name "Profile". The model label itself stays "Profile" (CONTEXT.md canonical term; used in breadcrumbs /
+     * page titles); only the nav entry is relabelled.
+     */
+    public static function getNavigationLabel(): string
+    {
+        return (string) __('operator_console.nav.memberships');
+    }
+
+    /**
      * The create form — the membership-application inputs the Parties `CreateProfile` action consumes: a Customer
      * select (the within-Parties Customer registry, labelled email + name) and a Club select (labelled by the
      * Club's `display_name`). Both are WITHIN-Parties reads (the boundary law forbids only CROSS-module relations —

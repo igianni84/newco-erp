@@ -599,3 +599,5 @@
 ## [2026-06-24 12:04] ui-polish | operator panel (Module 0/K consoles) | CRCLES brand (#A0715A + logo), semantic colored+iconed status badges across 12 consoles, version off lists, producer_name denormalized onto projection (migration+seeder), sectioned PM detail + child variants. 1754/1754 green, PHPStan 0, Pint clean. Uncommitted on main.
 
 ## [2026-06-24 12:23] push | operator-console demo polish | 4ead0b5 -> origin/main (28 files, +1407/-81): branded CRCLES UI + semantic badges + producer names + nav grouping + demo seed. Suite 1754/1754, PHPStan 0, Pint clean.
+
+## [2026-06-24 14:07] ui-pass | operator-console (modules 0/K) | IA restructure for Paolo+Taha demo: 2 dashboard widgets, Variants/Clubs/Agreements nested in parents, Settings cluster, Supplier resource, Profiles→Memberships, Pantone logo; 1753 green, phpstan/pint clean; uncommitted (push gate)

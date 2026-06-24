@@ -3,6 +3,7 @@
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\Format;
+use App\Modules\OperatorPanel\Filament\Clusters\CatalogSettings;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource\Pages;
@@ -43,6 +44,10 @@ class FormatResource extends OperatorConsoleResource
 
     protected static ?int $navigationSort = 3;
 
+    // Grouped into the Catalog "Settings" cluster (operator-console UI pass, 2026-06-24): Format is reference
+    // data, surfaced as a tab under Settings rather than a flat top-level Catalog console.
+    protected static ?string $cluster = CatalogSettings::class;
+
     protected static function i18nKey(): string
     {
         return 'format';
@@ -51,6 +56,17 @@ class FormatResource extends OperatorConsoleResource
     protected static function navigationGroupCase(): OperatorConsoleNavigationGroup
     {
         return OperatorConsoleNavigationGroup::Catalog;
+    }
+
+    /**
+     * Clustered into {@see CatalogSettings}: the cluster (not this resource) carries the sidebar group, so the
+     * resource reports NO navigation group — keeping the cluster's sub-navigation a flat tab strip rather than
+     * re-nesting a "Catalog" sub-heading. navigationGroupCase() stays declared (the kit base requires it) but is
+     * unused for placement once $cluster is set.
+     */
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return null;
     }
 
     /**

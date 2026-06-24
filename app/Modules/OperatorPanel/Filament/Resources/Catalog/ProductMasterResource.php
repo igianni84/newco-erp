@@ -4,14 +4,13 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
 use App\Modules\Catalog\Models\ProducerState;
 use App\Modules\Catalog\Models\ProductMaster;
-use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\Pages;
+use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource\RelationManagers\VariantsRelationManager;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Components\Section;
@@ -168,24 +167,6 @@ class ProductMasterResource extends OperatorConsoleResource
                             ->columnSpanFull()
                             ->getStateUsing(fn (ProductMaster $record): ?string => $record->wineAttributes?->winery_story?->resolve(app()->getLocale())),
                     ]),
-                Section::make((string) __('operator_console.product_master.sections.variants'))
-                    ->icon('heroicon-o-rectangle-stack')
-                    ->schema([
-                        RepeatableEntry::make('variants')
-                            ->hiddenLabel()
-                            ->grid(3)
-                            ->schema([
-                                TextEntry::make('variant_identifier')
-                                    ->label((string) __('operator_console.product_variant.columns.variant_identifier'))
-                                    ->weight('medium'),
-                                TextEntry::make('lifecycle_state')
-                                    ->label((string) __('operator_console.product_variant.columns.lifecycle_state'))
-                                    ->badge()
-                                    ->color(fn (string $state): string => static::stateBadgeColor($state))
-                                    ->icon(fn (string $state): ?string => static::stateBadgeIcon($state))
-                                    ->getStateUsing(fn (ProductVariant $record): string => $record->lifecycle_state->value),
-                            ]),
-                    ]),
                 Section::make((string) __('operator_console.product_master.sections.metadata'))
                     ->icon('heroicon-o-clock')
                     ->collapsed()
@@ -205,6 +186,21 @@ class ProductMasterResource extends OperatorConsoleResource
             'index' => Pages\ListProductMasters::route('/'),
             'create' => Pages\CreateProductMaster::route('/create'),
             'view' => Pages\ViewProductMaster::route('/{record}'),
+        ];
+    }
+
+    /**
+     * The Product Master's child Product Variants, surfaced as an interactive sub-table on the view page (the
+     * standalone Variant console is hidden from the sidebar — operator-console UI pass, 2026-06-24). The operator
+     * sees and creates a Master's Variants in the Master's own context, the parent implied. ViewRecord renders
+     * relation managers below the infolist, so this replaces the former static "Variants" RepeatableEntry section.
+     *
+     * @return array<int, class-string>
+     */
+    public static function getRelations(): array
+    {
+        return [
+            VariantsRelationManager::class,
         ];
     }
 

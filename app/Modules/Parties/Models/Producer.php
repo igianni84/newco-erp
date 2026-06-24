@@ -3,6 +3,7 @@
 namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateProducer;
+use App\Modules\Parties\Actions\CreateProducerAgreement;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ProducerCreated;
@@ -44,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
  * @property-read Collection<int, Club> $clubs
+ * @property-read Collection<int, ProducerAgreement> $producerAgreements
  */
 class Producer extends Model
 {
@@ -72,6 +74,19 @@ class Producer extends Model
     public function clubs(): HasMany
     {
         return $this->hasMany(Club::class, 'producer_id');
+    }
+
+    /**
+     * The NewCo↔Producer commercial agreements for this Producer — a WITHIN-module `hasMany` (both entities are
+     * Module K), the inverse of {@see ProducerAgreement::producer()}. Surfaced read + create in the operator
+     * console's ProducerAgreementsRelationManager (operator-console UI pass, 2026-06-24); the
+     * {@see CreateProducerAgreement} action stays the sole writer.
+     *
+     * @return HasMany<ProducerAgreement, $this>
+     */
+    public function producerAgreements(): HasMany
+    {
+        return $this->hasMany(ProducerAgreement::class, 'producer_id');
     }
 
     /**

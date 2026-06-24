@@ -5,6 +5,8 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\RelationManagers\ClubsRelationManager;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\RelationManagers\ProducerAgreementsRelationManager;
 use App\Modules\Parties\Models\Producer;
 use BackedEnum;
 use Filament\Forms\Components\Textarea;
@@ -130,9 +132,6 @@ class ProducerResource extends OperatorConsoleResource
                 TextEntry::make('description')
                     ->label((string) __('operator_console.producer.fields.description'))
                     ->getStateUsing(fn (Producer $record): ?string => $record->description?->resolve(app()->getLocale())),
-                TextEntry::make('clubs')
-                    ->label((string) __('operator_console.producer.fields.clubs'))
-                    ->getStateUsing(fn (Producer $record): string => $record->clubs->pluck('display_name')->implode(', ')),
             ]);
     }
 
@@ -145,6 +144,22 @@ class ProducerResource extends OperatorConsoleResource
             'index' => Pages\ListProducers::route('/'),
             'create' => Pages\CreateProducer::route('/create'),
             'view' => Pages\ViewProducer::route('/{record}'),
+        ];
+    }
+
+    /**
+     * The Producer's operated Clubs and its commercial Agreements, surfaced as interactive sub-tables on the
+     * view page (the standalone Club / Producer Agreement consoles are hidden from the sidebar — operator-console
+     * UI pass, 2026-06-24). The operator sees and creates both in the Producer's own context, the Producer
+     * implied. ViewRecord renders relation managers below the infolist.
+     *
+     * @return array<int, class-string>
+     */
+    public static function getRelations(): array
+    {
+        return [
+            ClubsRelationManager::class,
+            ProducerAgreementsRelationManager::class,
         ];
     }
 

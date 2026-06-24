@@ -7,27 +7,28 @@ updated: 2026-06-24
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-panel DEMO POLISH for Paolo (COMMITTED + PUSHED — `4ead0b5` → origin/main).** Bundled with the prior nav-grouping + DemoSeeder threads in one demo-prep commit; goal = raise PERCEIVED quality of the Module 0/K consoles before a Paolo demo, no structural rework. Delivered:
-- **Brand (CRCLES):** `AdminPanelProvider` primary = `Color::hex('#A0715A')` (Pantone 8022 C, pixel-sampled from `CRURATED/NewCo/Branding`), brandName "CRCLES", light + dark brand logos (copied to `public/images/brand/`), collapsible sidebar.
-- **Semantic status badges** across all 12 consoles: shared `stateBadgeColor()` / `stateBadgeIcon()` on the kit (string-keyed → NO enum import, keeps {Models, Actions} surface). green=active/verified, blue=reviewed, amber=pending/suspended, red=rejected/closed/failed, gray=draft/retired + heroicon. Brand on chrome, SEMANTIC on badges (at-a-glance, the actual ask).
-- **`version` removed** from every list table (optimistic-lock noise); survives in the PM detail "Metadata" section.
-- **Producer NAME** in Catalog: `producer_name` denormalized onto `catalog_producer_states` (new additive migration + DemoSeeder populates; projector left as-is). PM list/detail now show "Domaine de la Romanée-Conti", not "#1 · active". Event payload UNTOUCHED — `SpineCreationChainTest` guards against PII in the event store, so the name lives on the read model, not the event (runtime path falls back to `#id` until the producer events carry the name — deferred 1-liner).
-- **PM detail** → icon-headed Sections (Identity/Classification/Provenance/Variants/Metadata) + child Variants table via new within-module `ProductMaster::variants()` hasMany + `RepeatableEntry`.
+**2026-06-24 — Operator-panel UI PASS #2 (console IA restructure for the Paolo + Taha demo — UNCOMMITTED, awaiting push approval).** Builds on the prior demo-polish (`4ead0b5`: #A0715A brand, semantic badges, producer names). Reshapes the Module 0/K console information architecture per Giovanni's 8 points:
+- **Dashboard:** dropped the Filament Account+Info widgets → two discovered analytics: `CatalogPartiesOverview` (6 KPI stats over Modules 0+K) + `MembershipsByStateChart` (bar, profiles-by-state).
+- **Catalog:** `ProductVariant` hidden from sidebar → seen+created inside `ProductMaster` via `VariantsRelationManager` (replaced the static RepeatableEntry). New `CatalogSettings` Filament **cluster** ("Settings", in the Catalog group) holds Format · CaseConfiguration · ProductReference as tabs (each: `$cluster` + `getNavigationGroup()→null` → flat sub-nav). Sellable/Composite SKU stay top-level.
+- **Parties:** `Club` + `ProducerAgreement` hidden → seen+created inside `Producer` via `ClubsRelationManager` + `ProducerAgreementsRelationManager` (added within-module `Producer::producerAgreements()` hasMany). `Customer` gains a read-only `MembershipsRelationManager` (profiles). `Profile` nav relabelled "Memberships" (model label stays "Profile"). New **`SupplierResource`** (the thin `parties_suppliers` model had no console) — list/view/create via `CreateSupplier`; no lifecycle, plain ViewRecord.
+- **Branding:** light logo was wrongly the BLACK variant → swapped to `CRCLES_Logo Pantone 8022.png` (copper). Color #A0715A already in place.
 
-~21 files touched + 1 migration + 2 logos. Prior two threads still open ↓.
+RM creates route through the owning module's domain action (`->using($this->createX(...))`, owner id injected, parent picker dropped) — no Eloquent write; `canCreate()→true` (no per-model policy). i18n EN+IT (new top-level groups: cluster/relations/nav/supplier/dashboard).
 
 ## Build & Quality Status
-- Stack: PHP 8.5.2 · Laravel 13.15 · Filament 5.6.7 · Pest 4.7.2 · PHPStan 2.2.2 (max) · Pint 1.29.1. SQLite dev; prod PG17.
-- **GREEN:** full suite `php -d memory_limit=1G vendor/bin/pest` → **1754/1754** (9457 assertions) · PHPStan max **0** · Pint clean (1 auto-fix). DemoSeeder re-verified on a throwaway DB: `producer_name` populates, every master resolves to its real producer name; Leflaive stays unprojected (fallback marker).
-- **Run the suite via `php -d memory_limit=-1 vendor/bin/pest`, NOT `artisan test`** (128 MB OOM; lesson 2026-06-20).
+- Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
+- **GREEN:** full suite **1753/1753** · PHPStan **0** · Pint clean. New `OperatorConsoleUiPassTest` (7) + rewritten `OperatorConsoleNavigationTest` (the new IA = source of truth).
+- **Run pest via `php -d memory_limit=1024M vendor/bin/pest`, NOT `artisan test`** (128 MB OOM; the `-d` flag never reaches artisan's child process, then Collision OOMs rendering a failure — masks the real error).
+- `npm run build` FAILS (`vite` missing from node_modules) → custom Instrument Sans font not compiled; brand color (runtime CSS var) + logo (public/) unaffected, panel renders 200. `npm install` to restore the font.
 
 ## Active Change & Next Task
-- No openspec change (`openspec list` empty). The three demo-prep threads (nav-grouping + `DemoSeeder` + UI polish) are COMMITTED + PUSHED in `4ead0b5` (origin/main). Working tree clean.
-- Dev DB already refreshed (`migrate` applied `producer_name` + DemoSeeder reseeded). Local dev server running on :8000 for the demo — /admin (`operator@newco.test` / `password`).
+- No openspec change. **26 uncommitted files (10 new).** Local server on :8123 (/admin · `operator@newco.test` / `password`); DemoSeeder data present (8 producers, 12 customers, 10 clubs, 9 masters, 3 suppliers, 18 profiles).
+- **NEXT:** await Giovanni's push approval (close-ritual gate), then commit + push.
 
 ## Blockers & Decisions Needed
-- No blocker — committed + pushed to origin/main with Giovanni's explicit approval.
-- **Flagged follow-up:** runtime `producer_name` needs a 1-line `ProducerActivated`/`ProducerRetired` payload enrichment — currently demo/seed-only; the runtime projector path leaves it null and the console degrades to `#id`. Badge icons (4 per row on Customer) are easily vetoable if Giovanni finds them busy.
+- **Color nuance:** Filament generates a SATURATED palette from #A0715A's hue (47, copper) — buttons read more vivid than the muted metallic logo. Offered to pin an explicit muted palette if Giovanni wants an exact logo match. Not blocking.
+- RM header-action create EXECUTION is not unit-tested (Filament's isolated-RM test helpers don't resolve header-action visibility) — verify live.
 
 ## Open Patterns
-- **Brand-on-chrome + semantic-on-status** badge split. A single string-keyed color/icon helper on the console kit serves all 12 consoles without importing any `*\Enums` — the presentation concern stays in OperatorPanel, the boundary stays intact.
+- **Nest a child console in its parent via a RelationManager + create-through-domain-action** (`->using`, `canCreate()→true`, reuse `<Resource>::table()` for columns, row View → resource view URL) — the repeatable recipe for decluttering the sidebar across the 7 remaining module consoles.
+- **Filament cluster for "settings"-type reference data** — clustered resources return a null nav group for flat tabs; the cluster carries the group placement.

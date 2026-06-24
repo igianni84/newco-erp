@@ -63,6 +63,17 @@ class ProducerAgreementResource extends OperatorConsoleResource
     }
 
     /**
+     * Hidden from the sidebar (operator-console UI pass, 2026-06-24): an agreement is seen and created INSIDE its
+     * Producer (see ProducerResource's ProducerAgreementsRelationManager), not as a flat top-level console. The
+     * resource stays fully registered — its list / view / create routes remain reachable — only its navigation
+     * entry is suppressed.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    /**
      * The create form (design D6/D7). Collects the inputs the Parties `CreateProducerAgreement` action consumes —
      * the required Producer (a WITHIN-Parties picker; an agreement references EXACTLY ONE Producer, § 4.6), the
      * OPTIONAL narrowing Club (a blank selection is a Producer-wide agreement, § 4.6), the two OPTIONAL term dates

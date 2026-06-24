@@ -19,7 +19,6 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages\
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
-use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Platform\I18n\TranslatableText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +58,7 @@ it('lists Producers with their identity attributes, status and kyc_status', func
         ->assertSee('draft');
 });
 
-it('renders the read-only identity attributes and operated clubs on the view page', function () {
+it('renders the read-only identity attributes on the view page', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     $producer = Producer::factory()->create([
@@ -71,19 +70,15 @@ it('renders the read-only identity attributes and operated clubs on the view pag
         'description' => TranslatableText::of(['en' => 'A storied left-bank estate.']),
     ]);
 
-    // Two within-Parties Clubs this Producer operates — the infolist reads them through `Producer::clubs()`.
-    Club::factory()->create(['producer_id' => $producer->id, 'display_name' => 'Alpha Club']);
-    Club::factory()->create(['producer_id' => $producer->id, 'display_name' => 'Beta Club']);
-
+    // The operated Clubs and the Producer's agreements now live in interactive relation-manager sub-tables on the
+    // view page (operator-console UI pass, 2026-06-24) — covered by OperatorConsoleUiPassTest, no longer the infolist.
     Livewire::test(ViewProducer::class, ['record' => $producer->getKey()])
         ->assertSee('Château View')
         ->assertSee('Pauillac')
         ->assertSee('France')
         ->assertSee('Pauillac AOC')
         ->assertSee('https://chateau-view.example')
-        ->assertSee('A storied left-bank estate.')   // the translatable description resolved for the locale
-        ->assertSee('Alpha Club')
-        ->assertSee('Beta Club');
+        ->assertSee('A storied left-bank estate.');   // the translatable description resolved for the locale
 });
 
 it('exposes the read pages plus a write-through create page and no edit or delete default action', function () {

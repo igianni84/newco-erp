@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\OperatorPanel\Filament\Clusters\CatalogSettings;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CaseConfigurationResource;
@@ -14,57 +15,79 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\SupplierResource;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Lang;
 
-// operator-console-navigation-grouping: the operator panel's twelve consoles render as TWO ordered, localized
-// sidebar groups — Catalog (Module 0 / PIM) above Parties (Module K) — instead of one flat alphabetical list.
-// Grouping is unspecified by the spec (a free IA choice); these assertions ARE the source of truth for the
-// decision, so a future resource silently dropping out of a group, or the order drifting, fails here.
+// operator-console-navigation-grouping + the operator-console UI pass (2026-06-24): the operator panel's consoles
+// render as TWO ordered, localized sidebar groups — Catalog (Module 0) above Parties (Module K). The UI pass
+// reshaped the IA the consoles expose, and THIS test is the source of truth for that decision:
+//   - Catalog top-level: Product Master (with Variants nested inside it), Sellable SKU, Composite SKU, plus the
+//     "Settings" cluster (Format · Case Configuration · Product Reference rendered as tabs);
+//   - Product Variant is hidden from the sidebar — it is seen + created inside its parent Product Master;
+//   - Parties top-level: Customer, the Profile queue relabelled "Memberships", Producer, Supplier;
+//   - Club and Producer Agreement are hidden — seen + created inside their Producer.
+// A future console silently dropping out of its group, the order drifting, or a nested console leaking back into
+// the sidebar fails here.
 //
-// The mechanism (OperatorConsoleNavigationGroup, a HasLabel enum returned by each resource's getNavigationGroup):
-//   - group ORDER = enum case-declaration order (Catalog, then Parties) — locale-independent, needs no panel
-//     registration (Filament sorts enum-keyed groups by cases() position);
-//   - group LABEL = getLabel() off operator_console.navigation_group.<case> — localized per operator locale.
 // Feature test: the translator/container must be booted (Pest binds the Laravel TestCase under tests/Feature);
 // no DB is touched (static reads + locale), so no RefreshDatabase.
 
-/**
- * The twelve operator consoles in their intended sidebar order, each with its module group and within-group
- * navigationSort — the single source of truth the assertions below lock.
- *
- * @return array<string, array{class-string<OperatorConsoleResource>, OperatorConsoleNavigationGroup, int}>
- */
-function consoleNavigationMap(): array
-{
-    return [
-        // Catalog (Module 0 / PIM) — PIM hierarchy order: Master → Variant → Format → Reference → Sellable →
-        // Composite → Case Configuration.
-        'Product Master' => [ProductMasterResource::class, OperatorConsoleNavigationGroup::Catalog, 1],
-        'Product Variant' => [ProductVariantResource::class, OperatorConsoleNavigationGroup::Catalog, 2],
-        'Format' => [FormatResource::class, OperatorConsoleNavigationGroup::Catalog, 3],
-        'Product Reference' => [ProductReferenceResource::class, OperatorConsoleNavigationGroup::Catalog, 4],
-        'Sellable SKU' => [SellableSkuResource::class, OperatorConsoleNavigationGroup::Catalog, 5],
-        'Composite SKU' => [CompositeSkuResource::class, OperatorConsoleNavigationGroup::Catalog, 6],
-        'Case Configuration' => [CaseConfigurationResource::class, OperatorConsoleNavigationGroup::Catalog, 7],
-        // Parties (Module K).
-        'Customer' => [CustomerResource::class, OperatorConsoleNavigationGroup::Parties, 1],
-        'Profile' => [ProfileResource::class, OperatorConsoleNavigationGroup::Parties, 2],
-        'Club' => [ClubResource::class, OperatorConsoleNavigationGroup::Parties, 3],
-        'Producer' => [ProducerResource::class, OperatorConsoleNavigationGroup::Parties, 4],
-        'Producer Agreement' => [ProducerAgreementResource::class, OperatorConsoleNavigationGroup::Parties, 5],
-    ];
-}
-
-it('assigns each operator console to its module navigation group', function (string $class, OperatorConsoleNavigationGroup $group, int $sort): void {
+it('assigns each top-level Catalog console to the Catalog group, ordered, sidebar-visible and un-clustered', function (string $class, int $sort): void {
     /** @var class-string<OperatorConsoleResource> $class */
-    expect($class::getNavigationGroup())->toBe($group);
-})->with(consoleNavigationMap());
+    expect($class::getNavigationGroup())->toBe(OperatorConsoleNavigationGroup::Catalog)
+        ->and($class::getNavigationSort())->toBe($sort)
+        ->and($class::shouldRegisterNavigation())->toBeTrue()
+        ->and($class::getCluster())->toBeNull();
+})->with([
+    'Product Master' => [ProductMasterResource::class, 1],
+    'Sellable SKU' => [SellableSkuResource::class, 5],
+    'Composite SKU' => [CompositeSkuResource::class, 6],
+]);
 
-it('orders each console within its group by the domain hierarchy', function (string $class, OperatorConsoleNavigationGroup $group, int $sort): void {
+it('clusters the Catalog reference consoles under the Settings cluster with no own sidebar group', function (string $class): void {
     /** @var class-string<OperatorConsoleResource> $class */
-    expect($class::getNavigationSort())->toBe($sort);
-})->with(consoleNavigationMap());
+    // Clustered: placement is the cluster's (a flat tab strip), so the resource reports NO navigation group.
+    expect($class::getCluster())->toBe(CatalogSettings::class)
+        ->and($class::getNavigationGroup())->toBeNull();
+})->with([
+    'Format' => [FormatResource::class],
+    'Case Configuration' => [CaseConfigurationResource::class],
+    'Product Reference' => [ProductReferenceResource::class],
+]);
+
+it('places the Catalog Settings cluster itself inside the Catalog group', function (): void {
+    expect(CatalogSettings::getNavigationGroup())->toBe(OperatorConsoleNavigationGroup::Catalog);
+});
+
+it('assigns each top-level Parties console to the Parties group, ordered and sidebar-visible', function (string $class, int $sort): void {
+    /** @var class-string<OperatorConsoleResource> $class */
+    expect($class::getNavigationGroup())->toBe(OperatorConsoleNavigationGroup::Parties)
+        ->and($class::getNavigationSort())->toBe($sort)
+        ->and($class::shouldRegisterNavigation())->toBeTrue();
+})->with([
+    'Customer' => [CustomerResource::class, 1],
+    'Profile (Memberships)' => [ProfileResource::class, 2],
+    'Producer' => [ProducerResource::class, 4],
+    'Supplier' => [SupplierResource::class, 6],
+]);
+
+it('hides the nested child consoles from the sidebar (routes stay registered, only navigation is suppressed)', function (string $class): void {
+    /** @var class-string<OperatorConsoleResource> $class */
+    expect($class::shouldRegisterNavigation())->toBeFalse();
+})->with([
+    'Product Variant' => [ProductVariantResource::class],
+    'Club' => [ClubResource::class],
+    'Producer Agreement' => [ProducerAgreementResource::class],
+]);
+
+it('relabels the Profile console as "Memberships" in the sidebar, per operator locale', function (): void {
+    App::setLocale('en');
+    expect(ProfileResource::getNavigationLabel())->toBe('Memberships');
+
+    App::setLocale('it');
+    expect(ProfileResource::getNavigationLabel())->toBe('Iscrizioni');
+});
 
 it('declares the groups so Catalog renders above Parties', function (): void {
     // Filament orders enum-keyed groups by their cases() position, so this declaration order IS the sidebar order.
@@ -80,7 +103,6 @@ it('authors both navigation group labels in the English baseline', function (): 
 });
 
 it('localizes the navigation group labels per operator locale', function (): void {
-    // Unlike the English-invariant entity labels (Product Master, Customer…), the module group names localize.
     App::setLocale('en');
     expect(OperatorConsoleNavigationGroup::Catalog->getLabel())->toBe('Catalog')
         ->and(OperatorConsoleNavigationGroup::Parties->getLabel())->toBe('Parties');
@@ -88,4 +110,12 @@ it('localizes the navigation group labels per operator locale', function (): voi
     App::setLocale('it');
     expect(OperatorConsoleNavigationGroup::Catalog->getLabel())->toBe('Catalogo')
         ->and(OperatorConsoleNavigationGroup::Parties->getLabel())->toBe('Anagrafiche');
+});
+
+it('localizes the Settings cluster label per operator locale', function (): void {
+    App::setLocale('en');
+    expect(CatalogSettings::getNavigationLabel())->toBe('Settings');
+
+    App::setLocale('it');
+    expect(CatalogSettings::getNavigationLabel())->toBe('Impostazioni');
 });

@@ -63,6 +63,17 @@ class ProductVariantResource extends OperatorConsoleResource
     }
 
     /**
+     * Hidden from the sidebar (operator-console UI pass, 2026-06-24): Variants are seen and created INSIDE their
+     * parent Product Master (see ProductMasterResource's VariantsRelationManager), not as a flat top-level
+     * console. The resource stays fully registered — its list / view / create routes remain reachable (the
+     * relation manager's row View action links to the view page) — only its navigation entry is suppressed.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    /**
      * The create form (design L3/L8). Collects the inputs the Catalog `CreateProductVariant` action consumes —
      * the PARENT Product Master (a within-catalog select; a Variant belongs to exactly one Master,
      * BR-Identity-2), the type-neutral variant identifier, and the WINE vintage attribute set (a vintage year,
