@@ -477,6 +477,12 @@ return [
             'record_kyc_verified' => 'Registra KYC verificato',
             'record_kyc_rejected' => 'Registra KYC rifiutato',
             'record_screening' => 'Registra screening sanzioni',
+            // Verbi FSM dello stato Account (operator-console-parties-membership). «account» invariato (termine di
+            // dominio, distinto da «cliente»); «suspend/reactivate/close» → «Sospendi/Riattiva/Chiudi» come per il
+            // cliente, ma applicati all'Account co-provisionato.
+            'suspend_account' => 'Sospendi account',
+            'reactivate_account' => 'Riattiva account',
+            'close_account' => 'Chiudi account',
         ],
 
         'notifications' => [
@@ -490,6 +496,12 @@ return [
             'kyc_verified' => 'KYC verificato; il cliente è riattivato.',
             'kyc_rejected' => 'KYC rifiutato; il cliente resta bloccato.',
             'screening_recorded' => 'Screening sanzioni registrato.',
+            // Titoli di esito dei verbi FSM dello stato Account (operator-console-parties-membership) — transizioni
+            // audit-only, nessun evento di dominio. Il condiviso `action_failed` sotto copre anche i loro rifiuti
+            // di dominio (una transizione Account fuori stato — IllegalAccountTransition).
+            'account_suspended' => 'Account sospeso.',
+            'account_reactivated' => 'Account riattivato.',
+            'account_closed' => 'Account chiuso.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 
@@ -504,6 +516,67 @@ return [
                 'lifted_by' => 'Rimosso da',
                 'lifted_at' => 'Rimosso il',
             ],
+        ],
+    ],
+
+    // Console MEMBERSHIP lato domanda (operator-console-parties-membership). `label`/`plural_label` omessi →
+    // fallback EN per-chiave (DEC-127); tutte le altre chiavi tradotte.
+    'profile' => [
+        'columns' => [
+            'customer' => 'Cliente',
+            'club' => 'Club',
+            'state' => 'Stato',
+            'version' => 'Versione',
+        ],
+
+        'fields' => [
+            'tier' => 'Livello',
+            'lapsed_at' => 'Scaduto il',
+            'cancellation_reason' => 'Motivo di cancellazione',
+            'customer' => 'Cliente',
+            'club' => 'Club',
+        ],
+
+        'tabs' => [
+            'pending' => 'In attesa',
+            'all' => 'Tutti',
+        ],
+
+        // Verbi del ciclo di vita: `approve`/`decline` (gruppo 3) sull'azione di approvazione dell'adesione;
+        // `activate`/`suspend`/`reactivate` (gruppo 4) sui verbi di stato; `lapse`/`renew`/`cancel`/`deactivate`
+        // (gruppo 5) sui verbi di scadenza/rinnovo/terminali. «decline» → «Rifiuta» (rifiuto della candidatura,
+        // distinto da «Termina»/«Ritira» di altri domini); «reactivate» → «Riattiva»; «lapse» → «Fai scadere» (porta
+        // l'adesione a `scaduta`); «cancel» → «Annulla» (annullamento terminale); «deactivate» → «Disattiva».
+        'actions' => [
+            'create' => 'Nuovo Profilo',
+            'approve' => 'Approva',
+            'decline' => 'Rifiuta',
+            'activate' => 'Attiva',
+            'suspend' => 'Sospendi',
+            'reactivate' => 'Riattiva',
+            'lapse' => 'Fai scadere',
+            'renew' => 'Rinnova',
+            'cancel' => 'Annulla',
+            'deactivate' => 'Disattiva',
+        ],
+
+        // Notifiche di esito per i verbi di membership. «membership» → «adesione» (parola italiana naturale, come
+        // «cliente» per Customer). `action_failed` è il titolo di errore condiviso (corpo dal messaggio localizzato
+        // della rejection — lang/*/parties.php). Gruppo 4 aggiunge `activated`/`suspended`/`reactivated` (i passaggi
+        // di stato dell'adesione); gruppo 5 aggiunge `lapsed`/`renewed`/`cancelled`/`deactivated` (scadenza, rinnovo
+        // e terminali) — `action_failed` è raggiungibile dall'interfaccia solo da un `renew` fuori dal periodo di
+        // grazia (design D5).
+        'notifications' => [
+            'approved' => 'Adesione approvata.',
+            'declined' => 'Candidatura all’adesione rifiutata.',
+            'activated' => 'Adesione attivata.',
+            'suspended' => 'Adesione sospesa.',
+            'reactivated' => 'Adesione riattivata.',
+            'lapsed' => 'Adesione scaduta.',
+            'renewed' => 'Adesione rinnovata.',
+            'cancelled' => 'Adesione annullata.',
+            'deactivated' => 'Adesione disattivata.',
+            'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
 

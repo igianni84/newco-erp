@@ -567,3 +567,21 @@
 ## [2026-06-23 14:28] push | main | club-credit close pushed (f4ef823..f4055d1); ralph/club-credit branch deleted; CI run 'archive: club-credit' in progress (quality + tests-pgsql).
 
 ## [2026-06-23 22:00] spec-to-change | operator-console-parties-membership | APPROVED (Module K demand-side membership console): standalone ProfileResource (approval queue + 9 Profile verbs) + Profile create + Account 3 verbs on ViewCustomer. Delta operator-console 4 ADDED+2 MODIFIED req/25 scn. Pure console, 0 domain code. strict-valid 4/4.
+
+## [2026-06-23 22:21] ralph | operator-console-parties-membership 1.1/1.2/1.3 | green | group 1: ProfileResource (read-only) + ListProfiles approval-queue tabs + ViewProfile/CreateProfile scaffolds + EN/IT profile i18n + 5 tests; full suite 1565/1565
+
+## [2026-06-23 22:36] ralph | operator-console-parties-membership 2.1/2.2 | green | 7 files | Profile create surface (write-through) + Customer/Club selects + i18n + list-header link; suite 1569/1569, phpstan 0, pint clean
+
+## [2026-06-23 22:49] ralph | operator-console-parties-membership 3.1/3.2 | green | 4 files | approve/decline ViewProfile verbs gated to applied + EN/IT i18n; full suite 1589/1589, phpstan max 0
+
+## [2026-06-23 23:03] ralph | operator-console-parties-membership 4.1/4.2 | green | ViewProfile activate/suspend/reactivate verbs + EN/IT i18n + ProfileActivationConsoleTest 21/21; suite 1610/1610, PHPStan max 0, Pint clean, validate --strict ok; 6 files
+
+## [2026-06-23 23:18] ralph | operator-console-parties-membership 5.1/5.2 | green | 4 files | lapse/renew/cancel/deactivate on ViewProfile + EN/IT i18n + ProfileLifecycleConsoleTest 24/24; full suite 1634/1634
+
+## [2026-06-23 23:35] ralph | operator-console-parties-membership 6.1/6.2 | green | 4 files | Account suspend/reactivate/close verbs on ViewCustomer + EN/IT i18n + AccountLifecycleConsoleTest; suite 1645/1645, PHPStan max 0
+
+## [2026-06-23 23:44] ralph | operator-console-parties-membership 7.1 | green | 1 file (new ProfileConsoleI18nTest, 80/80) | suite 1725/1725, PHPStan 0, Pint clean, openspec valid
+
+## [2026-06-23 23:56] ralph | operator-console-parties-membership 8.1 | green | 1 file (ProfileMembershipChainTest) — full Profile FSM + orthogonal Account FSM through the pages; SQLite 1726/1726 + PG17 filtered 98 assertions GREEN
+
+## [2026-06-24 00:05] ralph | operator-console-parties-membership 8.2 | green | final gate: pest 1726/1726, phpstan max 0, pint clean, openspec valid; no new Parties Action (D8 whitelist unchanged); patterns consolidated; CHANGE_COMPLETE | 4 files

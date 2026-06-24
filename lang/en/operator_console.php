@@ -749,6 +749,16 @@ return [
             'record_kyc_verified' => 'Record KYC verified',
             'record_kyc_rejected' => 'Record KYC rejected',
             'record_screening' => 'Record sanctions screening',
+            // The Account status-FSM verbs (operator-console-parties-membership, task 6.1) — three form-less,
+            // visibility-gated verbs on ViewCustomer, each routing through a Parties Account action by the
+            // co-provisioned 1:1 Account id: `suspend_account` (SuspendAccount, `active → suspended`),
+            // `reactivate_account` (ReactivateAccount, `suspended → active` — the Account's only `→ active` edge;
+            // there is no ActivateAccount, born active), `close_account` (CloseAccount, `active|suspended → closed`,
+            // terminal). All three are AUDIT-ONLY (§ 15 names no Account event — design L8) and orthogonal to the
+            // Customer status FSM (AC-K-FSM-9). Each routes through a Parties domain action, never a Filament default.
+            'suspend_account' => 'Suspend account',
+            'reactivate_account' => 'Reactivate account',
+            'close_account' => 'Close account',
         ],
 
         // Outcome notifications for the four write-through status verbs + the two Hold-surface verbs
@@ -771,6 +781,12 @@ return [
             'kyc_verified' => 'KYC verified; the customer is reactivated.',
             'kyc_rejected' => 'KYC rejected; the customer stays on hold.',
             'screening_recorded' => 'Sanctions screening recorded.',
+            // The Account status-FSM success titles (operator-console-parties-membership, task 6.1) — the audit-only
+            // Account transitions record no domain event. The shared `action_failed` below covers their domain
+            // rejections too (an out-of-state Account transition — IllegalAccountTransition).
+            'account_suspended' => 'Account suspended.',
+            'account_reactivated' => 'Account reactivated.',
+            'account_closed' => 'Account closed.',
             'action_failed' => 'The action could not be completed.',
         ],
 
@@ -790,6 +806,84 @@ return [
                 'lifted_by' => 'Lifted by',
                 'lifted_at' => 'Lifted at',
             ],
+        ],
+    ],
+
+    // The demand-side MEMBERSHIP console (operator-console-parties-membership) — a standalone read-only
+    // ProfileResource whose list is the cross-Customer approval queue (ProfileResource's i18nKey is `profile`).
+    'profile' => [
+        // The canonical structural domain term — kept verbatim (CONTEXT.md).
+        'label' => 'Profile',
+        'plural_label' => 'Profiles',
+
+        // List-table + view-infolist column labels. `customer` renders the membership's Customer (email + name),
+        // `club` its Club (display name); `state` is the 9-state membership-FSM badge (via the BackedEnum cast);
+        // `version` is the optimistic lock.
+        'columns' => [
+            'customer' => 'Customer',
+            'club' => 'Club',
+            'state' => 'State',
+            'version' => 'Version',
+        ],
+
+        // View-infolist labels for the demand-side lifecycle attributes the list omits + the create-form select
+        // labels. `tier` is the single-tier-at-launch attribute (DEC-062); `lapsed_at` is the grace-window anchor
+        // `LapseProfile` stamps; `cancellation_reason` is the optional Producer-initiated cancellation reason.
+        // `customer` / `club` label the create-form selects (the membership's Customer and its Club).
+        'fields' => [
+            'tier' => 'Tier',
+            'lapsed_at' => 'Lapsed at',
+            'cancellation_reason' => 'Cancellation reason',
+            'customer' => 'Customer',
+            'club' => 'Club',
+        ],
+
+        // The approval-queue tabs on the Profile list: "Pending" (the default — `applied` Profiles awaiting an
+        // approve/decline decision) and "All" (every membership state).
+        'tabs' => [
+            'pending' => 'Pending',
+            'all' => 'All',
+        ],
+
+        // Header / lifecycle action labels. `create` is the list-header link to the write-through create surface;
+        // the membership lifecycle verbs append here across groups 3–5. Group 3 adds the approval pair: `approve`
+        // (`applied → approved`) and `decline` (`applied → rejected`); group 4 adds the status verbs: `activate`
+        // (`approved → active`), `suspend` (`active → suspended`) and `reactivate` (`suspended → active`); group 5 adds
+        // the lapse/renew/terminal verbs: `lapse` (`active → lapsed`), `renew` (`lapsed → active` within grace),
+        // `cancel` (`active|lapsed → cancelled`, audit-only terminal) and `deactivate` (`active → inactive`) — all
+        // form-less ViewProfile header verbs visibility-gated to their from-state (design D4).
+        'actions' => [
+            'create' => 'New Profile',
+            'approve' => 'Approve',
+            'decline' => 'Decline',
+            'activate' => 'Activate',
+            'suspend' => 'Suspend',
+            'reactivate' => 'Reactivate',
+            'lapse' => 'Lapse',
+            'renew' => 'Renew',
+            'cancel' => 'Cancel',
+            'deactivate' => 'Deactivate',
+        ],
+
+        // Outcome notifications for the write-through membership verbs. The success titles confirm the domain
+        // transition; `action_failed` is the shared danger title shown when the domain rejects a transition — its
+        // own localized message (from lang/*/parties.php, e.g. the illegal-from-state text) is rendered as the body,
+        // so the console owns only this title (design D5/D9). Group 3 adds `approved` (the membership application is
+        // approved — the Originating Club locks on the Customer's first-ever approval) and `declined` (the
+        // application is rejected, audit-only); group 4 adds `activated`, `suspended` and `reactivated` (the
+        // status edges); group 5 adds `lapsed`, `renewed`, `cancelled` and `deactivated` (the lapse/renew/terminal
+        // edges) — `action_failed` is reached through the UI only by a past-grace `renew` (design D5).
+        'notifications' => [
+            'approved' => 'Membership approved.',
+            'declined' => 'Membership application declined.',
+            'activated' => 'Membership activated.',
+            'suspended' => 'Membership suspended.',
+            'reactivated' => 'Membership reactivated.',
+            'lapsed' => 'Membership lapsed.',
+            'renewed' => 'Membership renewed.',
+            'cancelled' => 'Membership cancelled.',
+            'deactivated' => 'Membership deactivated.',
+            'action_failed' => 'The action could not be completed.',
         ],
     ],
 
