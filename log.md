@@ -455,3 +455,5 @@
 ## [2026-06-21 11:28] ralph | operator-console-parties-supply-side 11.1 | green | 1 file (ProducerAgreementConsoleChainTest) | CHANGE COMPLETE 19/19 | SQLite 1325 + PG17 202 green
 
 ## [2026-06-21 20:44] close-ritual | operator-console-parties-supply-side | PG17 full suite 1325/1325 green; semantic-verify 0 CRITICAL (faithful to delta spec); merged --no-ff to main + archived (4 reqs -> living operator-console spec, 19 total). Push to origin/main deferred to human (classifier-gated); local ralph branch retained.
+
+## [2026-06-29 06:08] dreaming | since 2026-06-16 (8 archived changes) | 2 promoted (data-model spine-template, testing glob-absence), 1 new testing rule (PHPStan-max trap family), 1 rule confirmed (Pint {@see}); 0 lessons, 0 demotions, 2 flags proposed
