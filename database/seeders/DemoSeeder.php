@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Catalog\Actions\CreateProductMaster;
+use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Enums\ProducerProjectionStatus;
 use App\Modules\Catalog\Enums\ProductType;
@@ -13,6 +15,7 @@ use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Models\SellableSku;
+use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\AccountStatus;
 use App\Modules\Parties\Enums\AccountType;
 use App\Modules\Parties\Enums\ClubCreditState;
@@ -38,6 +41,7 @@ use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
 use App\Modules\Parties\Models\Profile;
 use App\Modules\Parties\Models\Supplier;
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\I18n\SupportedLocale;
 use App\Platform\I18n\TranslatableText;
@@ -47,6 +51,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
 /**
  * Curated DEMO fixture for Module 0 (Catalog/PIM) and Module K (Parties) — a
@@ -54,27 +59,57 @@ use Illuminate\Support\Facades\Schema;
  * the relationships between them legible for a stakeholder walkthrough.
  *
  * NOT a spec artifact and NOT part of the bootstrap {@see DatabaseSeeder} (which
- * seeds only roles + the env-driven operator). It is opt-in demo tooling:
+ * seeds only roles + the single env-driven operator). It is opt-in demo tooling that
+ * SELF-PROVISIONS a complete walkable environment — it chains {@see RoleSeeder} +
+ * {@see OperatorDemoSeeder} (the ≥2 distinct operator logins the SoD / rejection
+ * walkthroughs need, RM-07) before seeding data, so one command stands up the demo:
  *
  *   php artisan db:seed --class=Database\\Seeders\\DemoSeeder
  *
- * Construction is DIRECT (plain `create()` + explicit lifecycle states), bypassing
- * the Create/Activate domain actions on purpose: the real activation path runs the
- * shared LifecycleTransition with Creator → Reviewer → Approver separation-of-duties
- * (distinct operator principals per transition) and the producer/cascade gates —
- * correct for production, but disproportionate for seeding a presentation. Direct
- * rows let the data read like real wine (DRC, Margaux, Krug…) and let the
- * lifecycle/status columns show a deliberate spread (mostly active, a few in-pipeline
- * and terminal states). No domain events or audit records are emitted as a result.
+ * Refuses to run in production: it truncates real business tables (customers, catalog)
+ * and the platform event/audit log below, so it fails closed outside a demo database.
  *
- * Re-runnable: it truncates the demo-owned tables first (operators, roles and the
- * platform event/audit log are left untouched), so it can be run repeatedly while
- * iterating on the demo.
+ * The BULK of the data is built DIRECT (plain `create()` + explicit lifecycle states),
+ * bypassing the domain actions on purpose: the real activation path runs the shared
+ * LifecycleTransition with Creator → Reviewer → Approver separation-of-duties (distinct
+ * operator principals per transition) and the producer/cascade gates — correct for
+ * production, but disproportionate for seeding dozens of rows. Direct rows let the data
+ * read like real wine (DRC, Margaux, Krug…) with a deliberate lifecycle/status spread
+ * (mostly active, a few in-pipeline and terminal) and emit NO events or audit records.
+ *
+ * The ONE exception is the SoD / rejection walkthrough fixture (@see seedSodReviewScenario):
+ * a single Master built through the REAL Catalog actions so it carries genuine
+ * creator/reviewer lineage — a directly-seeded `reviewed` row has none, so a distinct-actor
+ * activation would pass vacuously and prove nothing.
+ *
+ * Re-runnable: {@see reset()} truncates the demo-owned tables AND the platform event/audit
+ * log (so the fixture's lineage events are deterministic on every run); operators and roles
+ * are NOT truncated but re-seeded idempotently. Run it repeatedly while iterating on the demo.
  */
 class DemoSeeder extends Seeder
 {
+    /**
+     * The name of the SoD / rejection walkthrough fixture Master ({@see seedSodReviewScenario}). A public
+     * constant so tests resolve the fixture by a single source of truth rather than a duplicated literal.
+     */
+    public const SOD_FIXTURE_MASTER_NAME = 'Échézeaux Grand Cru';
+
     public function run(): void
     {
+        // A demo fixture must NEVER touch a production database: it truncates real business tables and the
+        // platform event/audit log. Fail closed outside a demo environment.
+        if (app()->environment('production')) {
+            throw new RuntimeException('DemoSeeder must not run in production — it truncates business data.');
+        }
+
+        // Self-provision the walkable environment: roles + the ≥2 distinct operator logins the SoD / rejection
+        // walkthroughs need (RM-07). RoleSeeder BEFORE OperatorDemoSeeder so the role grants resolve; both are
+        // idempotent and left untouched by reset(), so re-running the demo keeps the same logins.
+        $this->call([
+            RoleSeeder::class,
+            OperatorDemoSeeder::class,
+        ]);
+
         $this->reset();
 
         // --- Module K (Parties) — supply + demand side --------------------------
@@ -97,18 +132,27 @@ class DemoSeeder extends Seeder
         $this->seedSellableSkus($references, $cases);
         $this->seedCompositeSkus($references);
 
+        // SoD / rejection walkthrough fixture — a reviewable Master with REAL creator/reviewer lineage,
+        // built last so its producer projection (seedProducerStates) already exists (RM-07).
+        $this->seedSodReviewScenario($producers);
+
         $this->summarize();
     }
 
     /**
-     * Empty the demo-owned tables so the seeder is idempotent. FK checks are lifted
-     * for the truncate sweep (the order would otherwise matter); the platform event
-     * store, audit log, operators and roles are intentionally NOT cleared.
+     * Empty the demo-owned tables so the seeder is idempotent. FK checks are lifted for the truncate sweep
+     * (the order would otherwise matter). The platform event store + audit log ARE cleared so the SoD
+     * fixture's lineage events ({@see seedSodReviewScenario}) are deterministic on every run (safe: the
+     * production guard in {@see run()} keeps this off any real event store). Operators and roles are NOT
+     * truncated — they are re-seeded idempotently by the chained RoleSeeder + OperatorDemoSeeder.
      */
     private function reset(): void
     {
         Schema::withoutForeignKeyConstraints(function (): void {
             foreach ([
+                // Platform log (demo-only: the fixture's own events/audit; cleared for a deterministic re-run).
+                'domain_events',
+                'audit_records',
                 // Catalog (children first is irrelevant under disabled FK checks).
                 'catalog_composite_sku_constituents',
                 'catalog_composite_skus',
@@ -813,6 +857,47 @@ class DemoSeeder extends Seeder
     }
 
     /**
+     * The SoD / rejection walkthrough fixture (RM-07): ONE Product Master built through the REAL Catalog
+     * domain actions, so it carries genuine creator/reviewer lineage — the Catalog `ApprovalGovernance` floor
+     * reads the creator from the entity's `ProductMasterCreated` event and the reviewer from its submit audit
+     * row. Created as `creator@newco.test`, submitted as `reviewer@newco.test`, left in `reviewed`; only a
+     * DISTINCT third operator (`approver@newco.test`) can then activate it — the self-approval block Paolo's
+     * walkthrough proves. A directly-seeded `reviewed` row would carry no lineage, so any actor could activate
+     * it and the SoD floor would prove nothing.
+     *
+     * Placed under an active-projected producer (DRC) with an identity distinct from the direct-seeded Masters,
+     * so the create-time BR-Identity-1 dedup passes and a live activation clears the producer gate. A seeder
+     * has no authenticated operator guard, so actor provenance is supplied via {@see ActorContext::runAs()}.
+     *
+     * @param  array<string, Producer>  $producers
+     */
+    private function seedSodReviewScenario(array $producers): void
+    {
+        $actor = app(ActorContext::class);
+        $producerId = $producers['drc']->id;
+
+        // firstOrFail (not value('id')): reads the typed `int` primary key and guarantees the chained
+        // OperatorDemoSeeder actually provisioned the persona — a missing login fails loud, never actor_id 0.
+        $creatorId = Operator::query()->where('email', 'creator@newco.test')->firstOrFail()->id;
+        $reviewerId = Operator::query()->where('email', 'reviewer@newco.test')->firstOrFail()->id;
+
+        // Create as the creator (records ProductMasterCreated with the creator's actor_id), then submit as a
+        // DISTINCT reviewer (records the draft → reviewed audit row with the reviewer's actor_id).
+        $master = $actor->runAs(ActorRole::NewcoOps, $creatorId, fn () => app(CreateProductMaster::class)->handle(
+            name: self::SOD_FIXTURE_MASTER_NAME,
+            producerId: $producerId,
+            appellation: 'Échézeaux',
+            region: 'Côte de Nuits',
+            wineryStory: TranslatableText::of([
+                'en' => 'Grand Cru neighbour of the DRC monopoles — the reviewable fixture for the approval walkthrough.',
+                'it' => 'Grand Cru confinante con i monopoli DRC — la scheda in revisione per il walkthrough di approvazione.',
+            ]),
+        ));
+
+        $actor->runAs(ActorRole::NewcoOps, $reviewerId, fn () => app(SubmitProductMasterForReview::class)->handle($master));
+    }
+
+    /**
      * Print a row-count summary (the seeder is always driven by the `db:seed`
      * command, which injects `$this->command`).
      */
@@ -822,6 +907,7 @@ class DemoSeeder extends Seeder
         $this->command->table(
             ['Table', 'Rows'],
             [
+                ['Operators (logins)', (string) Operator::query()->count()],
                 ['Producers', (string) Producer::query()->count()],
                 ['Clubs', (string) Club::query()->count()],
                 ['Producer agreements', (string) ProducerAgreement::query()->count()],

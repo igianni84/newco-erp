@@ -15,8 +15,8 @@
 
 ## §1 Now / Next
 
-- **In progress:** _(none yet — tracker just created)_
-- **Recommended next:** **RM-07** (seed ≥2 operators — unblocks every walkthrough) → **RM-04** (Hold enum 6→8) → **RM-09** (reconcile ADR overclaim). All small, high-leverage, make the demo real + honest.
+- **Done & reviewed:** **RM-07** ✅ — Giovanni approved (2026-07-01): operators live in the **demo path** (not the production bootstrap), and the `reset()` event/audit-log truncation is OK. SoD / rejection walkthroughs are walkable in the console.
+- **Active next:** **RM-04** (Hold enum 6→8 + mini-ADR adopting DEC-008) → **RM-09** (reconcile ADR overclaim) → **RM-10** (ClubCredit event rename) → **RM-24** (Product-Type immutability). All small, high-leverage.
 - **Overall goal:** clear **Round 1** entirely + at least start **RM-01** (GDPR erasure) before Paolo.
 
 ---
@@ -43,7 +43,7 @@
 | RM-04 | P1 canon | Hold enum 6→8 (+ lift discipline for the 2 new) | K FSM-10/11, EVT-18/19, MVP-2; DEC-008 | mini | S | 🔴 |
 | RM-05 | P1 canon | Hero-Package capacity seat-set (Active+Suspended) + WaitingList | K J-13/14/15, XM-18/19, FSM-2; DEC-011/017 | **yes** | L | ⏸️ (Module A qty) |
 | RM-06 | P1 canon | PIM reject/edit review-freshness + explicit re-submit | 0 J-7, BR-Lifecycle-6; DEC-019 | — | M | 🔴 |
-| RM-07 | P2 demo | Seed ≥2 operators + chain DemoSeeder + scenario data | env #2 (SoD demo) | — | S | 🔴 |
+| RM-07 | P2 demo | Seed ≥2 operators + chain DemoSeeder + scenario data | env #2 (SoD demo) | — | S | ✅ |
 | RM-08 | P2 demo | Separation-of-duties on Parties approval (Producer + membership) | K J-10 | — | M | 🔴 |
 | RM-09 | P2 honesty | Reconcile identity-auth ADR erasure overclaim | ADR consistency | **yes** | S | 🔴 |
 | RM-10 | P2 canon | ClubCredit issuance event `Issued`→`Accrued` vocab | K J-16, EVT-16; DEC-018 | — | S | 🔴 |
@@ -116,11 +116,17 @@
 
 ### P2 — Demo-enablement + honesty
 
-#### RM-07 — Seed ≥2 operators + chain DemoSeeder + scenario data  ·  S  ·  🔴
+#### RM-07 — Seed ≥2 operators + chain DemoSeeder + scenario data  ·  S  ·  ✅
 - **Fixes:** env ask #2 (SoD needs distinct actors; every walkthrough needs seeded data).
 - **Why:** only 1 operator is seeded and there's no supported way to add a 2nd → the single operator can't approve its own entities. DemoSeeder isn't chained + seeds no operators.
 - **Scope:** extend `OperatorSeeder`/`DemoSeeder` to create 2–3 operators with distinct emails (optionally distinct roles); seed a rejectable PIM entity + (post RM-05) a near-capacity Club + (post RM-01) an erasable Customer.
 - **Done when:** `db:seed` yields ≥2 operators; the reject→distinct-actor-activate walkthrough runs in the console end-to-end. **Highest leverage — do first.**
+- **✅ Done (2026-07-01):**
+  - **New `OperatorDemoSeeder`** — 3 distinct role-segmented logins (`creator@` / `reviewer@` / `approver@ newco.test`, pw `password`), each granted its single authority-tier role on the `operator` guard; idempotent (`updateOrCreate` + `syncRoles`).
+  - **`DemoSeeder` now self-provisions** the walkable env: chains `RoleSeeder` + `OperatorDemoSeeder`, **production-guarded** (aborts — it truncates business tables), and its `reset()` now also clears the event/audit log so the fixture's lineage is deterministic on re-run.
+  - **Real-lineage SoD fixture** (`seedSodReviewScenario`): a `reviewed` Product Master ("Échézeaux Grand Cru", under active-projected DRC) built through the **real** `CreateProductMaster`→`SubmitProductMasterForReview` actions via `ActorContext::runAs`, so the creator/reviewer lineage is genuine — a direct-`create()`d row would let *any* actor activate and prove nothing. Creator/reviewer are used up → only the distinct `approver@` can activate; the creator is blocked (self-approval).
+  - **Evidence:** `tests/Feature/OperatorDemoSeederTest.php` (3) + `tests/Feature/DemoSeederTest.php` (5, incl. **console** distinct-actor activate + rejection-with-notes, and the domain self-approval block). Suite **1761/1761**, PHPStan clean, Pint clean.
+  - **Design decisions (reviewed & approved by Giovanni 2026-07-01):** (1) the ≥2 operators live in the **demo path** (`db:seed --class=DemoSeeder`), NOT the production bootstrap `DatabaseSeeder` (which stays the single env-driven operator) — per README §Recommendations "seed 2–3 operators + chain DemoSeeder". (2) `reset()` now truncates the event/audit log for a deterministic re-run — accepted, made safe by the production guard. (3) The near-capacity Club (RM-05) + erasable Customer (RM-01) scenario data are deferred to those items (blocked/unbuilt features), as the tracker scopes them "post RM-05 / post RM-01".
 
 #### RM-08 — Separation-of-duties on Parties approval  ·  M  ·  🔴
 - **Fixes:** K `J-10` (Producer onboarding); membership approval.
@@ -162,3 +168,4 @@
 
 ## §6 Session Log (append one line per work session; newest last)
 - **2026-07-01** — Tracker created from the Module 0 & K verdict reports. 25 items catalogued; Round 1/2 plan set. Nothing started yet. Next: RM-07.
+- **2026-07-01** — **RM-07 ✅** (TDD). `OperatorDemoSeeder` (3 distinct role-segmented logins) + `DemoSeeder` self-provisions (chains Role+OperatorDemo), production-guarded, resets event/audit log, and stands up a real-lineage SoD fixture Master via the actual Catalog actions. 8 new tests (incl. console distinct-actor activate + rejection). Suite 1761/1761, PHPStan/Pint clean. Awaiting review → next RM-04.
