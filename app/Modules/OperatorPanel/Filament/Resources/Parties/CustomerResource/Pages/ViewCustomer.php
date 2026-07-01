@@ -317,8 +317,9 @@ class ViewCustomer extends ViewRecord
     }
 
     /**
-     * The `hold_type` Select options — the six {@see HoldType} operand-enum tokens keyed value → value (the
-     * resource's currency/locale-code Selects precedent: domain data, not UI chrome, so no per-value i18n key).
+     * The `hold_type` Select options — the eight {@see HoldType} operand-enum tokens keyed value → value (canon
+     * DEC-008; derived from HoldType::cases(), so the two finance-driven types are offered automatically). The
+     * resource's currency/locale-code Selects precedent: domain data, not UI chrome, so no per-value i18n key.
      *
      * @return array<string, string>
      */

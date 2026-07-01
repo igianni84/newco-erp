@@ -153,9 +153,10 @@ it('treats a null or non-passed sanctions_status as not clear even with no Hold'
     'under_review' => SanctionsStatus::UnderReview,
 ]);
 
-it('reports each of the six Hold types through the read-API as a not-clear scope', function (HoldType $type) {
+it('reports each of the eight Hold types through the read-API as a not-clear scope', function (HoldType $type) {
     // Every Hold type makes a sanctions-passed Customer not clear — the read-API is type-agnostic (the blocking
-    // is the downstream surface's; the read-API only reports the active types).
+    // is the downstream surface's; the read-API only reports the active types). Covers the two DEC-008 finance-driven
+    // types too (chargeback_review, storage_payment_failed — ADR 2026-07-01): an active Hold of any type is reported.
     $customer = Customer::factory()->create(['sanctions_status' => SanctionsStatus::Passed]);
     Hold::factory()->create([
         'hold_type' => $type,
@@ -174,6 +175,8 @@ it('reports each of the six Hold types through the read-API as a not-clear scope
     'fraud' => HoldType::Fraud,
     'compliance' => HoldType::Compliance,
     'credit' => HoldType::Credit,
+    'chargeback_review' => HoldType::ChargebackReview,
+    'storage_payment_failed' => HoldType::StoragePaymentFailed,
 ]);
 
 it('returns the DISTINCT type once when a scope carries multiple active Holds of one type', function () {

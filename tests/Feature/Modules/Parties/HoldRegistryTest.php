@@ -26,8 +26,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *
  *   - a scope MAY carry MULTIPLE concurrent `active` Holds, and lifting one leaves the others active — the scope is
  *     not single-Hold (§ 4.8.1 / § 14.8 BR-K-Hold-1 / AC-K-BR-Hold-1; any one Hold blocks independently);
- *   - the registry is TRIGGER-AGNOSTIC with a manual-placement path for every one of the six types, on every one
- *     of the three scopes (§ 4.8 / § 4.8.1 / AC-K-MVP-2) — recorded identically regardless of type or scope;
+ *   - the registry is TRIGGER-AGNOSTIC with a manual-placement path for every one of the eight types (canon DEC-008 —
+ *     the six § 4.8 types + the two finance-driven types §4.8.1/§15.8 name), on every one of the three scopes
+ *     (§ 4.8 / § 4.8.1 / AC-K-MVP-2) — recorded identically regardless of type or scope;
  *   - the SCOPE GUARD under the Hold→`suspended` coupling (task 4.1): opening KYC (a real compliance transition)
  *     moves the KYC FSM but NEVER the status FSM, and placing a Hold on a NON-suspendable birth-state scope (a
  *     `pending` Customer, an `applied` Profile) records the Hold and drives NO status transition; a Hold on the
@@ -84,9 +85,12 @@ it('records multiple concurrent active Holds on one scope and lifting one leaves
         ->and(Hold::findOrFail($admin->id)->status)->toBe(HoldStatus::Lifted);
 });
 
-it('places a Hold of each of the six types via the manual operator path', function (HoldType $type) {
-    // The registry is trigger-agnostic: every one of the six types is placeable through the manual operator path
+it('places a Hold of each of the eight types via the manual operator path', function (HoldType $type) {
+    // The registry is trigger-agnostic: every one of the eight types is placeable through the manual operator path
     // and recorded identically — no automatic upstream trigger is required for the record to exist (AC-K-MVP-2).
+    // This covers the two DEC-008 finance-driven types too (ADR 2026-07-01): their upstream consumers
+    // (CustomerChargebackFlagged / StoragePaymentFailed) are unwired Module-E seams, but the manual path places them
+    // now — the launch path for `storage_payment_failed` (operator-placed, manual-first D4 — AC-AP-CON-FO-2).
     $customer = Customer::factory()->create();
 
     $hold = app(PlaceHold::class)->handle($type, HoldScope::Customer, $customer->id);
@@ -103,6 +107,8 @@ it('places a Hold of each of the six types via the manual operator path', functi
     'fraud' => HoldType::Fraud,
     'compliance' => HoldType::Compliance,
     'credit' => HoldType::Credit,
+    'chargeback_review' => HoldType::ChargebackReview,
+    'storage_payment_failed' => HoldType::StoragePaymentFailed,
 ]);
 
 it('places a Hold on each of the three scopes — customer, account and profile', function () {

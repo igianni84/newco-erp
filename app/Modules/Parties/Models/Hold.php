@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Hold — NewCo's unified, trigger-agnostic account-restriction primitive (parties-holds, design L1/L3;
  * party-registry — Requirement: Hold Registry, Hold Lifecycle and Lift Discipline). A Hold carries a
- * {@see HoldType} (one of `admin/kyc/payment/fraud/compliance/credit`), a polymorphic scope (`scope_type`
+ * {@see HoldType} (one of the eight types — `admin/kyc/payment/fraud/compliance/credit` + the two DEC-008
+ * finance-driven types `chargeback_review/storage_payment_failed`), a polymorphic scope (`scope_type`
  * {@see HoldScope} + a `scope_id` within-module reference, no DB FK — design L1), an `active | lifted`
  * lifecycle ({@see HoldStatus}, born `active`), and placement + lift audit metadata. Module K is the
  * registry-of-record (DEC-168); a scope may carry multiple concurrent `active` Holds (BR-K-Hold-1).

@@ -617,3 +617,7 @@
 ## [2026-07-01 20:04] push | RM-07 + validation docs -> origin/main | feat 5b64cc8 (RM-07 seeders/tests + tracker) + e38f346 (Module 0/K verdict reports + tracker) pushed to origin/main. Close ritual. Noted: DemoSeeder reset() is SQLite-only (PG TRUNCATE rejects FK-referenced tables) — pre-existing, not RM-07.
 
 ## [2026-07-01 20:11] findings | Remediation_Tracker §7 | Added §7 Incidental Findings (convention + legend). F1 DemoSeeder SQLite-only (PG TRUNCATE rejects FK-referenced tables); F2 prod operator-mgmt missing → SoD unsatisfiable in prod. Pointers in §1 + hot.md. Convention: log incidental discoveries in §7, don't drop.
+
+## [2026-07-01 20:47] RM-04 | Parties HoldType 6→8 (DEC-008) | Canon DEC-008: HoldType 6→8 (+chargeback_review +storage_payment_failed, operator-lift-only); mini-ADR+INDEX; CHECK derives from cases(); consumers unwired (Module-E seam). Suite 1767/1767, PHPStan/Pint green. Awaiting review, uncommitted.
+
+## [2026-07-01 20:56] RM-04 | review close | Giovanni reviewed & approved RM-04 (storage_payment_failed = manual-first at launch confirmed). Tracker + hot.md marked done-reviewed. Committing feat + pushing to origin/main.

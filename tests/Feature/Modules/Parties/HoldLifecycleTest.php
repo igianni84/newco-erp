@@ -172,8 +172,12 @@ it('lifts an active admin Hold recording the lift actor, moment and reason, and 
 
 it('lifts every operator-liftable Hold type, recording one CustomerHoldLifted each', function (HoldType $type) {
     // The spec scenario "An operator lifts an operator-liftable Hold" names `admin` (resp. `fraud`, `compliance`,
-    // `credit`); the detailed assertions ride the `admin` case above, so this pins the other three operator-liftable
-    // types lift freely too (null reason — the system-placement shape).
+    // `credit`); the detailed assertions ride the `admin` case above, so this pins the other operator-liftable types
+    // lift freely too (null reason — the system-placement shape). Includes the two DEC-008 finance-driven types
+    // (`chargeback_review`, `storage_payment_failed` — ADR 2026-07-01): both are operator-lift-only (chargeback is
+    // resolved by operator dispute review; storage-payment is manual-first at launch — the operator places AND lifts
+    // it, D4), so the operator LiftHold path clears them exactly like the four §4.8 operator-lift types — NOT rejected
+    // as auto-managed the way `kyc`/`payment` are (the sibling reject test below).
     $customer = Customer::factory()->create();
     $placed = app(PlaceHold::class)->handle($type, HoldScope::Customer, $customer->id);
 
@@ -186,6 +190,8 @@ it('lifts every operator-liftable Hold type, recording one CustomerHoldLifted ea
     'fraud' => HoldType::Fraud,
     'compliance' => HoldType::Compliance,
     'credit' => HoldType::Credit,
+    'chargeback_review' => HoldType::ChargebackReview,
+    'storage_payment_failed' => HoldType::StoragePaymentFailed,
 ]);
 
 it('rejects an operator-lift of an auto-managed Hold type, leaving it active with no lift event', function (HoldType $type) {

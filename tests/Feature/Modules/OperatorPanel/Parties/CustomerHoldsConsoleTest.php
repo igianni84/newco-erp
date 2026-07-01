@@ -118,7 +118,7 @@ it('renders Holds across the customer, account and profile scopes read-only (no 
         ->assertTableActionDoesNotExist('delete', record: $customerHold);
 });
 
-it('exposes the placeHold form with the six Hold types, three scopes and a profile field gated on a profile-scope Hold', function () {
+it('exposes the placeHold form with the eight Hold types, three scopes and a profile field gated on a profile-scope Hold', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     // A Customer with one Club-membership Profile so the profile-scope branch resolves a real option
@@ -130,7 +130,7 @@ it('exposes the placeHold form with the six Hold types, three scopes and a profi
         // placeHold is a HEADER action on the page (task 3.1), targeting the page's Customer — mount it to inspect
         // its form schema (the form only collects here; the write-through into PlaceHold lands in task 3.2).
         ->mountAction('placeHold')
-        // hold_type exposes EXACTLY the six HoldType operand-enum tokens (value-keyed, in enum order).
+        // hold_type exposes EXACTLY the eight HoldType operand-enum tokens (value-keyed, in enum order; canon DEC-008).
         ->assertFormFieldExists('hold_type', fn (Select $field): bool => array_keys($field->getOptions())
             === array_map(static fn (HoldType $type): string => $type->value, HoldType::cases()))
         // scope_type exposes EXACTLY the three HoldScope tokens.

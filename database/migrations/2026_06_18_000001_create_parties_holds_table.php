@@ -15,8 +15,11 @@ return new class extends Migration
     /**
      * `parties_holds` — NewCo's unified, trigger-agnostic Hold registry (parties-holds, design L1;
      * party-registry — Requirement: Hold Registry). A Hold is the single account-restriction primitive that
-     * gates commercial activity (Module K PRD § 4.8): one `hold_type` from the six-value domain
-     * `admin/kyc/payment/fraud/compliance/credit`, a polymorphic scope, an `active | lifted` lifecycle (born
+     * gates commercial activity (Module K PRD § 4.8): one `hold_type` from the eight-value domain
+     * `admin/kyc/payment/fraud/compliance/credit` + the two DEC-008 finance-driven types
+     * `chargeback_review/storage_payment_failed` (§4.8.1/§15.8; the CHECK below derives from HoldType::cases(), so it
+     * regenerates to eight on a fresh migrate — no ALTER; ADR 2026-07-01-adopt-dec-008-hold-types-8), a polymorphic
+     * scope, an `active | lifted` lifecycle (born
      * `active`), and placement + lift audit metadata. Module K is the registry-of-record (DEC-168); the
      * placement triggers for `payment`/`fraud`/`compliance`/`credit` are deferred Module-E/S seams — the record
      * is identical regardless of how it was triggered.

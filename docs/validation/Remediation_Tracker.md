@@ -16,8 +16,9 @@
 
 ## §1 Now / Next
 
-- **Done & reviewed:** **RM-07** ✅ — Giovanni approved (2026-07-01): operators live in the **demo path** (not the production bootstrap), and the `reset()` event/audit-log truncation is OK. SoD / rejection walkthroughs are walkable in the console.
-- **Active next:** **RM-04** (Hold enum 6→8 + mini-ADR adopting DEC-008) → **RM-09** (reconcile ADR overclaim) → **RM-10** (ClubCredit event rename) → **RM-24** (Product-Type immutability). All small, high-leverage.
+- **Done & reviewed:** **RM-07** ✅ (Giovanni approved 2026-07-01, `5b64cc8`) — operators in the demo path; `reset()` event/audit-log truncation OK.
+- **Done & reviewed:** **RM-04** ✅ (Giovanni approved 2026-07-01) — Hold enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only) + mini-ADR adopting DEC-008. Consumers unwired (Module-E seam). Suite 1767/1767, PHPStan/Pint clean. **Committed + pushed.**
+- **Active next:** **RM-09** (reconcile identity-auth ADR erasure overclaim) → **RM-10** (ClubCredit event rename `Issued`→`Accrued`) → **RM-24** (Product-Type immutability). All small, high-leverage.
 - **Overall goal:** clear **Round 1** entirely + at least start **RM-01** (GDPR erasure) before Paolo.
 - **Open incidental findings (§7):** **F1** DemoSeeder SQLite-only (PG-truncate) · **F2** prod operator-mgmt missing → SoD unsatisfiable in prod. Neither blocks the pre-Paolo demo; tracked so a later step picks them up.
 
@@ -42,7 +43,7 @@
 | RM-01 | P0 floor | GDPR erasure / anonymisation + Address entity | K J-9, J-9a, FSM-16, BR-Customer-2; canon J-9b, DEC-015 | — | L | 🔴 |
 | RM-02 | P0 floor | Enhanced-KYC €10k/€50k threshold + review-queue | K J-7a, EVT-12a | — | M | 🔴 |
 | RM-03 | P1 canon | Membership charge-on-approval (collapse "approved-but-unpaid") | K J-16, J-1/2/3, EVT-15, FSM-2; DEC-016 | **yes** | L | 🔴 |
-| RM-04 | P1 canon | Hold enum 6→8 (+ lift discipline for the 2 new) | K FSM-10/11, EVT-18/19, MVP-2; DEC-008 | mini | S | 🔴 |
+| RM-04 | P1 canon | Hold enum 6→8 (+ lift discipline for the 2 new) | K FSM-10/11, EVT-18/19, MVP-2; DEC-008 | mini | S | ✅ |
 | RM-05 | P1 canon | Hero-Package capacity seat-set (Active+Suspended) + WaitingList | K J-13/14/15, XM-18/19, FSM-2; DEC-011/017 | **yes** | L | ⏸️ (Module A qty) |
 | RM-06 | P1 canon | PIM reject/edit review-freshness + explicit re-submit | 0 J-7, BR-Lifecycle-6; DEC-019 | — | M | 🔴 |
 | RM-07 | P2 demo | Seed ≥2 operators + chain DemoSeeder + scenario data | env #2 (SoD demo) | — | S | ✅ |
@@ -93,11 +94,18 @@
 - **Done when:** ADR merged; no durable `approved`-unpaid state; approval atomically activates (charge-failure → not activated, no seat consumed); tests updated.
 - **Depends on:** interacts with RM-05 (capacity enforced "at the atomic approve moment").
 
-#### RM-04 — Hold enum 6→8 + lift discipline  ·  S · mini-ADR ·  🔴
+#### RM-04 — Hold enum 6→8 + lift discipline  ·  S · mini-ADR ·  ✅
 - **Fixes:** K `FSM-10/11`, `EVT-18/19`, `MVP-2`; **`DEC-008`**.
 - **Why:** enum is 6 (`toHaveCount(6)`); canon = 8 (+ `CHARGEBACK_REVIEW`, `STORAGE_PAYMENT_FAILED`). Cheap, unblocks RM-01's block-set + the chargeback/storage seams.
 - **Scope:** add 2 enum cases + migration CHECK regen + per-type lift discipline (both manual-lift, finance-driven); consumers (`CustomerChargebackFlagged`, `StoragePaymentFailed`) stay unwired until Module E — note the seam.
 - **Done when:** enum = 8, `toHaveCount(8)`, lift-discipline tests for the 2 new types; erasure block-set (RM-01) reads the 8-type set.
+- **✅ Done (2026-07-01):**
+  - **Mini-ADR** [`decisions/2026-07-01-adopt-dec-008-hold-types-8.md`](../../decisions/2026-07-01-adopt-dec-008-hold-types-8.md) (+ `decisions/INDEX.md`): local adoption of canon DEC-008. Records the spec self-contradiction (§4.8 says "six" but §4.8.1/§15.8 name the two finance-driven types — issue #2), the manual-lift decision for both new types (with the `storage_payment_failed` auto-lift-vs-manual-first reasoning — D4/`AC-AP-CON-FO-2`), and why no ALTER migration ships (the CHECK derives from `HoldType::cases()`; additive-only pre-prod, no PG env — §7 F1). Extends [[decisions/2026-06-18-hold-lift-discipline-per-type]] (operator-lift-only 4 → 6).
+  - **Enum** `HoldType.php`: `+ChargebackReview ('chargeback_review')`, `+StoragePaymentFailed ('storage_payment_failed')` — appended last; `autoLiftable()` body unchanged (`Kyc || Payment`), so both new types fall through to operator-lift-only. Docblock updated 6→8 + the unwired Module-E consumer seam noted.
+  - **Migration CHECK**: no code change needed — `parties_holds_hold_type_check` derives from `HoldType::cases()`, so a fresh migrate emits 8 tokens (docblock prose 6→8). SQLite (test engine) skips the CHECK; the enum cast carries the floor.
+  - **Consumers unwired** (seam only, per scope): no `CustomerChargebackFlagged` / `StoragePaymentFailed` listener — deferred to Module E; the trigger-agnostic registry + manual `PlaceHold`/`LiftHold` paths ship correct for all 8 now.
+  - **Evidence:** `HoldEnumsTest` (`toHaveCount(8)` + 8-map + autoLiftable truth-table +2 = false); **lift-discipline** `HoldLifecycleTest` "lifts every operator-liftable Hold type" provider extended 3 → 5 (the 2 new types lift via the operator path, NOT rejected as auto-managed); `HoldRegistryTest` (manual-placement provider 6 → 8), `ComplianceReadApiTest` (read-API not-clear provider 6 → 8), `CustomerHoldsConsoleTest` prose (placeHold form self-derives from `cases()` → 8). Docblocks updated in `Hold.php` + `ViewCustomer::holdTypeOptions()`. Suite **1767/1767** (+6), PHPStan 0, Pint clean.
+  - **Downstream:** RM-01 (GDPR erasure) block-set now reads the 8-type set (DEC-015: only `compliance` blocks).
 
 #### RM-05 — Hero-Package capacity seat-set + WaitingList  ·  L · needs ADR ·  ⏸️ (Module A)
 - **Fixes:** K `J-13/14/15`, `XM-18/19`, `FSM-2` (`Applied→WaitingList`); **`DEC-011/017`**.
@@ -171,6 +179,7 @@
 ## §6 Session Log (append one line per work session; newest last)
 - **2026-07-01** — Tracker created from the Module 0 & K verdict reports. 25 items catalogued; Round 1/2 plan set. Nothing started yet. Next: RM-07.
 - **2026-07-01** — **RM-07 ✅** (TDD). `OperatorDemoSeeder` (3 distinct role-segmented logins) + `DemoSeeder` self-provisions (chains Role+OperatorDemo), production-guarded, resets event/audit log, and stands up a real-lineage SoD fixture Master via the actual Catalog actions. 8 new tests (incl. console distinct-actor activate + rejection). Suite 1761/1761, PHPStan/Pint clean. Reviewed & approved by Giovanni; committed+pushed (`5b64cc8`). Next RM-04.
+- **2026-07-01** — **RM-04 ✅** (TDD, mini-ADR). Adopted canon DEC-008: `HoldType` enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only — the spec's own §4.8.1/§15.8 already named them; §4.8 "six" was the flagged self-contradiction). Mini-ADR `2026-07-01-adopt-dec-008-hold-types-8` + INDEX. `autoLiftable()` unchanged; migration CHECK derives from `cases()` (no ALTER — additive-only pre-prod). Consumers unwired (Module-E seam). Tests: `HoldEnumsTest` count/map/truth-table; **lift-discipline** `HoldLifecycleTest` provider 3→5; `HoldRegistryTest`/`ComplianceReadApiTest` 6→8; console prose. Suite 1767/1767 (+6), PHPStan 0, Pint clean. Reviewed & approved by Giovanni; committed + pushed. Next RM-09.
 
 ---
 
