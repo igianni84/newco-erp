@@ -7,7 +7,7 @@ updated: 2026-07-01
 # Hot Cache
 
 ## Last Updated
-**2026-07-01 — Compliance-remediation Round 1 underway (pre-Paolo). RM-07 ✅ + RM-04 ✅ both reviewed & pushed.** The Module 0 & K verdict reports live in **`docs/validation/`**; the live backlog is **`Remediation_Tracker.md`**. RM-04 adopted canon DEC-008: `HoldType` enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only) + mini-ADR. Driven by Paolo Alfieri's 2026-07-01 mail. **Pushed to origin/main** — RM-07 `5b64cc8` + validation `e38f346`; RM-04 feat + close-ritual (hashes in log.md).
+**2026-07-01 — Compliance-remediation Round 1 underway (pre-Paolo). RM-07 ✅ + RM-04 ✅ both reviewed & pushed.** The Module 0 & K verdict reports live in **`docs/validation/`**; the live backlog is **`Remediation_Tracker.md`**. RM-04 adopted canon DEC-008: `HoldType` enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only) + mini-ADR. Driven by Paolo Alfieri's 2026-07-01 mail. **Pushed to origin/main** — RM-07 `5b64cc8` + validation `e38f346`; RM-04 feat `d8ec261` + close-ritual.
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.

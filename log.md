@@ -621,3 +621,5 @@
 ## [2026-07-01 20:47] RM-04 | Parties HoldType 6→8 (DEC-008) | Canon DEC-008: HoldType 6→8 (+chargeback_review +storage_payment_failed, operator-lift-only); mini-ADR+INDEX; CHECK derives from cases(); consumers unwired (Module-E seam). Suite 1767/1767, PHPStan/Pint green. Awaiting review, uncommitted.
 
 ## [2026-07-01 20:56] RM-04 | review close | Giovanni reviewed & approved RM-04 (storage_payment_failed = manual-first at launch confirmed). Tracker + hot.md marked done-reviewed. Committing feat + pushing to origin/main.
+
+## [2026-07-01 20:57] push | RM-04 -> origin/main | feat d8ec261 (RM-04 Hold enum 6→8: canon DEC-008 adoption + mini-ADR + TDD tests + docblocks) pushed to origin/main. Close ritual.
