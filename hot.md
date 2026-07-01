@@ -1,30 +1,29 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-06-24
+updated: 2026-07-01
 ---
 
 # Hot Cache
 
 ## Last Updated
-**2026-06-24 — Operator-console PREMIUM finishing pass (for the Paolo demo).** Builds on UI pass #2 (`9edcc49`). A 360° "make it look like a premium product" sweep over all 13 Filament consoles + the panel chrome, driven by Giovanni's 8 feedback points. **COMMITTED + PUSHED** (`9f9cb83` → origin/main).
-
-- **Brand chrome:** hand-tuned **OKLCH copper ramp** for `primary` (hue 47°, chroma muted ~10%, anchored on Pantone 8022 #A0715A at shade 500) — replaced `Color::hex()` whose auto-palette read as loud orange. Neutral chrome → `Color::Stone` (warm). `->font('Instrument Sans')` + custom Filament theme `resources/css/filament/admin/theme.css` (hairlines, softer shadows, branded login backdrop) via `->viteTheme()`. Logo asset was correct but rendered as an illegible sliver → **tight-cropped** the wordmark (glyph fills frame) + raised `brandLogoHeight` to 2.45rem; derived a warm-white dark logo + a clean concentric-circle **favicon/mark** (`public/images/brand/crcles-mark.png`). `->globalSearchKeyBindings(['mod+k'])`.
-- **Shared kit helpers** on `OperatorConsoleResource`: `applyConsoleDefaults()` (newest-first + branded empty state), `stateFilter()` (distinct-token SelectFilter, no enum import), `badgedStateEntry()` (infolist state badge), `metadataSection()`, sortable `lifecycleStateColumn()`. Every console table now has filters + search + sortable cols; every detail page is icon-headed `Section`s + badges + collapsed Metadata.
-- **Labels (#5):** killed raw `'#'.$id` from every option builder + `recordTitleAttribute='id'`; PR/SKU/constituent labels now read "Master — vintage — Format". Composite SKU view = `RepeatableEntry` (ordered constituents).
-- **Geography (#3, light-cascade decision):** Country→Region **selects** from `config/wine_geography.php` (curated, NOT a domain table — spec is silent), Region **prefilled** from the producer via new `catalog_producer_states.region/country` columns (seeded in DemoSeeder, same channel as `producer_name`), Appellation = region-scoped **datalist** (free entry preserved — it's in BR-Identity-1).
-- **Variant (#4):** sectioned view + Description (the existing `tasting_notes`); edit stays lifecycle-only (per decision).
+**2026-07-01 — Module 0 & K validation vs Paolo's "validate & close a module" asks (underwater).** Produced Paolo-style verdict reports in **`docs/validation/`** (`README.md` + `Module_0_Verdict` + `Module_K_Verdict`) **+ the live remediation backlog `Remediation_Tracker.md`**. Now in the **compliance-remediation phase** — Giovanni wants to arrive at Paolo more compliance-ready via a couple of fix rounds. Driven by Paolo Alfieri's 2026-07-01 mail to Taha (Giovanni cc'd). **Uncommitted** (push gate — ask Giovanni).
 
 ## Build & Quality Status
-- Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **GREEN:** full suite **1753/1753** (9494 assertions) · PHPStan **0** · Pint clean. Verified LIVE via Playwright screenshots (login/dashboard/PM/variant/SKU/composite/producer).
+- Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
+- **GREEN:** full suite **1753/1753**. Module-scoped: Catalog **388**, Parties **517 domain + 518 console** (the 5 console "failures" = i18n-scanner subset-isolation artifact; pass co-loaded, 327/327).
 
 ## Active Change & Next Task
-- No openspec change open. This was an interactive polish pass on the existing operator console; shipped to origin/main. **Next:** Giovanni demos to Paolo; any further tweaks are a fresh pass.
+- No openspec change open. `docs/validation/` answers Paolo's 3 asks applied to us: verdict report (#1), env-readiness (#2), canon delta (#3).
+- **Scoreboard vs local baseline:** Module 0 = 67 Pass / 10 Partial / 7 Fail / 16 Deferred (100). Module K = 77 / 26 / 19 / 8 (130). ~70% Pass on in-scope criteria.
+- **Compliance-remediation IN PROGRESS → the live backlog is [`docs/validation/Remediation_Tracker.md`](docs/validation/Remediation_Tracker.md)** (25 items RM-01..25, Round 1/2 plan, per-item status). **Read it before touching any Module 0/K fix**, and update it + this line as items complete. **Now/Next:** nothing started; next = **RM-07** (seed ≥2 operators) → RM-04 (Hold 6→8) → RM-09 (reconcile erasure ADR).
 
 ## Blockers & Decisions Needed
-- None blocking. Geography "full cascade" (operator-populatable Country/Region/Appellation reference tables in Settings) was DEFERRED in favour of the light config-cascade — revisit post-demo with an ADR if wanted.
+- **Canon drift is now DEC-007 → DEC-023** (16 new), heaviest on Module K. Three headline divergences **confirmed against code**: (1) membership flow — we built the "approved-but-unpaid" flow **DEC-016 declared WRONG** (distinct `Approved` state + separate `ActivateProfile`); (2) capacity ships **UNCAPPED** vs DEC-017 seat-set = `Active`+`Suspended`; (3) `HoldType` enum = **6** vs DEC-008 = **8**.
+- **Floor gaps (should NOT be deferred):** GDPR erasure/anonymisation entirely absent (Module K J-9/9a/FSM-16; no Address entity); enhanced-KYC €10k/€50k threshold absent (seam columns only).
+- Env "not ready as asked": only **1 operator** seeded, no supported 2nd; capacity + anonymisation are unbuilt features, not seed gaps.
 
 ## Open Patterns
-- **Filament gotcha (now a lesson + test guard):** a RelationManager is read-only on a `ViewRecord` page → its header `CreateAction` is DENIED before `canCreate()`; override `isReadOnly()→false` to surface it. `assertTableActionExists` does NOT catch this — live-verify (or assert `isReadOnly()===false`). This was the real cause of "no create button" (#3.4/#8).
-- The DemoSeeder is still NOT chained into `DatabaseSeeder` — demo data needs `db:seed --class=Database\Seeders\DemoSeeder` explicitly.
+- **Escalation-asymmetry (memory `spec-divergence-from-cmless-documentation`) confirmed live:** our frozen handoff carried the wrong membership flow; our findings + canon's DEC-008..023 never crossed. This validation IS the corrections-inbox — route deltas → local ADRs, genuine gaps → c-mless issues.
+- **Divergent module maturity:** Catalog enforces SoD (self-approval blocked, console-tested — passes Paolo's check); Parties does NOT (Producer onboarding + membership approval are single-actor).
+- DemoSeeder still NOT chained into `DatabaseSeeder` (needs `db:seed --class=Database\Seeders\DemoSeeder`); seeds **no operators** and bypasses domain actions (direct `create()`).

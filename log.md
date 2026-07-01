@@ -605,3 +605,7 @@
 ## [2026-06-24 14:13] close | operator-console UI pass #2 | committed + pushed 9edcc49 → origin/main (32 files); 1753 green
 
 ## [2026-06-24 16:12] premium-pass | operator-console (13 Filament consoles) | Premium demo finishing: OKLCH copper palette+Stone+Instrument Sans+tight logo+favicon+branded login; sectioned/badged infolists; filters+search+sort everywhere; #id->human labels; Country->Region cascade+prefill; FIXED RM create buttons (isReadOnly opt-out). 1753/1753 green.
+
+## [2026-07-01 18:25] validation | Module 0 & K vs Paolo asks | verdict reports in docs/validation/ (README+M0+MK); canon drift DEC-007→023; 3 headline Module-K divergences (membership/capacity/holds) + GDPR & enhanced-KYC floor gaps; env not walkable (1 operator)
+
+## [2026-07-01 19:05] remediation | tracker created | docs/validation/Remediation_Tracker.md — 25 action items (RM-01..25) from the M0/K validation; Round1 quick-wins / Round2 floor+canon; living status doc for cross-session continuity; next=RM-07
