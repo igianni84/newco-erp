@@ -609,3 +609,9 @@
 ## [2026-07-01 18:25] validation | Module 0 & K vs Paolo asks | verdict reports in docs/validation/ (README+M0+MK); canon drift DEC-007→023; 3 headline Module-K divergences (membership/capacity/holds) + GDPR & enhanced-KYC floor gaps; env not walkable (1 operator)
 
 ## [2026-07-01 19:05] remediation | tracker created | docs/validation/Remediation_Tracker.md — 25 action items (RM-01..25) from the M0/K validation; Round1 quick-wins / Round2 floor+canon; living status doc for cross-session continuity; next=RM-07
+
+## [2026-07-01 19:39] RM-07 | seeders + SoD demo fixture | OperatorDemoSeeder (3 distinct logins) + DemoSeeder self-provisions (chains Role+OperatorDemo, prod-guarded, resets event/audit log) + real-lineage reviewable Master via Catalog actions. 8 TDD tests (console activate + rejection). Suite 1761/1761. Awaiting review.
+
+## [2026-07-01 19:57] RM-07 | review close | Giovanni reviewed & approved RM-07 (operators stay in demo path; event/audit-log reset in reset() OK). Tracker + hot.md updated: RM-07 marked done-reviewed, RM-04 now the active next item. Still uncommitted (push gate).
+
+## [2026-07-01 20:04] push | RM-07 + validation docs -> origin/main | feat 5b64cc8 (RM-07 seeders/tests + tracker) + e38f346 (Module 0/K verdict reports + tracker) pushed to origin/main. Close ritual. Noted: DemoSeeder reset() is SQLite-only (PG TRUNCATE rejects FK-referenced tables) — pre-existing, not RM-07.
