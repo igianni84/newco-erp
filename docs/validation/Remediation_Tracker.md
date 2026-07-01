@@ -6,6 +6,7 @@
 > 1. Read **§1 Now / Next** (what's active) → **§2 Round plan** (the sequence) → **§3 At-a-glance** (full status table).
 > 2. Pick the top actionable item; for anything **M/L**, spin an OpenSpec change (`/spec-to-change`) rather than free-coding — respect the repo's build discipline.
 > 3. **When you finish an item:** set its status ✅ in §3 + the detail block, cite the evidence (tests/commit), append a dated line to **§6 Session Log**, and update **§1 Now / Next** + `hot.md`'s "Active Change" line so the next window knows.
+> 4. **When you discover something incidental** (a gap, latent bug, or tech-debt that ISN'T the item you're on): append it to **§7 Incidental Findings** — never fix it silently, never drop it. It gets triaged into a round or an RM item when picked up.
 >
 > **Status legend:** 🔴 Not started · 🟡 In progress · ✅ Done · ⏸️ Blocked (needs another module) · 🔵 Deferred-by-choice
 > **Size:** S (hours) · M (a session or two) · L (multi-session / own change)
@@ -18,6 +19,7 @@
 - **Done & reviewed:** **RM-07** ✅ — Giovanni approved (2026-07-01): operators live in the **demo path** (not the production bootstrap), and the `reset()` event/audit-log truncation is OK. SoD / rejection walkthroughs are walkable in the console.
 - **Active next:** **RM-04** (Hold enum 6→8 + mini-ADR adopting DEC-008) → **RM-09** (reconcile ADR overclaim) → **RM-10** (ClubCredit event rename) → **RM-24** (Product-Type immutability). All small, high-leverage.
 - **Overall goal:** clear **Round 1** entirely + at least start **RM-01** (GDPR erasure) before Paolo.
+- **Open incidental findings (§7):** **F1** DemoSeeder SQLite-only (PG-truncate) · **F2** prod operator-mgmt missing → SoD unsatisfiable in prod. Neither blocks the pre-Paolo demo; tracked so a later step picks them up.
 
 ---
 
@@ -168,4 +170,23 @@
 
 ## §6 Session Log (append one line per work session; newest last)
 - **2026-07-01** — Tracker created from the Module 0 & K verdict reports. 25 items catalogued; Round 1/2 plan set. Nothing started yet. Next: RM-07.
-- **2026-07-01** — **RM-07 ✅** (TDD). `OperatorDemoSeeder` (3 distinct role-segmented logins) + `DemoSeeder` self-provisions (chains Role+OperatorDemo), production-guarded, resets event/audit log, and stands up a real-lineage SoD fixture Master via the actual Catalog actions. 8 new tests (incl. console distinct-actor activate + rejection). Suite 1761/1761, PHPStan/Pint clean. Awaiting review → next RM-04.
+- **2026-07-01** — **RM-07 ✅** (TDD). `OperatorDemoSeeder` (3 distinct role-segmented logins) + `DemoSeeder` self-provisions (chains Role+OperatorDemo), production-guarded, resets event/audit log, and stands up a real-lineage SoD fixture Master via the actual Catalog actions. 8 new tests (incl. console distinct-actor activate + rejection). Suite 1761/1761, PHPStan/Pint clean. Reviewed & approved by Giovanni; committed+pushed (`5b64cc8`). Next RM-04.
+
+---
+
+## §7 Incidental Findings (discovered mid-remediation — triage, don't drop)
+
+> Things found **while doing** the RM items that aren't the item itself — gaps, latent bugs, tech-debt. Captured here so they're addressed in **some** step and never silently fixed or lost. Each is triaged into an RM item or a round when picked up. **Append F-numbers; newest last.** A finding graduates to an RM row (§3) once it's scheduled.
+>
+> **Severity:** 🟥 blocks a goal · 🟧 real, deferrable · 🟨 minor/tidy. **Status:** 🔴 open · 🟡 scheduled (→ RM/round) · ✅ resolved.
+
+### F1 — DemoSeeder is SQLite-only (PG `TRUNCATE` rejects FK-referenced tables)  ·  🟧 · 🔴 · found 2026-07-01 (RM-07)
+- **What:** `DemoSeeder::reset()` truncates FK-referenced tables one-by-one (masters, customers, and — new in RM-07 — `domain_events`/`audit_records`). PostgreSQL's `TRUNCATE` refuses a table referenced by a FK unless every referencer is truncated in the **same** statement or `CASCADE` is used; Laravel's PG `withoutForeignKeyConstraints` emits only `SET CONSTRAINTS ALL DEFERRED` (no effect on `TRUNCATE`). So `db:seed --class=DemoSeeder` would fail on Postgres (`domain_events` ← `event_deliveries.domain_event_id` + self-FK `causation_id`).
+- **Pre-existing, not a regression:** true of the existing truncations too — RM-07 only extended the sweep. Verified by reading Laravel's `PostgresGrammar::compileDisableForeignKeyConstraints` (= `SET CONSTRAINTS ALL DEFERRED`), not empirically on PG.
+- **Why it's fine today:** dev + demo run on SQLite (`withoutForeignKeyConstraints` = `PRAGMA foreign_keys=OFF`, which allows it); suite green. No PG demo/staging env exists yet.
+- **Disposition:** convert `reset()` to one `TRUNCATE … CASCADE` (or `delete()`s) **when a Postgres demo/staging env is stood up** — ties to the hosting/infra open-stack gate (`CLAUDE.md`). Small; promote to an RM row then.
+
+### F2 — Production operator management missing → SoD unsatisfiable in production  ·  🟥 (pre-go-live) · 🔴 · found 2026-07-01 (RM-07)
+- **What:** the bootstrap `DatabaseSeeder`→`OperatorSeeder` seeds exactly ONE operator (from env). There is **no Filament operator resource and no artisan command** to add more (README env-readiness note, "no Filament user resource"). Catalog SoD keys on distinct actor **identity**, so a single-operator production instance can approve **nothing** — every activation is a self-approval, always blocked.
+- **RM-07 scope:** fixed this for the **demo only** (`OperatorDemoSeeder`, 3 logins). Production is untouched by design.
+- **Disposition:** production needs an operator-management surface (Filament operator resource + create/invite flow) before go-live — the production counterpart of RM-07. Own item (M). Not blocking the pre-Paolo demo; schedule as an RM row when the operator-admin surface is built.

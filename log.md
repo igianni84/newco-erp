@@ -615,3 +615,5 @@
 ## [2026-07-01 19:57] RM-07 | review close | Giovanni reviewed & approved RM-07 (operators stay in demo path; event/audit-log reset in reset() OK). Tracker + hot.md updated: RM-07 marked done-reviewed, RM-04 now the active next item. Still uncommitted (push gate).
 
 ## [2026-07-01 20:04] push | RM-07 + validation docs -> origin/main | feat 5b64cc8 (RM-07 seeders/tests + tracker) + e38f346 (Module 0/K verdict reports + tracker) pushed to origin/main. Close ritual. Noted: DemoSeeder reset() is SQLite-only (PG TRUNCATE rejects FK-referenced tables) — pre-existing, not RM-07.
+
+## [2026-07-01 20:11] findings | Remediation_Tracker §7 | Added §7 Incidental Findings (convention + legend). F1 DemoSeeder SQLite-only (PG TRUNCATE rejects FK-referenced tables); F2 prod operator-mgmt missing → SoD unsatisfiable in prod. Pointers in §1 + hot.md. Convention: log incidental discoveries in §7, don't drop.
