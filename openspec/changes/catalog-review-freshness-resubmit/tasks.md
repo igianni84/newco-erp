@@ -44,6 +44,6 @@
 
 ## 5. Integration, docs & cross-engine close
 
-- [ ] 5.1 **Full-suite + PHPStan + Pint + PG17 close** (all design decisions; spec — Approval Governance) — reconcile any remaining reject-then-activate assumption across the suite; run the whole thing on both engines.
+- [x] 5.1 **Full-suite + PHPStan + Pint + PG17 close** (all design decisions; spec — Approval Governance) — reconcile any remaining reject-then-activate assumption across the suite; run the whole thing on both engines.
   - Acceptance: `grep -rn "not terminal\|->reject(\|latestGovernanceAction" tests/` reviewed — every reject-then-activate path now inserts a re-submit or asserts the block; full suite green via `php -d memory_limit=-1 vendor/bin/pest`; `php -d memory_limit=-1 vendor/bin/phpstan analyse` clean; `vendor/bin/pint` clean; **verified on PG17** (the block-gate reads `audit_records.action` — a string column, engine-neutral, but confirm the `orderByDesc('id')` latest-action read behaves identically). `openspec validate catalog-review-freshness-resubmit --strict` green.
   - Test hint: run the catalog lifecycle + console suites on SQLite and PG17; confirm no exhaustive Action allow-list reds; confirm the 2-round + cross-entity + console tests pass on both engines.
