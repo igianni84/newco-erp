@@ -711,3 +711,5 @@
 ## [2026-07-02 20:35] ralph | parties-enhanced-kyc-threshold 2.3 | green | 3 files (event CustomerEnhancedKycReviewRequired PII-free + unit test; suite 1916/1916, PHPStan 0)
 
 ## [2026-07-02 20:45] ralph | parties-enhanced-kyc-threshold 3.1 | green | 3 files — CustomerTransactionTotalsReader contract + CustomerTransactionTotals DTO (2 EUR Money, rolling-12mo doc) + unit test; suite 1920/1920, PHPStan 0
+
+## [2026-07-02 20:54] ralph | parties-enhanced-kyc-threshold 3.2 | green | 4 files (null totals adapter + PartiesServiceProvider bind + arch-pinned Feature test); suite 1924/1924, §3 closed, 7/12

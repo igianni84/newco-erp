@@ -28,7 +28,7 @@
   - Acceptance: the contract + DTO exist with EUR `Money` fields; the window semantics are documented on the contract.
   - Test hint: a fake in-test implementation returns caller-set totals; unit-assert the DTO holds them.
 
-- [ ] 3.2 **`NullCustomerTransactionTotalsReader` + binding** (design D4; spec — *Enhanced-KYC Threshold Detection*) — a null adapter in `app/Modules/Parties/Reads/` returning `Money::of(0, Currency::of('EUR'))` for both fields; bind the interface to it in `PartiesServiceProvider::register()` (the `PartyComplianceStatusReader` precedent). This is the Module-S seam — the real adapter lands with Module S.
+- [x] 3.2 **`NullCustomerTransactionTotalsReader` + binding** (design D4; spec — *Enhanced-KYC Threshold Detection*) — a null adapter in `app/Modules/Parties/Reads/` returning `Money::of(0, Currency::of('EUR'))` for both fields; bind the interface to it in `PartiesServiceProvider::register()` (the `PartyComplianceStatusReader` precedent). This is the Module-S seam — the real adapter lands with Module S.
   - Acceptance: resolving `CustomerTransactionTotalsReader` from the container yields zero EUR totals; no cross-module dependency introduced (`ModuleBoundariesTest` green — Parties imports nothing from `App\Modules\Commerce`).
   - Test hint: feature — `app(CustomerTransactionTotalsReader::class)->forCustomer($id)` returns `0` EUR for both; an arch assertion that `NullCustomerTransactionTotalsReader` references no `App\Modules\Commerce\*` symbol.
 

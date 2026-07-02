@@ -2,8 +2,10 @@
 
 namespace App\Modules\Parties\Providers;
 
+use App\Modules\Parties\Contracts\CustomerTransactionTotalsReader;
 use App\Modules\Parties\Contracts\PartyComplianceStatusReader;
 use App\Modules\Parties\Reads\DatabaseComplianceStatusReader;
+use App\Modules\Parties\Reads\NullCustomerTransactionTotalsReader;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -24,6 +26,13 @@ class PartiesServiceProvider extends ServiceProvider
         // receive the PII-free ComplianceStatus DTO, never the Hold model (the no-model-leak boundary law). Bound
         // to the cascade-resolving database implementation; the reader is stateless, so a plain bind suffices.
         $this->app->bind(PartyComplianceStatusReader::class, DatabaseComplianceStatusReader::class);
+
+        // The Module-S transaction-totals seam for enhanced-KYC threshold detection (parties-enhanced-kyc-threshold,
+        // design D4; party-registry — Requirement: Enhanced-KYC Threshold Detection; DEC-035). The real reader reads
+        // Module S (Commerce) order/invoice EUR history and is DEFERRED — Module S is a Phase-4 stub — so the interface
+        // binds to the zero-returning NullCustomerTransactionTotalsReader at launch: the periodic scan runs and
+        // detection is a correct no-op until Module S ships the real adapter. Stateless, so a plain bind suffices.
+        $this->app->bind(CustomerTransactionTotalsReader::class, NullCustomerTransactionTotalsReader::class);
     }
 
     /**
