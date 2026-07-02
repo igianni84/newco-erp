@@ -669,3 +669,5 @@
 ## [2026-07-02 15:17] spec-to-change | parties-anonymisation (RM-01) | Authored change: proposal+design(D1-D7)+party-registry delta(4 ADDED+1 MODIFIED)+12 tasks; validate --strict GREEN. Canon MVP-DEC-015 compliance-only + J-9b minimal-sync (Giovanni). AWAITING APPROVED; not built.
 
 ## [2026-07-02 15:20] approve | parties-anonymisation (RM-01) | Giovanni APPROVED; marker created. Change ready to build (ralph/interactive, one task/iter); NOT launched this session per prep-only brief.
+
+## [2026-07-02 15:32] ralph | parties-anonymisation 1.1 | green | mini-ADR DEC-015 (compliance-only Hold block-set; sanctions=FSM not Hold; J-9b minimal; CustomerAnonymised event) + INDEX row | 4 files | validate-strict+Pint green
