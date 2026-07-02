@@ -665,3 +665,7 @@
 ## [2026-07-02 14:17] push | catalog-review-freshness-resubmit (RM-06) | pushed main → origin/main (37d2cc0..2d6492d, 15 commits); ralph/ branch deleted (was 76ba681, merged); RM-06 fully closed, Round 1 complete; hot.md finalized to pushed state
 
 ## [2026-07-02 14:39] tracker | RM-06 close-out + Round 1 complete | Remediation_Tracker §1/§3/§4/§6 → RM-06 ✅ (evidence: PG17 1807/1807 + semantic-verify CLEAN, merge 348dade/archive ad69ce2/push fb6f424); Round 1 done (RM-07/04/09/10/24/06); active next RM-01; hot.md NEXT → RM-01
+
+## [2026-07-02 15:17] spec-to-change | parties-anonymisation (RM-01) | Authored change: proposal+design(D1-D7)+party-registry delta(4 ADDED+1 MODIFIED)+12 tasks; validate --strict GREEN. Canon MVP-DEC-015 compliance-only + J-9b minimal-sync (Giovanni). AWAITING APPROVED; not built.
+
+## [2026-07-02 15:20] approve | parties-anonymisation (RM-01) | Giovanni APPROVED; marker created. Change ready to build (ralph/interactive, one task/iter); NOT launched this session per prep-only brief.

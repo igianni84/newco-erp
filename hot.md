@@ -7,25 +7,24 @@ updated: 2026-07-02
 # Hot Cache
 
 ## Last Updated
-**2026-07-02 — `catalog-review-freshness-resubmit` (RM-06) MERGED + ARCHIVED on local `main`** (merge `348dade`, archive `ad69ce2`). Close ritual (GUIDE §2.7) run interactively: PG17 **full suite 1807/1807** (9851 assertions — upgraded from the loop's 391-subset gate to the WHOLE suite on the production engine) + semantic verification (2 subagents: domain/tests + console/ADR/i18n) **both CLEAN, zero CRITICAL**. `product-catalog` truth spec absorbed the MODIFIED Approval Governance requirement (now 50 scenarios, strict-valid). RM-06 was the last Round-1 compliance-remediation item (Paolo Alfieri 2026-07-01). **Pushed to `origin/main` (`37d2cc0..2d6492d`); `ralph/` branch deleted — RM-06 FULLY CLOSED, Round 1 complete.** CI `tests-pgsql` lane re-runs the full PG17 suite at push = merge acceptance.
+**2026-07-02 — RM-01 (`parties-anonymisation`) change AUTHORED via `/spec-to-change`, `validate --strict` GREEN, and APPROVED by Giovanni — `APPROVED` marker created. READY TO BUILD; ralph NOT yet launched (prep-only session).** GDPR right-to-erasure/anonymisation + Address entity (Module K), the Round-2 P0 compliance-floor headline. **Next step = the build: `./ralph.sh --change parties-anonymisation <n>` or interactive (one task/iter), start at task 1.1 (mini-ADR MVP-DEC-015) — awaiting Giovanni's go on when/how to launch.** Two crux decisions Giovanni-confirmed: **(Q1)** Hold-block-set = canon **MVP-DEC-015 `compliance`-only** (mini-ADR; resolves the frozen-spec DEC-027-vs-PRD contradiction; sanctioned-customer retention via a `compliance` Hold — there is no `sanctions` Hold type, sanctions is the `sanctions_status` FSM); **(Q2)** J-9b export = **minimal synchronous in-memory** (no file persistence → no object-storage ADR tripped).
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **GREEN on both engines, FULL suite:** SQLite **1807/1807** (9851 assertions); **PG17** (Docker `postgres:17`, GUIDE §2.7) **1807/1807** (9851 assertions, 288s) — whole suite on production engine, not just the Catalog subset. PHPStan max 0; Pint clean; `openspec validate --strict` valid.
-- Full suite: `php -d memory_limit=-1 vendor/bin/pest` — bare `php artisan test` OOMs at 128M (lessons.md 2026-06-20).
+- **No code touched this session — prep only.** `main` == `origin/main` @ `20d63b8`, tree clean. Last green (RM-06 close): SQLite + PG17 **1807/1807** (9851 assertions); PHPStan max 0; Pint clean.
+- Full suite: `php -d memory_limit=-1 vendor/bin/pest` (bare `php artisan test` OOMs at 128M).
 
 ## Active Change & Next Task
-- **No active openspec change** — RM-06 archived (`openspec/changes/archive/2026-07-02-catalog-review-freshness-resubmit/`). Shipped: block-gate on `reviewed→active` (blocked while latest governance action ends `.rejected`) + explicit `resubmit()` (`reviewed→reviewed`, audit-only twin of `reject`), derive-from-audit (no schema). edit-re-arms leg deferred to **RM-14**; canon MVP-DEC-019.
-- **Pushed + `ralph/` branch deleted** (2026-07-02) — RM-06 fully closed on code/spec/origin. CI `tests-pgsql` lane re-runs full suite on PG17 at push (development.md:86) = merge acceptance.
-- **NEXT (loop, new change):** **RM-01** — GDPR erasure/anonymisation + Address entity (Module K), Round 2 P0-floor headline (size L, ADR "—"). Prep via `/spec-to-change`; alt floor item RM-02 (enhanced-KYC, M). See tracker §1/§4/§6.
+- **Active change: `parties-anonymisation` (RM-01) — AUTHORED, validate-strict GREEN, APPROVED ✅ (2026-07-02).** 4 artifacts: proposal / design (D1–D7) / `specs/party-registry/spec.md` (**4 ADDED + 1 MODIFIED** requirement) / tasks (**12**, groups 1–7). APPROVED marker present; **not yet built.**
+- Scope: `AnonymiseCustomer` (compliance-Hold gate → PII overwrite-in-place w/ deterministic id-keyed placeholders → `anonymised_at` → audit-records redaction → PII-free `CustomerAnonymised` event; keyed history preserved; orthogonal to status FSM); Address entity (`parties_addresses`, billing, DEC-068); `ExportCustomerData` (J-9b minimal). 2 additive PG-truthful migrations.
+- **NEXT: build.** APPROVED ✅ → `./ralph.sh --change parties-anonymisation <n>` (or interactive, one task/iter), start at task 1.1 (mini-ADR MVP-DEC-015). NOT launched this session per the prep-only brief — awaiting go-signal. After build: close ritual §2.7 (PG17 full suite + semantic-verify) → archive.
 
 ## Blockers & Decisions Needed
-- **None for RM-06** — merged, archived, pushed, branch deleted; tracker closed out (§1/§3/§4/§6 → RM-06 ✅, Round 1 complete).
-- Canon drift DEC-007→DEC-023 still open on Module K (RM-03, RM-05) — waits on Modules S/E/A.
-- **Incidental findings open (Tracker §7):** F1 DemoSeeder SQLite-only; F2 prod operator-mgmt missing → SoD unsatisfiable in prod.
-- ⚠️ **DEC-019 collision:** canon MVP-DEC-019 = review-freshness (RM-06); frozen spec's own DEC-019 = unrelated Module-S club composites — never conflate.
+- **RM-01 APPROVED ✅ (2026-07-02).** Both design Qs (Q1/Q2) resolved. Next gate = build-launch decision (ralph vs interactive) — not started this session (prep-only brief).
+- **New incidental (candidate F4):** `party-registry` truth-spec *Hold Registry* still says "six-value" Hold domain while code is **8** (RM-04 shipped code + mini-ADR but authored no OpenSpec delta). RM-01's Hold-precedence is phrased `compliance`-only (count-independent) so it does NOT block; flagged in the proposal slice-boundary — decide fold-in vs file.
+- Canon drift MVP-DEC-007→023 still open on Module K (RM-03/DEC-016, RM-05/DEC-011/017) — waits on Modules S/E/A. Tracker §7: F1, F2 still open.
 
 ## Open Patterns
-- **RM-14 latent coupling (RM-06 semantic-verify S1):** `ApprovalGovernance::assertNotRejectionPending` reads the *raw* latest catalog audit action with NO governance-verb filter — correct only because `LifecycleTransition` is the sole catalog `audit_records` writer today. When RM-14 adds the edit path (edit-audit rows), a post-rejection edit row could become "latest" and clear the block without a re-submit → **filter to governance verbs (or assert the invariant) when RM-14 lands.**
-- **Review-freshness block-gate is engine-neutral** — one string column (`audit_records.action`) via `orderByDesc('id')` + PHP `str_ends_with`; full PG17 suite green with zero migration branch confirms.
-- **Local PG17 gate recipe** (GUIDE §2.7): boot `postgres:17` on **55432**, `DB_CONNECTION=pgsql … php -d memory_limit=1024M vendor/bin/pest`, `docker rm -f pg`.
+- **Canon-ADR discipline (lessons.md 2026-07-02, now a rule — 4th application):** adopting a canon MVP-DEC absent from frozen `spec/` (stops at 007) always earns a mini-ADR — RM-01/DEC-015 is tasks.md 1.1. The tracker "ADR? —" column is advisory.
+- **Erasure seam already built** (event-substrate + identity-auth ADRs): the `audit_records` before/after redaction path + the PG `redactor` role reserved "for Module K's erasure job (a later change)" — RM-01 IS that change; completing it makes RM-09's corrected claim fully truthful.
+- **RM-14 latent coupling (RM-06 semantic-verify S1):** `assertNotRejectionPending` reads the raw latest catalog audit action, no verb filter — when RM-14 adds the edit path, filter to governance verbs.
