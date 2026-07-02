@@ -627,3 +627,5 @@
 ## [2026-07-01 21:08] RM-09 | decisions/2026-06-15-identity-auth.md | In-place correction (not superseded) of GDPR erasure overclaim: built seam vs not-built customer flow (J-9/9a), linked RM-01. Doc-only. F3 logged: same overclaim in substrate ADR.
 
 ## [2026-07-02 08:22] RM-09/F3 | decisions/2026-06-12-event-substrate-and-audit-store.md | Folded F3 into RM-09 (Giovanni-approved): reworded substrate-ADR erasure overclaim (:54 'already works' -> operates in place; flow not built, RM-01) + rectification marker. Both ADRs now consistent.
+
+## [2026-07-02 08:30] close-ritual | RM-09+F3 | Pushed to origin/main as 5eb415d (docs: identity-auth + substrate ADR erasure reconciliation). hot.md updated with push hash.
