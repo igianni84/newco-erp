@@ -71,6 +71,15 @@ use Illuminate\Support\Facades\Lang;
  *     (actions.{anonymise,export}) — `anonymise` visibility-gated to a not-yet-anonymised Customer, `export`
  *     ungated — with their two success titles (notifications.{anonymised,exported}; action_failed reused for the
  *     anonymise compliance-Hold block). Authored WITH the resolving code in this change (not front-loaded).
+ *   - the enhanced-KYC & Compliance-review read surface (parties-enhanced-kyc-threshold, task 6.1): the read-only
+ *     panel's flag/timestamp entries + the open review-queue table headers
+ *     (compliance_reviews.{enhanced_kyc_flag,enhanced_kyc_at} + compliance_reviews.columns.{reason,threshold_kind,
+ *     amount,opened_at}). Front-loaded here (this change, task 1.2) ahead of the resolving code in task 6.1, so the
+ *     i18n contract is green before the surface lands. Two sibling contracts are guarded ELSEWHERE, not here: the
+ *     section heading `customer.sections.compliance_reviews` (the sections group is verified by the view render, as
+ *     the pre-existing `sections.*` keys are), and the DOMAIN enum-value labels `parties.compliance_review.*` that
+ *     render the review reason / threshold_kind VALUES (guarded by ComplianceReviewCopyTest — Module-K domain copy,
+ *     not console chrome).
  * A console that resolves all of these MUST author them all or a label renders as a raw key under any locale.
  *
  * @return list<string> dot-paths WITHOUT the `operator_console.customer.` prefix
@@ -88,6 +97,8 @@ function customerConsoleKitKeys(): array
         'actions.require_kyc', 'actions.record_kyc_verified', 'actions.record_kyc_rejected', 'actions.record_screening',
         'actions.anonymise', 'actions.export',
         'holds.columns.hold_type', 'holds.columns.scope_type', 'holds.columns.status', 'holds.columns.reason', 'holds.columns.placed_by', 'holds.columns.placed_at', 'holds.columns.lifted_by', 'holds.columns.lifted_at',
+        'compliance_reviews.enhanced_kyc_flag', 'compliance_reviews.enhanced_kyc_at',
+        'compliance_reviews.columns.reason', 'compliance_reviews.columns.threshold_kind', 'compliance_reviews.columns.amount', 'compliance_reviews.columns.opened_at',
         'notifications.activated', 'notifications.suspended', 'notifications.reactivated', 'notifications.closed', 'notifications.action_failed',
         'notifications.hold_placed', 'notifications.hold_lifted',
         'notifications.kyc_required', 'notifications.kyc_verified', 'notifications.kyc_rejected', 'notifications.screening_recorded',

@@ -701,3 +701,5 @@
 ## [2026-07-02 19:38] spec-to-change | RM-02 parties-enhanced-kyc-threshold | Authored + validated (--strict green); 2 ADDED + 2 MODIFIED party-registry reqs, 7 groups/11 tasks. Interview: Option B (AML breach -> under_review blocks) + rolling-12mo. APPROVED by Giovanni; marker created. Ready for ralph.
 
 ## [2026-07-02 19:50] ralph | parties-enhanced-kyc-threshold 1.1 | green | migration parties_compliance_reviews + 2 enums (2.1 prereq) + schema test; suite 1889/1889, phpstan 0 | 4 files
+
+## [2026-07-02 20:13] ralph | parties-enhanced-kyc-threshold 1.2 | green | i18n copy (parties.compliance_review + customer.compliance_reviews EN/IT) + 3 CONTEXT terms + 2 tests | suite 1904/1904 | 7 files
