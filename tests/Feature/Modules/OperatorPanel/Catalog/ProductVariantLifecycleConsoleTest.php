@@ -387,3 +387,53 @@ it('surfaces an out-of-state retire as a danger notification, changing nothing',
     expect(ProductVariant::findOrFail($variant->id)->lifecycle_state)->toBe(LifecycleState::Draft)
         ->and(DomainEvent::query()->where('name', 'ProductVariantRetired')->count())->toBe(0);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Task 4.2 (catalog-review-freshness-resubmit) — the visibility-gated re-submit header action
+|--------------------------------------------------------------------------
+|
+| The review-freshness re-arm on the Product Variant console (RM-06 / canon MVP-DEC-019; design D5) — the same
+| visibility-gated re-submit the Product Master console gained in task 4.1, now on every spine console. Re-submit
+| routes through the shared kit's lifecycleAction factory to ResubmitProductVariantForReview (never an Eloquent
+| write); its ->visible() is gated to the DERIVED rejection-pending read
+| (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated rejection blocks
+| activation, HIDDEN otherwise. A ->visible()-false action is undrivable via test helpers, so the gating is proven
+| with assertActionHidden/assertActionVisible and the re-arm is driven while re-submit IS visible (lessons.md
+| 2026-06-23/24). Submit/reject never gate on parent state (only activate does), so a draft parent Master suffices.
+*/
+
+it('offers re-submit on the Product Variant console only when rejection-pending, re-arming review when driven', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    // A draft parent Master to satisfy the FK — create/submit/reject never gate on parent state (the cascade gate
+    // is an ACTIVATE-time rule), and this flow never activates.
+    $master = ProductMaster::factory()->create();
+    $variant = productVariantConsoleDraft($master->id);
+    app(SubmitProductVariantForReview::class)->handle($variant);
+
+    // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit is
+    // NOT offered — the action is HIDDEN (design D5; OperatorConsoleViewRecord::isRejectionPending).
+    Livewire::test(ViewProductVariant::class, ['record' => $variant->getKey()])
+        ->assertActionHidden('resubmit');
+
+    // A rejection (through the console) makes it rejection-pending — its latest governance action ends in
+    // `.rejected` — so on a fresh mount re-submit is VISIBLE.
+    Livewire::test(ViewProductVariant::class, ['record' => $variant->getKey()])
+        ->callAction('reject', ['notes' => 'Vintage year is inconsistent with the identifier.']);
+
+    Livewire::test(ViewProductVariant::class, ['record' => $variant->getKey()])
+        ->assertActionVisible('resubmit')
+        ->callAction('resubmit')
+        ->assertNotified((string) __('operator_console.product_variant.notifications.resubmitted'));
+
+    // Re-arm is state-preserving (reviewed → reviewed, audit-only) and clears the pending flag, so on a fresh
+    // mount re-submit is HIDDEN again (the latest governance action is now `.resubmitted`, not `.rejected`) — the
+    // write-through routed to ResubmitProductVariantForReview with the ProductVariant label, else the derived read
+    // would still see the `.rejected` as latest and keep re-submit visible.
+    expect(ProductVariant::findOrFail($variant->id)->lifecycle_state)->toBe(LifecycleState::Reviewed);
+
+    Livewire::test(ViewProductVariant::class, ['record' => $variant->getKey()])
+        ->assertActionHidden('resubmit');
+});

@@ -38,7 +38,7 @@
   - Acceptance: the console offers `re-submit` **only** when the record is rejection-pending (hidden otherwise); driving it re-arms review (a distinct approver's activate then succeeds); attempting to activate a rejection-pending record through the console surfaces the block as an `action_failed` notification.
   - Test hint: `ProductMasterLifecycleConsoleTest` — `assertActionHidden('resubmit')` on a non-rejected `reviewed` record, `assertActionVisible('resubmit')` after a reject; call the re-submit action → re-armed. For the block, prefer the domain-throw + visibility assertions over driving a blocked/hidden action (a Filament action with `->visible()` false is undrivable via test helpers — lessons.md 2026-06-23); live-verify the button if render-suppression is suspected (lessons.md 2026-06-24).
 
-- [ ] 4.2 **`re-submit` on the other six catalog consoles** (design D5) — add the same kit-factory `re-submit` header action (visibility-gated) to the Variant / Reference / Format / Case Configuration / Sellable SKU / Composite SKU View pages.
+- [x] 4.2 **`re-submit` on the other six catalog consoles** (design D5) — add the same kit-factory `re-submit` header action (visibility-gated) to the Variant / Reference / Format / Case Configuration / Sellable SKU / Composite SKU View pages.
   - Acceptance: each catalog console surfaces a visibility-gated `re-submit`; the shared i18n scanner still routes every console string (no hardcoded copy); quality commands green.
   - Test hint: extend the per-console tests (or the shared operator-console UI-pass test) — assert the action is defined + visibility-gated on each; reuse the suite-wide i18n sink scanner via `--filter`/full-suite (lessons.md 2026-06-20 — never a bare file path for a shared-helper test).
 

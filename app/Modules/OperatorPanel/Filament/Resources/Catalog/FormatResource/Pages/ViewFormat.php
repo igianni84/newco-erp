@@ -5,21 +5,25 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource\Pa
 use App\Modules\Catalog\Actions\ActivateFormat;
 use App\Modules\Catalog\Actions\RejectFormatReview;
 use App\Modules\Catalog\Actions\ReopenFormat;
+use App\Modules\Catalog\Actions\ResubmitFormatForReview;
 use App\Modules\Catalog\Actions\RetireFormat;
 use App\Modules\Catalog\Actions\SubmitFormatForReview;
 use App\Modules\Catalog\Models\Format;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\FormatResource;
 use Closure;
+use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * ViewFormat — the Format console view page (operator-console-catalog-spine, task 2.1; design L1/L4; ADR
  * 2026-06-20). Pure reuse of the {@see OperatorConsoleViewRecord} kit: the base renders the FIVE uniform
  * lifecycle header actions (submit · reject · activate · retire · reopen) from {@see lifecycleInvocations()},
- * and Format adds NO divergence — it is a standalone reference entity with no parent gate and (unlike Product
- * Master) NO cascade-retire affordance (scope guard: cascade-retire is Master-only, no `RetireFormatCascade`
- * Action ships). So this page does not override `getHeaderActions()`.
+ * and Format's ONLY divergence is the visibility-gated re-submit shared by all seven catalog consoles (RM-06 /
+ * canon MVP-DEC-019 — the review-freshness re-arm): it is a standalone reference entity with no parent gate and
+ * (unlike Product Master) NO cascade-retire affordance (scope guard: cascade-retire is Master-only, no
+ * `RetireFormatCascade` Action ships), so this page overrides `getHeaderActions()` ONLY to append re-submit
+ * (spreading `parent::getHeaderActions()`).
  *
  * Every action routes to a Catalog domain action and NEVER writes `lifecycle_state` itself (the
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard and the
@@ -52,6 +56,30 @@ class ViewFormat extends OperatorConsoleViewRecord
             'activate' => fn (Model $record, string $notes) => app(ActivateFormat::class)->handle($this->recordOf(Format::class, $record)),
             'retire' => fn (Model $record, string $notes) => app(RetireFormat::class)->handle($this->recordOf(Format::class, $record)),
             'reopen' => fn (Model $record, string $notes) => app(ReopenFormat::class)->handle($this->recordOf(Format::class, $record)),
+        ];
+    }
+
+    /**
+     * The kit's five uniform lifecycle actions PLUS the visibility-gated re-submit shared by all seven catalog
+     * consoles (RM-06 / canon MVP-DEC-019; design D2/D5). Re-submit RE-ARMS the approval flow after a rejection —
+     * a `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitFormatForReview} (never an
+     * Eloquent write). Its `->visible()` is gated to {@see isRejectionPending()} (the derived read): re-submit is
+     * OFFERED only while an un-remediated rejection blocks activation, HIDDEN otherwise. The block-gate itself
+     * needs no console code — an activation attempt on a rejection-pending Format throws
+     * `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
+     * danger notification for free.
+     *
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            ...parent::getHeaderActions(),
+            $this->lifecycleAction(
+                'resubmit',
+                'resubmitted',
+                fn (Model $record, string $notes) => app(ResubmitFormatForReview::class)->handle($this->recordOf(Format::class, $record)),
+            )->visible(fn (): bool => $this->isRejectionPending()),
         ];
     }
 }

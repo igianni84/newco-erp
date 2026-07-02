@@ -140,6 +140,8 @@ return array_replace_recursive([
             'create' => 'New Format',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -158,6 +160,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Format submitted for review.',
             'rejected' => 'Rejection recorded; the Format stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Format is ready for approval again.',
             'activated' => 'Format activated.',
             'retired' => 'Format retired.',
             'reopened' => 'Format reopened for review.',
@@ -199,6 +202,8 @@ return array_replace_recursive([
             'create' => 'New Case Configuration',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -218,6 +223,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Case Configuration submitted for review.',
             'rejected' => 'Rejection recorded; the Case Configuration stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Case Configuration is ready for approval again.',
             'activated' => 'Case Configuration activated.',
             'retired' => 'Case Configuration retired.',
             'reopened' => 'Case Configuration reopened for review.',
@@ -276,6 +282,8 @@ return array_replace_recursive([
             'create' => 'New Product Variant',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -295,6 +303,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Product Variant submitted for review.',
             'rejected' => 'Rejection recorded; the Product Variant stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Product Variant is ready for approval again.',
             'activated' => 'Product Variant activated.',
             'retired' => 'Product Variant retired.',
             'reopened' => 'Product Variant reopened for review.',
@@ -347,6 +356,8 @@ return array_replace_recursive([
             'create' => 'New Product Reference',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -367,6 +378,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Product Reference submitted for review.',
             'rejected' => 'Rejection recorded; the Product Reference stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Product Reference is ready for approval again.',
             'activated' => 'Product Reference activated.',
             'retired' => 'Product Reference retired.',
             'reopened' => 'Product Reference reopened for review.',
@@ -417,6 +429,8 @@ return array_replace_recursive([
             'create' => 'New Sellable SKU',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -436,6 +450,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Sellable SKU submitted for review.',
             'rejected' => 'Rejection recorded; the Sellable SKU stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Sellable SKU is ready for approval again.',
             'activated' => 'Sellable SKU activated.',
             'retired' => 'Sellable SKU retired.',
             'reopened' => 'Sellable SKU reopened for review.',
@@ -483,6 +498,8 @@ return array_replace_recursive([
             'create' => 'New Composite SKU',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
@@ -502,6 +519,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Composite SKU submitted for review.',
             'rejected' => 'Rejection recorded; the Composite SKU stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Composite SKU is ready for approval again.',
             'activated' => 'Composite SKU activated.',
             'retired' => 'Composite SKU retired.',
             'reopened' => 'Composite SKU reopened for review.',
