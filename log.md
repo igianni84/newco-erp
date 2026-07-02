@@ -707,3 +707,5 @@
 ## [2026-07-02 20:18] ralph | parties-enhanced-kyc-threshold 2.1 | green | enum case→value+count pin, 5 tests; full suite 1909/1909, PHPStan 0
 
 ## [2026-07-02 20:27] ralph | parties-enhanced-kyc-threshold 2.2 | green | 3 files (model ComplianceReview + factory + model test); full suite 1911/1911, PHPStan max 0
+
+## [2026-07-02 20:35] ralph | parties-enhanced-kyc-threshold 2.3 | green | 3 files (event CustomerEnhancedKycReviewRequired PII-free + unit test; suite 1916/1916, PHPStan 0)
