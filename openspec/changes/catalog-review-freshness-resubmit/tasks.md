@@ -34,7 +34,7 @@
 
 ## 4. Operator console — surface re-submit; block surfaces via the kit
 
-- [ ] 4.1 **`re-submit` on the Product Master console** (design D5; `decisions/2026-06-19`/`2026-06-20`) — add a `re-submit` header action on the catalog View page via the shared console kit's lifecycle-action factory, write-through to `ResubmitProductMasterForReview`; `->visible()` gated to "record is rejection-pending" (the derived read). The block-gate rejection reuses `surfaceLifecycleOutcome` (no new code).
+- [x] 4.1 **`re-submit` on the Product Master console** (design D5; `decisions/2026-06-19`/`2026-06-20`) — add a `re-submit` header action on the catalog View page via the shared console kit's lifecycle-action factory, write-through to `ResubmitProductMasterForReview`; `->visible()` gated to "record is rejection-pending" (the derived read). The block-gate rejection reuses `surfaceLifecycleOutcome` (no new code).
   - Acceptance: the console offers `re-submit` **only** when the record is rejection-pending (hidden otherwise); driving it re-arms review (a distinct approver's activate then succeeds); attempting to activate a rejection-pending record through the console surfaces the block as an `action_failed` notification.
   - Test hint: `ProductMasterLifecycleConsoleTest` — `assertActionHidden('resubmit')` on a non-rejected `reviewed` record, `assertActionVisible('resubmit')` after a reject; call the re-submit action → re-armed. For the block, prefer the domain-throw + visibility assertions over driving a blocked/hidden action (a Filament action with `->visible()` false is undrivable via test helpers — lessons.md 2026-06-23); live-verify the button if render-suppression is suspected (lessons.md 2026-06-24).
 

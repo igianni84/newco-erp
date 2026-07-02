@@ -70,6 +70,8 @@ return array_replace_recursive([
             'create' => 'New Product Master',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
+            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'retire_cascade' => 'Retire (cascade)',
@@ -93,6 +95,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Product Master submitted for review.',
             'rejected' => 'Rejection recorded; the Product Master stays under review.',
+            'resubmitted' => 'Re-submitted for review; the Product Master is ready for approval again.',
             'activated' => 'Product Master activated.',
             'retired' => 'Product Master retired.',
             'cascade_retired' => 'Product Master and its active descendants retired.',

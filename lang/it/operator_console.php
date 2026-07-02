@@ -61,6 +61,7 @@ return array_replace_recursive([
             'create' => 'Nuovo Product Master',
             'submit' => 'Invia in revisione',
             'reject' => 'Rifiuta',
+            'resubmit' => 'Reinvia in revisione',
             'activate' => 'Attiva',
             'retire' => 'Ritira',
             'retire_cascade' => 'Ritira (a cascata)',
@@ -75,6 +76,7 @@ return array_replace_recursive([
         'notifications' => [
             'submitted' => 'Product Master inviato in revisione.',
             'rejected' => 'Rifiuto registrato; il Product Master resta in revisione.',
+            'resubmitted' => 'Reinviato in revisione; il Product Master è di nuovo pronto per l’approvazione.',
             'activated' => 'Product Master attivato.',
             'retired' => 'Product Master ritirato.',
             'cascade_retired' => 'Product Master e i suoi discendenti attivi ritirati.',

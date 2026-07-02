@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterReso
 use App\Modules\Catalog\Actions\ActivateProductMaster;
 use App\Modules\Catalog\Actions\RejectProductMasterReview;
 use App\Modules\Catalog\Actions\ReopenProductMaster;
+use App\Modules\Catalog\Actions\ResubmitProductMasterForReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\RetireProductMasterCascade;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
@@ -20,8 +21,10 @@ use Illuminate\Database\Eloquent\Model;
  * {@see OperatorConsoleViewRecord} kit (operator-console-catalog-spine, task 1.1; ADR 2026-06-20; design
  * L1/L2/L6). It is now "the kit + the Master-only cascade-retire extension": the base renders the five uniform
  * lifecycle actions (submit · reject · activate · retire · reopen) from {@see lifecycleInvocations()}, and this
- * page appends ONLY Master's operator-driven cascade retire — no other catalog entity has a cascade, so it
- * stays Master-only (design L6). The producer picker (create form) is the Resource's extension, not here.
+ * page appends the visibility-gated re-submit (RM-06 / canon MVP-DEC-019 — the review-freshness re-arm,
+ * shared by all seven catalog consoles) and Master's operator-driven cascade retire (the one catalog entity
+ * with a cascade, so it stays Master-only — design L6). The producer picker (create form) is the Resource's
+ * extension, not here.
  *
  * Every action routes to a Catalog domain action and NEVER writes `lifecycle_state` itself (the
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard, the
@@ -58,11 +61,20 @@ class ViewProductMaster extends OperatorConsoleViewRecord
     }
 
     /**
-     * The kit's five uniform lifecycle actions PLUS Master's operator-driven cascade retire — the one catalog
-     * entity with a cascade (design L6; § 4.7). Cascade retires the Master AND its active descendants
-     * (Variants → Product References → SKUs) parent-before-child in one atomic transaction; it carries a
-     * confirmation modal WARNING that descendants are retired too. The domain owns the ordering/atomicity; this
-     * page only triggers {@see RetireProductMasterCascade} and surfaces the outcome.
+     * The kit's five uniform lifecycle actions PLUS re-submit and Master's operator-driven cascade retire.
+     *
+     * Re-submit (RM-06 / canon MVP-DEC-019; design D2/D5) RE-ARMS the approval flow after a rejection — a
+     * `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitProductMasterForReview}
+     * (never an Eloquent write). Its `->visible()` is gated to {@see isRejectionPending()} (the derived read):
+     * re-submit is OFFERED only while an un-remediated rejection blocks activation, HIDDEN otherwise. The
+     * block-gate itself needs no console code — an activation attempt on a rejection-pending Master throws
+     * `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
+     * danger notification for free.
+     *
+     * Cascade retire (design L6; § 4.7) retires the Master AND its active descendants (Variants → Product
+     * References → SKUs) parent-before-child in one atomic transaction; it carries a confirmation modal WARNING
+     * that descendants are retired too. The domain owns the ordering/atomicity; this page only triggers
+     * {@see RetireProductMasterCascade} and surfaces the outcome.
      *
      * @return array<int, Action>
      */
@@ -70,6 +82,11 @@ class ViewProductMaster extends OperatorConsoleViewRecord
     {
         return [
             ...parent::getHeaderActions(),
+            $this->lifecycleAction(
+                'resubmit',
+                'resubmitted',
+                fn (Model $record, string $notes) => app(ResubmitProductMasterForReview::class)->handle($this->recordOf(ProductMaster::class, $record)),
+            )->visible(fn (): bool => $this->isRejectionPending()),
             $this->lifecycleAction(
                 'retireCascade',
                 'cascade_retired',
