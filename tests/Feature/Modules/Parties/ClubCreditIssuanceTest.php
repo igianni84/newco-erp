@@ -163,7 +163,7 @@ it('records no domain event — issuance is audit-only (§ 11.4; design L3)', fu
     $credit = app(IssueClubCredit::class)->handle($profile->id);
     expect($credit->state)->toBe(ClubCreditState::Active);   // the issue actually happened
 
-    // § 11.4 makes `ClubCreditIssued` / the upstream `MembershipFeePaid` MODULE E's events; this within-module
+    // § 11.4 makes `ClubCreditAccrued` / the upstream `MembershipFeePaid` MODULE E's events; this within-module
     // writer records NONE — it injects no DomainEventRecorder (mirrors SuspendAccount/RecordKycVerified). Delta = 0.
     expect(DomainEvent::query()->count())->toBe($before);
 });

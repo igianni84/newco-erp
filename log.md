@@ -629,3 +629,5 @@
 ## [2026-07-02 08:22] RM-09/F3 | decisions/2026-06-12-event-substrate-and-audit-store.md | Folded F3 into RM-09 (Giovanni-approved): reworded substrate-ADR erasure overclaim (:54 'already works' -> operates in place; flow not built, RM-01) + rectification marker. Both ADRs now consistent.
 
 ## [2026-07-02 08:30] close-ritual | RM-09+F3 | Pushed to origin/main as 5eb415d (docs: identity-auth + substrate ADR erasure reconciliation). hot.md updated with push hash.
+
+## [2026-07-02 08:50] RM-10 | ClubCredit event ClubCreditIssued->ClubCreditAccrued | Adopted canon DEC-018 via mini-ADR (reverses frozen-spec DEC-166). EVENT seam-name only, no event class -> zero behaviour change. Suite 1767/1767, PHPStan/Pint clean. App-event->Module-S + MembershipFeePaid(RM-03) deferred seams.

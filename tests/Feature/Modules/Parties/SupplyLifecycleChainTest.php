@@ -365,8 +365,9 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // ...and the Club Credit within-module writers (change club-credit — the per-Profile prepayment FSM
     // `active → redeemed | forfeited`). `IssueClubCredit` (task 2.1) creates an `active` credit; it is named
     // `Issue*` not `Create*`, so the Create-filter below treats it as a transition Action and it MUST be whitelisted
-    // here. These writers are AUDIT-ONLY — § 11.4 makes `ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` (and the
-    // `MembershipFeePaid` trigger) MODULE E's events, so they record state and emit NO Parties event — but they are
+    // here. These writers are AUDIT-ONLY — § 11.4 makes `ClubCreditAccrued`/`Applied`/`Restored`/`Forfeited` (and the
+    // `MembershipFeePaid` trigger) Module-E/-S financial events (DEC-018: `ClubCreditApplied` from Module S), so
+    // they record state and emit NO Parties event — but they are
     // still non-Create Actions, so they ARE whitelisted (mirroring the audit-only Account/CancelProfile entries). With
     // task 4.2 the FOUR-writer set is COMPLETE: `IssueClubCredit` (2.1) creates the `active` credit, `ApplyClubCredit`
     // (3.1) is the redemption decrement / `active → redeemed` writer, `ForfeitClubCredit` (4.1) the `active →

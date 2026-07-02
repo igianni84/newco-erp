@@ -36,11 +36,11 @@ use Illuminate\Support\Facades\DB;
  * design L5), so it never trips the index in the normal flow; the index is the concurrency backstop, and the
  * forfeit-before-issue ordering it enforces is exercised directly in the forfeiture tests.
  *
- * AUDIT-ONLY (design L3; § 11.4): § 11.4 makes `ClubCreditIssued` (and the upstream `MembershipFeePaid`) MODULE E's
+ * AUDIT-ONLY (design L3; § 11.4): § 11.4 makes `ClubCreditAccrued` (and the upstream `MembershipFeePaid`) MODULE E's
  * events — Module K consumes them and records the resulting state on its own entity — so, exactly as
  * {@see SuspendAccount} writes `status` and {@see RecordKycVerified} writes `kyc_status` recording NO event, this
  * Action creates the credit and records NO domain event; the entity state is the launch record. It therefore
- * injects NEITHER `DomainEventRecorder` NOR `ActorContext`, and fabricates NO `MembershipFeePaid`/`ClubCreditIssued`
+ * injects NEITHER `DomainEventRecorder` NOR `ActorContext`, and fabricates NO `MembershipFeePaid`/`ClubCreditAccrued`
  * event class (zero-invention).
  *
  * MEMBERSHIP-FEE TRIGGER — DEFERRED MODULE-E SEAM (design L5; § 11.1): in production issuance is driven by Module E's

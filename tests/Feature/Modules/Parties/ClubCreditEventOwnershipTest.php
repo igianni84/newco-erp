@@ -15,14 +15,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 /**
  * Pins the § 11.4 OWNERSHIP BOUNDARY for Club Credit (change club-credit task 5.1; design L3/L9; party-registry —
  * Requirement: Club Credit State Recording Is Module-E-Owned; Module K PRD § 11.4 / § 15.8). § 11.4 makes
- * `ClubCreditIssued` / `ClubCreditApplied` / `ClubCreditRestored` / `ClubCreditForfeited` — and the upstream
- * `MembershipFeePaid` — MODULE E's events: Module K consumes them and records the resulting state on its own entity.
+ * `ClubCreditAccrued` (issuance — canon DEC-018 renamed it from `ClubCreditIssued`) / `ClubCreditApplied` /
+ * `ClubCreditRestored` / `ClubCreditForfeited` — and the upstream `MembershipFeePaid` — events Module K does NOT
+ * emit: it consumes them and records the resulting state on its own entity. (Per DEC-018 the *application* event
+ * `ClubCreditApplied` is Module-S-emitted, accrual/restore/forfeit Module-E; the Module-S re-home is a deferred
+ * seam — decisions/2026-07-02-adopt-dec-018-clubcredit-accrued.md. Module K's non-emission holds either way.)
  * Because Module E does not exist (Phase 6), the four within-module writers are AUDIT-ONLY (design L3) — they
  * `update()` the credit `state`/`remaining` and emit NO domain event — and NO such event class is fabricated under
  * Parties (zero-invention; design L9 confirmed no shipped forbidden-name list pre-named these, so this is a NEW
  * guard, not a realignment). This file asserts both halves of the boundary:
  *   - NO MODULE-E EVENT CLASS IS FABRICATED (delta scenario "No Module-E event class is fabricated"): none of the
- *     five Module-E-owned names exists as an event file under `app/Modules/Parties/Events` — proven by reflecting the
+ *     five non-Module-K-owned names exists as an event file under `app/Modules/Parties/Events` — proven by reflecting the
  *     Events namespace off the filesystem (mirroring the `SupplyLifecycleChainTest` event-non-existence loop; the
  *     filesystem glob is the analyzer-safe way to assert a class's ABSENCE — a `class_exists` on a known-absent class
  *     reds PHPStan max as `function.impossibleType`);
@@ -55,12 +58,12 @@ it('fabricates no Module-E Club Credit event class under Parties (§ 11.4 owners
     $events = array_map(static fn (string $file): string => basename($file, '.php'), $eventFiles);
     expect($events)->not->toBeEmpty();   // the walk must have run — never a vacuous pass
 
-    // None of the five Module-E-owned Club Credit names is fabricated as an event file under Parties (§ 11.4 /
+    // None of the five non-Module-K-owned Club Credit names is fabricated as an event file under Parties (§ 11.4 /
     // § 15.8). Asserted via the filesystem reflection, NOT `class_exists`: PHPStan max constant-folds a `class_exists`
     // on a compile-time-known-absent class to `function.impossibleType` ("always false") — which is exactly why
     // SupplyLifecycleChainTest pins ABSENT events by glob and reserves `class_exists` for PRESENT ones. The glob is
     // runtime-dynamic (the analyzer cannot know what is on disk), so it stays green while still proving the absence.
-    foreach (['MembershipFeePaid', 'ClubCreditIssued', 'ClubCreditApplied', 'ClubCreditRestored', 'ClubCreditForfeited'] as $forbidden) {
+    foreach (['MembershipFeePaid', 'ClubCreditAccrued', 'ClubCreditApplied', 'ClubCreditRestored', 'ClubCreditForfeited'] as $forbidden) {
         expect($events)->not->toContain($forbidden);
     }
 });
@@ -97,7 +100,8 @@ it('records zero domain events across the whole Club Credit FSM — Module K rec
     expect($restored->state)->toBe(ClubCreditState::Active);   // the chain ran end-to-end through every writer
 
     // § 11.4: every writer updated `state`/`remaining` and recorded NO domain event — they inject no
-    // DomainEventRecorder, and `ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` + `MembershipFeePaid` are Module
-    // E's to emit. A zero delta across the whole FSM is the ownership boundary in one assertion. Delta = 0.
+    // DomainEventRecorder, and `ClubCreditAccrued`/`Applied`/`Restored`/`Forfeited` + `MembershipFeePaid` are
+    // emitted outside Module K (Module-E, and `ClubCreditApplied` from Module S per DEC-018). A zero delta across
+    // the whole FSM is the ownership boundary in one assertion. Delta = 0.
     expect(DomainEvent::query()->count())->toBe($before);
 });

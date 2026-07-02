@@ -23,9 +23,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * + Apply/Forfeit/Restore — landing in tasks 2–4) are the SOLE writers; each assembles the attributes internally
  * inside one `DB::transaction`, so `$guarded = []` carries no mass-assignment-from-request risk (mirrors the
  * sibling spine models {@see Club} / {@see Profile}). The writers are **audit-only**: they record state and emit
- * NO domain event — § 11.4 makes `ClubCreditIssued`/`Applied`/`Restored`/`Forfeited` + `MembershipFeePaid`
- * Module E's to emit, Module K's to consume (design L3). The entity state + the append-only audit trail are the
- * launch record.
+ * NO domain event — § 11.4 makes the four Club Credit events + `MembershipFeePaid` events Module K *consumes*,
+ * never emits (design L3): `ClubCreditAccrued` (issuance; canon DEC-018 renamed it from `ClubCreditIssued`),
+ * `ClubCreditRestored` + `ClubCreditForfeited` are Module-E-emitted, while the *application* event
+ * `ClubCreditApplied` is Module-S-emitted per DEC-018 (re-home a deferred seam, Module S unbuilt — see
+ * decisions/2026-07-02-adopt-dec-018-clubcredit-accrued.md). Module K consumes them either way. The entity
+ * state + the append-only audit trail are the launch record.
  *
  * The two Money fields follow the MoneyCast `{key}_minor`/`{key}_currency` convention (integer minor units + an
  * ISO 4217 code, NEVER a float — invariant 6): `amount` (the issued credit, = `Club.fee` verbatim at full-fee
