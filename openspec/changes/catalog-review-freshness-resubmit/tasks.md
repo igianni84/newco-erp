@@ -28,7 +28,7 @@
   - Acceptance: each of the six actions exists, is thin (delegates to `resubmit()` with the right label), and no exhaustive Action-set test reds; quality commands green.
   - Test hint: run the suite — a new non-`Create*` Action reds an exact-match allow-list if unregistered; add the seven `Resubmit*` to that array + comment. Assert each action class exists (`class_exists` positive floor) in the chain/ownership test if one enumerates them.
 
-- [ ] 3.2 **Cross-entity reject→block→resubmit→activate coverage** (spec — Approval Governance; shared FSM D1) — one parametrized/loop test over the seven spine entities asserting the mechanism is uniform (not Master-only).
+- [x] 3.2 **Cross-entity reject→block→resubmit→activate coverage** (spec — Approval Governance; shared FSM D1) — one parametrized/loop test over the seven spine entities asserting the mechanism is uniform (not Master-only).
   - Acceptance: for each entity, reject leaves it rejection-pending and blocks activation; the entity-specific `Resubmit*` re-arms; a distinct approver then activates. (Respect each entity's activation prerequisites — e.g. parent-active cascade / Producer gate — set up the minimal valid fixture per entity.)
   - Test hint: a dataset-driven test (per lessons.md scalar-dataset shape) or extend `CatalogLifecycleChainTest` — build each entity to `reviewed`, reject, assert `activate` throws the block, resubmit, assert `activate` succeeds. Where an entity's activation needs an active parent/producer, reuse the chain test's existing fixtures.
 
