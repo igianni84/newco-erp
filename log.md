@@ -717,3 +717,5 @@
 ## [2026-07-02 21:03] ralph | parties-enhanced-kyc-threshold 4.1 | green | 3 files (CreateComplianceReview action + test, tasks.md) | suite 1927/1927, PHPStan 0, Pint clean
 
 ## [2026-07-02 21:18] ralph | parties-enhanced-kyc-threshold 4.2 | green | 3 files | EvaluateEnhancedKycThreshold orchestrator: locked idempotent latch, 10k-single OR 50k-cumulative (Money::minus fail-closed), 4 atomic writes, whitelist +1; suite 1935/1935
+
+## [2026-07-02 21:30] ralph | parties-enhanced-kyc-threshold 5.1 | green | 4 files (ScanEnhancedKycThresholds cmd + bootstrap/app + routes/console + test); parties:scan-enhanced-kyc-thresholds daily; suite 1940/1940

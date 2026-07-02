@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Parties\Console\ScanEnhancedKycThresholds;
 use App\Platform\Events\Demo\DemoCommand;
 use App\Platform\Events\SweepCommand;
 use Illuminate\Foundation\Application;
@@ -13,11 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    // Platform console commands live beside their concern under App\Platform (design D1); Laravel's
-    // auto-discovery only scans app/Console/Commands, so they are registered explicitly here.
+    // Console commands live beside their concern (App\Platform\*, App\Modules\*\Console) rather than in
+    // app/Console/Commands — the only path Laravel's auto-discovery scans — so they are registered explicitly here.
     ->withCommands([
         SweepCommand::class,
         DemoCommand::class,
+        ScanEnhancedKycThresholds::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         //

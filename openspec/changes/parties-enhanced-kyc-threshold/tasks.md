@@ -44,7 +44,7 @@
 
 ## 5. Periodic trigger path
 
-- [ ] 5.1 **`ScanEnhancedKycThresholds` command + schedule** (design D7; spec — *Enhanced-KYC Threshold Detection*) — console command `parties:scan-enhanced-kyc-thresholds` in `app/Modules/Parties/Console/` iterating Customers (chunked) and calling `EvaluateEnhancedKycThreshold`; register in `bootstrap/app.php` `withCommands([...])`; schedule `->daily()` in `routes/console.php` (the `events:sweep` precedent). Runs **inline on the scheduler tick** — no queue (design D7; does not trip the queue-driver gate). Actor resolves to `System` in console.
+- [x] 5.1 **`ScanEnhancedKycThresholds` command + schedule** (design D7; spec — *Enhanced-KYC Threshold Detection*) — console command `parties:scan-enhanced-kyc-thresholds` in `app/Modules/Parties/Console/` iterating Customers (chunked) and calling `EvaluateEnhancedKycThreshold`; register in `bootstrap/app.php` `withCommands([...])`; schedule `->daily()` in `routes/console.php` (the `events:sweep` precedent). Runs **inline on the scheduler tick** — no queue (design D7; does not trip the queue-driver gate). Actor resolves to `System` in console.
   - Acceptance: the command runs green; with the null adapter it is a no-op (detects nothing); with a fake adapter reporting a breach for one Customer it escalates exactly that Customer; registered + scheduled daily.
   - Test hint: feature — bind a fake reader flagging customer A (not B); `artisan('parties:scan-enhanced-kyc-thresholds')` → A flagged + one review + `under_review`, B untouched; assert the command is registered (`Artisan::all()` has the signature); a second run is idempotent.
 
