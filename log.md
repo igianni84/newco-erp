@@ -643,3 +643,5 @@
 ## [2026-07-02 10:32] ralph | catalog-review-freshness-resubmit 1.1 | green | 2 files — mini-ADR DEC-019 (review-freshness) + INDEX row; openspec validate --strict valid, Pint clean
 
 ## [2026-07-02 10:45] ralph | catalog-review-freshness-resubmit 1.2 | green | exception factories cannotResubmit + activationBlockedByPendingRejection + 2 lifecycle lang keys + unit tests (1782/1782) | 5 files
+
+## [2026-07-02 10:55] ralph | catalog-review-freshness-resubmit 2.1 | green | 3 files (resubmit() mechanism + ResubmitProductMasterForReview + 3 tests); suite 1785/1785, PHPStan 0

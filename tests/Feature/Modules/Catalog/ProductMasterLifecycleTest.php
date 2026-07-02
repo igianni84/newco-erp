@@ -4,6 +4,7 @@ use App\Modules\Catalog\Actions\ActivateProductMaster;
 use App\Modules\Catalog\Actions\CreateProductMaster;
 use App\Modules\Catalog\Actions\RejectProductMasterReview;
 use App\Modules\Catalog\Actions\ReopenProductMaster;
+use App\Modules\Catalog\Actions\ResubmitProductMasterForReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
@@ -354,6 +355,84 @@ it('rejects a review rejection performed by a system actor', function () {
     $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Reviewed]);
 
     expect(fn () => app(RejectProductMasterReview::class)->handle($master, 'n/a'))
+        ->toThrow(ApprovalGovernanceViolation::class, 'operator');
+
+    expect(AuditRecord::query()->count())->toBe(0)
+        ->and(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Re-submit — the twin of reject that re-arms review (task 2.1; RM-06)
+|--------------------------------------------------------------------------
+|
+| ResubmitProductMasterForReview (`reviewed → reviewed`, § 4.3; canon MVP-DEC-019) mirrors the rejection
+| decision: audit-only, no domain event, from-state `reviewed`, operator-floored. It re-arms the approval
+| flow after a rejection — becoming the freshest governance action so the block-gate (task 2.2) clears. Here
+| the mechanism is proven in isolation; the block-until-resubmit behaviour lands in task 2.2.
+*/
+
+it('re-submits a rejected Master, keeps it in reviewed, records one resubmitted row and no domain event', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+
+    $master = lifecycleCreateDraftMaster($creator);
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master); // draft → reviewed (the reviewer)
+
+    // The reviewer rejects — the Master stays reviewed, rejection-pending derived from the latest action.
+    app(RejectProductMasterReview::class)->handle($master, 'Needs a clearer provenance note.');
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.rejected');
+
+    // The Creator edits in place and re-submits — the twin of reject: reviewed → reviewed, audit-only.
+    actingAs($creator, 'operator');
+    $resubmitted = app(ResubmitProductMasterForReview::class)->handle($master);
+
+    // Stays in reviewed (§ 4.3 — no revert to draft); the re-submit is now the freshest governance action.
+    expect($resubmitted->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(latestGovernanceAction($master))->toBe('catalog.product_master.resubmitted');
+
+    // Exactly one re-submit audit row carrying the decision + the acting principal (the Creator).
+    $resubmit = AuditRecord::query()->where('action', 'catalog.product_master.resubmitted')->sole();
+    $after = $resubmit->after ?? []; // narrow the nullable jsonb to an array; keys asserted order-independently (PG jsonb reorders)
+
+    expect($resubmit->entity_type)->toBe('ProductMaster')
+        ->and($resubmit->entity_id)->toBe((string) $master->id)
+        ->and($resubmit->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($resubmit->actor_id)->toEqual($creator->id)
+        ->and($resubmit->before)->toBe(['lifecycle_state' => 'reviewed'])
+        ->and($after['lifecycle_state'] ?? null)->toBe('reviewed')
+        ->and($after['decision'] ?? null)->toBe('resubmitted')
+        ->and($resubmit->authorization_basis)->toBe('catalog-lifecycle');
+
+    // No `notes` on a re-submit (unlike reject) — the "what changed" history is RM-14's concern (design D2).
+    expect($after)->not->toHaveKey('notes');
+
+    // The earlier rejection row is intact (append-only) and the re-submit records NO domain event.
+    expect(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', 'like', '%Reviewed%')->count())->toBe(0)
+        ->and(DomainEvent::query()->where('entity_type', 'ProductMaster')->where('name', 'like', '%Activated%')->count())->toBe(0);
+});
+
+it('rejects a re-submit on a non-reviewed Master, naming the state, and writes nothing', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Draft]);
+
+    // A re-submit is a reviewed → reviewed decision: invalid from draft. The message names the locked state.
+    expect(fn () => app(ResubmitProductMasterForReview::class)->handle($master))
+        ->toThrow(IllegalLifecycleTransition::class, 'draft');
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Draft)
+        ->and(AuditRecord::query()->count())->toBe(0);
+});
+
+it('rejects a re-submit performed by a system actor', function () {
+    // A reviewed Master with no operator context — a re-submit is a Creator decision, so a system actor
+    // cannot perform it (the from-state passes; the operator floor rejects).
+    $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Reviewed]);
+
+    expect(fn () => app(ResubmitProductMasterForReview::class)->handle($master))
         ->toThrow(ApprovalGovernanceViolation::class, 'operator');
 
     expect(AuditRecord::query()->count())->toBe(0)
