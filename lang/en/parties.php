@@ -163,4 +163,13 @@ return [
         // reach logs (the DuplicateCustomerEmail PII-free discipline).
         'blocked_by_compliance_hold' => 'Cannot anonymise Customer :customer: an active compliance Hold requires the Customer\'s identifiable data to be retained. Anonymisation proceeds only once the compliance Hold is lifted.',
     ],
+    'address' => [
+        // Customer Address country-code boundary validation (change parties-anonymisation, task 2.1; design D4;
+        // party-registry — Requirement: Customer Address). `country_code` is a fixed-width ISO 3166-1 alpha-2
+        // code (like the ISO 4217 currency codes) validated at the CreateCustomerAddress action boundary — two
+        // uppercase letters — NOT a DB enum/CHECK. No launch country-set exists (collectors are international), so
+        // the guard validates FORMAT. :country echoes the offending operator-supplied value — a country code is
+        // NOT personal data (unlike an email), so it IS interpolated (the :producer / :club id discipline).
+        'invalid_country_code' => 'Cannot create the Address: ":country" is not a valid ISO 3166-1 alpha-2 country code. A country code must be two uppercase letters (for example IT, FR or GB).',
+    ],
 ];

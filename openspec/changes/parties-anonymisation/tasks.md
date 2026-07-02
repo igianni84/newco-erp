@@ -14,7 +14,7 @@
 
 ## 2. Address entity
 
-- [ ] 2.1 **`Address` model + `Customer hasMany Address` + `CreateCustomerAddress` action** (design D4; spec — *Customer Address*) — the `Address` Eloquent model (`parties_addresses`), a within-module `Customer hasMany` / `Address belongsTo Customer` relationship (**no cross-module** relationship/import), and a thin `CreateCustomerAddress` action (named `Create*` so it stays out of the non-`Create*` allow-lists — Risks). Optional `company_name`/`vat_id`; the Customer carries no B2C/B2B discriminator (unchanged).
+- [x] 2.1 **`Address` model + `Customer hasMany Address` + `CreateCustomerAddress` action** (design D4; spec — *Customer Address*) — the `Address` Eloquent model (`parties_addresses`), a within-module `Customer hasMany` / `Address belongsTo Customer` relationship (**no cross-module** relationship/import), and a thin `CreateCustomerAddress` action (named `Create*` so it stays out of the non-`Create*` allow-lists — Risks). Optional `company_name`/`vat_id`; the Customer carries no B2C/B2B discriminator (unchanged).
   - Acceptance: an Address can be created for a Customer with the personal fields + optional company_name/vat_id; `$customer->addresses` returns them; no cross-module import; quality commands green.
   - Test hint: feature test — create a Customer, `CreateCustomerAddress` with company fields, assert persisted + `$customer->addresses()->count() === 1`; assert `Customer` has no `is_business`/discriminator column (AC-K-XM-25); a boundary check that `app/Modules/Parties` imports no other module's models.
 

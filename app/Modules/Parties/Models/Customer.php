@@ -3,6 +3,7 @@
 namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateCustomer;
+use App\Modules\Parties\Actions\CreateCustomerAddress;
 use App\Modules\Parties\Actions\ReactivateCustomer;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
@@ -80,6 +81,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Account|null $account
  * @property-read Club|null $originatingClub
  * @property-read Collection<int, Profile> $profiles
+ * @property-read Collection<int, Address> $addresses
  */
 class Customer extends Model
 {
@@ -133,6 +135,21 @@ class Customer extends Model
     public function originatingClub(): BelongsTo
     {
         return $this->belongsTo(Club::class, 'originating_club_id');
+    }
+
+    /**
+     * The billing Addresses this Customer holds — a WITHIN-module `hasMany` (both entities are Module K, so the
+     * cross-module relation ban does not apply). A Customer MAY have zero or more Addresses (one-to-many, design
+     * D4; DEC-068). The {@see CreateCustomerAddress} action is the sole writer; the
+     * relation itself adds no writer (the model stays persistence-only). On anonymisation (`AnonymiseCustomer`,
+     * task 3.2) every Address in this set has its personal fields overwritten with deterministic placeholders in
+     * the same transaction, the rows preserved.
+     *
+     * @return HasMany<Address, $this>
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, 'customer_id');
     }
 
     /**
