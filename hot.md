@@ -7,24 +7,25 @@ updated: 2026-07-02
 # Hot Cache
 
 ## Last Updated
-**2026-07-02 — `catalog-review-freshness-resubmit` (RM-06) is CHANGE COMPLETE (10/10).** Final task 5.1 (verification/reconciliation, no code) green on BOTH engines: SQLite full suite **1807/1807**, PG17 catalog+console+exception suites **391/391**. `<promise>CHANGE_COMPLETE</promise>` emitted — **awaiting human review → `openspec archive` + merge** (loop never archives/merges/pushes). RM-06 was the last Round-1 compliance-remediation item (Paolo Alfieri's 2026-07-01 mail). Verdict reports in **`docs/validation/`**; live backlog **`Remediation_Tracker.md`**. On origin/main: RM-07 `5b64cc8`, RM-04 `d8ec261`, RM-09+F3 `5eb415d`, RM-10 `04406b8`, RM-24 `4c373af`.
+**2026-07-02 — `catalog-review-freshness-resubmit` (RM-06) MERGED + ARCHIVED on local `main`** (merge `348dade`, archive `ad69ce2`). Close ritual (GUIDE §2.7) run interactively: PG17 **full suite 1807/1807** (9851 assertions — upgraded from the loop's 391-subset gate to the WHOLE suite on the production engine) + semantic verification (2 subagents: domain/tests + console/ADR/i18n) **both CLEAN, zero CRITICAL**. `product-catalog` truth spec absorbed the MODIFIED Approval Governance requirement (now 50 scenarios, strict-valid). RM-06 was the last Round-1 compliance-remediation item (Paolo Alfieri 2026-07-01). **Local `main` ahead of origin by 13; push is GATED — awaiting Giovanni's go.**
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **GREEN on both engines:** SQLite full suite **1807/1807** (9851 assertions); **PG17** (Docker `postgres:17`, GUIDE §2.7) `tests/Feature/Modules/Catalog` + `tests/Feature/Modules/OperatorPanel/Catalog` + `tests/Unit/Modules/Catalog/Exceptions` = **391/391** (3067 assertions); PHPStan max 0; Pint clean; `openspec validate --strict` valid.
+- **GREEN on both engines, FULL suite:** SQLite **1807/1807** (9851 assertions); **PG17** (Docker `postgres:17`, GUIDE §2.7) **1807/1807** (9851 assertions, 288s) — whole suite on production engine, not just the Catalog subset. PHPStan max 0; Pint clean; `openspec validate --strict` valid.
 - Full suite: `php -d memory_limit=-1 vendor/bin/pest` — bare `php artisan test` OOMs at 128M (lessons.md 2026-06-20).
 
 ## Active Change & Next Task
-- **`catalog-review-freshness-resubmit` (RM-06) — COMPLETE, all 10 tasks `[x]`.** Block-gate on `reviewed→active` (activation blocked while the entity's latest governance action ends `.rejected`) + explicit `resubmit()` (`reviewed→reviewed`), derive-from-audit (no schema). edit-re-arms leg deferred to **RM-14**; canon MVP-DEC-019.
-- **NEXT (human):** review branch `ralph/catalog-review-freshness-resubmit`, then `openspec archive catalog-review-freshness-resubmit --yes` + merge. The CI `tests-pgsql` lane re-runs the full suite on PG17 at the human push (development.md:86) — treat as merge acceptance.
-- **NEXT (loop, new change):** Round-1 remediation drained with RM-06 — pick the next backlog item from `Remediation_Tracker.md` / prep via `spec-to-change`.
+- **No active openspec change** — RM-06 archived (`openspec/changes/archive/2026-07-02-catalog-review-freshness-resubmit/`). Shipped: block-gate on `reviewed→active` (blocked while latest governance action ends `.rejected`) + explicit `resubmit()` (`reviewed→reviewed`, audit-only twin of `reject`), derive-from-audit (no schema). edit-re-arms leg deferred to **RM-14**; canon MVP-DEC-019.
+- **NEXT (mechanical):** `git push` (gated) → then `git branch -d ralph/catalog-review-freshness-resubmit`. CI `tests-pgsql` lane re-runs full suite on PG17 at push (development.md:86) = merge acceptance.
+- **NEXT (loop, new change):** Round-1 remediation DRAINED with RM-06 — pick next backlog item from `docs/validation/Remediation_Tracker.md` / prep via `spec-to-change`.
 
 ## Blockers & Decisions Needed
-- None. ⚠️ **DEC-019 collision:** canon MVP-DEC-019 = review-freshness (this change); frozen spec's own DEC-019 = unrelated Module-S club composites — never conflate.
+- **Push pending** (Giovanni's close-ritual gate) — merge+archive+memory committed locally, not pushed.
 - Canon drift DEC-007→DEC-023 still open on Module K (RM-03, RM-05) — waits on Modules S/E/A.
 - **Incidental findings open (Tracker §7):** F1 DemoSeeder SQLite-only; F2 prod operator-mgmt missing → SoD unsatisfiable in prod.
+- ⚠️ **DEC-019 collision:** canon MVP-DEC-019 = review-freshness (RM-06); frozen spec's own DEC-019 = unrelated Module-S club composites — never conflate.
 
 ## Open Patterns
-- **Local PG17 gate IS runnable here** (docker + `pdo_pgsql` present): boot `postgres:17` on **55432** (GUIDE §2.7), run `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=1024M vendor/bin/pest <paths>`, then `docker rm -f pg`. Run the `OperatorPanel/Catalog` FOLDER (self-contained — its i18n-scanner declaring file `ProductMasterConsoleI18nTest` is inside), never a bare console file (lessons.md 2026-06-20/122).
-- **The review-freshness block-gate is engine-neutral** — one string column (`audit_records.action`) read via `orderByDesc('id')` + PHP `str_ends_with`; no PG-specific migration branch (CHECK / partial index / plpgsql trigger) touches it. 391/391 on PG17 with zero edits confirms.
-- **Reconciliation shape (reusable):** literal `->reject(` = 0 in tests (reject via `Reject{E}Review` Actions / console `callAction('reject')`); the six sibling `*LifecycleTest`s keep reject and activate-success in SEPARATE closures (reject closure only asserts `%Activated%==0`, a read), so the block-gate broke only the ONE reject-then-activate-success path — `ProductMasterLifecycleTest`'s ex-"not terminal", inverted in 2.2. No exhaustive Catalog Action allow-list exists.
+- **RM-14 latent coupling (RM-06 semantic-verify S1):** `ApprovalGovernance::assertNotRejectionPending` reads the *raw* latest catalog audit action with NO governance-verb filter — correct only because `LifecycleTransition` is the sole catalog `audit_records` writer today. When RM-14 adds the edit path (edit-audit rows), a post-rejection edit row could become "latest" and clear the block without a re-submit → **filter to governance verbs (or assert the invariant) when RM-14 lands.**
+- **Review-freshness block-gate is engine-neutral** — one string column (`audit_records.action`) via `orderByDesc('id')` + PHP `str_ends_with`; full PG17 suite green with zero migration branch confirms.
+- **Local PG17 gate recipe** (GUIDE §2.7): boot `postgres:17` on **55432**, `DB_CONNECTION=pgsql … php -d memory_limit=1024M vendor/bin/pest`, `docker rm -f pg`.
