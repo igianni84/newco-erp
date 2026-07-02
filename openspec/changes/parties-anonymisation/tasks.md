@@ -20,7 +20,7 @@
 
 ## 3. Anonymisation core
 
-- [ ] 3.1 **`AnonymisedPlaceholders` deterministic helper** (design D1) — a pure value-object/helper deriving per-Customer-unique placeholders from the Customer id: `email → anonymised+{id}@anonymised.invalid`, `name → "Anonymised Customer {id}"`, `phone → null`, `date_of_birth → null`, and Address personal-field placeholders. Deterministic, never `random`/`faker`.
+- [x] 3.1 **`AnonymisedPlaceholders` deterministic helper** (design D1) — a pure value-object/helper deriving per-Customer-unique placeholders from the Customer id: `email → anonymised+{id}@anonymised.invalid`, `name → "Anonymised Customer {id}"`, `phone → null`, `date_of_birth → null`, and Address personal-field placeholders. Deterministic, never `random`/`faker`.
   - Acceptance: same id → same placeholders (reproducible); two ids → distinct emails (UNIQUE-safe); no randomness.
   - Test hint: unit test (no `RefreshDatabase`) — `expect(AnonymisedPlaceholders::for(7)->email)->toBe('anonymised+7@anonymised.invalid')`; two ids yield distinct emails; calling twice for the same id is equal.
 

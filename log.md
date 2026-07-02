@@ -677,3 +677,5 @@
 ## [2026-07-02 15:58] ralph | parties-anonymisation 1.3 | green | 5 files — lang/en/parties.php anonymisation.blocked_by_compliance_hold + CONTEXT.md Address term + both seams flipped + AnonymisationExceptionsTest; suite 1819/1819, phpstan 0
 
 ## [2026-07-02 16:12] ralph | parties-anonymisation 2.1 | green | 9 files (Address model+factory, CreateCustomerAddress, InvalidAddressCountryCode, Customer hasMany, lang, 2 tests) | suite 1831/1831
+
+## [2026-07-02 16:25] ralph | parties-anonymisation 3.1 | green | AnonymisedPlaceholders value object (Support/) + 8-case unit test; suite 1839/1839; 5 files
