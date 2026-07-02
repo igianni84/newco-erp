@@ -39,6 +39,18 @@ return [
         // Rejection (§ 4.3) is a reviewed → reviewed decision (no state change), so it is valid only from
         // reviewed; an out-of-state reject surfaces this through the same single parameterized exception.
         'cannot_reject' => 'Cannot reject this :entity from state :state. A :entity may be rejected for review only while in reviewed.',
+        // Re-submit (RM-06 / canon MVP-DEC-019) is the twin of reject: a reviewed → reviewed decision (no
+        // state change) that re-arms review after a rejection, so it too is valid only from reviewed. An
+        // out-of-state re-submit surfaces this through the same single parameterized IllegalLifecycleTransition.
+        'cannot_resubmit' => 'Cannot re-submit this :entity for review from state :state. A :entity may be re-submitted for review only while in reviewed.',
+        // Review-freshness block-gate (RM-06 / canon MVP-DEC-019). activate (reviewed → active) is refused
+        // while the entity's latest governance decision is an un-remediated rejection — the entity must be
+        // re-submitted first. Thrown as ApprovalGovernanceViolation (enforced in the approval-governance
+        // guard, so it surfaces through the console kit's outcome path for free), but its reason lives in
+        // this lifecycle group because the rule it names is a lifecycle-flow / review-freshness rule, not a
+        // separation-of-duties one. Only :entity (the entity-type name — never PII); the offending state is
+        // always reviewed and the acting principal lives on the audit row.
+        'activation_blocked_by_pending_rejection' => 'Cannot activate this :entity: its latest review decision is an un-remediated rejection. The :entity must be re-submitted for review before it can be activated (review freshness).',
     ],
     'approval' => [
         // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition

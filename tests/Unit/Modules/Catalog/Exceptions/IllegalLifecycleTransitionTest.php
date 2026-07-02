@@ -55,6 +55,17 @@ it('rejects reopening an entity that is not retired, naming the offending state 
         ->and($exception->getMessage())->toContain('ProductMaster');
 });
 
+it('rejects re-submitting an entity that is not reviewed, naming the offending state and entity', function () {
+    // Re-submit (RM-06) is the twin of reject — valid only from reviewed; a draft entity has nothing to
+    // re-submit. 'draft' is absent from the cannot_resubmit template, so its presence proves interpolation.
+    $exception = IllegalLifecycleTransition::cannotResubmit(LifecycleState::Draft, 'ProductMaster');
+
+    expect($exception)->toBeInstanceOf(IllegalLifecycleTransition::class)
+        ->and($exception->getMessage())->not->toBe('')
+        ->and($exception->getMessage())->toContain('draft')
+        ->and($exception->getMessage())->toContain('ProductMaster');
+});
+
 it('resolves every lifecycle transition lang key with the :state and :entity placeholders wired', function (string $key) {
     // Neither sentinel appears in any literal template, so the presence of BOTH in the resolved
     // string proves each placeholder was interpolated; a missing key would make Laravel echo the key
@@ -69,6 +80,7 @@ it('resolves every lifecycle transition lang key with the :state and :entity pla
     'catalog.lifecycle.cannot_activate',
     'catalog.lifecycle.cannot_retire',
     'catalog.lifecycle.cannot_reopen',
+    'catalog.lifecycle.cannot_resubmit',
 ]);
 
 it('preserves the existing catalog creation-rejection lang groups', function () {

@@ -641,3 +641,5 @@
 ## [2026-07-02 10:22] spec-to-change | catalog-review-freshness-resubmit (RM-06) | authored + APPROVED; MODIFIED product-catalog Approval Governance = block-gate + explicit re-submit (derive-from-audit) +4 scenarios; mini-ADR MVP-DEC-019 planned; edit-re-arms deferred to RM-14; validate --strict green; 0/10 tasks, awaiting commit+build
 
 ## [2026-07-02 10:32] ralph | catalog-review-freshness-resubmit 1.1 | green | 2 files — mini-ADR DEC-019 (review-freshness) + INDEX row; openspec validate --strict valid, Pint clean
+
+## [2026-07-02 10:45] ralph | catalog-review-freshness-resubmit 1.2 | green | exception factories cannotResubmit + activationBlockedByPendingRejection + 2 lifecycle lang keys + unit tests (1782/1782) | 5 files
