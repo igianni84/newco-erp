@@ -721,3 +721,5 @@
 ## [2026-07-02 21:30] ralph | parties-enhanced-kyc-threshold 5.1 | green | 4 files (ScanEnhancedKycThresholds cmd + bootstrap/app + routes/console + test); parties:scan-enhanced-kyc-thresholds daily; suite 1940/1940
 
 ## [2026-07-02 21:51] ralph | parties-enhanced-kyc-threshold 6.1 | green | 4 files (widget + resource section + page wiring + test); read-only console: gated infolist section + open-reviews footer widget; suite 1944/1944, phpstan 0
+
+## [2026-07-02 22:15] ralph | parties-enhanced-kyc-threshold 7.1 | green | 1 file (new closing chain test); SQLite 1947/1947 + PG17 1947/1947, PHPStan 0, Pint clean, openspec valid; ALL 12 tasks done → CHANGE_COMPLETE
