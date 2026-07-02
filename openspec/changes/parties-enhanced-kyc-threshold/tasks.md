@@ -34,7 +34,7 @@
 
 ## 4. Detection workflow (Actions)
 
-- [ ] 4.1 **`CreateComplianceReview` action** (design D6; spec — *Compliance Review Queue*) — a `Create*` action (auto-allowed by the arch whitelist) writing one `parties_compliance_reviews` row: `(customerId, reason, thresholdKind, Money $trippedAmount)`. Persists `tripped_amount_minor` + `tripped_currency` from the `Money`. Sole writer of the review-queue row; no event of its own (the detection Action records `CustomerEnhancedKycReviewRequired`).
+- [x] 4.1 **`CreateComplianceReview` action** (design D6; spec — *Compliance Review Queue*) — a `Create*` action (auto-allowed by the arch whitelist) writing one `parties_compliance_reviews` row: `(customerId, reason, thresholdKind, Money $trippedAmount)`. Persists `tripped_amount_minor` + `tripped_currency` from the `Money`. Sole writer of the review-queue row; no event of its own (the detection Action records `CustomerEnhancedKycReviewRequired`).
   - Acceptance: creates exactly one row with the passed fields; returns the model; records no domain event.
   - Test hint: feature — call the action; assert one row with `reason=enhanced_kyc_threshold`, the `threshold_kind`, `tripped_amount_minor` via `->toEqual`; `DomainEvent::count()` unchanged.
 
