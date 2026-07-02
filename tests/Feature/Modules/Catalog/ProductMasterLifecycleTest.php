@@ -439,30 +439,115 @@ it('rejects a re-submit performed by a system actor', function () {
         ->and(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed);
 });
 
-it('lets the approval flow complete after a rejection (rejection is not terminal)', function () {
+/*
+|--------------------------------------------------------------------------
+| Review-freshness block-gate — a pending rejection blocks activation (task 2.2; RM-06)
+|--------------------------------------------------------------------------
+|
+| Canon MVP-DEC-019 (design D1/D3; product-catalog — Requirement: Approval Governance, "A pending rejection
+| blocks activation until re-submit"): while an entity's latest governance action is an un-remediated
+| rejection it is REJECTION-PENDING, and `activate` (`reviewed → active`) is BLOCKED — enforced in
+| ApprovalGovernance::guard() as a DERIVE-FROM-AUDIT read (the latest catalog governance action ends in
+| `.rejected`; no schema flag, design D3), thrown as ApprovalGovernanceViolation so it surfaces through the
+| console kit's outcome path (task 4.1). An explicit `re-submit` (or a `retired → reviewed` reopen) becomes the
+| freshest action and clears the block. These drive the REAL ActivateProductMaster against an active-projected
+| producer, so the blocked "no ProductMasterActivated event" assertion is meaningful and the block is proven to
+| precede the Producer gate. This INVERTS the pre-RM-06 "rejection is not terminal" behaviour.
+*/
+
+it('blocks activation while a rejection is pending and admits it only after a re-submit', function () {
     $creator = Operator::factory()->create();
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    $master = lifecycleCreateDraftMaster($creator);
+    lifecycleProjectProducer('ProducerActivated', 7, 'active'); // producer gate open — the BLOCK is what fires
+
+    $master = lifecycleCreateDraftMaster($creator, 7);
     actingAs($reviewer, 'operator');
     app(SubmitProductMasterForReview::class)->handle($master);
 
-    // The reviewer rejects with notes — the Master stays in reviewed, "rejection-pending" derived from the
-    // latest governance audit action (no schema flag).
+    // The reviewer rejects — the Master stays reviewed; "rejection-pending" is DERIVED (latest audit action).
     app(RejectProductMasterReview::class)->handle($master, 'Needs a clearer provenance note.');
-    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
-        ->and(latestGovernanceAction($master))->toBe('catalog.product_master.rejected');
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.rejected');
 
-    // A distinct approver then approves — the rejection did not block the flow; it now completes.
+    // A DISTINCT approver (no self-approval) attempts activation: the review-freshness block-gate fires FIRST
+    // — before the Producer gate (which would pass here) — because the latest governance action is a rejection.
+    // The 'un-remediated' token pins the BLOCK message (absent from every separation-of-duties reason).
     actingAs($approver, 'operator');
-    $active = app(LifecycleTransition::class)->transition($master, LifecycleTransitionType::Activate, 'ProductMaster');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ApprovalGovernanceViolation::class, 'un-remediated');
+
+    // Blocked: still reviewed, no activation audit row, no ProductMasterActivated — the rejection row stands.
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.activated')->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1);
+
+    // The Creator edits in place and re-submits — the freshest governance action becomes `.resubmitted`.
+    actingAs($creator, 'operator');
+    app(ResubmitProductMasterForReview::class)->handle($master);
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.resubmitted');
+
+    // The distinct approver now activates → active, exactly one ProductMasterActivated, rejection row preserved.
+    actingAs($approver, 'operator');
+    $active = app(ActivateProductMaster::class)->handle($master);
 
     expect($active->lifecycle_state)->toBe(LifecycleState::Active)
-        // The latest governance action is now the activation — rejection-pending is cleared (derived).
-        ->and(latestGovernanceAction($master))->toBe('catalog.product_master.activated')
-        // The rejection row is preserved in the append-only trail.
+        ->and(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1)
         ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1);
+});
+
+it('activates a never-rejected Master — the block-gate does not false-fire on a fresh submit', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    lifecycleProjectProducer('ProducerActivated', 7, 'active');
+
+    $master = lifecycleCreateDraftMaster($creator, 7);
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    // Latest governance action is the submit (never rejected) — the block-gate must let activation through.
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.submitted');
+
+    actingAs($approver, 'operator');
+    $active = app(ActivateProductMaster::class)->handle($master);
+
+    expect($active->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1);
+});
+
+it('does not treat a reopened Master as rejection-pending even with a rejection earlier in its history', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    lifecycleProjectProducer('ProducerActivated', 7, 'active');
+
+    $master = lifecycleCreateDraftMaster($creator, 7);
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    // A rejection early in history, remediated by a re-submit, then a full activate → retire → reopen.
+    app(RejectProductMasterReview::class)->handle($master, 'Early nit.');
+    actingAs($creator, 'operator');
+    app(ResubmitProductMasterForReview::class)->handle($master);
+    actingAs($approver, 'operator');
+    app(ActivateProductMaster::class)->handle($master); // → active (the rejection is already remediated)
+    app(RetireProductMaster::class)->handle($master);   // → retired
+    app(ReopenProductMaster::class)->handle($master);    // → reviewed; latest action is now `.reopened`
+
+    // The `.rejected` row is still in history, but the LATEST governance action is `.reopened` — not
+    // rejection-pending: the block-gate reads only the latest action, so the buried rejection does not block.
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.reopened')
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1);
+
+    $reactivated = app(ActivateProductMaster::class)->handle($master);
+
+    expect($reactivated->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(2);
 });
 
 /*
