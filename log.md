@@ -705,3 +705,5 @@
 ## [2026-07-02 20:13] ralph | parties-enhanced-kyc-threshold 1.2 | green | i18n copy (parties.compliance_review + customer.compliance_reviews EN/IT) + 3 CONTEXT terms + 2 tests | suite 1904/1904 | 7 files
 
 ## [2026-07-02 20:18] ralph | parties-enhanced-kyc-threshold 2.1 | green | enum case→value+count pin, 5 tests; full suite 1909/1909, PHPStan 0
+
+## [2026-07-02 20:27] ralph | parties-enhanced-kyc-threshold 2.2 | green | 3 files (model ComplianceReview + factory + model test); full suite 1911/1911, PHPStan max 0

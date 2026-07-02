@@ -14,7 +14,7 @@
   - Acceptance: both enums are backed `string` enums with the exact tokens above; the migration CHECKs (1.1) derive from `::cases()`.
   - Test hint: a unit test asserts the case→value mapping for each; `count(ComplianceReviewReason::cases()) === 1`.
 
-- [ ] 2.2 **Model `ComplianceReview`** (design D6; spec — *Compliance Review Queue*) — persistence-only (`$guarded = []`), `protected $table = 'parties_compliance_reviews'`, casts (`reason` → `ComplianceReviewReason`, `threshold_kind` → `ThresholdKind`, `tripped_amount_minor` → `integer`, `resolved_at` → `immutable_datetime`), a within-module `belongsTo(Customer::class, 'customer_id')`. No mutation surface (the writer Action owns writes). Factory under `Database\Factories\Parties\`.
+- [x] 2.2 **Model `ComplianceReview`** (design D6; spec — *Compliance Review Queue*) — persistence-only (`$guarded = []`), `protected $table = 'parties_compliance_reviews'`, casts (`reason` → `ComplianceReviewReason`, `threshold_kind` → `ThresholdKind`, `tripped_amount_minor` → `integer`, `resolved_at` → `immutable_datetime`), a within-module `belongsTo(Customer::class, 'customer_id')`. No mutation surface (the writer Action owns writes). Factory under `Database\Factories\Parties\`.
   - Acceptance: the model reads/writes the row with correct casts; `belongsTo` resolves the Customer within-module (no cross-module relation — `ModuleBoundariesTest` stays green).
   - Test hint: unit — create a row via factory, assert `reason`/`threshold_kind` cast to enums and `tripped_amount_minor` reads back with `->toEqual` (PG bigint-as-string trap); assert `$review->customer` returns the Customer.
 
