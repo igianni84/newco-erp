@@ -685,3 +685,5 @@
 ## [2026-07-02 16:59] ralph | parties-anonymisation 3.3 | green | 4 files | AuditRecorder::redactEntity + AnonymiseCustomer leg(c); Parties writes no audit → documented no-op; 1852/1852
 
 ## [2026-07-02 17:13] ralph | parties-anonymisation 3.4 | green | 4 files (1 new event, action ctor+record, 2 tests) | CustomerAnonymised PII-free event; full suite 1853/1853, PHPStan 0, Pint clean
+
+## [2026-07-02 17:24] ralph | parties-anonymisation 4.1 | green | 2 files — per-Hold-type precedence matrix (pure tests, new CustomerAnonymisationHoldPrecedenceTest 11/45); suite 1864/1864; no arch-gate churn

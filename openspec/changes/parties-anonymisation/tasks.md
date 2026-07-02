@@ -38,7 +38,7 @@
 
 ## 4. Hold-precedence matrix (J-9a)
 
-- [ ] 4.1 **Per-Hold-type precedence tests** (design D2; spec — *Anonymisation Hold Precedence*; `AC-K-J-9a`) — the precedence matrix: a `compliance` Hold blocks; a non-`compliance` Hold (e.g. `payment`, `fraud`) does not; lifting the `compliance` Hold unblocks; the non-`compliance` Hold's blocking state is preserved through anonymisation.
+- [x] 4.1 **Per-Hold-type precedence tests** (design D2; spec — *Anonymisation Hold Precedence*; `AC-K-J-9a`) — the precedence matrix: a `compliance` Hold blocks; a non-`compliance` Hold (e.g. `payment`, `fraud`) does not; lifting the `compliance` Hold unblocks; the non-`compliance` Hold's blocking state is preserved through anonymisation.
   - Acceptance: `compliance`-held → blocked (un-anonymised, no event); `payment`/`fraud`-held (no compliance) → proceeds; after lifting the `compliance` Hold → proceeds; the non-`compliance` Hold survives.
   - Test hint: a dataset-driven test over Hold types (scalar dataset shape) asserting block/allow per type; the lift-then-retry case; assert the surviving non-compliance Hold is still active post-anonymisation.
 
