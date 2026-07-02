@@ -7,7 +7,7 @@ updated: 2026-07-02
 # Hot Cache
 
 ## Last Updated
-**2026-07-02 — Compliance-remediation Round 1 (pre-Paolo). RM-24 reviewed & pushed; Round-1 quick wins done bar RM-06.** Verdict reports in **`docs/validation/`**; live backlog **`Remediation_Tracker.md`**. Driven by Paolo Alfieri's 2026-07-01 mail. **On origin/main:** RM-07 `5b64cc8`, RM-04 `d8ec261`, RM-09+F3 `5eb415d`, RM-10 `04406b8`, RM-24 `4c373af`.
+**2026-07-02 — Compliance-remediation Round 1 (pre-Paolo). RM-06 change authored + APPROVED (last Round-1 item); RM-24 & prior all reviewed + pushed.** Verdict reports in **`docs/validation/`**; live backlog **`Remediation_Tracker.md`**. Driven by Paolo Alfieri's 2026-07-01 mail. **On origin/main:** RM-07 `5b64cc8`, RM-04 `d8ec261`, RM-09+F3 `5eb415d`, RM-10 `04406b8`, RM-24 `4c373af`.
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -15,12 +15,12 @@ updated: 2026-07-02
 - Run the full suite via `php -d memory_limit=-1 vendor/bin/pest` — bare `php artisan test` OOMs at 128M (lessons.md 2026-06-20).
 
 ## Active Change & Next Task
-- No openspec change open (Round-1 items are size-S → coded directly, TDD). `docs/validation/` answers Paolo's 3 asks: verdict (#1), env-readiness (#2), canon delta (#3).
+- **Open change: `catalog-review-freshness-resubmit` (RM-06) — authored + APPROVED, 0/10 tasks, ready to build.** First Round-1 item to go through `/spec-to-change` (M — touches the shared lifecycle FSM) vs direct-TDD. `docs/validation/` answers Paolo's 3 asks: verdict (#1), env-readiness (#2), canon delta (#3).
 - **Scoreboard vs local baseline:** Module 0 = 67 P / 10 Part / 7 F / 16 Def (100). Module K = 77 / 26 / 19 / 8 (130). ~70% Pass in-scope.
 - **Round 1 backlog [`Remediation_Tracker.md`](docs/validation/Remediation_Tracker.md)** (25 items RM-01..25; **read it before touching any Module 0/K fix**; update it + this line as items land).
 - **Done & pushed:** RM-07 `5b64cc8` · RM-04 `d8ec261` · RM-09+F3 `5eb415d` · RM-10 `04406b8` · RM-24 `4c373af`.
-- **RM-24 ✅ done & pushed `4c373af` — canon DEC-023 / BR-Identity-5:** Product Type immutable post-creation. Explicit `ProductMaster::booted()` `updating` guard (`isDirty('product_type')` → new `ProductTypeImmutable`) — the only path-complete chokepoint (real mutable column + `$guarded=[]`, no update Action, read-only Filament). Fires on UPDATE only (creation free); passes lifecycle transitions. Mini-ADR `2026-07-02-adopt-dec-023-product-type-immutable` (+INDEX; §3 "—"→"mini", canon-DEC absent from spec, like RM-04/10). **Zero behaviour delta** (codifies an already-satisfied invariant); scope = `product_type` only (name re-versioning = RM-14). +2 tests, 1769/1769.
-- **Active next:** **RM-06** (PIM reject/edit review-freshness + explicit re-submit, S/M) — last Round-1 item + Paolo's "rejection round". Then Round 2 = floor builds (RM-01 erasure / RM-02 enhanced-KYC).
+- **Round-1 quick wins closed** (detail in tracker §3/§6): RM-07 (operators+SoD fixture) · RM-04 (Hold 6→8) · RM-09+F3 (erasure-ADR honesty) · RM-10 (ClubCredit `Accrued` rename) · RM-24 (Product-Type immutable guard, DEC-023). Each with mini-ADR where a canon-DEC was adopted. Suite 1769/1769.
+- **Active next:** implement **`catalog-review-freshness-resubmit`** (RM-06) — block-gate on `reviewed→active` + explicit `re-submit` (`reviewed→reviewed`, twin of `reject`) across all 7 spine entities, **derive-from-audit** (no schema); completes the prior change's design-D5 intent. edit-re-arms→RM-14; mini-ADR MVP-DEC-019. APPROVED, awaiting commit + build (ralph or interactive TDD). Closes Round 1. Then Round 2 = floor builds (RM-01 erasure / RM-02 enhanced-KYC).
 
 ## Blockers & Decisions Needed
 - **Canon drift DEC-007 → DEC-023** (heaviest on Module K). Headline divergences vs code: membership "approved-but-unpaid" flow **DEC-016 declared WRONG** (RM-03); capacity ships **UNCAPPED** vs DEC-017 seat-set (RM-05) — both wait on Modules S/E/A.

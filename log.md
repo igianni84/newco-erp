@@ -637,3 +637,5 @@
 ## [2026-07-02 09:44] RM-24 | Catalog product_type immutability guard | canon DEC-023/BR-Identity-5: ProductMaster updating-guard (isDirty→ProductTypeImmutable)+lang+mini-ADR+INDEX+lessons rule(3rd conf). Zero-behaviour codification; +2 tests, suite 1769/1769, PHPStan/Pint clean. Awaiting review. Next RM-06.
 
 ## [2026-07-02 09:49] close-ritual | RM-24 | reviewed by Giovanni + pushed 4c373af to origin/main. hot.md/tracker §1 sha-backfilled. Round-1 remaining: RM-06 (last quick win), then Round 2 floor builds RM-01/RM-02.
+
+## [2026-07-02 10:22] spec-to-change | catalog-review-freshness-resubmit (RM-06) | authored + APPROVED; MODIFIED product-catalog Approval Governance = block-gate + explicit re-submit (derive-from-audit) +4 scenarios; mini-ADR MVP-DEC-019 planned; edit-re-arms deferred to RM-14; validate --strict green; 0/10 tasks, awaiting commit+build
