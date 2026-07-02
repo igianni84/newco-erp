@@ -683,3 +683,5 @@
 ## [2026-07-02 16:41] ralph | parties-anonymisation 3.2 | green | 6 files (AnonymiseCustomer action+gate+overwrite+anonymised_at, exception, cast, SupplyLifecycleChainTest reg); suite 1846/1846
 
 ## [2026-07-02 16:59] ralph | parties-anonymisation 3.3 | green | 4 files | AuditRecorder::redactEntity + AnonymiseCustomer leg(c); Parties writes no audit → documented no-op; 1852/1852
+
+## [2026-07-02 17:13] ralph | parties-anonymisation 3.4 | green | 4 files (1 new event, action ctor+record, 2 tests) | CustomerAnonymised PII-free event; full suite 1853/1853, PHPStan 0, Pint clean

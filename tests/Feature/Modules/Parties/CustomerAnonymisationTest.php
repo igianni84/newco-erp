@@ -5,6 +5,7 @@ use App\Modules\Parties\Actions\AnonymiseCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
 use App\Modules\Parties\Enums\HoldType;
+use App\Modules\Parties\Events\CustomerAnonymised;
 use App\Modules\Parties\Events\CustomerClosed;
 use App\Modules\Parties\Exceptions\AnonymisationBlockedByComplianceHold;
 use App\Modules\Parties\Models\Address;
@@ -32,8 +33,8 @@ use Illuminate\Support\Facades\DB;
  *     fields with the deterministic id-derived placeholders ({@see AnonymisedPlaceholders}),
  *     stamps `anonymised_at`, and PRESERVES the Profile/Address rows (overwrite-in-place, never deleted);
  *   - it is ORTHOGONAL to the status FSM — a `closed` (or `active`) Customer keeps its status, and NO status event
- *     ({@see CustomerClosed}) is recorded (an event-count delta of 0 — this task records no event; the PII-free
- *     `CustomerAnonymised` event is task 3.4);
+ *     ({@see CustomerClosed}) is recorded; the ONLY event it records is exactly one PII-free {@see CustomerAnonymised}
+ *     (task 3.4), whose payload is the Customer id + `anonymised_at` and NOTHING else (no name/email/phone/dob/address);
  *   - the Hold-precedence gate blocks IFF an active `compliance` Hold covers the Customer (canon MVP-DEC-015 —
  *     compliance-only, count-independent), throwing {@see AnonymisationBlockedByComplianceHold} and leaving the
  *     Customer entirely un-anonymised; a non-`compliance` Hold does NOT block (the full per-type precedence matrix
@@ -95,8 +96,17 @@ it('overwrites Customer PII + Address personal fields, stamps anonymised_at, pre
     expect(Address::query()->where('customer_id', $customer->id)->count())->toBe(2)
         ->and(Profile::findOrFail($profile->id)->customer_id)->toBe($customer->id);
 
-    // No domain event recorded — anonymisation writes no status event; the CustomerAnonymised event lands in task 3.4.
-    expect(DomainEvent::query()->count())->toBe(0);
+    // Exactly one event recorded — the PII-free CustomerAnonymised erasure signal (task 3.4), never a status event.
+    // Its payload is the Customer id + the persisted `anonymised_at` moment and NOTHING else.
+    $event = DomainEvent::query()->sole();
+    expect($event->name)->toBe(CustomerAnonymised::NAME)
+        ->and($event->module)->toBe('parties')
+        ->and($event->entity_type)->toBe('Customer')
+        ->and($event->entity_id)->toBe((string) $customer->id)
+        ->and($event->actor_role)->toBe(ActorRole::System)
+        ->and(array_keys($event->payload))->toEqualCanonicalizing(['customer_id', 'anonymised_at'])
+        ->and($event->payload['customer_id'])->toBe($customer->id)
+        ->and($event->payload['anonymised_at'])->toBe($fresh->anonymised_at?->toIso8601String());
 });
 
 it('is blocked by an active compliance Hold — throws and leaves the Customer entirely un-anonymised', function () {
@@ -151,7 +161,9 @@ it('is an idempotent no-op on an already-anonymised Customer', function () {
 
     expect($fresh->email)->toBe($afterFirst->email)
         ->and($fresh->anonymised_at)->toEqual($afterFirst->anonymised_at);
-    expect(DomainEvent::query()->count())->toBe(0);
+    // The first call recorded exactly one CustomerAnonymised; the second (idempotent early-return) records NO second.
+    expect(DomainEvent::query()->where('name', CustomerAnonymised::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->count())->toBe(1);
 });
 
 it('anonymises two Customers with distinct id-derived emails (the globally-unique-email invariant holds)', function () {
@@ -179,9 +191,10 @@ it('anonymises a closed Customer without changing its status or recording a stat
         ->and($fresh->anonymised_at)->toBeInstanceOf(CarbonImmutable::class)
         ->and($fresh->email)->toBe("anonymised+{$customer->id}@anonymised.invalid");
 
-    // Orthogonal to the status FSM: no CustomerClosed (or any) event recorded.
-    expect(DomainEvent::query()->where('name', CustomerClosed::NAME)->count())->toBe(0);
-    expect(DomainEvent::query()->count())->toBe(0);
+    // Orthogonal to the status FSM: NO CustomerClosed (or any status) event — the only event is the anonymisation one.
+    expect(DomainEvent::query()->where('name', CustomerClosed::NAME)->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', CustomerAnonymised::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->count())->toBe(1);
 });
 
 it('redacts the Customer\'s own audit-record PII snapshots on anonymisation, preserving the immutable row and other entities', function () {
@@ -239,4 +252,40 @@ it('redacts the Customer\'s own audit-record PII snapshots on anonymisation, pre
 
     expect($message)->toContain('immutable')
         ->and(AuditRecord::findOrFail($auditId)->action)->toBe('parties.customer.example');
+});
+
+it('records a strict PII-free CustomerAnonymised — exact payload keys, root envelope, no personal data in the encoded payload', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+    Address::factory()->forCompany()->create(['customer_id' => $customer->id]);
+
+    // Capture the original PII so we can prove NONE of it reaches the event payload.
+    $originalName = $customer->name;
+    $originalEmail = $customer->email;
+
+    app(AnonymiseCustomer::class)->handle($customer->id);
+
+    $fresh = Customer::findOrFail($customer->id);
+    $event = DomainEvent::query()->where('name', CustomerAnonymised::NAME)->sole();
+
+    // Envelope: module parties, entity Customer/id, System actor (no operator authenticated in the test context),
+    // a ROOT event — self-correlated, no causation (erasure has no parent transition).
+    expect($event->module)->toBe('parties')
+        ->and($event->entity_type)->toBe('Customer')
+        ->and($event->entity_id)->toBe((string) $customer->id)
+        ->and($event->actor_role)->toBe(ActorRole::System)
+        ->and($event->causation_id)->toBeNull()
+        ->and($event->correlation_id)->toBe($event->event_id);
+
+    // Payload keys are EXACTLY {customer_id, anonymised_at} — the id + the persisted moment, and nothing else. The
+    // exact-key set STRUCTURALLY guarantees no name/email/phone/date-of-birth/address key can ride along.
+    expect(array_keys($event->payload))->toEqualCanonicalizing(['customer_id', 'anonymised_at'])
+        ->and($event->payload['customer_id'])->toBe($customer->id)
+        ->and($event->payload['anonymised_at'])->toBe($fresh->anonymised_at?->toIso8601String());
+
+    // Belt-and-suspenders: the whole encoded payload leaks no PII — no `@` (email marker) and none of the original
+    // personal data, on either engine (a value check, not a stored-jsonb byte-compare).
+    $encoded = (string) json_encode($event->payload);
+    expect($encoded)->not->toContain('@')
+        ->and($encoded)->not->toContain($originalName)
+        ->and($encoded)->not->toContain($originalEmail);
 });

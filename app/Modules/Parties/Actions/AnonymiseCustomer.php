@@ -2,13 +2,17 @@
 
 namespace App\Modules\Parties\Actions;
 
+use App\Modules\Module;
 use App\Modules\Parties\Contracts\PartyComplianceStatusReader;
 use App\Modules\Parties\Enums\HoldType;
+use App\Modules\Parties\Events\CustomerAnonymised;
 use App\Modules\Parties\Events\CustomerReactivated;
 use App\Modules\Parties\Exceptions\AnonymisationBlockedByComplianceHold;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Support\AnonymisedPlaceholders;
 use App\Platform\Audit\AuditRecorder;
+use App\Platform\Events\ActorContext;
+use App\Platform\Events\DomainEventRecorder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -56,17 +60,21 @@ use Illuminate\Support\Facades\DB;
  * `version` is NOT bumped (parties-core identity-revision semantics). The model stays persistence-only; this
  * Action is the sole writer of the anonymisation overwrite.
  *
- * DEFERRED LEG (extends this same Action, same transaction): the PII-free `CustomerAnonymised` domain event
- * (design D3, task 3.4) lands in a follow-up task — referenced here in prose only (no import of the
- * not-yet-existing event). Until 3.4 this Action records no event (like the audit-only writers `CancelProfile` /
- * the Account family), so its exhaustive-Action-set registration in `SupplyLifecycleChainTest` is as a transition
- * Action, not by any event it emits.
+ * RECORDS the PII-free {@see CustomerAnonymised} event (design D3, task 3.4): after the overwrite/stamp/redact legs,
+ * within the SAME transaction, this Action records exactly ONE `CustomerAnonymised` carrying only the Customer id +
+ * the persisted `anonymised_at` moment (no name/email/phone/date-of-birth/address — the 10-year event store holds no
+ * PII). It is the erasure signal downstream consumers key on; a ROOT event (erasure has no parent transition). The
+ * idempotent early-return records NO second event on a re-run. This is NOT a status event — anonymisation stays
+ * ORTHOGONAL to the status FSM (above). The Action was registered in `SupplyLifecycleChainTest` as a non-`Create*`
+ * transition Action when it landed (task 3.2); task 3.4 adds no new Action class, only the event this Action records.
  */
 class AnonymiseCustomer
 {
     public function __construct(
         private readonly PartyComplianceStatusReader $compliance,
         private readonly AuditRecorder $audit,
+        private readonly DomainEventRecorder $recorder,
+        private readonly ActorContext $actor,
     ) {}
 
     public function handle(int $customerId): Customer
@@ -114,13 +122,29 @@ class AnonymiseCustomer
             // `audit_records` row for this Customer, the sole mutation the immutability triggers permit (a
             // before/after-only UPDATE; migration 2026_06_12_000004). The record skeletons SURVIVE — never
             // deleted, never structurally altered — so the append-only trail holds no PII (invariant 8).
-            // Scoped to the `Customer` envelope entity_type — the § 15.1 value every Customer domain event's
-            // ENTITY_TYPE carries (and any future Parties Customer audit-writer will use). Investigation
-            // (task 3.3): Module K records NO audit snapshots today (no AuditRecorder caller under
-            // app/Modules/Parties), so in practice this is a DOCUMENTED NO-OP (redacts 0 rows); the
-            // capability is wired here so erasure stays correct the day a PII-bearing Customer snapshot
+            // Scoped to `CustomerAnonymised::ENTITY_TYPE` (`'Customer'`) — the single envelope value the recorded
+            // event AND every other Customer domain event carry, so the redaction scope and the event's entity_type
+            // share one source. Investigation (task 3.3): Module K records NO audit snapshots today (no
+            // AuditRecorder caller under app/Modules/Parties), so in practice this is a DOCUMENTED NO-OP (redacts 0
+            // rows); the capability is wired here so erasure stays correct the day a PII-bearing Customer snapshot
             // lands (design D6; the event-substrate reserved redaction seam).
-            $this->audit->redactEntity('Customer', (string) $customer->id);
+            $this->audit->redactEntity(CustomerAnonymised::ENTITY_TYPE, (string) $customer->id);
+
+            // Record the PII-free CustomerAnonymised event (design D3) — the erasure signal — LAST, so it commits
+            // atomically with the overwrite/stamp/redact legs (or rolls back with them). The payload is the Customer
+            // id + the persisted `anonymised_at` moment ONLY (no name/email/phone/dob/address). A ROOT event (no
+            // causation/correlation passed → the recorder self-correlates): erasure has no parent transition. The
+            // idempotent early-return above means a re-run never reaches here, so no SECOND event is recorded. The
+            // actor is resolved from the {@see ActorContext} seam (System until real principals wire in).
+            $this->recorder->record(
+                name: CustomerAnonymised::NAME,
+                module: Module::Parties->value,
+                actorRole: $this->actor->role(),
+                actorId: $this->actor->actorId(),
+                entityType: CustomerAnonymised::ENTITY_TYPE,
+                entityId: (string) $customer->id,
+                payload: CustomerAnonymised::payload($customer),
+            );
 
             return $customer;
         });

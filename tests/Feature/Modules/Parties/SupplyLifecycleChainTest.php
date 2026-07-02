@@ -380,12 +380,13 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     ];
 
     // ...and the GDPR right-to-erasure writer (change parties-anonymisation — task 3.2). `AnonymiseCustomer`
-    // overwrites the Customer PII + every scoped Address's personal fields IN PLACE and stamps `anonymised_at`; it is
-    // ORTHOGONAL to the status FSM (writes NO `status`, records NO status event — BR-K-Customer-2) and — like the
-    // audit-only Account/`CancelProfile` entries — records NO event of its own in this task (the PII-free
-    // `CustomerAnonymised` event is added to the Action by task 3.4, but no new Action CLASS). Named `Anonymise*` not
-    // `Create*`, so the Create-filter below treats it as a transition Action and it MUST be whitelisted here. Task 5.1's
-    // read-only `ExportCustomerData` — also non-Create — joins this group when it lands.
+    // overwrites the Customer PII + every scoped Address's personal fields IN PLACE, stamps `anonymised_at`, redacts
+    // the Customer's audit snapshots, and records the PII-free `CustomerAnonymised` erasure event (added to the Action
+    // by task 3.4). It is ORTHOGONAL to the status FSM (writes NO `status`, records NO STATUS event —
+    // BR-K-Customer-2; `CustomerAnonymised` is an erasure event, not a status one), so the supply-side chain above
+    // records none of it. Task 3.4 added the event but NO new Action CLASS, so this whitelist is unchanged. Named
+    // `Anonymise*` not `Create*`, so the Create-filter below treats it as a transition Action and it MUST be
+    // whitelisted here. Task 5.1's read-only `ExportCustomerData` — also non-Create — joins this group when it lands.
     $anonymisationWriters = [
         'AnonymiseCustomer',
     ];
