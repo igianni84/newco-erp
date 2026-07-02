@@ -552,6 +552,103 @@ it('does not treat a reopened Master as rejection-pending even with a rejection 
 
 /*
 |--------------------------------------------------------------------------
+| Two rejection rounds — the block-gate holds across rounds (task 2.3; RM-06)
+|--------------------------------------------------------------------------
+|
+| AC-0-J-7 / product-catalog — Requirement: Approval Governance, "Two rejection rounds each block until
+| re-submit and preserve full history". One scenario drives reject → re-submit → reject → re-submit → activate
+| with a clean three-operator lineage: the Creator (C) creates + re-submits both rounds, the Reviewer (R)
+| submits + rejects both rounds, and a distinct Approver (A) activates. The review-freshness block-gate fires
+| after EACH rejection (latest action `.rejected`) and clears after EACH re-submit (latest action
+| `.resubmitted`); the final separation-of-duties holds because `reviewerOf` reads the latest `%.submitted` —
+| the single submit by R, NEVER a `.resubmitted` (the char before `submitted` is `e`, not `.`) — so the
+| reviewer stays R across both rounds and A ∉ {C, R}. The append-only trail keeps BOTH rejection rows (with
+| their distinct notes + acting reviewer) and BOTH re-submission rows; the final activation records exactly one
+| ProductMasterActivated. This is the composed proof over the isolated block-gate + re-submit tests above.
+*/
+
+it('runs two rejection rounds, blocking activation after each until the following re-submit and preserving the full history', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    lifecycleProjectProducer('ProducerActivated', 7, 'active'); // producer gate open — the BLOCK is what fires
+
+    $master = lifecycleCreateDraftMaster($creator, 7);         // C creates the draft
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);  // R submits draft → reviewed (the sole `.submitted`)
+
+    // ── Round 1 ───────────────────────────────────────────────────────────────────────────────────
+    // R rejects with a distinct note; the Master stays reviewed and becomes rejection-pending (latest action).
+    app(RejectProductMasterReview::class)->handle($master, 'Round 1: vintage missing from the label.');
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.rejected');
+
+    // The distinct approver's activation is BLOCKED by the review-freshness gate — no state change, no event.
+    actingAs($approver, 'operator');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ApprovalGovernanceViolation::class, 'un-remediated');
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+
+    // C re-submits — the freshest action becomes `.resubmitted`, clearing the block.
+    actingAs($creator, 'operator');
+    app(ResubmitProductMasterForReview::class)->handle($master);
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.resubmitted');
+
+    // ── Round 2 ───────────────────────────────────────────────────────────────────────────────────
+    // R rejects again with a SECOND distinct note; rejection-pending again.
+    actingAs($reviewer, 'operator');
+    app(RejectProductMasterReview::class)->handle($master, 'Round 2: provenance note still unclear.');
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.rejected');
+
+    // Blocked identically on the second round.
+    actingAs($approver, 'operator');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ApprovalGovernanceViolation::class, 'un-remediated');
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+
+    // C re-submits the second time — the block clears once more.
+    actingAs($creator, 'operator');
+    app(ResubmitProductMasterForReview::class)->handle($master);
+    expect(latestGovernanceAction($master))->toBe('catalog.product_master.resubmitted');
+
+    // ── Final activation ──────────────────────────────────────────────────────────────────────────
+    // A distinct approver activates: SoD holds (creator C, reviewer R = the sole `.submitted` actor, approver A
+    // — all distinct — because `.resubmitted` never matches `%.submitted`, so R stays the reviewer both rounds).
+    actingAs($approver, 'operator');
+    $active = app(ActivateProductMaster::class)->handle($master);
+
+    // Final state active, and exactly the append-only shape across both rounds: 2 rejections, 2 re-submits,
+    // 1 activation, one ProductMasterActivated.
+    expect($active->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(2)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.resubmitted')->count())->toBe(2)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.activated')->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1);
+
+    // BOTH rejection rows are preserved with their distinct notes, in append order (history not collapsed),
+    // each carrying the acting reviewer principal.
+    $rejections = AuditRecord::query()
+        ->where('action', 'catalog.product_master.rejected')
+        ->orderBy('id')
+        ->get();
+
+    expect($rejections)->toHaveCount(2);
+
+    $firstAfter = $rejections[0]->after ?? [];  // narrow the nullable jsonb to an array; keys read order-independently (PG reorders)
+    $secondAfter = $rejections[1]->after ?? [];
+    $actorIds = $rejections->pluck('actor_id')->all(); // pluck to a plain array — a bare `$rejections[$i]->actor_id` reads a nullable collection offset (PHPStan)
+
+    expect($firstAfter['notes'] ?? null)->toBe('Round 1: vintage missing from the label.')
+        ->and($secondAfter['notes'] ?? null)->toBe('Round 2: provenance note still unclear.')
+        ->and($actorIds[0])->toEqual($reviewer->id)   // uncast bigint; loose compare spans engines
+        ->and($actorIds[1])->toEqual($reviewer->id);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Activate / Retire + the Producer activation gate (task 3.2)
 |--------------------------------------------------------------------------
 |
