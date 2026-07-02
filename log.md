@@ -635,3 +635,5 @@
 ## [2026-07-02 09:22] close-ritual | RM-10 | Pushed to origin/main as 04406b8 (feat: ClubCredit event rename, canon DEC-018). hot.md updated with push hash.
 
 ## [2026-07-02 09:44] RM-24 | Catalog product_type immutability guard | canon DEC-023/BR-Identity-5: ProductMaster updating-guard (isDirty→ProductTypeImmutable)+lang+mini-ADR+INDEX+lessons rule(3rd conf). Zero-behaviour codification; +2 tests, suite 1769/1769, PHPStan/Pint clean. Awaiting review. Next RM-06.
+
+## [2026-07-02 09:49] close-ritual | RM-24 | reviewed by Giovanni + pushed 4c373af to origin/main. hot.md/tracker §1 sha-backfilled. Round-1 remaining: RM-06 (last quick win), then Round 2 floor builds RM-01/RM-02.
