@@ -30,6 +30,7 @@ use App\Modules\Catalog\Actions\CreateProductMaster;
 use App\Modules\Catalog\Actions\CreateProductReference;
 use App\Modules\Catalog\Actions\CreateProductVariant;
 use App\Modules\Catalog\Actions\CreateSellableSku;
+use App\Modules\Catalog\Actions\RejectProductMasterReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\RetireProductMasterCascade;
 use App\Modules\Catalog\Actions\SubmitCaseConfigurationForReview;
@@ -672,4 +673,95 @@ it('surfaces an out-of-state cascade retire as a danger notification, changing n
     // Unchanged: still draft, and no *Retired recorded (the rejected attempt's transaction rolled back).
     expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Draft)
         ->and(DomainEvent::query()->where('name', 'like', '%Retired%')->count())->toBe(0);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Task 4.1 (catalog-review-freshness-resubmit) — the re-submit header action + the block it surfaces
+|--------------------------------------------------------------------------
+|
+| The review-freshness re-arm on the console (RM-06 / canon MVP-DEC-019; design D2/D5). The console gains a
+| `re-submit` header action wired through the shared kit's lifecycleAction factory to
+| ResubmitProductMasterForReview (never an Eloquent write). Its ->visible() is gated to the DERIVED
+| rejection-pending read (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated
+| rejection blocks activation, HIDDEN otherwise. The block-gate itself needs no console code: an activation
+| attempt on a rejection-pending Master throws ApprovalGovernanceViolation, which the kit's
+| surfaceLifecycleOutcome renders as an action_failed danger notification for free (design D5). A hidden
+| ->visible()-false action is undrivable via test helpers, so re-submit's gating is proven with
+| assertActionHidden/assertActionVisible and its re-arm is driven while it IS visible (lessons.md 2026-06-23/24).
+*/
+
+it('offers re-submit only when the Master is rejection-pending — hidden on a fresh reviewed Master, visible after a rejection', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    $master = lifecycleConsoleDraftMaster();
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit
+    // is NOT offered — the action is HIDDEN (design D5; isRejectionPending).
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->assertActionHidden('resubmit');
+
+    // A rejection makes the Master rejection-pending (its latest governance action ends in `.rejected`); on a
+    // fresh mount re-submit is now VISIBLE.
+    app(RejectProductMasterReview::class)->handle($master, 'Label artwork is missing the vintage.');
+
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->assertActionVisible('resubmit');
+});
+
+it('surfaces the block on a rejection-pending Master, then re-arms it via console re-submit so a distinct approver activates', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // Producer 7 active in Catalog's projection (the activation gate opens); three DISTINCT operators satisfy
+    // the default role_count-3 Creator → Reviewer → Approver floor across the whole flow.
+    lifecycleConsoleProjectProducer('ProducerActivated', 7, 'active');
+
+    actingAs($creator, 'operator');
+    $master = lifecycleConsoleDraftMaster(producerId: 7);
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+    app(RejectProductMasterReview::class)->handle($master, 'A corrected appellation is required.');
+
+    // (block) A distinct approver attempts to activate the rejection-pending Master THROUGH THE CONSOLE — the
+    // review-freshness block-gate (ApprovalGovernanceViolation) surfaces as a danger notification, nothing
+    // changes. Activate is NOT visibility-gated, so it is drivable; the domain floors it (design D5/L4 —
+    // surface, don't reimplement). The three actors are distinct, so this is the block, not an SoD failure.
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.action_failed'));
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+
+    // (re-arm) The Creator re-submits THROUGH THE CONSOLE → reviewed → reviewed, audit-only, no event; the one
+    // resubmitted row carries the creator principal and the `.resubmitted` action becomes the freshest.
+    actingAs($creator, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('resubmit')
+        ->assertNotified((string) __('operator_console.product_master.notifications.resubmitted'));
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed);
+
+    $resubmit = AuditRecord::query()->where('action', 'catalog.product_master.resubmitted')->sole();
+    expect($resubmit->entity_type)->toBe('ProductMaster')
+        ->and($resubmit->entity_id)->toBe((string) $master->id)
+        ->and($resubmit->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($resubmit->actor_id)->toEqual($creator->id)
+        ->and(DomainEvent::query()->where('name', 'like', '%Resubmitted%')->count())->toBe(0);
+
+    // (re-armed) The SAME distinct approver now activates THROUGH THE CONSOLE → active, exactly one
+    // ProductMasterActivated — blocked moments ago, it succeeds ONLY because the re-submit cleared the gate.
+    actingAs($approver, 'operator');
+    Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.product_master.notifications.activated'));
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1);
 });

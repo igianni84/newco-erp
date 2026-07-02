@@ -3,6 +3,7 @@
 namespace App\Modules\OperatorPanel\Filament\Console;
 
 use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
+use App\Platform\Audit\AuditRecord;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -61,5 +62,45 @@ abstract class OperatorConsoleViewRecord extends ViewRecord
             $this->lifecycleAction('retire', 'retired', $invocations['retire']),
             $this->lifecycleAction('reopen', 'reopened', $invocations['reopen']),
         ];
+    }
+
+    /**
+     * Is the page record REJECTION-PENDING — its latest catalog governance audit action an un-remediated
+     * rejection (RM-06 / canon MVP-DEC-019; catalog-review-freshness-resubmit design D3/D5)? This is the
+     * derived read that gates the re-submit header action's `->visible()` on every catalog console: re-submit is
+     * OFFERED only while a rejection is un-remediated and HIDDEN otherwise (a redundant re-submit on a fresh
+     * `reviewed` entity is a harmless no-op the operator is not shown). It MIRRORS the Catalog block-gate's read
+     * (the domain's `ApprovalGovernance::assertNotRejectionPending`: the entity's latest `audit_records.action`,
+     * newest by id, ending in `.rejected`), so the console offers re-submit exactly when the domain would block
+     * activation — but it never REIMPLEMENTS the gate (the Catalog backend is the sole enforcement, design L4);
+     * it only reads the platform substrate to decide what to surface.
+     *
+     * Boundary: reads {@see AuditRecord} (platform, imported like Money/I18n), never a Catalog type — the
+     * {Models, Actions} cross-module surface holds. The Catalog governance/mechanism classes are named in PROSE
+     * (never a `{@see}` type), so Pint's fully_qualified_strict_types cannot re-add a forbidden
+     * `Catalog\Lifecycle` import (lessons.md 2026-06-20). Rows are scoped by `entity_type` + `entity_id`: the
+     * record's class basename is the canonical entity label the shared lifecycle mechanism stamps on every audit
+     * row (a `ProductMaster` record → `ProductMaster`), and that label is globally unique to the catalog entity,
+     * so no `module` predicate is needed (which also keeps `App\Modules\Module` off the console's imports). The
+     * `is_int/is_string` key guard mirrors that mechanism (a spine entity always keys on a scalar); the
+     * `is_string` action guard is load-bearing — a never-audited record returns `null` from `->value()` and
+     * `str_ends_with(null, …)` would TypeError under PHP 8.5.
+     */
+    protected function isRejectionPending(): bool
+    {
+        $record = $this->getRecord();
+        $key = $record->getKey();
+
+        if (! is_int($key) && ! is_string($key)) {
+            return false;
+        }
+
+        $latest = AuditRecord::query()
+            ->where('entity_type', class_basename($record))
+            ->where('entity_id', (string) $key)
+            ->orderByDesc('id')
+            ->value('action');
+
+        return is_string($latest) && str_ends_with($latest, '.rejected');
     }
 }

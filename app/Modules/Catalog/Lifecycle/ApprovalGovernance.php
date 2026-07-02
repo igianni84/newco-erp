@@ -26,6 +26,14 @@ use App\Platform\Events\DomainEvent;
  * reviewer SHALL themselves be distinct (three distinct operators). Retire and reopen carry only the
  * operator-principal floor (their distinctness is not part of the activation lineage).
  *
+ * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; § 4.3): at the approval step the guard also
+ * refuses activation while the entity is REJECTION-PENDING — its latest catalog governance action is an
+ * un-remediated rejection ({@see assertNotRejectionPending}). Like the creator/reviewer lineage this is DERIVED
+ * from the audit trail (no schema flag; design D3), and it is checked BEFORE the distinctness floor: a rejected
+ * entity is not activatable by ANY operator until it is re-submitted. An explicit `re-submit` (or a
+ * `retired → reviewed` reopen) becomes the freshest action and clears the block; retire/reopen themselves are
+ * not activation and so are never blocked by it.
+ *
  * The audit trail is the SYSTEM OF RECORD for which actor performed each step (design D5 — no per-entity
  * governance columns): the **creator** is read from the entity's first `domain_events` row (its `*Created`
  * event — an entity has no event before its creation), and the **reviewer** from the latest
@@ -53,20 +61,26 @@ class ApprovalGovernance
 
     /**
      * Enforce the approval governance for a commercial-impact transition: the operator-principal floor
-     * always, plus — at the approval step (`reviewed → active`) — the separation-of-duties distinctness.
+     * always, plus — at the approval step (`reviewed → active`) — the review-freshness block-gate (a pending
+     * rejection blocks activation) and the separation-of-duties distinctness.
      *
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) — matches the audit / event `entity_type`
      * @param  string  $entityId  the entity's stringified primary key (the audit / event `entity_id`)
      *
-     * @throws ApprovalGovernanceViolation when the operator-principal floor or the distinctness floor is breached
+     * @throws ApprovalGovernanceViolation when the operator-principal floor is breached, a pending rejection blocks activation, or the distinctness floor is breached
      */
     public function guard(LifecycleTransitionType $type, string $entity, string $entityId): void
     {
         $approver = $this->operatorPrincipalOrFail($entity);
 
-        // The separation-of-duties distinctness is the APPROVAL step's floor (the Creator → Reviewer →
-        // Approver lineage culminates in `reviewed → active`); retire/reopen carry only the operator floor.
+        // The review-freshness block-gate and the separation-of-duties distinctness are BOTH the APPROVAL
+        // step's floors (the Creator → Reviewer → Approver lineage culminates in `reviewed → active`);
+        // retire/reopen carry only the operator floor. The block-gate runs FIRST: an un-remediated rejection
+        // means the entity is not in an activatable review-state at all — NO operator may approve it until it
+        // is re-submitted — so it precedes the who-may-approve distinctness check (and, in the mechanism, the
+        // per-entity activation gate).
         if ($type === LifecycleTransitionType::Activate) {
+            $this->assertNotRejectionPending($entity, $entityId);
             $this->assertSeparationOfDuties($entity, $entityId, $approver);
         }
     }
@@ -130,6 +144,32 @@ class ApprovalGovernance
         // three-step floor is unreachable regardless of who approves, so the approval is refused.
         if ($creator !== null && $reviewer !== null && $creator === $reviewer) {
             throw ApprovalGovernanceViolation::insufficientSeparation($entity);
+        }
+    }
+
+    /**
+     * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; design D1/D3; product-catalog — Requirement:
+     * Approval Governance): refuse activation while the entity is REJECTION-PENDING — its latest catalog
+     * governance action is an un-remediated rejection. The condition is DERIVED from the audit trail (the same
+     * `orderByDesc('id')` latest-action read as {@see reviewerOf}, scoped to catalog), NEVER a persisted schema
+     * flag (design D3, reaffirming catalog-lifecycle-approval D5). It blocks iff the latest action ends in
+     * `.rejected`; a `re-submit` (`.resubmitted`) or a `retired → reviewed` reopen (`.reopened`) becomes the
+     * freshest action and so clears the block, and a never-rejected entity (no governance action at all, or a
+     * plain `.submitted`) is vacuously fresh — only an un-remediated rejection blocks.
+     *
+     * @throws ApprovalGovernanceViolation when the latest governance action is an un-remediated rejection
+     */
+    private function assertNotRejectionPending(string $entity, string $entityId): void
+    {
+        $latest = AuditRecord::query()
+            ->where('module', Module::Catalog->value)
+            ->where('entity_type', $entity)
+            ->where('entity_id', $entityId)
+            ->orderByDesc('id')
+            ->value('action');
+
+        if (is_string($latest) && str_ends_with($latest, '.rejected')) {
+            throw ApprovalGovernanceViolation::activationBlockedByPendingRejection($entity);
         }
     }
 

@@ -428,3 +428,53 @@ it('surfaces an out-of-state retire as a danger notification, changing nothing',
     expect(SellableSku::findOrFail($sku->id)->lifecycle_state)->toBe(LifecycleState::Draft)
         ->and(DomainEvent::query()->where('name', 'SellableSKURetired')->count())->toBe(0);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Task 4.2 (catalog-review-freshness-resubmit) — the visibility-gated re-submit header action
+|--------------------------------------------------------------------------
+|
+| The review-freshness re-arm on the Sellable SKU console (RM-06 / canon MVP-DEC-019; design D5) — the same
+| visibility-gated re-submit the Product Master console gained in task 4.1, now on every spine console. Re-submit
+| routes through the shared kit's lifecycleAction factory to ResubmitSellableSkuForReview (never an Eloquent
+| write); its ->visible() is gated to the DERIVED rejection-pending read
+| (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated rejection blocks
+| activation, HIDDEN otherwise. A ->visible()-false action is undrivable via test helpers, so the gating is proven
+| with assertActionHidden/assertActionVisible and the re-arm is driven while re-submit IS visible (lessons.md
+| 2026-06-23/24). This flow never activates, so the parents' state is immaterial; the active-parent fixtures are
+| reused only because they are the file's cheapest valid SKU parents.
+*/
+
+it('offers re-submit on the Sellable SKU console only when rejection-pending, re-arming review when driven', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    $reference = sellableSkuConsoleActiveReference();
+    $caseConfiguration = sellableSkuConsoleActiveCaseConfiguration();
+    $sku = sellableSkuConsoleDraft($reference->id, $caseConfiguration->id);
+    app(SubmitSellableSkuForReview::class)->handle($sku);
+
+    // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit is
+    // NOT offered — the action is HIDDEN (design D5; OperatorConsoleViewRecord::isRejectionPending).
+    Livewire::test(ViewSellableSku::class, ['record' => $sku->getKey()])
+        ->assertActionHidden('resubmit');
+
+    // A rejection (through the console) makes it rejection-pending — its latest governance action ends in
+    // `.rejected` — so on a fresh mount re-submit is VISIBLE.
+    Livewire::test(ViewSellableSku::class, ['record' => $sku->getKey()])
+        ->callAction('reject', ['notes' => 'Commercial name needs revision.']);
+
+    Livewire::test(ViewSellableSku::class, ['record' => $sku->getKey()])
+        ->assertActionVisible('resubmit')
+        ->callAction('resubmit')
+        ->assertNotified((string) __('operator_console.sellable_sku.notifications.resubmitted'));
+
+    // Re-arm is state-preserving (reviewed → reviewed, audit-only) and clears the pending flag, so on a fresh
+    // mount re-submit is HIDDEN again (the latest governance action is now `.resubmitted`, not `.rejected`) — the
+    // write-through routed to ResubmitSellableSkuForReview with the SellableSku label, else the derived read would
+    // still see the `.rejected` as latest and keep re-submit visible.
+    expect(SellableSku::findOrFail($sku->id)->lifecycle_state)->toBe(LifecycleState::Reviewed);
+
+    Livewire::test(ViewSellableSku::class, ['record' => $sku->getKey()])
+        ->assertActionHidden('resubmit');
+});

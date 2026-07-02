@@ -639,3 +639,23 @@
 ## [2026-07-02 09:49] close-ritual | RM-24 | reviewed by Giovanni + pushed 4c373af to origin/main. hot.md/tracker §1 sha-backfilled. Round-1 remaining: RM-06 (last quick win), then Round 2 floor builds RM-01/RM-02.
 
 ## [2026-07-02 10:22] spec-to-change | catalog-review-freshness-resubmit (RM-06) | authored + APPROVED; MODIFIED product-catalog Approval Governance = block-gate + explicit re-submit (derive-from-audit) +4 scenarios; mini-ADR MVP-DEC-019 planned; edit-re-arms deferred to RM-14; validate --strict green; 0/10 tasks, awaiting commit+build
+
+## [2026-07-02 10:32] ralph | catalog-review-freshness-resubmit 1.1 | green | 2 files — mini-ADR DEC-019 (review-freshness) + INDEX row; openspec validate --strict valid, Pint clean
+
+## [2026-07-02 10:45] ralph | catalog-review-freshness-resubmit 1.2 | green | exception factories cannotResubmit + activationBlockedByPendingRejection + 2 lifecycle lang keys + unit tests (1782/1782) | 5 files
+
+## [2026-07-02 10:55] ralph | catalog-review-freshness-resubmit 2.1 | green | 3 files (resubmit() mechanism + ResubmitProductMasterForReview + 3 tests); suite 1785/1785, PHPStan 0
+
+## [2026-07-02 11:12] ralph | catalog-review-freshness-resubmit 2.2 | green | block-gate assertNotRejectionPending in ApprovalGovernance::guard() (before SoD, suffix .rejected) + inverted not-terminal test → 3 block-gate tests | suite 1787/1787, PHPStan 0
+
+## [2026-07-02 11:27] ralph | catalog-review-freshness-resubmit 2.3 | green | 1 file (test-only 2-rejection-round scenario, AC-0-J-7); suite 1788/1788 (+1), PHPStan 0, Pint clean, validate --strict valid
+
+## [2026-07-02 11:40] ralph | catalog-review-freshness-resubmit 3.1 | green | 7 files (6 Resubmit* actions + ResubmitActionsTest); suite 1789/1789, PHPStan 0, Pint clean; no allow-list red
+
+## [2026-07-02 12:01] ralph | catalog-review-freshness-resubmit 3.2 | green | 1 file (new cross-entity uniformity test, 7 dataset cases); suite 1796/1796, PHPStan 0
+
+## [2026-07-02 12:27] ralph | catalog-review-freshness-resubmit 4.1 | green | 5 files | re-submit console header action (visibility-gated to isRejectionPending) + EN/IT copy; full suite 1798/1798
+
+## [2026-07-02 12:53] ralph | catalog-review-freshness-resubmit 4.2 | green | re-submit on the other six catalog consoles (Format/CaseConfig/Variant/Reference/SellableSku/CompositeSku) + EN/IT copy + kit-keys; suite 1807/1807 (+9), PHPStan 0, Pint clean | 15 files
+
+## [2026-07-02 13:01] ralph | catalog-review-freshness-resubmit 5.1 | green | 1 file (tasks.md) — CHANGE COMPLETE 10/10; SQLite 1807/1807 + PG17 391/391, PHPStan 0, Pint clean, --strict valid; reconciliation: 0 unsafe reject-then-activate paths

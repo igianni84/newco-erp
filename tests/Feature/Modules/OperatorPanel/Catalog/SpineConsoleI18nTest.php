@@ -47,8 +47,12 @@ function spineConsoleEntities(): array
  * The uniform copy keys the shared console kit resolves for EVERY spine entity off its i18nKey(), by string
  * concatenation in the base classes (so they are invisible to a per-entity source scan):
  *   - OperatorConsoleResource: label, plural_label, columns.lifecycle_state, columns.version;
- *   - OperatorConsoleViewRecord: the five action labels, fields.rejection_notes (reject form), affordance.second_actor;
- *   - SurfacesDomainActions: the five success notifications + notifications.action_failed.
+ *   - OperatorConsoleViewRecord: the five uniform action labels, fields.rejection_notes (reject form), affordance.second_actor;
+ *   - SurfacesDomainActions: the five uniform success notifications + notifications.action_failed;
+ *   - the visibility-gated re-submit (RM-06 / canon MVP-DEC-019; catalog-review-freshness-resubmit task 4.2):
+ *     appended per-page in each console's getHeaderActions() but resolved through the SAME
+ *     SurfacesDomainActions::lifecycleAction helper, so its actions.resubmit label + notifications.resubmitted
+ *     success title are kit-resolved (concatenated, invisible to the source scan) exactly like the uniform five.
  * A console that extends the kit MUST author all of these or a label renders as a raw key under any locale.
  *
  * @return list<string>
@@ -58,9 +62,9 @@ function spineConsoleKitKeys(): array
     return [
         'label', 'plural_label',
         'columns.lifecycle_state', 'columns.version',
-        'actions.submit', 'actions.reject', 'actions.activate', 'actions.retire', 'actions.reopen',
+        'actions.submit', 'actions.reject', 'actions.resubmit', 'actions.activate', 'actions.retire', 'actions.reopen',
         'fields.rejection_notes', 'affordance.second_actor',
-        'notifications.submitted', 'notifications.rejected', 'notifications.activated',
+        'notifications.submitted', 'notifications.rejected', 'notifications.resubmitted', 'notifications.activated',
         'notifications.retired', 'notifications.reopened', 'notifications.action_failed',
     ];
 }
@@ -136,12 +140,14 @@ it('renders spine console copy in Italian when the operator locale is it', funct
         ->and(__($key))->not->toBe(trans($key, [], 'en'));
 })->with([
     'operator_console.format.actions.submit',
+    'operator_console.format.actions.resubmit',
     'operator_console.format.columns.lifecycle_state',
     'operator_console.format.affordance.second_actor',
     'operator_console.format.notifications.action_failed',
     'operator_console.case_configuration.actions.reject',
     'operator_console.case_configuration.columns.packaging_type',
     'operator_console.case_configuration.notifications.retired',
+    'operator_console.case_configuration.notifications.resubmitted',
     'operator_console.product_variant.columns.vintage',
     'operator_console.product_variant.values.non_vintage',
     'operator_console.product_variant.fields.tasting_notes_help',
@@ -149,6 +155,7 @@ it('renders spine console copy in Italian when the operator locale is it', funct
     'operator_console.product_reference.actions.reopen',
     'operator_console.product_reference.duplicate_reference',
     'operator_console.product_reference.notifications.submitted',
+    'operator_console.product_reference.notifications.resubmitted',
     'operator_console.sellable_sku.columns.commercial_name',
     'operator_console.sellable_sku.fields.marketing_copy',
     'operator_console.sellable_sku.affordance.second_actor',

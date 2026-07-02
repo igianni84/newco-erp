@@ -80,6 +80,9 @@ class LifecycleTransition
     /** The review-rejection verb (the audit action segment) and the `decision` recorded in the after-snapshot (§ 4.3). */
     private const DECISION_REJECTED = 'rejected';
 
+    /** The review re-submit verb (the audit action segment) and the `decision` in the after-snapshot (§ 4.3; RM-06 — the twin of {@see reject()} that re-arms review after a rejection). */
+    private const DECISION_RESUBMITTED = 'resubmitted';
+
     public function __construct(
         private readonly AuditRecorder $auditRecorder,
         private readonly ActorContext $actor,
@@ -207,6 +210,55 @@ class LifecycleTransition
                 $entity,
                 ['lifecycle_state' => $state->value],
                 ['lifecycle_state' => $state->value, 'decision' => self::DECISION_REJECTED, 'notes' => $notes],
+            );
+
+            return $model;
+        });
+    }
+
+    /**
+     * Record a review RE-SUBMIT (§ 4.3; RM-06 / canon MVP-DEC-019): a `reviewed → reviewed` governance
+     * DECISION that changes no state — the twin of {@see reject()} that RE-ARMS the approval flow after a
+     * rejection. The entity stays in `reviewed`, one `audit_records` row captures the actor and the
+     * `decision: resubmitted`, and NO domain event is recorded. Because "rejection-pending" is DERIVED from
+     * the entity's latest governance audit action (design D3/D5 — no schema flag), the re-submit is the
+     * freshest action and so clears the review-freshness activation block-gate (task 2.2) without any revert
+     * to `draft`; the append-only trail preserves the full reject → re-submit history. From-state guarded
+     * (only a `reviewed` entity may be re-submitted, else {@see IllegalLifecycleTransition::cannotResubmit()})
+     * and operator-floored (a `system`/null actor cannot re-submit — a Creator's re-submission is inherently
+     * human). No `$notes` argument: the "what changed" history is RM-14's re-versioning concern (design D2),
+     * not a free-text note here.
+     *
+     * @template TModel of Model&HasLifecycleState
+     *
+     * @param  TModel  $model
+     * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`)
+     * @return TModel
+     *
+     * @throws IllegalLifecycleTransition when the locked entity is not in `reviewed`
+     * @throws ApprovalGovernanceViolation when there is no authenticated operator principal
+     */
+    public function resubmit(Model&HasLifecycleState $model, string $entity): Model&HasLifecycleState
+    {
+        return DB::transaction(function () use ($model, $entity) {
+            $this->lockAndRefresh($model);
+            $entityId = $this->entityId($model);
+
+            $state = $model->lifecycleState();
+
+            if ($state !== LifecycleState::Reviewed) {
+                throw IllegalLifecycleTransition::cannotResubmit($state, $entity);
+            }
+
+            $this->governance->requireOperator($entity);
+
+            $this->recordAudit(
+                $model,
+                $entityId,
+                self::DECISION_RESUBMITTED,
+                $entity,
+                ['lifecycle_state' => $state->value],
+                ['lifecycle_state' => $state->value, 'decision' => self::DECISION_RESUBMITTED],
             );
 
             return $model;
