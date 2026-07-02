@@ -649,3 +649,5 @@
 ## [2026-07-02 11:12] ralph | catalog-review-freshness-resubmit 2.2 | green | block-gate assertNotRejectionPending in ApprovalGovernance::guard() (before SoD, suffix .rejected) + inverted not-terminal test → 3 block-gate tests | suite 1787/1787, PHPStan 0
 
 ## [2026-07-02 11:27] ralph | catalog-review-freshness-resubmit 2.3 | green | 1 file (test-only 2-rejection-round scenario, AC-0-J-7); suite 1788/1788 (+1), PHPStan 0, Pint clean, validate --strict valid
+
+## [2026-07-02 11:40] ralph | catalog-review-freshness-resubmit 3.1 | green | 7 files (6 Resubmit* actions + ResubmitActionsTest); suite 1789/1789, PHPStan 0, Pint clean; no allow-list red

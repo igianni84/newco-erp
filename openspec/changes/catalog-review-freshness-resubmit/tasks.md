@@ -24,7 +24,7 @@
 
 ## 3. Re-submit for the other six spine entities
 
-- [ ] 3.1 **Six thin `Resubmit{Entity}ForReview` actions** (design D2) — Product Variant, Product Reference, Format, Case Configuration, Sellable SKU, Composite SKU — each a thin wrapper over `resubmit()` with its canonical entity label (matching the entity's `*Activated::ENTITY_TYPE` / existing `Reject*Review` label). Register all seven `Resubmit*` actions in any exhaustive non-`Create*` Action allow-list a test asserts (grep `toEqualCanonicalizing` / a glob over `app/Modules/Catalog/Actions/` in `tests/` — lessons.md 2026-06-23; e.g. `CatalogLifecycleChainTest`).
+- [x] 3.1 **Six thin `Resubmit{Entity}ForReview` actions** (design D2) — Product Variant, Product Reference, Format, Case Configuration, Sellable SKU, Composite SKU — each a thin wrapper over `resubmit()` with its canonical entity label (matching the entity's `*Activated::ENTITY_TYPE` / existing `Reject*Review` label). Register all seven `Resubmit*` actions in any exhaustive non-`Create*` Action allow-list a test asserts (grep `toEqualCanonicalizing` / a glob over `app/Modules/Catalog/Actions/` in `tests/` — lessons.md 2026-06-23; e.g. `CatalogLifecycleChainTest`).
   - Acceptance: each of the six actions exists, is thin (delegates to `resubmit()` with the right label), and no exhaustive Action-set test reds; quality commands green.
   - Test hint: run the suite — a new non-`Create*` Action reds an exact-match allow-list if unregistered; add the seven `Resubmit*` to that array + comment. Assert each action class exists (`class_exists` positive floor) in the chain/ownership test if one enumerates them.
 
