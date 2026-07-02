@@ -8,6 +8,7 @@ use App\Modules\Parties\Events\CustomerReactivated;
 use App\Modules\Parties\Exceptions\AnonymisationBlockedByComplianceHold;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Support\AnonymisedPlaceholders;
+use App\Platform\Audit\AuditRecorder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -46,20 +47,26 @@ use Illuminate\Support\Facades\DB;
  *       so the whole erasure is all-or-nothing (the {@see SuspendCustomer} child-cascade precedent), rows
  *       PRESERVED (overwrite-in-place, never deleted); and
  *   (b) stamps `anonymised_at = CarbonImmutable::now()` (the module timestamp convention — {@see LapseProfile}
- *       `lapsed_at` / {@see LiftHold} `lifted_at`).
+ *       `lapsed_at` / {@see LiftHold} `lifted_at`); and
+ *   (c) REDACTS the Customer's own audit trail — nulls the `before`/`after` PII snapshots of every
+ *       `audit_records` row for this Customer via {@see AuditRecorder::redactEntity()}, the sole mutation the
+ *       immutability triggers permit (design D6). The record skeletons survive (never deleted). Module K writes
+ *       NO audit snapshots today (task-3.3 investigation), so this is a DOCUMENTED NO-OP in practice — the
+ *       capability is wired so erasure stays correct the day a PII-bearing Customer snapshot lands.
  * `version` is NOT bumped (parties-core identity-revision semantics). The model stays persistence-only; this
  * Action is the sole writer of the anonymisation overwrite.
  *
- * DEFERRED LEGS (extend this same Action, same transaction): the audit-records `before`/`after` redaction (design
- * D6, task 3.3) and the PII-free `CustomerAnonymised` domain event (design D3, task 3.4) land in follow-up tasks
- * — referenced here in prose only (no import of the not-yet-existing event). Until 3.4 this Action records no
- * event (like the audit-only writers `CancelProfile` / the Account family), so its exhaustive-Action-set
- * registration in `SupplyLifecycleChainTest` is as a transition Action, not by any event it emits.
+ * DEFERRED LEG (extends this same Action, same transaction): the PII-free `CustomerAnonymised` domain event
+ * (design D3, task 3.4) lands in a follow-up task — referenced here in prose only (no import of the
+ * not-yet-existing event). Until 3.4 this Action records no event (like the audit-only writers `CancelProfile` /
+ * the Account family), so its exhaustive-Action-set registration in `SupplyLifecycleChainTest` is as a transition
+ * Action, not by any event it emits.
  */
 class AnonymiseCustomer
 {
     public function __construct(
         private readonly PartyComplianceStatusReader $compliance,
+        private readonly AuditRecorder $audit,
     ) {}
 
     public function handle(int $customerId): Customer
@@ -102,6 +109,18 @@ class AnonymiseCustomer
             foreach ($addresses as $address) {
                 $address->update($placeholders->addressAttributes());
             }
+
+            // (c) Redact the Customer's OWN audit trail — null the `before`/`after` PII snapshots of every
+            // `audit_records` row for this Customer, the sole mutation the immutability triggers permit (a
+            // before/after-only UPDATE; migration 2026_06_12_000004). The record skeletons SURVIVE — never
+            // deleted, never structurally altered — so the append-only trail holds no PII (invariant 8).
+            // Scoped to the `Customer` envelope entity_type — the § 15.1 value every Customer domain event's
+            // ENTITY_TYPE carries (and any future Parties Customer audit-writer will use). Investigation
+            // (task 3.3): Module K records NO audit snapshots today (no AuditRecorder caller under
+            // app/Modules/Parties), so in practice this is a DOCUMENTED NO-OP (redacts 0 rows); the
+            // capability is wired here so erasure stays correct the day a PII-bearing Customer snapshot
+            // lands (design D6; the event-substrate reserved redaction seam).
+            $this->audit->redactEntity('Customer', (string) $customer->id);
 
             return $customer;
         });

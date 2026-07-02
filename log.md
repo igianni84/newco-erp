@@ -681,3 +681,5 @@
 ## [2026-07-02 16:25] ralph | parties-anonymisation 3.1 | green | AnonymisedPlaceholders value object (Support/) + 8-case unit test; suite 1839/1839; 5 files
 
 ## [2026-07-02 16:41] ralph | parties-anonymisation 3.2 | green | 6 files (AnonymiseCustomer action+gate+overwrite+anonymised_at, exception, cast, SupplyLifecycleChainTest reg); suite 1846/1846
+
+## [2026-07-02 16:59] ralph | parties-anonymisation 3.3 | green | 4 files | AuditRecorder::redactEntity + AnonymiseCustomer leg(c); Parties writes no audit → documented no-op; 1852/1852

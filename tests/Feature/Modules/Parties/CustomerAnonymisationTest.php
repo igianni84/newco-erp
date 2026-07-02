@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Module;
 use App\Modules\Parties\Actions\AnonymiseCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\HoldScope;
@@ -12,9 +13,14 @@ use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Hold;
 use App\Modules\Parties\Models\Profile;
 use App\Modules\Parties\Support\AnonymisedPlaceholders;
+use App\Platform\Audit\AuditRecord;
+use App\Platform\Audit\AuditRecorder;
+use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Pins the GDPR right-to-erasure core — the {@see AnonymiseCustomer} action's gate + PII overwrite-in-place +
@@ -176,4 +182,61 @@ it('anonymises a closed Customer without changing its status or recording a stat
     // Orthogonal to the status FSM: no CustomerClosed (or any) event recorded.
     expect(DomainEvent::query()->where('name', CustomerClosed::NAME)->count())->toBe(0);
     expect(DomainEvent::query()->count())->toBe(0);
+});
+
+it('redacts the Customer\'s own audit-record PII snapshots on anonymisation, preserving the immutable row and other entities', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+    $other = Customer::factory()->create(['status' => CustomerStatus::Active]);
+
+    // Module K writes NO audit snapshots today (task-3.3 investigation: no AuditRecorder caller under
+    // app/Modules/Parties), so CONSTRUCT a PII-bearing Customer audit row to prove the redaction path — as a
+    // future Parties audit-writer would record it (entity_type 'Customer', the § 15.1 Customer envelope value).
+    // RefreshDatabase already wraps the test in a transaction, satisfying the recorder's no-dual-write guard.
+    $auditId = app(AuditRecorder::class)->record(
+        action: 'parties.customer.example',
+        module: Module::Parties->value,
+        actorRole: ActorRole::NewcoOps,
+        actorId: null,
+        entityType: 'Customer',
+        entityId: (string) $customer->id,
+        before: ['email' => $customer->email, 'name' => $customer->name],
+        after: ['email' => $customer->email, 'name' => $customer->name],
+        authorizationBasis: 'operator_console',
+    )->id;
+
+    // A DIFFERENT Customer's audit row must survive untouched — the redaction is keyed to (entity_type, entity_id).
+    $otherAuditId = app(AuditRecorder::class)->record(
+        action: 'parties.customer.example',
+        module: Module::Parties->value,
+        actorRole: ActorRole::NewcoOps,
+        actorId: null,
+        entityType: 'Customer',
+        entityId: (string) $other->id,
+        before: ['email' => $other->email],
+        after: ['email' => $other->email],
+        authorizationBasis: 'operator_console',
+    )->id;
+
+    app(AnonymiseCustomer::class)->handle($customer->id);
+
+    // The Customer's own audit snapshots are nulled; the append-only row itself SURVIVES (never deleted). The
+    // other Customer's snapshot is intact — the redaction is scoped.
+    $redacted = AuditRecord::findOrFail($auditId);
+    expect($redacted->before)->toBeNull()
+        ->and($redacted->after)->toBeNull()
+        ->and(AuditRecord::query()->whereKey($auditId)->exists())->toBeTrue()
+        ->and(AuditRecord::findOrFail($otherAuditId)->before)->toBe(['email' => $other->email]);
+
+    // Immutability intact: a STRUCTURAL update on the redacted row is STILL rejected (the redaction did not
+    // loosen the trigger). Wrapped in a nested transaction so a PostgreSQL trigger-abort rolls back to the
+    // savepoint and the outer RefreshDatabase transaction survives (the ImmutabilityTest idiom).
+    $message = '';
+    try {
+        DB::transaction(fn () => DB::table('audit_records')->where('id', $auditId)->update(['action' => 'tampered.action']));
+    } catch (QueryException $e) {
+        $message = $e->getMessage();
+    }
+
+    expect($message)->toContain('immutable')
+        ->and(AuditRecord::findOrFail($auditId)->action)->toBe('parties.customer.example');
 });
