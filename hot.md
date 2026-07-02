@@ -17,10 +17,10 @@ updated: 2026-07-02
 ## Active Change & Next Task
 - **No active openspec change** — RM-06 archived (`openspec/changes/archive/2026-07-02-catalog-review-freshness-resubmit/`). Shipped: block-gate on `reviewed→active` (blocked while latest governance action ends `.rejected`) + explicit `resubmit()` (`reviewed→reviewed`, audit-only twin of `reject`), derive-from-audit (no schema). edit-re-arms leg deferred to **RM-14**; canon MVP-DEC-019.
 - **Pushed + `ralph/` branch deleted** (2026-07-02) — RM-06 fully closed on code/spec/origin. CI `tests-pgsql` lane re-runs full suite on PG17 at push (development.md:86) = merge acceptance.
-- **NEXT (loop, new change):** Round-1 remediation DRAINED with RM-06 — pick next backlog item from `docs/validation/Remediation_Tracker.md` / prep via `spec-to-change`.
+- **NEXT (loop, new change):** **RM-01** — GDPR erasure/anonymisation + Address entity (Module K), Round 2 P0-floor headline (size L, ADR "—"). Prep via `/spec-to-change`; alt floor item RM-02 (enhanced-KYC, M). See tracker §1/§4/§6.
 
 ## Blockers & Decisions Needed
-- **None for RM-06** — merged, archived, pushed, branch deleted. ⚠️ Tracker RM-06 *status* lines (Remediation_Tracker.md:24/59 + change-log) still show 🟡 "awaiting commit" — a PM-voice refresh Giovanni will take (mirror the RM-24 ✅ entry pattern).
+- **None for RM-06** — merged, archived, pushed, branch deleted; tracker closed out (§1/§3/§4/§6 → RM-06 ✅, Round 1 complete).
 - Canon drift DEC-007→DEC-023 still open on Module K (RM-03, RM-05) — waits on Modules S/E/A.
 - **Incidental findings open (Tracker §7):** F1 DemoSeeder SQLite-only; F2 prod operator-mgmt missing → SoD unsatisfiable in prod.
 - ⚠️ **DEC-019 collision:** canon MVP-DEC-019 = review-freshness (RM-06); frozen spec's own DEC-019 = unrelated Module-S club composites — never conflate.
