@@ -17,6 +17,9 @@ return [
         'duplicate_identity' => 'A WINE Product Master already exists for producer :producer with the name ":name" and appellation ":appellation". The identity key (producer + product name + appellation) must be unique.',
         // Fail-closed non-WINE rejection (design D2). :type is the rejected token.
         'unsupported_product_type' => 'Unsupported Product Type ":type". At launch the only supported Product Type is WINE.',
+        // Post-creation type-edit rejection (BR-Identity-5 / canon DEC-023). Product Type is fixed at
+        // creation; the remedy is retire + re-register. :id is the Product Master id (not PII).
+        'immutable_product_type' => 'The Product Type of a Product Master is fixed at creation and cannot be changed (Product Master :id). Retire this Master and register a new one under the required Product Type.',
     ],
     'composite_sku' => [
         // N ≥ 2 rejection (design D9 / BR-SKU-2). :count is the number of distinct constituents provided.

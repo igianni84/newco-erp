@@ -1,10 +1,12 @@
 <?php
 
 use App\Modules\Catalog\Actions\CreateProductMaster;
+use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Enums\ProductType;
 use App\Modules\Catalog\Events\ProductMasterCreated;
 use App\Modules\Catalog\Exceptions\DuplicateProductMasterIdentity;
+use App\Modules\Catalog\Exceptions\ProductTypeImmutable;
 use App\Modules\Catalog\Exceptions\UnsupportedProductType;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Platform\Events\ActorRole;
@@ -218,4 +220,49 @@ it('produces a draft Master with its wine attribute set via the factory without 
         ->and($master->version)->toBe(1)
         ->and($master->wineAttributes()->sole()->appellation)->not->toBeEmpty()  // the 1:1 attrs were attached
         ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects a change to an existing Master\'s Product Type — it is fixed at creation (BR-Identity-5 / DEC-023)', function () {
+    $master = app(CreateProductMaster::class)->handle(
+        name: 'Sassicaia',
+        producerId: 9,
+        appellation: 'Bolgheri',
+        region: 'Tuscany',
+    );
+
+    // WINE is the only launch Product Type, so a *different valid* type cannot be expressed through the enum
+    // cast — an unsupported token throws ValueError at SET time (framework, not our guard). To exercise the
+    // guard's real chokepoint we drive a differing PERSISTED value past the cast via setRawAttributes: exactly
+    // what a future second-type Update path (or a raw mass-assign) would do once the category-neutral design
+    // adds a 2nd Product Type. The guard future-proofs that day (BR-Identity-5 / canon DEC-023).
+    $reloaded = ProductMaster::findOrFail($master->id);
+    $raw = $reloaded->getAttributes();
+    $raw['product_type'] = 'spirits';
+    $reloaded->setRawAttributes($raw);
+
+    expect(fn () => $reloaded->save())->toThrow(ProductTypeImmutable::class);
+
+    // The guard fails closed BEFORE the UPDATE runs — the persisted type is unchanged.
+    expect(ProductMaster::findOrFail($master->id)->product_type)->toBe(ProductType::Wine);
+});
+
+it('permits a same-type write and a lifecycle transition — the guard keys on a TYPE CHANGE, not presence', function () {
+    $master = app(CreateProductMaster::class)->handle(
+        name: 'Masseto',
+        producerId: 9,
+        appellation: 'Toscana',
+        region: 'Tuscany',
+    );
+
+    // Re-writing the SAME product_type is a no-op (not dirty) — the guard does not fire.
+    $master->update(['product_type' => ProductType::Wine]);
+
+    // A lifecycle transition dirties only lifecycle_state, so it passes the guard untouched — the regression
+    // guard that the immutability rule must NEVER block the shared lifecycle mechanism (which writes via
+    // $model->update(['lifecycle_state' => ...])).
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    $fresh = ProductMaster::findOrFail($master->id);
+    expect($fresh->product_type)->toBe(ProductType::Wine)
+        ->and($fresh->lifecycle_state)->toBe(LifecycleState::Reviewed);
 });

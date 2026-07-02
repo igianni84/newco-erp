@@ -633,3 +633,5 @@
 ## [2026-07-02 08:50] RM-10 | ClubCredit event ClubCreditIssued->ClubCreditAccrued | Adopted canon DEC-018 via mini-ADR (reverses frozen-spec DEC-166). EVENT seam-name only, no event class -> zero behaviour change. Suite 1767/1767, PHPStan/Pint clean. App-event->Module-S + MembershipFeePaid(RM-03) deferred seams.
 
 ## [2026-07-02 09:22] close-ritual | RM-10 | Pushed to origin/main as 04406b8 (feat: ClubCredit event rename, canon DEC-018). hot.md updated with push hash.
+
+## [2026-07-02 09:44] RM-24 | Catalog product_type immutability guard | canon DEC-023/BR-Identity-5: ProductMaster updating-guard (isDirty→ProductTypeImmutable)+lang+mini-ADR+INDEX+lessons rule(3rd conf). Zero-behaviour codification; +2 tests, suite 1769/1769, PHPStan/Pint clean. Awaiting review. Next RM-06.

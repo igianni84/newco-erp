@@ -7,7 +7,9 @@ use App\Modules\Catalog\Actions\CreateProductVariant;
 use App\Modules\Catalog\Enums\LifecycleState;
 use App\Modules\Catalog\Enums\ProductType;
 use App\Modules\Catalog\Events\ProductMasterCreated;
+use App\Modules\Catalog\Exceptions\ProductTypeImmutable;
 use App\Modules\Catalog\Lifecycle\HasLifecycleState;
+use App\Modules\Catalog\Lifecycle\LifecycleTransition;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductMasterFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -70,6 +72,30 @@ class ProductMaster extends Model implements HasLifecycleState
     protected static function newFactory(): ProductMasterFactory
     {
         return ProductMasterFactory::new();
+    }
+
+    /**
+     * BR-Identity-5 (canon MVP-DEC-023): a Product Master's `product_type` is FIXED AT CREATION and immutable
+     * thereafter — the type selects the per-type attribute set, the variant-defining dimension and the
+     * identity-uniqueness key (design D2), so re-typing a live Master would orphan its attribute set and
+     * invalidate its identity. The canon remedy is retire + re-register, never a type-edit.
+     *
+     * Enforced at the `updating` chokepoint because `product_type` is a real mutable column with `$guarded = []`
+     * and there is no update Action to guard (the Filament resource is read-only) — the model event is the only
+     * place that catches EVERY mutation path (update / save / mass-assign). It fires on UPDATE only, so the
+     * creation insert (which runs through `creating`) sets the type freely; and it keys on
+     * `isDirty('product_type')`, so a lifecycle transition — which dirties only `lifecycle_state` via the shared
+     * {@see LifecycleTransition} mechanism — passes untouched. Contrast Module K's
+     * `party_type`, immutable BY CONSTRUCTION (distinct per-subtype tables). ADR
+     * decisions/2026-07-02-adopt-dec-023-product-type-immutable.md.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (self $master): void {
+            if ($master->isDirty('product_type')) {
+                throw ProductTypeImmutable::forMaster($master->id);
+            }
+        });
     }
 
     /**
