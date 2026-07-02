@@ -24,7 +24,7 @@
 
 ## 3. Totals port seam (Module S)
 
-- [ ] 3.1 **Contract `CustomerTransactionTotalsReader` + DTO `CustomerTransactionTotals`** (design D3/D4; spec — *Enhanced-KYC Threshold Detection*) — interface in `app/Modules/Parties/Contracts/` with `forCustomer(int $customerId): CustomerTransactionTotals`; the DTO carries two readonly `App\Platform\Money\Money` (EUR): `largestSingleTransaction` and `trailingTwelveMonthCumulative`. Docblock the **rolling trailing-12-month** window semantics (design D3) and that the real implementation is Module S's (deferred).
+- [x] 3.1 **Contract `CustomerTransactionTotalsReader` + DTO `CustomerTransactionTotals`** (design D3/D4; spec — *Enhanced-KYC Threshold Detection*) — interface in `app/Modules/Parties/Contracts/` with `forCustomer(int $customerId): CustomerTransactionTotals`; the DTO carries two readonly `App\Platform\Money\Money` (EUR): `largestSingleTransaction` and `trailingTwelveMonthCumulative`. Docblock the **rolling trailing-12-month** window semantics (design D3) and that the real implementation is Module S's (deferred).
   - Acceptance: the contract + DTO exist with EUR `Money` fields; the window semantics are documented on the contract.
   - Test hint: a fake in-test implementation returns caller-set totals; unit-assert the DTO holds them.
 

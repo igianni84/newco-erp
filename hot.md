@@ -7,20 +7,20 @@ updated: 2026-07-02
 # Hot Cache
 
 ## Last Updated
-**2026-07-02 — RM-02 (`parties-enhanced-kyc-threshold`) task 2.3 ✅ (event `CustomerEnhancedKycReviewRequired`, PII-free, + unit test), green. 5/12 done.** Section 2 (Domain: enums + model + event) COMPLETE. Next: §3 totals port seam (task 3.1).
+**2026-07-02 — RM-02 (`parties-enhanced-kyc-threshold`) task 3.1 ✅ (contract `CustomerTransactionTotalsReader` + DTO `CustomerTransactionTotals` — the Module-S totals read-port seam, two EUR `Money` + rolling-12mo docblock, + pure-value unit test), green. 6/12 done.** Next: §3 close, task 3.2 (null adapter + binding).
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- Last green: full suite **1916/1916** (SQLite `:memory:`), PHPStan max **0**, Pint clean, `openspec validate --strict` valid. (+5 from RM-02 task 2.3: `EnhancedKycReviewEventTest`.)
+- Last green: full suite **1920/1920** (SQLite `:memory:`), PHPStan max **0**, Pint clean, `openspec validate --strict` valid. (+4 from RM-02 task 3.1: `CustomerTransactionTotalsReaderTest`.)
 - ⚠ **Run the full suite as `php -d memory_limit=2G vendor/bin/pest`** — `php artisan test` re-spawns a child that ignores `-d`; the suite exhausts the 128M CLI default at result-collection (fatal, NOT a failure). Filtered `artisan test --filter=`/by-path is fine at 128M.
 - ⚠ `CustomerConsoleI18nTest` **cannot run by bare path** — its sink scanner (`scanOperatorConsoleHardcodedSinks`) is declared in `ProductMasterConsoleI18nTest`, loaded only by `--filter`/full-suite. Bare-path run fails that one test (expected).
 - Branch `ralph/parties-enhanced-kyc-threshold`. PG17 not runnable locally (no PG server) → CHECK-rejection + bigint-string branches verify in CI / task 7.1 close.
 
 ## Active Change & Next Task
-- **ACTIVE: `parties-enhanced-kyc-threshold` (RM-02, P0 compliance floor) — building. 5/12 done.**
-- **⭐ NEXT: task 3.1** — contract `CustomerTransactionTotalsReader::forCustomer(int $customerId): CustomerTransactionTotals` in `app/Modules/Parties/Contracts/` + DTO `CustomerTransactionTotals` carrying two readonly `App\Platform\Money\Money` (EUR): `largestSingleTransaction`, `trailingTwelveMonthCumulative`. **Docblock the rolling trailing-12-month window** (design D3) + that the real impl is Module S's (deferred). Test: an in-test fake returns caller-set totals; unit-assert the DTO holds them.
-- **Then 3.2** `NullCustomerTransactionTotalsReader` in `app/Modules/Parties/Reads/` (both fields `Money::of(0, Currency::of('EUR'))`) bound in `PartiesServiceProvider::register()` (the `PartyComplianceStatusReader` precedent); arch assertion it references no `App\Modules\Commerce\*`. Then §4 Actions (4.1 `CreateComplianceReview`, 4.2 `EvaluateEnhancedKycThreshold`), §5 command, §6 console, §7 close.
-- **Event landed (2.3):** `final CustomerEnhancedKycReviewRequired` — `NAME`/`ENTITY_TYPE='Customer'`, `static payload(Customer,ComplianceReview)` = `customer_id`, `enhanced_kyc_at` (`?->toIso8601String()`), `threshold_kind` (`->value`), `amount` (`Money::of($review->tripped_amount_minor, Currency::of($review->tripped_currency))->toPayload()`). Recorder writer is task 4.2's `EvaluateEnhancedKycThreshold` (not the model).
+- **ACTIVE: `parties-enhanced-kyc-threshold` (RM-02, P0 compliance floor) — building. 6/12 done.** §2 Domain + §3.1 port contract COMPLETE.
+- **⭐ NEXT: task 3.2** — `NullCustomerTransactionTotalsReader` in `app/Modules/Parties/Reads/` returning `Money::of(0, Currency::of('EUR'))` for both DTO fields; bind `CustomerTransactionTotalsReader` → it in `PartiesServiceProvider::register()` (the `PartyComplianceStatusReader`→`DatabaseComplianceStatusReader` bind precedent, provider line 26). Test: feature — `app(CustomerTransactionTotalsReader::class)->forCustomer($id)` returns 0 EUR both fields; **arch assertion** the null adapter references no `App\Modules\Commerce\*` (`ModuleBoundariesTest` stays green).
+- **Then §4 Actions:** 4.1 `CreateComplianceReview` (Create*, sole review-row writer, no event); 4.2 `EvaluateEnhancedKycThreshold` (idempotent workflow — locked re-read, €10k-single OR €50k-cumulative, flag+timestamp+review+event+`RecordCustomerScreening(under_review, aml_threshold)`; **add to the exact-set whitelist in `ComplianceIndependenceTest`**). Then §5 command, §6 console, §7 close.
+- **Landed 3.1:** contract + DTO in `Contracts/` (plain readonly carrier — `ComplianceStatus` precedent); `forCustomer(int)` mirrors `PartyComplianceStatusReader`; rolling trailing-12mo window documented (design D3, NOT calendar-YTD); no currency guard (EUR-safety lives in 4.2's `Money` arithmetic).
 
 ## Blockers & Decisions Needed
 - **None blocking.**
@@ -28,11 +28,8 @@ updated: 2026-07-02
 - **Deferred seams:** real Module-S totals source + order-completion trigger; 12-month cadence job; screening-vendor adapter; enhanced-KYC doc-FSM; review-queue resolve action. Ad-hoc re-screen ships.
 
 ## Open Patterns
-- **Shipped event idiom:** `final` class; `const NAME`/`ENTITY_TYPE`; `static payload(...): array`; STRICT PII-free (Customer PII = name/email/phone/dob stays out); `Money::toPayload()` → `{minor_units, currency}` for a money key (`ClubCreated::fee` precedent); a persisted timestamp column serialises via `?->toIso8601String()` (single source of truth, `CustomerAnonymised` idiom). Net-new event admissible over frozen-§15.6 silence (D5, RM-01 `CustomerAnonymised` precedent).
-- **Event/value unit test = no DB:** `TestCase` (no `RefreshDatabase`), fixtures via `factory()->make([...])`; override a `Customer::factory()` FK with an explicit `customer_id` so `make()` resolves no parent/touches no DB; a `make()`-only money scalar stays a PHP int → `->toBe` safe (PG bigint-as-string trap only bites DB reads).
-- **Sibling model/factory idiom** (`Address`/`ClubCredit`): within-module `belongsTo`, `$guarded=[]`, per-module factory + `newFactory()` override; assert cast bigint with model `->toBe` AND raw column `->toEqual`.
-- **`*EnumsTest` idiom:** verbatim order-sensitive case→value map, `toHaveCount(n)`, `from()` round-trip, out-of-domain `from()` → `ValueError`.
-- **Value-set CHECK shape follows nullability;** derive from `Enum::cases()` (PG-guarded); SQLite floor is the cast. Read DB scalars with `->value('col')`.
-- **Inbound cross-module seam = read-port + null adapter** (K needs Module-S data); ship contract + zero adapter now.
+- **Boundary read-port idiom:** plain readonly DTO in `Contracts/` beside its interface; PII-free; `forCustomer(int)` naming (`ComplianceStatus`/`PartyComplianceStatusReader` → now `CustomerTransactionTotals`/`CustomerTransactionTotalsReader`). Inbound cross-module seam = read-port + null adapter; ship contract + zero adapter now (K needs Module-S data).
+- **Pure-value unit test needs NO `uses(TestCase::class)`** — `tests/Pest.php` binds `TestCase` only to `Feature`; a no-DB/no-cast value test (Money + DTO + anonymous fake) runs on the plain PHPUnit base. Sibling event/model no-DB tests DO call `uses(TestCase::class)` — they need the boot for model enum/datetime CASTS; a pure DTO has none.
+- **Shipped event idiom:** `final`; `const NAME`/`ENTITY_TYPE`; `static payload(...)`; STRICT PII-free; `Money::toPayload()` → `{minor_units, currency}`; persisted timestamp serialises via `?->toIso8601String()`.
+- **`*EnumsTest` idiom / value-set CHECK follows nullability** (derive from `Enum::cases()`, PG-guarded); read DB scalars with `->value('col')` + assert money via `->toEqual`.
 - **Scheduler tick ≠ queued consumer** (substrate ADR): a `->daily()` command doesn't trip the queue-driver gate.
-- **Console i18n = chrome vs domain split** (`operator_console.customer.*` vs `parties.compliance_review.*`); enums carry no `label()`.
