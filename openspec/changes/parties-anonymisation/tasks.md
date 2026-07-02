@@ -44,7 +44,7 @@
 
 ## 5. Data export (J-9b, minimal)
 
-- [ ] 5.1 **`ExportCustomerData` action — in-memory, read-only** (design D5; spec — *Customer Data Export*) — assemble a structured in-memory payload: the Customer's personal data + a by-id manifest of the retained transactional history (Profiles now; Order/Voucher/Invoice references as they exist). **No** file persistence, **no** domain event, **no** mutation. For an anonymised Customer it reflects the placeholder PII. Register in the non-`Create*` Action allow-list (task 3.4).
+- [x] 5.1 **`ExportCustomerData` action — in-memory, read-only** (design D5; spec — *Customer Data Export*) — assemble a structured in-memory payload: the Customer's personal data + a by-id manifest of the retained transactional history (Profiles now; Order/Voucher/Invoice references as they exist). **No** file persistence, **no** domain event, **no** mutation. For an anonymised Customer it reflects the placeholder PII. Register in the non-`Create*` Action allow-list (task 3.4).
   - Acceptance: returns a structured payload with the Customer's PII + a Profile-id manifest; the Customer is unchanged; no file written; no event recorded; export of an anonymised Customer returns placeholder PII.
   - Test hint: feature test — assert the payload shape (PII keys + a `profiles` id list); assert `DomainEvent::count()` unchanged and no durable artifact; anonymise then export → placeholder email in the payload.
 
