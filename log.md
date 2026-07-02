@@ -631,3 +631,5 @@
 ## [2026-07-02 08:30] close-ritual | RM-09+F3 | Pushed to origin/main as 5eb415d (docs: identity-auth + substrate ADR erasure reconciliation). hot.md updated with push hash.
 
 ## [2026-07-02 08:50] RM-10 | ClubCredit event ClubCreditIssued->ClubCreditAccrued | Adopted canon DEC-018 via mini-ADR (reverses frozen-spec DEC-166). EVENT seam-name only, no event class -> zero behaviour change. Suite 1767/1767, PHPStan/Pint clean. App-event->Module-S + MembershipFeePaid(RM-03) deferred seams.
+
+## [2026-07-02 09:22] close-ritual | RM-10 | Pushed to origin/main as 04406b8 (feat: ClubCredit event rename, canon DEC-018). hot.md updated with push hash.
