@@ -691,3 +691,5 @@
 ## [2026-07-02 17:37] ralph | parties-anonymisation 5.1 | green | 4 files (ExportCustomerData read-only export + test; SupplyLifecycleChainTest registration); suite 1868/1868, PHPStan 0, Pint clean
 
 ## [2026-07-02 17:55] ralph | parties-anonymisation 6.1 | green | Anonymise+Export console verbs via kit lifecycleAction; visibility-gated anonymise, ungated export; +4 i18n keys EN+IT; suite 1883/1883; 6 files
+
+## [2026-07-02 18:07] ralph | parties-anonymisation 7.1 | green SQLite+PG17 close | 1883/1883 both engines (10189 assn), PHPStan 0, Pint clean, validate --strict valid | ALL 12 tasks done → CHANGE_COMPLETE | 4 files

@@ -56,6 +56,6 @@
 
 ## 7. Integration, docs & cross-engine close
 
-- [ ] 7.1 **Full-suite + PHPStan + Pint + PG17 close** (all decisions; spec — all four requirements) — run the whole suite on both engines; confirm no exhaustive Action allow-list reds; confirm the migrations are Postgres-truthful.
+- [x] 7.1 **Full-suite + PHPStan + Pint + PG17 close** (all decisions; spec — all four requirements) — run the whole suite on both engines; confirm no exhaustive Action allow-list reds; confirm the migrations are Postgres-truthful.
   - Acceptance: full suite green via `php -d memory_limit=-1 vendor/bin/pest`; `php -d memory_limit=-1 vendor/bin/phpstan analyse` clean; `vendor/bin/pint` clean; **verified on PG17** (the migrations + the audit-redaction before/after UPDATE + the Hold read behave identically); `openspec validate parties-anonymisation --strict` green.
   - Test hint: run the parties + operator-console suites on SQLite and PG17; confirm the anonymisation orthogonality, Hold-precedence matrix, export, and console tests pass on both engines; grep the suite for any reject/close-then-assume-PII path that the overwrite invalidates.
