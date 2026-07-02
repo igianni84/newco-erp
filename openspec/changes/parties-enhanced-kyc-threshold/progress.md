@@ -23,6 +23,18 @@
   - The FK index name is `parties_comp_reviews_customer_fk` (abbreviated — the long `parties_compliance_reviews` table name keeps auto-names near PG's 63-char limit). Auto-named CHECKs `parties_compliance_reviews_{reason,threshold_kind}_check` are 39/47 chars — safe.
 ---
 
+## [2026-07-02 20:18] — 2.1 Enums ComplianceReviewReason + ThresholdKind (dedicated unit pin)
+- **Implemented** ONLY the dedicated enum unit test — the two enums themselves **already exist** (created in task 1.1 as the migration's `::cases()`-derived CHECK prereq; `app/Modules/Parties/Enums/{ComplianceReviewReason,ThresholdKind}.php`). Task 2.1's remaining work was the case→value pin, per the 1.1 progress note.
+- **Test** `tests/Unit/Modules/Parties/Enums/ComplianceReviewEnumsTest.php` (5 tests, 9 assertions), mirroring `ComplianceEnumsTest`/`HoldEnumsTest` verbatim-and-order-sensitive convention: (1) `ComplianceReviewReason` case→value map `['EnhancedKycThreshold'=>'enhanced_kyc_threshold']` + `toHaveCount(1)`; (2) `ThresholdKind` map `['SingleTransaction'=>'single_transaction','CumulativeAnnual'=>'cumulative_annual']` + `toHaveCount(2)`; (3) `from()` round-trip of all three spec tokens; (4)+(5) out-of-domain `from()` → `ValueError` for each. Docblock ties the pin to the 1.1 value-set CHECK (derives from `::cases()`, so drift fails here first).
+- **Naming:** new file follows the RM-02 `ComplianceReview*` artifact prefix (table `parties_compliance_reviews`, model `ComplianceReview`, `ComplianceReviewSchemaTest`, `ComplianceReviewCopyTest`) and the `*EnumsTest` sibling convention — kept distinct from the `parties-compliance` change's `ComplianceEnumsTest` (KycStatus/SanctionsStatus/ScreeningTriggerSource); no cross-change file edited.
+- **Non-redundant:** `ComplianceReviewCopyTest` enumerates the cases only to prove EN labels *resolve*; it never pins the case→value tokens or the count. This is the missing token/count pin (its own docblock names "task 2.1" as the home).
+- **Files changed:** `tests/Unit/Modules/Parties/Enums/ComplianceReviewEnumsTest.php` (new), `tasks.md` (2.1 flipped).
+- **Quality loop: green** — Pint clean; filtered 5/5; full suite **1909/1909** (+5, via `php -d memory_limit=2G vendor/bin/pest`); PHPStan max **0**; `pint --test` clean; `openspec validate --strict` valid.
+- **Learnings for future iterations:**
+  - No new Codebase Patterns — pure application of the existing `*EnumsTest` verbatim-map+count+from()-round-trip+out-of-domain-`ValueError` idiom.
+  - **Next → task 2.2** model `ComplianceReview` (persistence-only, `$guarded=[]`, `$table='parties_compliance_reviews'`, casts for both enums + `tripped_amount_minor`→integer + `resolved_at`→immutable_datetime, within-module `belongsTo(Customer)`, factory under `Database\Factories\Parties\`). Assert `tripped_amount_minor` with `->toEqual` (PG bigint-as-string trap — Codebase Pattern).
+---
+
 ## [2026-07-02 20:11] — 1.2 Localized copy + CONTEXT.md glossary
 - **Implemented** the front-loaded i18n copy + glossary for RM-02 (all consumed by later tasks — 6.1 console surface, the review-reason display):
   - `lang/en/parties.php`: new `compliance_review` DOMAIN-label group — `reason.enhanced_kyc_threshold` = "Enhanced-KYC threshold"; `threshold_kind.{single_transaction,cumulative_annual}` = "Single transaction" / "Rolling 12-month cumulative" (label says "rolling" — the `cumulative_annual` token is trailing-12mo, not calendar-YTD, design D3). These render the enum backing VALUES on a read surface (the enums carry no `label()`).

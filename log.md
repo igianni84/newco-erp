@@ -703,3 +703,5 @@
 ## [2026-07-02 19:50] ralph | parties-enhanced-kyc-threshold 1.1 | green | migration parties_compliance_reviews + 2 enums (2.1 prereq) + schema test; suite 1889/1889, phpstan 0 | 4 files
 
 ## [2026-07-02 20:13] ralph | parties-enhanced-kyc-threshold 1.2 | green | i18n copy (parties.compliance_review + customer.compliance_reviews EN/IT) + 3 CONTEXT terms + 2 tests | suite 1904/1904 | 7 files
+
+## [2026-07-02 20:18] ralph | parties-enhanced-kyc-threshold 2.1 | green | enum case→value+count pin, 5 tests; full suite 1909/1909, PHPStan 0

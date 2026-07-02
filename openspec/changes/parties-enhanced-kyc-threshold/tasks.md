@@ -10,7 +10,7 @@
 
 ## 2. Domain — enums, model, event
 
-- [ ] 2.1 **Enums `ComplianceReviewReason` + `ThresholdKind`** (design D6; spec — *Compliance Review Queue*) — `ComplianceReviewReason: string { EnhancedKycThreshold = 'enhanced_kyc_threshold' }` (extensible; sole case now); `ThresholdKind: string { SingleTransaction = 'single_transaction', CumulativeAnnual = 'cumulative_annual' }`. PascalCase case names, snake_case backing values (the `ScreeningTriggerSource` precedent).
+- [x] 2.1 **Enums `ComplianceReviewReason` + `ThresholdKind`** (design D6; spec — *Compliance Review Queue*) — `ComplianceReviewReason: string { EnhancedKycThreshold = 'enhanced_kyc_threshold' }` (extensible; sole case now); `ThresholdKind: string { SingleTransaction = 'single_transaction', CumulativeAnnual = 'cumulative_annual' }`. PascalCase case names, snake_case backing values (the `ScreeningTriggerSource` precedent).
   - Acceptance: both enums are backed `string` enums with the exact tokens above; the migration CHECKs (1.1) derive from `::cases()`.
   - Test hint: a unit test asserts the case→value mapping for each; `count(ComplianceReviewReason::cases()) === 1`.
 
