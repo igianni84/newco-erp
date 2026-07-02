@@ -379,15 +379,26 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'RestoreClubCredit',
     ];
 
+    // ...and the GDPR right-to-erasure writer (change parties-anonymisation — task 3.2). `AnonymiseCustomer`
+    // overwrites the Customer PII + every scoped Address's personal fields IN PLACE and stamps `anonymised_at`; it is
+    // ORTHOGONAL to the status FSM (writes NO `status`, records NO status event — BR-K-Customer-2) and — like the
+    // audit-only Account/`CancelProfile` entries — records NO event of its own in this task (the PII-free
+    // `CustomerAnonymised` event is added to the Action by task 3.4, but no new Action CLASS). Named `Anonymise*` not
+    // `Create*`, so the Create-filter below treats it as a transition Action and it MUST be whitelisted here. Task 5.1's
+    // read-only `ExportCustomerData` — also non-Create — joins this group when it lands.
+    $anonymisationWriters = [
+        'AnonymiseCustomer',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status + Club Credit-writer ones. With task 3.2 the demand-side status set
-    // is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8)
-    // and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
+    // demand-side activation + demand-side status + Club Credit-writer + anonymisation ones. With task 3.2 the
+    // demand-side status set is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born
+    // `active` — design L8) and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
     // `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock lives inside `ApproveProfile`, never a
     // standalone Action). If a deferred-seam Action were added without declaring it here, it would appear in this set
     // and fail the assertion (the whitelist grew one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters, ...$anonymisationWriters]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

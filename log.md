@@ -679,3 +679,5 @@
 ## [2026-07-02 16:12] ralph | parties-anonymisation 2.1 | green | 9 files (Address model+factory, CreateCustomerAddress, InvalidAddressCountryCode, Customer hasMany, lang, 2 tests) | suite 1831/1831
 
 ## [2026-07-02 16:25] ralph | parties-anonymisation 3.1 | green | AnonymisedPlaceholders value object (Support/) + 8-case unit test; suite 1839/1839; 5 files
+
+## [2026-07-02 16:41] ralph | parties-anonymisation 3.2 | green | 6 files (AnonymiseCustomer action+gate+overwrite+anonymised_at, exception, cast, SupplyLifecycleChainTest reg); suite 1846/1846

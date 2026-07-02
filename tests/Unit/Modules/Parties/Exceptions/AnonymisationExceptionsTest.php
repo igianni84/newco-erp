@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Parties\Exceptions\AnonymisationBlockedByComplianceHold;
 use Tests\TestCase;
 
 // Pins the localized right-to-erasure rejection copy (change parties-anonymisation, task 1.3; design D2;
@@ -28,6 +29,19 @@ it('resolves the compliance-Hold anonymisation-block reason with the :customer i
         ->and($resolved)->toContain('7777')
         ->and($resolved)->toContain('compliance');
     expect($resolved)->not->toContain('@');
+});
+
+it('builds the compliance-Hold anonymisation-block exception with the localized, PII-free reason', function () {
+    // The AnonymiseCustomer (task 3.2) gate factory: it resolves the pinned copy with the Customer id interpolated
+    // and stays log-safe — the customer id (7777) is an operator-facing reference, not PII, and no email ('@') or
+    // other personal token leaks into the message. A missing key would echo the key back (asserted absent).
+    $exception = AnonymisationBlockedByComplianceHold::forCustomer(7777);
+
+    expect($exception)->toBeInstanceOf(RuntimeException::class)
+        ->and($exception->getMessage())->toContain('7777')
+        ->and($exception->getMessage())->toContain('compliance');
+    expect($exception->getMessage())->not->toContain('@');
+    expect($exception->getMessage())->not->toBe('parties.anonymisation.blocked_by_compliance_hold');
 });
 
 it('preserves the pre-existing parties lang groups', function () {
