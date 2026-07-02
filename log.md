@@ -695,3 +695,5 @@
 ## [2026-07-02 18:07] ralph | parties-anonymisation 7.1 | green SQLite+PG17 close | 1883/1883 both engines (10189 assn), PHPStan 0, Pint clean, validate --strict valid | ALL 12 tasks done → CHANGE_COMPLETE | 4 files
 
 ## [2026-07-02 18:31] close §2.7 | parties-anonymisation (RM-01) | merged --no-ff to main (2385772, local/unpushed) + 4x semantic-verify CLEAN/only-SUGGESTION + archived 2026-07-02 (1109392); party-registry +4/~1 req; push gated pending approval
+
+## [2026-07-02 18:45] push §2.7 | parties-anonymisation (RM-01) | pushed origin/main (20d63b8..9f0ac46: merge+archive+memory); ralph branch deleted; NEXT = /spec-to-change RM-02 enhanced-KYC €10k/€50k threshold + review-queue (P0 floor, no ADR gate)
