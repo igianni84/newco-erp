@@ -18,9 +18,10 @@
 
 - **Done & reviewed:** **RM-07** ✅ (Giovanni approved 2026-07-01, `5b64cc8`) — operators in the demo path; `reset()` event/audit-log truncation OK.
 - **Done & reviewed:** **RM-04** ✅ (Giovanni approved 2026-07-01) — Hold enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only) + mini-ADR adopting DEC-008. Consumers unwired (Module-E seam). Suite 1767/1767, PHPStan/Pint clean. **Committed + pushed.**
-- **Active next:** **RM-09** (reconcile identity-auth ADR erasure overclaim) → **RM-10** (ClubCredit event rename `Issued`→`Accrued`) → **RM-24** (Product-Type immutability). All small, high-leverage.
+- **Done (awaiting Giovanni review):** **RM-09** ✅ — identity-auth ADR erasure overclaim corrected **in place** (not superseded — decision unchanged, so a supersede would falsely signal auth was re-decided). Distinguishes the built erasure *seam* from the not-yet-built customer erasure *flow*, links RM-01. Doc-only (no code). Surfaced **F3** (§7): same overclaim in the substrate ADR — recommend folding into RM-09.
+- **Active next:** **RM-10** (ClubCredit event rename `Issued`→`Accrued`) → **RM-24** (Product-Type immutability). Both small, high-leverage.
 - **Overall goal:** clear **Round 1** entirely + at least start **RM-01** (GDPR erasure) before Paolo.
-- **Open incidental findings (§7):** **F1** DemoSeeder SQLite-only (PG-truncate) · **F2** prod operator-mgmt missing → SoD unsatisfiable in prod. Neither blocks the pre-Paolo demo; tracked so a later step picks them up.
+- **Open incidental findings (§7):** **F1** DemoSeeder SQLite-only (PG-truncate) · **F2** prod operator-mgmt missing → SoD unsatisfiable in prod. (**F3** ✅ resolved 2026-07-02 — substrate-ADR erasure overclaim folded into RM-09.) Neither open finding blocks the pre-Paolo demo; tracked so a later step picks them up.
 
 ---
 
@@ -48,7 +49,7 @@
 | RM-06 | P1 canon | PIM reject/edit review-freshness + explicit re-submit | 0 J-7, BR-Lifecycle-6; DEC-019 | — | M | 🔴 |
 | RM-07 | P2 demo | Seed ≥2 operators + chain DemoSeeder + scenario data | env #2 (SoD demo) | — | S | ✅ |
 | RM-08 | P2 demo | Separation-of-duties on Parties approval (Producer + membership) | K J-10 | — | M | 🔴 |
-| RM-09 | P2 honesty | Reconcile identity-auth ADR erasure overclaim | ADR consistency | **yes** | S | 🔴 |
+| RM-09 | P2 honesty | Reconcile identity-auth ADR erasure overclaim | ADR consistency | in-place | S | ✅ |
 | RM-10 | P2 canon | ClubCredit issuance event `Issued`→`Accrued` vocab | K J-16, EVT-16; DEC-018 | — | S | 🔴 |
 | RM-11 | P3 mod0 | Bulk import (CSV/Excel, configurable depth) | 0 J-6, FSM-14, BR-BulkImport-1/2/3 | — | L | 🔵 |
 | RM-12 | P3 mod0 | Layer-1 possible-case-configurations whitelist | 0 J-13, XM-11 | — | M | 🔴 |
@@ -143,9 +144,14 @@
 - **Why:** Catalog enforces SoD; **Parties does not** (Producer + membership approval are single-actor; System actor accepted). Parity + it's the compliance "four-eyes" property.
 - **Done when:** distinct-actor guard on Producer activation (+ membership approval per policy); self-approval-blocked tests, mirroring Catalog.
 
-#### RM-09 — Reconcile identity-auth ADR erasure overclaim  ·  S · ADR ·  🔴
+#### RM-09 — Reconcile identity-auth ADR erasure overclaim  ·  S · in-place ·  ✅
 - **Fixes:** internal consistency. `decisions/2026-06-15-identity-auth.md:23,84` says GDPR erasure is "already built" — only the audit-redaction substrate is; the customer PII-erasure flow (J-9/9a) is not.
 - **Scope:** correct/supersede the ADR wording (distinguish audit-redaction machinery from customer erasure); link RM-01. Do now (honesty) — the claim becomes true once RM-01 lands.
+- **✅ Done (2026-07-01, awaiting Giovanni review):**
+  - **Chose in-place correction over a superseding ADR.** The *decision* (first-party Fortify+Sanctum, multi-guard, spatie RBAC, principal-references-party) is untouched — only two supporting clauses overstated build-state. Superseding would force restating the whole ADR + mark it `status: superseded`, **falsely signalling the auth architecture was replaced** — a worse honesty outcome than the overclaim. Repo rule "never edit substance, supersede" targets *decision* substance; precedent treats a factual contradiction-fix as a "minimal, faithful correction" (`decisions/2026-06-16-catalog-retirement-reference-integrity-scope.md:46`). `decisions/INDEX.md` therefore unchanged (not superseded).
+  - **Edits to `decisions/2026-06-15-identity-auth.md`:** (1) a dated **Correction (2026-07-01 · RM-09)** banner after the frontmatter; (2) line ~23 ("First-party" bullet) and (3) line ~84 (Reasoning #1) reworded to distinguish the built erasure **seam** — PII-free `domain_events`, the `audit_records` `before`/`after` redaction path behind the structural-immutability trigger (`redactor` = documented PG-production principal), Customer PII confined to the Module K module table — from the not-yet-built customer PII-erasure **flow** (K J-9/9a: anonymise action, `anonymised_at`, PII overwrite-in-place, Address entity). Both corrected clauses now link **RM-01** as the item that makes the claim true.
+  - **Verification (no code — doc-only):** grep-confirmed the flow is absent — no `redactor` in code (PG-production GRANT only), no anonymise/erasure action, no `anonymised_at`, no Address model; `app/Modules/Parties/Actions/CloseCustomer.php:31-33` explicitly documents `closed` ≠ anonymised (deferred `parties-anonymisation` seam). What *is* built: `database/migrations/2026_06_12_000002_create_audit_records_table.php` (nullable `before`/`after`) + `..._000004_add_immutability_triggers.php` (structural-immutability trigger leaving the redaction path open) + `..._2026_06_15_000005_create_parties_customers_table.php` (PII on the module table).
+  - **Incidental F3 folded in (2026-07-02, Giovanni-approved):** the *same* overclaim in `decisions/2026-06-12-event-substrate-and-audit-store.md:54` ("erasure already works") — which RM-09's corrected text links to as the "seam" source — reworded with the same pattern + inline rectification marker. Both ADRs now consistent on erasure state. §7 F3 ✅.
 
 #### RM-10 — ClubCredit issuance event vocab `Issued`→`Accrued`  ·  S  ·  🔴
 - **Fixes:** K `J-16`, `EVT-16`; `DEC-018`.
@@ -180,6 +186,8 @@
 - **2026-07-01** — Tracker created from the Module 0 & K verdict reports. 25 items catalogued; Round 1/2 plan set. Nothing started yet. Next: RM-07.
 - **2026-07-01** — **RM-07 ✅** (TDD). `OperatorDemoSeeder` (3 distinct role-segmented logins) + `DemoSeeder` self-provisions (chains Role+OperatorDemo), production-guarded, resets event/audit log, and stands up a real-lineage SoD fixture Master via the actual Catalog actions. 8 new tests (incl. console distinct-actor activate + rejection). Suite 1761/1761, PHPStan/Pint clean. Reviewed & approved by Giovanni; committed+pushed (`5b64cc8`). Next RM-04.
 - **2026-07-01** — **RM-04 ✅** (TDD, mini-ADR). Adopted canon DEC-008: `HoldType` enum 6→8 (`chargeback_review` + `storage_payment_failed`, both operator-lift-only — the spec's own §4.8.1/§15.8 already named them; §4.8 "six" was the flagged self-contradiction). Mini-ADR `2026-07-01-adopt-dec-008-hold-types-8` + INDEX. `autoLiftable()` unchanged; migration CHECK derives from `cases()` (no ALTER — additive-only pre-prod). Consumers unwired (Module-E seam). Tests: `HoldEnumsTest` count/map/truth-table; **lift-discipline** `HoldLifecycleTest` provider 3→5; `HoldRegistryTest`/`ComplianceReadApiTest` 6→8; console prose. Suite 1767/1767 (+6), PHPStan 0, Pint clean. Reviewed & approved by Giovanni; committed + pushed. Next RM-09.
+- **2026-07-01** — **RM-09 ✅** (doc/ADR, **in-place correction** — no code, no TDD). Corrected `decisions/2026-06-15-identity-auth.md` (top Correction banner + lines ~23 & ~84): the GDPR customer-erasure was overstated as "already built". Now distinguishes the built erasure **seam** (PII-free `domain_events`; `audit_records` `before`/`after` redaction path behind the structural-immutability trigger; Customer PII confined to the module table) from the not-yet-built customer PII-erasure **flow** (K J-9/9a: anonymise action, `anonymised_at`, PII overwrite, Address entity), linked to RM-01. Chose in-place over supersede — decision unchanged, so a supersede would falsely signal auth was re-decided; `decisions/INDEX.md` untouched. Grep-verified the flow is absent. **Incidental F3** (§7): same overclaim in `2026-06-12-event-substrate-and-audit-store.md:54` ("already works") — logged, recommend folding into RM-09. Awaiting Giovanni review. Next RM-10.
+- **2026-07-02** — **F3 folded into RM-09** (Giovanni-approved: "adesso"). Reworded the same GDPR-erasure overclaim in the substrate ADR `decisions/2026-06-12-event-substrate-and-audit-store.md:54` ("already works" → "operates **in place**, overwrite not DELETE; the flow is not built, lands with RM-01") + inline rectification marker citing RM-09/F3. The identity-auth ADR and the substrate ADR are now consistent on erasure state; §7 F3 ✅. RM-09 review confirmed (in-place approved). Doc-only. Next **RM-10**.
 
 ---
 
@@ -199,3 +207,8 @@
 - **What:** the bootstrap `DatabaseSeeder`→`OperatorSeeder` seeds exactly ONE operator (from env). There is **no Filament operator resource and no artisan command** to add more (README env-readiness note, "no Filament user resource"). Catalog SoD keys on distinct actor **identity**, so a single-operator production instance can approve **nothing** — every activation is a self-approval, always blocked.
 - **RM-07 scope:** fixed this for the **demo only** (`OperatorDemoSeeder`, 3 logins). Production is untouched by design.
 - **Disposition:** production needs an operator-management surface (Filament operator resource + create/invite flow) before go-live — the production counterpart of RM-07. Own item (M). Not blocking the pre-Paolo demo; schedule as an RM row when the operator-admin surface is built.
+
+### F3 — Same GDPR-erasure "already built" overclaim in the substrate ADR (not just identity-auth)  ·  🟨 · ✅ · found 2026-07-01, resolved 2026-07-02 (RM-09)
+- **What:** `decisions/2026-06-12-event-substrate-and-audit-store.md:54` read "profile data lives in module tables where Module K's overwrite-in-place erasure **already works**" — the same overstatement RM-09 corrected in the identity-auth ADR. Only the erasure *seam* is built; the customer PII-erasure *flow* (K J-9/9a) is not (that's RM-01).
+- **Why it mattered:** RM-09's corrected identity-auth text **links to this ADR** as the source of the "seam." A reader clicking through would still meet the "already works" claim RM-09 set out to remove — a residual contradiction between two ADRs.
+- **✅ Resolved (2026-07-02, folded into RM-09 per Giovanni):** `:54` reworded with the same pattern — "operates **in place** (PII overwrite, never DELETE) … the erasure *flow* (K J-9/9a) is not yet built and lands with RM-01; this ADR builds only its *seam*" — plus an inline rectification marker citing RM-09/F3. The two ADRs are now consistent on erasure state.

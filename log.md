@@ -623,3 +623,7 @@
 ## [2026-07-01 20:56] RM-04 | review close | Giovanni reviewed & approved RM-04 (storage_payment_failed = manual-first at launch confirmed). Tracker + hot.md marked done-reviewed. Committing feat + pushing to origin/main.
 
 ## [2026-07-01 20:57] push | RM-04 -> origin/main | feat d8ec261 (RM-04 Hold enum 6→8: canon DEC-008 adoption + mini-ADR + TDD tests + docblocks) pushed to origin/main. Close ritual.
+
+## [2026-07-01 21:08] RM-09 | decisions/2026-06-15-identity-auth.md | In-place correction (not superseded) of GDPR erasure overclaim: built seam vs not-built customer flow (J-9/9a), linked RM-01. Doc-only. F3 logged: same overclaim in substrate ADR.
+
+## [2026-07-02 08:22] RM-09/F3 | decisions/2026-06-12-event-substrate-and-audit-store.md | Folded F3 into RM-09 (Giovanni-approved): reworded substrate-ADR erasure overclaim (:54 'already works' -> operates in place; flow not built, RM-01) + rectification marker. Both ADRs now consistent.
