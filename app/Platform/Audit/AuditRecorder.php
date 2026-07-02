@@ -5,6 +5,7 @@ namespace App\Platform\Audit;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\NotInTransactionException;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -31,6 +32,14 @@ use Illuminate\Support\Str;
  * `event_deliveries` rows: audit records are write-only with respect to the substrate; no consumer
  * machinery reads them (event-substrate spec, Audit Records). The immutability triggers (migration
  * 000004) then make the written row append-only save for GDPR redaction of `before`/`after`.
+ *
+ * That redaction is the ONE other DML the triggers permit, so it flows through this same class:
+ * {@see redactEntity()} nulls the `before`/`after` snapshots of an entity's audit rows in place — the
+ * GDPR erasure seam a module's right-to-erasure job reserves (event-substrate spec; the reserved
+ * `redactor` role runbook). The substrate stays module-agnostic: the caller passes the entity's
+ * `entity_type`/`entity_id` (a string envelope, like `module`), never an `App\Modules` type. Append
+ * ({@see record()}) and redact are the two mutations `audit_records` accepts; both share the
+ * no-dual-write transaction guard.
  */
 class AuditRecorder
 {
@@ -73,5 +82,40 @@ class AuditRecorder
             'after' => $after,
             'authorization_basis' => $authorizationBasis,
         ]);
+    }
+
+    /**
+     * Redact the PII snapshots of every `audit_records` row for one entity — null its `before`/`after`
+     * — the GDPR erasure seam. This is the SOLE mutation the immutability triggers permit on an audit
+     * row (a `before`/`after`-only UPDATE; migration `2026_06_12_000004`): structural columns are never
+     * touched, so the trigger passes the statement and the record skeleton stays frozen; rows are NEVER
+     * deleted. The reserved PostgreSQL `redactor` role (immutability layer 2, applied at the hosting
+     * gate — event-substrate spec / ADR 2026-06-12) is a REVOKE runbook, NOT a query-time dependency:
+     * the trigger itself allows the before/after-only UPDATE on both engines regardless of role.
+     *
+     * Written on the base query builder (the `ImmutabilityTest` redaction idiom) so `before`/`after`
+     * bind as true SQL NULL — no Eloquent array cast turning `null` into the string `"null"`, no column
+     * qualification the SQLite SET clause would reject. Only rows still carrying a snapshot are matched,
+     * so the return is the number of rows ACTUALLY redacted — 0 when the entity has a PII-free (or empty)
+     * audit trail, the common case for a module recording only PII-free snapshots.
+     *
+     * MUST run inside an open transaction so the redaction is atomic with the caller's erasure — the
+     * same no-dual-write guard as {@see record()}.
+     *
+     * @return int the number of audit rows redacted
+     *
+     * @throws NotInTransactionException when no database transaction is active
+     */
+    public function redactEntity(string $entityType, string $entityId): int
+    {
+        if (DB::transactionLevel() === 0) {
+            throw NotInTransactionException::forRecording('an audit redaction');
+        }
+
+        return DB::table('audit_records')
+            ->where('entity_type', $entityType)
+            ->where('entity_id', $entityId)
+            ->where(fn (Builder $carrying) => $carrying->whereNotNull('before')->orWhereNotNull('after'))
+            ->update(['before' => null, 'after' => null]);
     }
 }

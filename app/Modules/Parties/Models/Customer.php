@@ -2,7 +2,9 @@
 
 namespace App\Modules\Parties\Models;
 
+use App\Modules\Parties\Actions\AnonymiseCustomer;
 use App\Modules\Parties\Actions\CreateCustomer;
+use App\Modules\Parties\Actions\CreateCustomerAddress;
 use App\Modules\Parties\Actions\ReactivateCustomer;
 use App\Modules\Parties\Actions\SuspendCustomer;
 use App\Modules\Parties\Enums\CustomerStatus;
@@ -53,6 +55,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * registration surface or an operator (no setter in this slice — the additive-seam pattern); a NULL timestamp is
  * an unmet gate. `:state`/acceptance values are never carried into a domain-event payload.
  *
+ * The `anonymised_at` column (parties-anonymisation task 1.2/3.2, canon MVP-DEC-015 / BR-K-Customer-2) is added
+ * additively as nullable: the {@see AnonymiseCustomer} action stamps it in the same
+ * transaction it overwrites the Customer's PII (`name`/`email`/`phone`/`date_of_birth`) and every scoped
+ * {@see Address}'s personal fields with deterministic id-derived placeholders (GDPR right-to-erasure,
+ * overwrite-in-place — the rows are preserved). It is a flag+timestamp ORTHOGONAL to the status FSM:
+ * anonymisation is a boolean-derivable state (`anonymised_at IS NOT NULL`), NEVER a `status` value — a Customer
+ * of ANY status (typically `closed`) MAY be anonymised and keeps its status. The Action is the sole writer; the
+ * model stays persistence-only.
+ *
  * @property int $id
  * @property string $email
  * @property string $name
@@ -74,12 +85,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $email_verified_at
  * @property CarbonImmutable|null $tc_accepted_at
  * @property CarbonImmutable|null $privacy_accepted_at
+ * @property CarbonImmutable|null $anonymised_at
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
  * @property-read Account|null $account
  * @property-read Club|null $originatingClub
  * @property-read Collection<int, Profile> $profiles
+ * @property-read Collection<int, Address> $addresses
  */
 class Customer extends Model
 {
@@ -136,6 +149,21 @@ class Customer extends Model
     }
 
     /**
+     * The billing Addresses this Customer holds — a WITHIN-module `hasMany` (both entities are Module K, so the
+     * cross-module relation ban does not apply). A Customer MAY have zero or more Addresses (one-to-many, design
+     * D4; DEC-068). The {@see CreateCustomerAddress} action is the sole writer; the
+     * relation itself adds no writer (the model stays persistence-only). On anonymisation (`AnonymiseCustomer`,
+     * task 3.2) every Address in this set has its personal fields overwritten with deterministic placeholders in
+     * the same transaction, the rows preserved.
+     *
+     * @return HasMany<Address, $this>
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, 'customer_id');
+    }
+
+    /**
      * The factory lives outside the `Database\Factories\` convention (it is namespaced per module under
      * `Database\Factories\Parties\`), so the model names it explicitly — and the explicit return type lets
      * static analysis infer the factory's model for `Customer::factory()->create()`.
@@ -170,6 +198,10 @@ class Customer extends Model
             'email_verified_at' => 'immutable_datetime',
             'tc_accepted_at' => 'immutable_datetime',
             'privacy_accepted_at' => 'immutable_datetime',
+            // GDPR right-to-erasure marker (parties-anonymisation task 1.2/3.2; design D1/D4) — additive nullable.
+            // AnonymiseCustomer stamps it; `anonymised_at IS NOT NULL` is the boolean-derivable anonymised state,
+            // ORTHOGONAL to the status FSM (BR-K-Customer-2). No mutation surface on the model (persistence-only).
+            'anonymised_at' => 'immutable_datetime',
         ];
     }
 }

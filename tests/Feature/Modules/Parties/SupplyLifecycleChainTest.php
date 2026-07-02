@@ -379,15 +379,30 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'RestoreClubCredit',
     ];
 
+    // ...and the GDPR right-to-erasure + right-of-access writers (change parties-anonymisation — tasks 3.2 / 5.1).
+    // `AnonymiseCustomer` (3.2) overwrites the Customer PII + every scoped Address's personal fields IN PLACE, stamps
+    // `anonymised_at`, redacts the Customer's audit snapshots, and records the PII-free `CustomerAnonymised` erasure
+    // event (added to the Action by task 3.4). It is ORTHOGONAL to the status FSM (writes NO `status`, records NO
+    // STATUS event — BR-K-Customer-2; `CustomerAnonymised` is an erasure event, not a status one), so the supply-side
+    // chain above records none of it. `ExportCustomerData` (5.1) is the mirror-image right — the GDPR right-of-ACCESS
+    // export (canon J-9b): a PURE in-memory READ that records NO event and does NO mutation. Both are named
+    // non-`Create*`, so the Create-filter below treats them as transition Actions and they MUST be whitelisted here —
+    // the glob catches every non-`Create*` Action under `Actions/` regardless of whether it writes. Neither adds a
+    // status transition, so neither breaches the demand-side scope guard this test pins.
+    $anonymisationWriters = [
+        'AnonymiseCustomer',
+        'ExportCustomerData',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status + Club Credit-writer ones. With task 3.2 the demand-side status set
-    // is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born `active` — design L8)
-    // and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
+    // demand-side activation + demand-side status + Club Credit-writer + anonymisation ones. With task 3.2 the
+    // demand-side status set is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born
+    // `active` — design L8) and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
     // `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock lives inside `ApproveProfile`, never a
     // standalone Action). If a deferred-seam Action were added without declaring it here, it would appear in this set
     // and fail the assertion (the whitelist grew one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters, ...$anonymisationWriters]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

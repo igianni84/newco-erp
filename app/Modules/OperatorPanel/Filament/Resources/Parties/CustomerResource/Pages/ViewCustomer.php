@@ -7,8 +7,10 @@ use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\Parties\Actions\ActivateCustomer;
+use App\Modules\Parties\Actions\AnonymiseCustomer;
 use App\Modules\Parties\Actions\CloseAccount;
 use App\Modules\Parties\Actions\CloseCustomer;
+use App\Modules\Parties\Actions\ExportCustomerData;
 use App\Modules\Parties\Actions\PlaceHold;
 use App\Modules\Parties\Actions\ReactivateAccount;
 use App\Modules\Parties\Actions\ReactivateCustomer;
@@ -141,6 +143,20 @@ class ViewCustomer extends ViewRecord
      * only the localized notification, and an out-of-band illegal call throws `IllegalAccountTransition` (a
      * `RuntimeException`, named in PROSE so Pint cannot re-add a forbidden import), unreachable through the hidden verb.
      *
+     * The two form-less GDPR data-rights verbs (`anonymise` / `export`, parties-anonymisation slice task 6.1) ALSO land
+     * here — each a bare-`int $id` write-through the trait's {@see SurfacesDomainActions::lifecycleAction()} threads
+     * directly (no notes, no confirmation). `anonymise` (write-through to {@see AnonymiseCustomer}) is VISIBILITY-GATED
+     * to a not-yet-anonymised Customer via {@see notYetAnonymised()} — the IDEMPOTENCY gate (hidden once `anonymised_at`
+     * is set; an already-erased Customer is a domain no-op). Crucially, that gate is NOT the complement of the domain's
+     * rejection (contrast the KYC/Account verbs): a `compliance`-Hold block is a RUNTIME rejection
+     * (`AnonymisationBlockedByComplianceHold`, a `RuntimeException` named in PROSE so Pint cannot re-add a forbidden
+     * `Parties\Exceptions` import), so a not-yet-anonymised but `compliance`-held Customer keeps `anonymise` VISIBLE and
+     * its block surfaces as the `action_failed` danger notification on click (the `activate` cross-slice-gate precedent —
+     * design D5). `export` (write-through to the READ-ONLY {@see ExportCustomerData}) is UNGATED — an anonymised
+     * Customer still exports (its access-export reflects the placeholder PII); the in-memory payload is assembled and
+     * discarded by the surface (the file/download delivery vehicle is the deferred J-9b follow-up — design D5), the
+     * click confirming via the kit's success notification.
+     *
      * `placeHold` ({@see placeHoldAction()}) and `recordScreening` ({@see recordScreeningAction()}) are bespoke — each
      * carries a form the form-less verb helper cannot thread (a Hold-type / scope / Profile form; a sanctions
      * verdict / trigger-source form), so neither is a form-less verb.
@@ -168,6 +184,9 @@ class ViewCustomer extends ViewRecord
                 ->visible(fn (): bool => $this->accountStatusIs('active') || $this->accountStatusIs('suspended')),
             $this->placeHoldAction(),
             $this->recordScreeningAction(),
+            $this->lifecycleAction('anonymise', 'anonymised', fn (Model $record, string $notes) => app(AnonymiseCustomer::class)->handle($this->recordOf(Customer::class, $record)->id))
+                ->visible(fn (): bool => $this->notYetAnonymised($this->recordOf(Customer::class, $this->getRecord()))),
+            $this->lifecycleAction('export', 'exported', fn (Model $record, string $notes) => app(ExportCustomerData::class)->handle($this->recordOf(Customer::class, $record)->id)),
         ];
     }
 
@@ -211,6 +230,24 @@ class ViewCustomer extends ViewRecord
     private function accountStatusIs(string $status): bool
     {
         return $this->recordOf(Customer::class, $this->getRecord())->account?->status->value === $status;
+    }
+
+    /**
+     * Is the Customer not yet anonymised — the visibility gate for the `anonymise` verb (parties-anonymisation, task
+     * 6.1; design D1)? True while `anonymised_at` is NULL. This is the IDEMPOTENCY gate (not a from-state guard): an
+     * already-anonymised Customer has no PII left to erase, so {@see AnonymiseCustomer} is a domain no-op there — the
+     * surface simply HIDES the verb once `anonymised_at` is set (the Filament hidden-action landmine; lessons.md
+     * 2026-06-22). UNLIKE the KYC/Account verbs, this gate is NOT the complement of a rejection: a `compliance`-Hold
+     * block is a RUNTIME rejection the domain raises on invocation (`AnonymisationBlockedByComplianceHold`, a
+     * `RuntimeException` named in PROSE so Pint's `fully_qualified_strict_types` cannot re-add a forbidden
+     * `Parties\Exceptions` import), surfaced as `action_failed` through {@see SurfacesDomainActions::lifecycleAction()}
+     * — so a not-yet-anonymised but `compliance`-held Customer keeps the verb VISIBLE and its block surfaces on click
+     * (the {@see getHeaderActions()} `activate` cross-slice-gate precedent, design D5). The `export` verb carries NO
+     * such gate: an anonymised Customer still exports (its access-export reflects the placeholder PII).
+     */
+    private function notYetAnonymised(Customer $customer): bool
+    {
+        return $customer->anonymised_at === null;
     }
 
     /**

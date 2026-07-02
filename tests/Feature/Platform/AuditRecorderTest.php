@@ -142,3 +142,68 @@ it('stamps occurred_at as the application-set UTC clock', function () {
     // (time-travel-testable) and in UTC on both engines, not a DB default.
     expect(AuditRecord::findOrFail($record->id)->occurred_at)->toStartWith('2026-06-12 09:30:00');
 });
+
+// ---- redactEntity: the GDPR erasure seam (the second permitted DML — before/after → NULL) ----
+
+it('redacts before/after PII snapshots for an entity to NULL, preserving the row and its structural columns', function () {
+    // Two audit rows for one entity: one with a before+after snapshot, one after-only (a creation).
+    [$idA, $idB] = DB::transaction(fn () => [
+        recordTestAudit(entityType: 'Customer', entityId: '77', before: ['email' => 'a@x.com'], after: ['email' => 'a@x.com'])->id,
+        recordTestAudit(entityType: 'Customer', entityId: '77', before: null, after: ['name' => 'Jane'])->id,
+    ]);
+
+    $redacted = DB::transaction(fn () => app(AuditRecorder::class)->redactEntity('Customer', '77'));
+
+    // Both snapshot-bearing rows redacted; the count is honest.
+    expect($redacted)->toBe(2);
+
+    foreach ([$idA, $idB] as $id) {
+        $row = AuditRecord::findOrFail($id);
+        expect($row->before)->toBeNull()
+            ->and($row->after)->toBeNull()
+            // structural skeleton frozen — the redaction touched only before/after.
+            ->and($row->entity_type)->toBe('Customer')
+            ->and($row->entity_id)->toBe('77')
+            ->and($row->action)->toBe('platform.demo')
+            ->and($row->authorization_basis)->toBe('operator_console');
+    }
+});
+
+it('redacts only the target entity, leaving other entities audit snapshots intact', function () {
+    [$target, $other] = DB::transaction(fn () => [
+        recordTestAudit(entityType: 'Customer', entityId: '1', before: ['email' => 'a@x.com'], after: ['email' => 'a@x.com'])->id,
+        recordTestAudit(entityType: 'Customer', entityId: '2', before: ['email' => 'b@x.com'], after: ['email' => 'b@x.com'])->id,
+    ]);
+
+    $redacted = DB::transaction(fn () => app(AuditRecorder::class)->redactEntity('Customer', '1'));
+
+    expect($redacted)->toBe(1)
+        ->and(AuditRecord::findOrFail($target)->before)->toBeNull()
+        // the non-matching entity_id keeps its snapshot — the redaction is keyed (entity_type, entity_id).
+        ->and(AuditRecord::findOrFail($other)->before)->toBe(['email' => 'b@x.com'])
+        ->and(AuditRecord::findOrFail($other)->after)->toBe(['email' => 'b@x.com']);
+});
+
+it('is a no-op returning 0 when the entity has no audit rows (the documented common case)', function () {
+    $redacted = DB::transaction(fn () => app(AuditRecorder::class)->redactEntity('Customer', '999'));
+
+    expect($redacted)->toBe(0);
+});
+
+it('skips audit rows already free of a snapshot (both before and after NULL) — not counted, not re-touched', function () {
+    $id = DB::transaction(fn () => recordTestAudit(entityType: 'Customer', entityId: '5', before: null, after: null)->id);
+
+    $redacted = DB::transaction(fn () => app(AuditRecorder::class)->redactEntity('Customer', '5'));
+
+    expect($redacted)->toBe(0)
+        ->and(AuditRecord::findOrFail($id)->before)->toBeNull()
+        ->and(AuditRecord::findOrFail($id)->after)->toBeNull();
+});
+
+it('refuses to redact outside a database transaction (the no-dual-write guard)', function () {
+    // DatabaseMigrations leaves us un-wrapped, so the guard can fire (non-vacuity).
+    expect(DB::transactionLevel())->toBe(0);
+
+    expect(fn () => app(AuditRecorder::class)->redactEntity('Customer', '1'))
+        ->toThrow(NotInTransactionException::class);
+});

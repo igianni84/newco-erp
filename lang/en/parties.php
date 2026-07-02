@@ -149,4 +149,27 @@ return [
         // operator-facing id (not PII).
         'restore_active_conflict' => 'Cannot restore Club Credit :credit: the owning Profile already holds another active Club Credit. A Profile may hold at most one active Club Credit at a time.',
     ],
+    'anonymisation' => [
+        // GDPR right-to-erasure rejection (change parties-anonymisation, design D2; canon MVP-DEC-015 — ADR
+        // 2026-07-02-adopt-dec-015-anonymisation-hold-block-set; § 8.2 / AC-K-J-9a). `AnonymiseCustomer`
+        // overwrites the Customer PII + its Addresses' personal fields in place; it is ORTHOGONAL to the status
+        // FSM (anonymises from any status), IDEMPOTENT (a re-run is a no-op, not a throw) and has NO illegal-state
+        // edge — so its ONLY rejection is the Hold-precedence gate. The gate blocks iff an active `compliance`
+        // Hold covers the Customer (`compliance`-only over the 8-type set; there is NO `sanctions` Hold type —
+        // sanctions is the separate `sanctions_status` FSM); every other Hold type proceeds. :customer is the
+        // operator-facing Customer id — an operator reference, NOT PII (a digit, like the profile :customer /
+        // club_credit :credit ids) — so it is interpolated to make the reason self-documenting; the copy names
+        // the rule and interpolates NO personal data (name / email / phone / date-of-birth), so it is safe to
+        // reach logs (the DuplicateCustomerEmail PII-free discipline).
+        'blocked_by_compliance_hold' => 'Cannot anonymise Customer :customer: an active compliance Hold requires the Customer\'s identifiable data to be retained. Anonymisation proceeds only once the compliance Hold is lifted.',
+    ],
+    'address' => [
+        // Customer Address country-code boundary validation (change parties-anonymisation, task 2.1; design D4;
+        // party-registry — Requirement: Customer Address). `country_code` is a fixed-width ISO 3166-1 alpha-2
+        // code (like the ISO 4217 currency codes) validated at the CreateCustomerAddress action boundary — two
+        // uppercase letters — NOT a DB enum/CHECK. No launch country-set exists (collectors are international), so
+        // the guard validates FORMAT. :country echoes the offending operator-supplied value — a country code is
+        // NOT personal data (unlike an email), so it IS interpolated (the :producer / :club id discipline).
+        'invalid_country_code' => 'Cannot create the Address: ":country" is not a valid ISO 3166-1 alpha-2 country code. A country code must be two uppercase letters (for example IT, FR or GB).',
+    ],
 ];
