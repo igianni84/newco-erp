@@ -673,3 +673,5 @@
 ## [2026-07-02 15:32] ralph | parties-anonymisation 1.1 | green | mini-ADR DEC-015 (compliance-only Hold block-set; sanctions=FSM not Hold; J-9b minimal; CustomerAnonymised event) + INDEX row | 4 files | validate-strict+Pint green
 
 ## [2026-07-02 15:44] ralph | parties-anonymisation 1.2 | green | 3 files (2 additive migrations anonymised_at + parties_addresses, schema test 10 cases); full suite 1817/1817, PHPStan 0, Pint clean, openspec valid
+
+## [2026-07-02 15:58] ralph | parties-anonymisation 1.3 | green | 5 files — lang/en/parties.php anonymisation.blocked_by_compliance_hold + CONTEXT.md Address term + both seams flipped + AnonymisationExceptionsTest; suite 1819/1819, phpstan 0
