@@ -697,3 +697,7 @@
 ## [2026-07-02 18:31] close §2.7 | parties-anonymisation (RM-01) | merged --no-ff to main (2385772, local/unpushed) + 4x semantic-verify CLEAN/only-SUGGESTION + archived 2026-07-02 (1109392); party-registry +4/~1 req; push gated pending approval
 
 ## [2026-07-02 18:45] push §2.7 | parties-anonymisation (RM-01) | pushed origin/main (20d63b8..9f0ac46: merge+archive+memory); ralph branch deleted; NEXT = /spec-to-change RM-02 enhanced-KYC €10k/€50k threshold + review-queue (P0 floor, no ADR gate)
+
+## [2026-07-02 19:38] spec-to-change | RM-02 parties-enhanced-kyc-threshold | Authored + validated (--strict green); 2 ADDED + 2 MODIFIED party-registry reqs, 7 groups/11 tasks. Interview: Option B (AML breach -> under_review blocks) + rolling-12mo. APPROVED by Giovanni; marker created. Ready for ralph.
+
+## [2026-07-02 19:50] ralph | parties-enhanced-kyc-threshold 1.1 | green | migration parties_compliance_reviews + 2 enums (2.1 prereq) + schema test; suite 1889/1889, phpstan 0 | 4 files

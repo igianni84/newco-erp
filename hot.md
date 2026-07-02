@@ -7,22 +7,29 @@ updated: 2026-07-02
 # Hot Cache
 
 ## Last Updated
-**2026-07-02 — RM-01 (`parties-anonymisation`) CLOSED & PUSHED ✅ — full GUIDE §2.7 ritual, end-to-end.** Legs: (1) branch review (13 commits, 42 files, +2919/−22); (2) `git merge --no-ff` → `2385772`; (3) 4-way parallel semantic-verify → **0 CRITICAL, 0 WARNING, 4 low-impact SUGGESTIONs** → gate GREEN; (4) `openspec archive` → `party-registry` truth spec **+4 ADDED / ~1 MODIFIED** (Customer Anonymisation (Right-to-Erasure), Anonymisation Hold Precedence, Customer Address, Customer Data Export; Customer Suspension and Closure now cross-references anonymisation); change → `archive/2026-07-02-parties-anonymisation/`. Commits `1109392` (archive, structural-only) + `9f0ac46` (memory) **pushed to origin/main**; merged branch deleted. `openspec list` = No active changes.
+**2026-07-02 — RM-02 (`parties-enhanced-kyc-threshold`) BUILD STARTED. Task 1.1 ✅ (migration + 2 enums + schema test), green.** Iteration 1/20 done; `parties_compliance_reviews` table landed. Next: task 1.2 (i18n copy + CONTEXT.md glossary).
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- Last green (loop 7.1): full suite **1883/1883** (10189 assertions) on SQLite AND PG17; PHPStan max 0; Pint clean.
-- `main` == `origin/main` (`9f0ac46`); working tree clean; nothing pending.
+- Last green: full suite **1889/1889** (SQLite `:memory:`), PHPStan max **0**, Pint clean, `openspec validate --strict` valid. (+6 tests from RM-02 task 1.1.)
+- ⚠ **Run the full suite as `php -d memory_limit=2G vendor/bin/pest`** — `php artisan test` re-spawns a child that ignores `-d`, and 1889 tests exhaust the 128M CLI default at result-collection (fatal, NOT a failure). Filtered `artisan test --filter=` is fine at 128M.
+- Branch `ralph/parties-enhanced-kyc-threshold`. PG17 not runnable locally (no PG server) → CHECK-rejection branches verify in CI / task 7.1 close.
 
 ## Active Change & Next Task
-- **No active change.** RM-01 done.
-- **NEXT: `/spec-to-change` for RM-02 — Enhanced-KYC €10k / €50k threshold + review-queue** (only remaining P0 compliance-floor item; Remediation_Tracker Round-2 seq RM-01→**RM-02**→RM-03→RM-05; **no ADR gate**, size M). Scope: single-tx €10k + cumulative-annual €50k detection (order-completion check + periodic job) → set `enhanced_kyc_flag`/`enhanced_kyc_at`, create a Compliance review-queue entry, fire an AML-threshold lightweight re-screen (trigger-source `aml-threshold`). Sources: `spec/03-acceptance/Module_K_Acceptance_v0.3-MVP.md` **AC-K-J-7a** + **AC-K-EVT-12a**; `spec/02-prd/Module_K_PRD_v0.3-MVP.md` §4.1/§9.1 (DEC-035) + §9.2 (DEC-030). **Seam:** the order-completion trigger reads a Module-S (Commerce, still stub) value → build the periodic-job path K-side now, emit/consume a seam for the order path (as RM-01 did for Module-E Hold consumers). Today `enhanced_kyc_*` columns exist (seam only); detection/review-queue/event deferred in `RecordCustomerScreening.php`.
+- **ACTIVE: `parties-enhanced-kyc-threshold` (RM-02, P0 compliance floor) — building. 1/12 tasks done.**
+- **NEXT: task 1.2** — localized copy (`lang/en/parties.php`, `lang/{en,it}/operator_console.php`) + extend root `CONTEXT.md` (Compliance Review Queue, Enhanced-KYC Threshold €10k/€50k OR, `CustomerTransactionTotalsReader`, `CustomerEnhancedKycReviewRequired`, `aml_threshold`). No hardcoded strings (inv. 12).
+- **⭐ Task 2.1 shortcut:** its two enums (`ComplianceReviewReason` = `enhanced_kyc_threshold`; `ThresholdKind` = `single_transaction`/`cumulative_annual`) ALREADY EXIST (created in 1.1 as the CHECK-derivation prereq) → 2.1 = ONLY the enum unit test.
+- **Slice:** breach €10k single-tx OR €50k rolling-12mo cumulative → latch `enhanced_kyc_flag`+`_at`, create `parties_compliance_reviews` row, emit PII-free `CustomerEnhancedKycReviewRequired`, AML re-screen `under_review`. Detection = `EvaluateEnhancedKycThreshold` (idempotent, flag-latched); totals via `CustomerTransactionTotalsReader` port + null adapter (Module-S seam); periodic `parties:scan-enhanced-kyc-thresholds` inline on scheduler tick.
 
 ## Blockers & Decisions Needed
 - **None blocking.**
-- **Incidental (candidate future change, NOT next):** `party-registry` truth-spec *Hold Registry* still says "six-value" while code is **8** (RM-04 debt, tracker F4). Count-independent, non-blocking.
+- **Implementer landmine (design D2):** resolving the AML `under_review` from the console re-tags `trigger_source=compliance_ad_hoc` (§9.5 — console never offers `aml_threshold`). CORRECT; AML origin stays durable on the review-queue row + the event. **Do NOT force `aml_threshold` onto the resolution.**
+- **Deferred seams:** real Module-S totals source + order-completion trigger; 12-month cadence job; screening-vendor adapter; enhanced-KYC doc-FSM; review-queue resolve action. Ad-hoc re-screen already ships.
 
 ## Open Patterns
-- **§2.7 human close = review → merge --no-ff (local) → parallel semantic-verify → archive → structural archive-commit + separate memory-commit → push → branch -d.** Verify by parallel subagents, one per requirement-cluster, judging assertion-coverage (suite already green), not test-pass. Clean gate = 0 CRITICAL/0 WARNING; good SUGGESTIONs → knowledge/ or a future change.
-- **Latent audit-redaction convention (RM-01 SUGGESTION, uncaptured):** `AuditRecorder::redactEntity` matches only `entity_type='Customer'` + id, returns 0 silently on a miss. When the first Parties audit-writer / HubSpot seam lands, PII under another entity_type or a child row (Address/Profile) won't be redacted and fails silent — pin it then.
-- **Compliance gate pattern (reusable for RM-02):** key on `HoldType::Compliance` via `PartyComplianceStatusReader`; never the `Hold` model; never wire `sanctions_status`.
+- **Value-set CHECK shape follows nullability:** NOT-NULL enum col = plain `IN (...)`; additive-nullable = `IS NULL OR IN (...)`. Both derive from `Enum::cases()` (PG-guarded); SQLite floor is the cast.
+- **Read DB scalars with `->value('col')`, not `->first()->prop`** (PHPStan max: null-object). Assert bigint/money with `->toEqual` (PG bigint-as-string).
+- **Inbound cross-module seam = consumer-defined read-port + null adapter** (K needs Module-S data): ship contract + zero-returning adapter now; real impl lands with the upstream module. (RM-01 `CustomerAnonymised` / HoldType DEC-008 precedent.)
+- **Scheduler tick ≠ queued consumer** (substrate ADR line 66): a `->daily()` command does NOT trip the queue-driver gate.
+- **PII-free event over frozen-catalog silence** (RM-01 precedent): net-new audit/seam event admissible when §15.x names none, if tracker/scope calls for it.
+- **Compliance gate:** key on `HoldType::Compliance` via `PartyComplianceStatusReader`, never the `Hold` model; screening writes go only through `RecordCustomerScreening`.
