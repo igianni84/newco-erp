@@ -6,6 +6,9 @@
 - **Anonymisation Hold-precedence gate (tasks 3.2 / 4.1) = `compliance`-only, count-independent.** The gate blocks iff an active `compliance` Hold covers the Customer; **no other type blocks**. Key on `compliance` **only** — do NOT enumerate the whole Hold set, so the gate is immune to the RM-04 6→8 Hold-count debt. Read coverage via `PartyComplianceStatusReader` (contract) / `DatabaseComplianceStatusReader` — **never** touch the `Hold` Eloquent model directly (no-model-leak boundary). Canon MVP-DEC-015 (ADR `2026-07-02-adopt-dec-015-…`).
 - **There is NO `sanctions` Hold type.** `HoldType` = 8 cases (`admin|kyc|payment|fraud|compliance|credit|chargeback_review|storage_payment_failed`), none `sanctions`. Sanctions is a **separate** `sanctions_status` FSM (`SanctionsStatus`: `pending|passed|failed|under_review`) on the Customer — do NOT wire it into the anonymisation gate. A sanctioned-customer retention case is a `compliance` Hold placed by Compliance.
 - **Frozen-spec anonymisation precedence is stated 3 disagreeing ways** — `DEC-027` (compliance non-blocking) vs `§8.2` / `AC-K-J-9a` (compliance blocks). Canon collapses to compliance-only; the ADR is the reconciliation. Cite the ADR, not the raw spec, when implementing the gate.
+- **Owned-child FK = CASCADE; referenced-shared-parent FK = RESTRICT (module rule).** The sibling parties_* FKs RESTRICT with the explicit rationale "a shared parent it references, NOT a row it owns" (profiles→customers, club_credits→profiles). `parties_addresses.customer_id` is the module's first genuinely-OWNED child (Customer hasMany Address, overwritten in place on anonymisation) → the same ownership rationale inverts to `cascadeOnDelete()`. Inert in practice (Customers are never hard-deleted; anonymisation preserves the row). Use this test when adding any future FK.
+- **ISO codes are fixed-width `string(col, N)` columns, validated at the action boundary, NOT a DB enum/CHECK.** `amount_currency` = `string(_,3)` (ISO 4217); `parties_addresses.country_code` = `string(_,2)` (ISO 3166-1 alpha-2). No value-set CHECK for open code-sets (contrast the enum columns, which get the PG-only CHECK) — the launch-set guard lives in the Create* action, like `preferred_currency`/`preferred_locale`.
+- **Schema-test idiom: read columns via `->value('col')`, never `->first()->prop`.** `DB::table()->first()` is `stdClass|null` → PHPStan-max rejects a property access on the null branch. `->value('col')` returns the scalar directly (the ClubCreditSchemaTest pattern). Raw `DB::table()->insert()` + a local `xRow()` array-builder helper is the pre-model schema-layer proof (the model lands in a later task).
 
 ---
 
@@ -18,4 +21,18 @@
 - **Learnings for future iterations:**
   - The gate is `compliance`-only and **count-independent** — see the Codebase Patterns block at top. Cite the ADR (not the raw, self-contradictory spec) when building tasks 3.2 (gate) and 4.1 (precedence matrix).
   - `sanctions_status` is NOT a Hold type; never wire it into the anonymisation gate.
+---
+
+## [2026-07-02 15:43] — 1.2 Migrations: `anonymised_at` + `parties_addresses`
+- Two additive, Postgres-truthful + SQLite-compatible migrations (no PG extension, no backfill):
+  - `2026_07_02_000001_add_anonymised_at_to_parties_customers` — nullable `timestampTz('anonymised_at')`, no default, no CHECK (mirrors `2026_06_18_000002`'s onboarding timestamps). It's a flag+timestamp, orthogonal to the status FSM (task 3.2 stamps it; the model cast lands there too).
+  - `2026_07_02_000002_create_parties_addresses_table` — `id`, `customer_id` FK→`parties_customers` (`cascadeOnDelete`, indexName `parties_addresses_customer_fk`), `line1`/`line2?`/`locality`/`region?`/`postal_code`/`country_code(2)`, optional `company_name`/`vat_id`, `timestampsTz`. No `version` column (mutable child — the club_credits precedent, not the versioned identity spine).
+- **FK on-delete design call:** CASCADE, not the sibling RESTRICT — Address is the module's first genuinely-OWNED child (see the new Codebase Pattern). Documented thoroughly in the migration PHPDoc so it reads as deliberate.
+- **`country_code` = `string(_,2)`** (ISO 3166-1 alpha-2, the ISO-4217 `amount_currency(_,3)` precedent); no country enum/CHECK — validated at the CreateCustomerAddress boundary (task 2.1).
+- Files: 2 migrations (new) + `tests/Feature/Modules/Parties/AnonymisationSchemaTest.php` (new, 7 `it()` → 10 cases: `anonymised_at` present/nullable/accepts-a-timestamp; `parties_addresses` all-columns; full row; optional-fields-NULL; FK-orphan reject; required-field NOT-NULL dataset). `tasks.md` checkbox flipped.
+- Quality loop: **green** — `migrate:fresh` (SQLite) clean; filtered 10/10; full suite **1817/1817** (9866 assertions, +10 vs the 1807 baseline); PHPStan max 0; Pint clean; `openspec validate --strict` valid.
+- **Learnings for future iterations:**
+  - PHPStan-max bit the `->first()->prop` read (`stdClass|null`) — fixed to `->value('col')` on the first attempt; captured as a Codebase Pattern above.
+  - PG17 truthfulness is asserted by construction (portable constructs only); the actual cross-engine run is task 7.1 (the close ritual), matching the module's schema-test convention.
+  - Task 2.1 builds the `Address` Eloquent model (`parties_addresses`) + `Customer hasMany Address` + `CreateCustomerAddress` (`Create*`-named → stays out of the exhaustive non-`Create*` Action allow-list). Task 1.3 (next) = localized reasons + `CONTEXT.md` Address term.
 ---

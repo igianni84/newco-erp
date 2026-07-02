@@ -671,3 +671,5 @@
 ## [2026-07-02 15:20] approve | parties-anonymisation (RM-01) | Giovanni APPROVED; marker created. Change ready to build (ralph/interactive, one task/iter); NOT launched this session per prep-only brief.
 
 ## [2026-07-02 15:32] ralph | parties-anonymisation 1.1 | green | mini-ADR DEC-015 (compliance-only Hold block-set; sanctions=FSM not Hold; J-9b minimal; CustomerAnonymised event) + INDEX row | 4 files | validate-strict+Pint green
+
+## [2026-07-02 15:44] ralph | parties-anonymisation 1.2 | green | 3 files (2 additive migrations anonymised_at + parties_addresses, schema test 10 cases); full suite 1817/1817, PHPStan 0, Pint clean, openspec valid
