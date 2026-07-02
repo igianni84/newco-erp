@@ -14,6 +14,7 @@ use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Components\Section;
@@ -232,6 +233,30 @@ class CustomerResource extends OperatorConsoleResource
                         static::badgedStateEntry('kyc_status'),
                         static::badgedStateEntry('sanctions_status'),
                     ]),
+                // The enhanced-KYC escalation surface (change parties-enhanced-kyc-threshold, task 6.1; design D6 +
+                // Open-Questions "read-only: flag badge + open-entries list"). Kept a DISTINCT section from
+                // `compliance` (the two orthogonal KYC/sanctions axes are always-relevant; the enhanced-KYC flag is
+                // an EXCEPTION state), and VISIBILITY-GATED to a flagged Customer via {@see wasEnhancedKycFlagged()}:
+                // the section appears ONLY once the €10k-single / €50k-cumulative latch trips (design D1), so an
+                // un-escalated Customer surfaces NEITHER the flag badge here NOR (its sibling) the open-review rows
+                // in {@see CustomerResource\Widgets\CustomerComplianceReviewsTable}. The flag is an IconEntry
+                // `->boolean()` (the ClubResource `generates_credit` idiom — null-safe, no yes/no copy) and
+                // `enhanced_kyc_at` its "flagged at" timestamp; the OPEN review-queue ENTRIES render in the footer
+                // widget (a non-relation list — the Holds precedent). Read-projection only (the resolve action is
+                // deferred, § 9.1). All copy localized (invariant 12).
+                Section::make((string) __('operator_console.customer.sections.compliance_reviews'))
+                    ->icon('heroicon-o-document-check')
+                    ->columns(2)
+                    ->visible(fn (Customer $record): bool => self::wasEnhancedKycFlagged($record))
+                    ->schema([
+                        IconEntry::make('enhanced_kyc_flag')
+                            ->label((string) __('operator_console.customer.compliance_reviews.enhanced_kyc_flag'))
+                            ->boolean(),
+                        TextEntry::make('enhanced_kyc_at')
+                            ->label((string) __('operator_console.customer.compliance_reviews.enhanced_kyc_at'))
+                            ->dateTime()
+                            ->placeholder((string) __('operator_console.placeholder_none')),
+                    ]),
                 Section::make((string) __('operator_console.customer.sections.state'))
                     ->icon('heroicon-o-flag')
                     ->columns(2)
@@ -312,6 +337,19 @@ class CustomerResource extends OperatorConsoleResource
 
             return $account === null ? '' : $account->status->value;
         };
+    }
+
+    /**
+     * Was the Customer flagged for enhanced KYC — the visibility gate for the read-only compliance-reviews section
+     * (task 6.1; design D1)? True once the `enhanced_kyc_flag` latch is set. Predicated on the model CAST value (a
+     * nullable `boolean`: NULL for a never-flagged Customer, `true` once the €10k-single / €50k-cumulative threshold
+     * trips — design D8), so an un-escalated Customer HIDES the whole section, surfacing NEITHER the flag badge here
+     * NOR (its sibling {@see CustomerResource\Widgets\CustomerComplianceReviewsTable}'s) open-review rows — the
+     * acceptance "un-escalated shows neither". A pure read (the no-Eloquent-write rule polices writes only).
+     */
+    private static function wasEnhancedKycFlagged(Customer $customer): bool
+    {
+        return $customer->enhanced_kyc_flag === true;
     }
 
     /**

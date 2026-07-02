@@ -50,7 +50,7 @@
 
 ## 6. Operator console (read-only)
 
-- [ ] 6.1 **Surface enhanced-KYC flag + open reviews on `ViewCustomer`** (design "Open Questions"; spec — *Compliance Review Queue*) — a read-only section on the Customer console showing `enhanced_kyc_flag` / `enhanced_kyc_at` and the Customer's **open** review-queue entries (`resolved_at IS NULL`) with `threshold_kind` + amount. Read-projection only (no write action — the resolve action is deferred); labels via i18n (task 1.2); no Eloquent write in the panel (`NoEloquentWriteInOperatorPanelRuleTest` stays green).
+- [x] 6.1 **Surface enhanced-KYC flag + open reviews on `ViewCustomer`** (design "Open Questions"; spec — *Compliance Review Queue*) — a read-only section on the Customer console showing `enhanced_kyc_flag` / `enhanced_kyc_at` and the Customer's **open** review-queue entries (`resolved_at IS NULL`) with `threshold_kind` + amount. Read-projection only (no write action — the resolve action is deferred); labels via i18n (task 1.2); no Eloquent write in the panel (`NoEloquentWriteInOperatorPanelRuleTest` stays green).
   - Acceptance: an escalated Customer's view shows the enhanced-KYC badge + the open review entry; an un-escalated Customer shows neither; nothing is writable.
   - Test hint: a Filament page feature test (Livewire) — the repo's console-test pattern: escalate via the Action, then `assertSee` the flag + the review row on the page; `assertDontSee` for an un-escalated Customer; live-browser optional (single-operator seed, env note).
 
