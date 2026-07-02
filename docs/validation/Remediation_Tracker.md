@@ -178,7 +178,7 @@
 - **RM-11 — Bulk import** · L · 🔵 — J-6/FSM-14/BR-BulkImport-1/2/3. Largest scope hole, zero code. Not compliance-critical; deferred for the pre-Paolo push unless Paolo asks.
 - **RM-12 — Layer-1 case-config whitelist** · M · 🔴 — J-13/XM-11. PIM's only breakability contribution; launch-testable.
 - **RM-13 — `EnrichmentDataUpdated` + post-active enrichment edit** · M · 🔴 — EVT-8 (the 1 missing event of 22).
-- **RM-14 — Re-versioning on identity edit** · M · 🔴 — BR-Audit-1. Needs an Update action/Edit page (also enables RM-06's edit path).
+- **RM-14 — Re-versioning on identity edit** · M · 🔴 — BR-Audit-1. Needs an Update action/Edit page (also enables RM-06's edit path). ⚠️ **When the edit path lands, filter `ApprovalGovernance::assertNotRejectionPending` to governance verbs** — today it reads the *raw* latest catalog audit action (`orderByDesc('id')->value('action')`, block iff ends `.rejected`), safe only because `LifecycleTransition` is the sole catalog `audit_records` writer; a post-rejection edit-audit row would otherwise become "latest" and clear the review-freshness block **without a re-submit** (RM-06 semantic-verify **S1**, 2026-07-02).
 - **RM-15 — Producer-existence validation at creation** · S · 🔴 — XM-2. Or accept the boundary-law behaviour with an ADR note.
 
 ### P4 — Module K other (mostly wait on Modules A/S/E — kept for completeness)
