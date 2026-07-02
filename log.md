@@ -689,3 +689,5 @@
 ## [2026-07-02 17:24] ralph | parties-anonymisation 4.1 | green | 2 files — per-Hold-type precedence matrix (pure tests, new CustomerAnonymisationHoldPrecedenceTest 11/45); suite 1864/1864; no arch-gate churn
 
 ## [2026-07-02 17:37] ralph | parties-anonymisation 5.1 | green | 4 files (ExportCustomerData read-only export + test; SupplyLifecycleChainTest registration); suite 1868/1868, PHPStan 0, Pint clean
+
+## [2026-07-02 17:55] ralph | parties-anonymisation 6.1 | green | Anonymise+Export console verbs via kit lifecycleAction; visibility-gated anonymise, ungated export; +4 i18n keys EN+IT; suite 1883/1883; 6 files

@@ -67,6 +67,10 @@ use Illuminate\Support\Facades\Lang;
  *     success titles (notifications.{kyc_required,kyc_verified,kyc_rejected,screening_recorded}; action_failed is
  *     reused). Front-loaded here (this change, task 1.3) ahead of the resolving code in tasks 2–3, so the i18n
  *     contract is green before the surface lands.
+ *   - the GDPR data-rights surface (parties-anonymisation, task 6.1): the two form-less write-through verbs
+ *     (actions.{anonymise,export}) — `anonymise` visibility-gated to a not-yet-anonymised Customer, `export`
+ *     ungated — with their two success titles (notifications.{anonymised,exported}; action_failed reused for the
+ *     anonymise compliance-Hold block). Authored WITH the resolving code in this change (not front-loaded).
  * A console that resolves all of these MUST author them all or a label renders as a raw key under any locale.
  *
  * @return list<string> dot-paths WITHOUT the `operator_console.customer.` prefix
@@ -82,10 +86,12 @@ function customerConsoleKitKeys(): array
         'actions.create', 'actions.activate', 'actions.suspend', 'actions.reactivate', 'actions.close',
         'actions.place_hold', 'actions.lift_hold',
         'actions.require_kyc', 'actions.record_kyc_verified', 'actions.record_kyc_rejected', 'actions.record_screening',
+        'actions.anonymise', 'actions.export',
         'holds.columns.hold_type', 'holds.columns.scope_type', 'holds.columns.status', 'holds.columns.reason', 'holds.columns.placed_by', 'holds.columns.placed_at', 'holds.columns.lifted_by', 'holds.columns.lifted_at',
         'notifications.activated', 'notifications.suspended', 'notifications.reactivated', 'notifications.closed', 'notifications.action_failed',
         'notifications.hold_placed', 'notifications.hold_lifted',
         'notifications.kyc_required', 'notifications.kyc_verified', 'notifications.kyc_rejected', 'notifications.screening_recorded',
+        'notifications.anonymised', 'notifications.exported',
     ];
 }
 

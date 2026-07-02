@@ -809,6 +809,15 @@ return array_replace_recursive([
             'suspend_account' => 'Suspend account',
             'reactivate_account' => 'Reactivate account',
             'close_account' => 'Close account',
+            // The GDPR data-rights verbs (parties-anonymisation, task 6.1) — the demand-side right-to-erasure +
+            // right-of-access surface on ViewCustomer. `anonymise` is a form-less write-through to AnonymiseCustomer,
+            // VISIBILITY-GATED to a not-yet-anonymised Customer (hidden once `anonymised_at` is set — the idempotency
+            // gate); a `compliance`-Hold block is a RUNTIME rejection (not a visibility gate — unlike the KYC verbs),
+            // surfaced as `action_failed`. `export` is a form-less write-through to the read-only ExportCustomerData
+            // (ungated — an anonymised Customer still exports its placeholder PII). Each routes through a Parties domain
+            // action, never a Filament default mutating path (ADR 2026-06-19).
+            'anonymise' => 'Anonymise (erase PII)',
+            'export' => 'Export data',
         ],
 
         // Outcome notifications for the four write-through status verbs + the two Hold-surface verbs
@@ -837,6 +846,12 @@ return array_replace_recursive([
             'account_suspended' => 'Account suspended.',
             'account_reactivated' => 'Account reactivated.',
             'account_closed' => 'Account closed.',
+            // The GDPR data-rights success titles (parties-anonymisation, task 6.1): `anonymised` confirms the PII
+            // overwrite + `anonymised_at` stamp (one PII-free CustomerAnonymised event); `exported` confirms the
+            // in-memory access export assembled (no file — the delivery vehicle is the deferred J-9b follow-up,
+            // design D5). The shared `action_failed` below covers the anonymise compliance-Hold block.
+            'anonymised' => 'Customer PII anonymised.',
+            'exported' => 'Customer data export ready.',
             'action_failed' => 'The action could not be completed.',
         ],
 

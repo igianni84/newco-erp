@@ -50,7 +50,7 @@
 
 ## 6. Operator console
 
-- [ ] 6.1 **`Anonymise` + `Export` on the Customer console** (design D1/D5; console kit `decisions/2026-06-19`/`2026-06-20`) — add an `Anonymise` header action (write-through to `AnonymiseCustomer`, `->visible()` gated: hidden once `anonymised_at` is set) and an `Export` action (write-through to `ExportCustomerData`) on the Customer View page via the shared console kit. The Hold-block + illegal-state surface via the kit's existing outcome-notification.
+- [x] 6.1 **`Anonymise` + `Export` on the Customer console** (design D1/D5; console kit `decisions/2026-06-19`/`2026-06-20`) — add an `Anonymise` header action (write-through to `AnonymiseCustomer`, `->visible()` gated: hidden once `anonymised_at` is set) and an `Export` action (write-through to `ExportCustomerData`) on the Customer View page via the shared console kit. The Hold-block + illegal-state surface via the kit's existing outcome-notification.
   - Acceptance: the console offers `Anonymise` only when not yet anonymised (hidden after); driving it anonymises (a `compliance`-held Customer surfaces the block as an `action_failed` notification); `Export` returns the payload; **verify in browser using the dev-browser skill**.
   - Test hint: `assertActionVisible('anonymise')` on a fresh Customer, `assertActionHidden('anonymise')` after `anonymised_at` set; drive the Action for the domain effect (a `->visible()`-false action is undrivable — `lessons.md` 2026-06-23/24); live-verify the buttons in-browser.
 

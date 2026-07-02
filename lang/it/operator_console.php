@@ -524,6 +524,10 @@ return array_replace_recursive([
             'suspend_account' => 'Sospendi account',
             'reactivate_account' => 'Riattiva account',
             'close_account' => 'Chiudi account',
+            // Verbi diritti GDPR (parties-anonymisation): «anonymise» → «Anonimizza» (cancellazione PII in-place);
+            // «export» → «Esporta» (esportazione di accesso in-memory, sola lettura).
+            'anonymise' => 'Anonimizza (cancella PII)',
+            'export' => 'Esporta dati',
         ],
 
         'notifications' => [
@@ -543,6 +547,11 @@ return array_replace_recursive([
             'account_suspended' => 'Account sospeso.',
             'account_reactivated' => 'Account riattivato.',
             'account_closed' => 'Account chiuso.',
+            // Titoli di esito dei verbi diritti GDPR (parties-anonymisation): `anonymised` conferma la
+            // sovrascrittura della PII + lo stamp `anonymised_at`; `exported` conferma l'esportazione di accesso
+            // in-memory (nessun file — il canale di consegna è il follow-up J-9b differito).
+            'anonymised' => 'PII del cliente anonimizzata.',
+            'exported' => 'Esportazione dati cliente pronta.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
 
