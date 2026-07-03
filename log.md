@@ -749,3 +749,5 @@
 ## [2026-07-03 19:16] spec-to-change | reconcile-hold-registry-eight-types | authored + APPROVED (RM-04 F4 / canon MVP-DEC-008): spec-only truth-spec 6→8 Hold types; party-registry ×3 + operator-console ×1 MODIFY; code already shipped (d8ec261), zero new code/test; validate --strict green; 71 cited Hold tests green
 
 ## [2026-07-03 19:24] ralph | reconcile-hold-registry-eight-types 1.1 | green | verify-only: Hold suite 71/71 SQLite, all 8-value assertions present (none added) | 4 files
+
+## [2026-07-03 19:37] ralph | reconcile-hold-registry-eight-types 1.2 | green | scenario→test traceability: 19/19 scenarios mapped, 0 unmapped → 0 new tests (design D4); 86 cited tests re-run green, 571 assns; verified console predicate !autoLiftable(); 4 files

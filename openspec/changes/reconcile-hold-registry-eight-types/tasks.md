@@ -10,7 +10,7 @@
   - Assert present: `HoldRegistryTest` (manual `PlaceHold` covers `chargeback_review` + `storage_payment_failed`), `HoldLifecycleTest` (operator-lift succeeds on the two finance-driven types; auto-lift rejected only on `kyc`/`payment`), `ComplianceReadApiTest` (active-Hold-list reports the two new types), `CustomerAnonymisationHoldPrecedenceTest` (the two finance-driven types PROCEED — only `compliance` blocks), `CustomerHoldsConsoleTest` ("exposes the placeHold form with the eight Hold types"; options = `HoldType::cases()`).
   - Acceptance: suite green; if any listed assertion is absent, add **only** the minimal assertion to that existing file (never a new test file) and note it in `progress.md`.
 
-- [ ] 1.2 Build the scenario→test traceability table in `progress.md`: every `#### Scenario:` in `specs/party-registry/spec.md` and `specs/operator-console/spec.md` maps to ≥1 assertion from 1.1.
+- [x] 1.2 Build the scenario→test traceability table in `progress.md`: every `#### Scenario:` in `specs/party-registry/spec.md` and `specs/operator-console/spec.md` maps to ≥1 assertion from 1.1.
   - Acceptance: table complete; zero unmapped scenarios (an unmapped scenario is the only trigger for a new assertion under 1.1).
 
 ## 2. Reconcile the spec-of-record (applied at archive)
