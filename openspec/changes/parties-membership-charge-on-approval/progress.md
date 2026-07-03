@@ -49,3 +49,22 @@
   - Next = **3.1** (cross-engine PG17 + guards unamended + PHPStan/Pint). The `activate` verb no longer exists anywhere; the i18n contract is 8-verb.
 
 ---
+
+## [2026-07-03 11:45] — 3.1 Full Parties suite green on SQLite AND PostgreSQL 17; guards unamended; static clean
+- **What:** Verification-only task (no production or test code changed — a shape-collapse's cross-engine + static-analysis gate). Ran the WHOLE suite on both engines and the two static tools, and git-confirmed the four source-scan/isolated-contract guards are diff-free.
+  - **SQLite `:memory:`** (`php -d memory_limit=2G vendor/bin/pest`): **1951/1951**, 10419 assertions, 74.9 s.
+  - **PostgreSQL 17.10** (the hot.md recipe: `docker run -d --name pg --tmpfs /var/lib/postgresql/data --shm-size=256m -e POSTGRES_DB=newco_test -e POSTGRES_USER=newco -e POSTGRES_PASSWORD=newco -p 55432:5432 postgres:17`, then `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=2G vendor/bin/pest`, `docker rm -f pg` after): **1951/1951**, 10419 assertions, 298.7 s. Identical test/assertion counts across engines ⇒ no PG-only portability trap surfaced (the inverted approve-outcome observers assert event names/counts by name and `causation_id`-null roots, never a byte-compared jsonb payload or an `->toBe()` on a bigint id — trap 3 & trap 6 avoided).
+  - **PHPStan** max (`vendor/bin/phpstan analyse`): `{"result":"passed","errors":0}`.
+  - **Pint** (`vendor/bin/pint --test`): `{"result":"passed"}`.
+  - **`openspec validate parties-membership-charge-on-approval --strict`**: valid.
+- **Guards diff-free (git-confirmed):** `git diff --stat main...HEAD --` over `SupplyLifecycleChainTest` (exact-set Action allow-list), `ComplianceIndependenceTest` (OC-write guard), `SpineCreationChainTest` (both the Catalog and the Parties copy — the glob matched both), `ProfileActivationTest` (the isolated writer's own `Approved → Active` + `cannotActivate` contract) → **empty**. None of the four was touched by 1.1/1.2/2.1; the shape-collapse held the exact-set/count guards without amending them.
+- **Files changed:** none except `tasks.md` (3.1 checked) + this `progress.md` + `hot.md`/`log.md` (memory). Working tree was clean before and after both suite runs (no stray sqlite artifacts, no snapshot drift).
+- **Quality loop: green** on both engines + both static tools.
+- **Acceptance:** all bullets met — SQLite + PG17 both 1951/1951; PHPStan max 0; Pint clean; the four guards diff-free; PG jsonb trap 3 respected (counts/names by name, payloads by key).
+- **Learnings for future iterations:**
+  - **The env-override that makes the PG recipe work:** `phpunit.xml` declares `<env name="DB_CONNECTION" value="sqlite"/>` (and `DB_DATABASE=:memory:`) **without `force="true"`** — PHPUnit only sets an `<env>` when the var is *absent* from the shell, so a shell-exported `DB_CONNECTION=pgsql …` survives and re-points the run at PG. That's the mechanism behind `knowledge/testing/rules.md`'s cross-engine recipe; no phpunit.xml edit is ever needed.
+  - **Port hygiene:** `5432` is permanently held by an unrelated `invoicing-system-db-1` (postgres:16-alpine) on this machine — the PG17 test container MUST use **55432** (already the recipe's port). `docker ps` first if a run can't connect.
+  - **`--tmpfs /var/lib/postgresql/data` + `--shm-size=256m`** on the official `postgres:17` image initialises in ~1 s (RAM-backed data dir, ephemeral) — `docker exec pg pg_isready -U newco -d newco_test` in a `seq 1 30` poll gates the suite start cleanly. Always `docker rm -f pg` after (idempotent `docker rm -f pg 2>/dev/null` before `run` guards a stale container).
+  - **A verification-only task's "test" IS the cross-engine full run** — there is no new Pest file to write; the acceptance is the two green suites + the two static tools + the git-diff guard proof, all captured with counts.
+
+---

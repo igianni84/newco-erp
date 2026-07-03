@@ -739,3 +739,5 @@
 ## [2026-07-03 11:07] ralph | parties-membership-charge-on-approval 1.2 | green | ApproveProfile drives Applied→Approved→Active atomically (MVP-DEC-016, injects ActivateProfile); 8 approve-outcome observers inverted; suite 1947/1947, PHPStan 0, Pint clean; 9 files
 
 ## [2026-07-03 11:33] ralph | parties-membership-charge-on-approval 2.1 | green | 7 files: -activate console verb (ViewProfile 8 verbs), i18n realigned en+it+contract, ProfileActivationConsoleTest->ProfileStatusConsoleTest (coverage rehomed); suite 1951/1951
+
+## [2026-07-03 11:47] ralph | parties-membership-charge-on-approval 3.1 | green | cross-engine gate: full suite 1951/1951 on SQLite + PG17.10 (10419 assertions), PHPStan max 0, Pint clean, openspec --strict valid, 4 guards diff-free; 0 code files
