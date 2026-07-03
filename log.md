@@ -737,3 +737,5 @@
 ## [2026-07-03 10:43] ralph | parties-membership-charge-on-approval 1.1 | green | ActivateProfile docblock re-homes MembershipFeePaid seam E->S (DEC-173/DEC-157) + 2 invocation modes, behaviour-neutral; suite 1947/1947 SQLite, phpstan max 0
 
 ## [2026-07-03 11:07] ralph | parties-membership-charge-on-approval 1.2 | green | ApproveProfile drives Applied→Approved→Active atomically (MVP-DEC-016, injects ActivateProfile); 8 approve-outcome observers inverted; suite 1947/1947, PHPStan 0, Pint clean; 9 files
+
+## [2026-07-03 11:33] ralph | parties-membership-charge-on-approval 2.1 | green | 7 files: -activate console verb (ViewProfile 8 verbs), i18n realigned en+it+contract, ProfileActivationConsoleTest->ProfileStatusConsoleTest (coverage rehomed); suite 1951/1951

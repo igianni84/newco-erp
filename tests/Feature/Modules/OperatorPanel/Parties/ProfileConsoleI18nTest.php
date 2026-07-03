@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Lang;
 
 // Task 7.1 (operator-console-parties-membership; invariant 12 — no hardcoded user-facing strings). The demand-side
 // membership console shipped across this change: the read-only ProfileResource + its three Pages (groups 1–2) and
-// the nine Profile lifecycle verbs appended to ViewProfile (groups 3–5), all routing copy through the
+// the eight Profile lifecycle verbs appended to ViewProfile (groups 3–5), all routing copy through the
 // `operator_console.profile.*` group; PLUS the three Account status verbs appended to ViewCustomer in group 6, whose
 // copy lives in the `operator_console.customer.*` group (the verbs are on ViewCustomer) under keys NOT present in
 // `customerConsoleKitKeys()` (that contract predates this change). So this guard spans TWO blocks.
@@ -51,9 +51,10 @@ use Illuminate\Support\Facades\Lang;
  *     ProfileResource (columns.{customer,club,state} + the own `state` badge, design D2 — not the kit's
  *     `lifecycle_state`; fields.{tier,lapsed_at,cancellation_reason,customer,club}); ListProfiles
  *     (tabs.{pending,all} approval queue, actions.create header link); and SurfacesDomainActions on ViewProfile —
- *     the nine verbs actions.{approve,decline,activate,suspend,reactivate,lapse,renew,cancel,deactivate} +
- *     notifications.{approved,declined,activated,suspended,reactivated,lapsed,renewed,cancelled,deactivated} +
- *     notifications.action_failed (the rejection title).
+ *     the eight verbs actions.{approve,decline,suspend,reactivate,lapse,renew,cancel,deactivate} +
+ *     notifications.{approved,declined,suspended,reactivated,lapsed,renewed,cancelled,deactivated} +
+ *     notifications.action_failed (the rejection title). The `activate` verb was removed with RM-03 (MVP-DEC-016) —
+ *     approval reaches `active` atomically, so its `actions.activate` / `notifications.activated` keys are gone too.
  *   - customer.*  — the three Account status verbs added to ViewCustomer in group 6:
  *     actions.{suspend_account,reactivate_account,close_account} +
  *     notifications.{account_suspended,account_reactivated,account_closed}. They live in the customer block but are
@@ -83,7 +84,6 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.actions.create',
         'operator_console.profile.actions.approve',
         'operator_console.profile.actions.decline',
-        'operator_console.profile.actions.activate',
         'operator_console.profile.actions.suspend',
         'operator_console.profile.actions.reactivate',
         'operator_console.profile.actions.lapse',
@@ -92,7 +92,6 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.actions.deactivate',
         'operator_console.profile.notifications.approved',
         'operator_console.profile.notifications.declined',
-        'operator_console.profile.notifications.activated',
         'operator_console.profile.notifications.suspended',
         'operator_console.profile.notifications.reactivated',
         'operator_console.profile.notifications.lapsed',

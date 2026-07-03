@@ -932,16 +932,16 @@ return array_replace_recursive([
 
         // Header / lifecycle action labels. `create` is the list-header link to the write-through create surface;
         // the membership lifecycle verbs append here across groups 3–5. Group 3 adds the approval pair: `approve`
-        // (`applied → approved`) and `decline` (`applied → rejected`); group 4 adds the status verbs: `activate`
-        // (`approved → active`), `suspend` (`active → suspended`) and `reactivate` (`suspended → active`); group 5 adds
-        // the lapse/renew/terminal verbs: `lapse` (`active → lapsed`), `renew` (`lapsed → active` within grace),
-        // `cancel` (`active|lapsed → cancelled`, audit-only terminal) and `deactivate` (`active → inactive`) — all
-        // form-less ViewProfile header verbs visibility-gated to their from-state (design D4).
+        // (`applied → active` atomically — approve = charge = activation, MVP-DEC-016) and `decline`
+        // (`applied → rejected`); group 4 adds the status verbs: `suspend` (`active → suspended`) and `reactivate`
+        // (`suspended → active`); group 5 adds the lapse/renew/terminal verbs: `lapse` (`active → lapsed`), `renew`
+        // (`lapsed → active` within grace), `cancel` (`active|lapsed → cancelled`, audit-only terminal) and
+        // `deactivate` (`active → inactive`) — all form-less ViewProfile header verbs visibility-gated to their
+        // from-state (design D4). The former `activate` verb is gone — approval reaches `active` in one transaction.
         'actions' => [
             'create' => 'New Profile',
             'approve' => 'Approve',
             'decline' => 'Decline',
-            'activate' => 'Activate',
             'suspend' => 'Suspend',
             'reactivate' => 'Reactivate',
             'lapse' => 'Lapse',
@@ -954,14 +954,14 @@ return array_replace_recursive([
         // transition; `action_failed` is the shared danger title shown when the domain rejects a transition — its
         // own localized message (from lang/*/parties.php, e.g. the illegal-from-state text) is rendered as the body,
         // so the console owns only this title (design D5/D9). Group 3 adds `approved` (the membership application is
-        // approved — the Originating Club locks on the Customer's first-ever approval) and `declined` (the
-        // application is rejected, audit-only); group 4 adds `activated`, `suspended` and `reactivated` (the
-        // status edges); group 5 adds `lapsed`, `renewed`, `cancelled` and `deactivated` (the lapse/renew/terminal
-        // edges) — `action_failed` is reached through the UI only by a past-grace `renew` (design D5).
+        // approved AND activated atomically — approve = charge = activation, MVP-DEC-016; the Originating Club locks
+        // on the Customer's first-ever approval) and `declined` (the application is rejected, audit-only); group 4
+        // adds `suspended` and `reactivated` (the status edges); group 5 adds `lapsed`, `renewed`, `cancelled` and
+        // `deactivated` (the lapse/renew/terminal edges) — `action_failed` is reached through the UI only by a
+        // past-grace `renew` (design D5).
         'notifications' => [
-            'approved' => 'Membership approved.',
+            'approved' => 'Membership approved and activated.',
             'declined' => 'Membership application declined.',
-            'activated' => 'Membership activated.',
             'suspended' => 'Membership suspended.',
             'reactivated' => 'Membership reactivated.',
             'lapsed' => 'Membership lapsed.',

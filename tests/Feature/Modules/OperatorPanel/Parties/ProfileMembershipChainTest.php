@@ -124,7 +124,7 @@ it('drives the entire membership console slice end-to-end as an operator demo �
     //  the Hero-Package capacity cap is a deferred Module-A seam, MVP-DEC-017 / RM-05.)
 
     // ── SUSPEND — active → suspended + ProfileSuspended (state-preserving — design L9; the cross-entity Club-Credit
-    //    preservation is pinned by ProfileActivationConsoleTest).
+    //    preservation is pinned by ProfileStatusConsoleTest).
     Livewire::test(ViewProfile::class, ['record' => $profile->id])
         ->callAction('suspend')
         ->assertNotified((string) __('operator_console.profile.notifications.suspended'));
