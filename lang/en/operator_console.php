@@ -872,6 +872,26 @@ return array_replace_recursive([
                 'lifted_at' => 'Lifted at',
             ],
         ],
+
+        // The read-only enhanced-KYC & Compliance-review panel on the ViewCustomer page (change
+        // parties-enhanced-kyc-threshold; SURFACED in task 6.1, front-loaded here in task 1.2 so the i18n contract is
+        // green before the resolving code lands — the holds / kyc-sanctions precedent). Read-projection ONLY (no write
+        // action — the review resolve action is deferred): `enhanced_kyc_flag` / `enhanced_kyc_at` label the Customer's
+        // latched enhanced-KYC trigger (a boolean badge + its timestamp); `columns.*` head the Customer's OPEN
+        // review-queue entries (`resolved_at IS NULL`). The `reason` / `threshold_kind` COLUMN HEADERS live here (console
+        // chrome), while the VALUES in those columns render the domain enums via `parties.compliance_review.*` (the
+        // Module-K domain copy — the enum backing values are domain vocabulary, not console chrome). `amount` is the
+        // tripping Money; `opened_at` the entry's created_at. The section heading is `customer.sections.compliance_reviews`.
+        'compliance_reviews' => [
+            'enhanced_kyc_flag' => 'Enhanced KYC required',
+            'enhanced_kyc_at' => 'Flagged at',
+            'columns' => [
+                'reason' => 'Reason',
+                'threshold_kind' => 'Threshold',
+                'amount' => 'Amount',
+                'opened_at' => 'Opened at',
+            ],
+        ],
     ],
 
     // The demand-side MEMBERSHIP console (operator-console-parties-membership) — a standalone read-only
@@ -1134,6 +1154,11 @@ return array_replace_recursive([
             'identity' => 'Identity',
             'preferences' => 'Preferences',
             'compliance' => 'Compliance',
+            // The read-only enhanced-KYC & Compliance-review section heading (change parties-enhanced-kyc-threshold,
+            // task 6.1; front-loaded in task 1.2). Groups the enhanced-KYC flag/timestamp + the open review-queue
+            // entries (`customer.compliance_reviews.*`). Kept a distinct section from `compliance` (the two orthogonal
+            // KYC/sanctions badges) — this one carries the review-queue table.
+            'compliance_reviews' => 'Enhanced KYC & compliance reviews',
             'state' => 'State',
             'metadata' => 'Metadata',
         ],

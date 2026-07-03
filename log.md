@@ -697,3 +697,29 @@
 ## [2026-07-02 18:31] close §2.7 | parties-anonymisation (RM-01) | merged --no-ff to main (2385772, local/unpushed) + 4x semantic-verify CLEAN/only-SUGGESTION + archived 2026-07-02 (1109392); party-registry +4/~1 req; push gated pending approval
 
 ## [2026-07-02 18:45] push §2.7 | parties-anonymisation (RM-01) | pushed origin/main (20d63b8..9f0ac46: merge+archive+memory); ralph branch deleted; NEXT = /spec-to-change RM-02 enhanced-KYC €10k/€50k threshold + review-queue (P0 floor, no ADR gate)
+
+## [2026-07-02 19:38] spec-to-change | RM-02 parties-enhanced-kyc-threshold | Authored + validated (--strict green); 2 ADDED + 2 MODIFIED party-registry reqs, 7 groups/11 tasks. Interview: Option B (AML breach -> under_review blocks) + rolling-12mo. APPROVED by Giovanni; marker created. Ready for ralph.
+
+## [2026-07-02 19:50] ralph | parties-enhanced-kyc-threshold 1.1 | green | migration parties_compliance_reviews + 2 enums (2.1 prereq) + schema test; suite 1889/1889, phpstan 0 | 4 files
+
+## [2026-07-02 20:13] ralph | parties-enhanced-kyc-threshold 1.2 | green | i18n copy (parties.compliance_review + customer.compliance_reviews EN/IT) + 3 CONTEXT terms + 2 tests | suite 1904/1904 | 7 files
+
+## [2026-07-02 20:18] ralph | parties-enhanced-kyc-threshold 2.1 | green | enum case→value+count pin, 5 tests; full suite 1909/1909, PHPStan 0
+
+## [2026-07-02 20:27] ralph | parties-enhanced-kyc-threshold 2.2 | green | 3 files (model ComplianceReview + factory + model test); full suite 1911/1911, PHPStan max 0
+
+## [2026-07-02 20:35] ralph | parties-enhanced-kyc-threshold 2.3 | green | 3 files (event CustomerEnhancedKycReviewRequired PII-free + unit test; suite 1916/1916, PHPStan 0)
+
+## [2026-07-02 20:45] ralph | parties-enhanced-kyc-threshold 3.1 | green | 3 files — CustomerTransactionTotalsReader contract + CustomerTransactionTotals DTO (2 EUR Money, rolling-12mo doc) + unit test; suite 1920/1920, PHPStan 0
+
+## [2026-07-02 20:54] ralph | parties-enhanced-kyc-threshold 3.2 | green | 4 files (null totals adapter + PartiesServiceProvider bind + arch-pinned Feature test); suite 1924/1924, §3 closed, 7/12
+
+## [2026-07-02 21:03] ralph | parties-enhanced-kyc-threshold 4.1 | green | 3 files (CreateComplianceReview action + test, tasks.md) | suite 1927/1927, PHPStan 0, Pint clean
+
+## [2026-07-02 21:18] ralph | parties-enhanced-kyc-threshold 4.2 | green | 3 files | EvaluateEnhancedKycThreshold orchestrator: locked idempotent latch, 10k-single OR 50k-cumulative (Money::minus fail-closed), 4 atomic writes, whitelist +1; suite 1935/1935
+
+## [2026-07-02 21:30] ralph | parties-enhanced-kyc-threshold 5.1 | green | 4 files (ScanEnhancedKycThresholds cmd + bootstrap/app + routes/console + test); parties:scan-enhanced-kyc-thresholds daily; suite 1940/1940
+
+## [2026-07-02 21:51] ralph | parties-enhanced-kyc-threshold 6.1 | green | 4 files (widget + resource section + page wiring + test); read-only console: gated infolist section + open-reviews footer widget; suite 1944/1944, phpstan 0
+
+## [2026-07-02 22:15] ralph | parties-enhanced-kyc-threshold 7.1 | green | 1 file (new closing chain test); SQLite 1947/1947 + PG17 1947/1947, PHPStan 0, Pint clean, openspec valid; ALL 12 tasks done → CHANGE_COMPLETE

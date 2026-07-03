@@ -567,6 +567,23 @@ return array_replace_recursive([
                 'lifted_at' => 'Rimosso il',
             ],
         ],
+
+        // Pannello di sola lettura KYC rafforzata e revisioni di compliance sulla pagina ViewCustomer
+        // (parties-enhanced-kyc-threshold; reso in task 6.1, anticipato qui in task 1.2). Sola proiezione in lettura:
+        // `enhanced_kyc_flag` / `enhanced_kyc_at` etichettano il trigger enhanced-KYC latchato (badge booleano +
+        // timestamp); `columns.*` intestano le voci APERTE della coda revisioni del cliente. «KYC» invariato (termine di
+        // dominio, come «screening»); «enhanced» → «rafforzata» (due diligence rafforzata, termine AML); «compliance»
+        // invariato (come nella sezione `compliance`); «threshold» → «soglia».
+        'compliance_reviews' => [
+            'enhanced_kyc_flag' => 'KYC rafforzata richiesta',
+            'enhanced_kyc_at' => 'Segnalato il',
+            'columns' => [
+                'reason' => 'Motivo',
+                'threshold_kind' => 'Soglia',
+                'amount' => 'Importo',
+                'opened_at' => 'Aperta il',
+            ],
+        ],
     ],
 
     // Console MEMBERSHIP lato domanda (operator-console-parties-membership). `label`/`plural_label` omessi →
@@ -804,6 +821,10 @@ return array_replace_recursive([
             'identity' => 'Identità',
             'preferences' => 'Preferenze',
             'compliance' => 'Compliance',
+            // Intestazione della sezione di sola lettura KYC rafforzata e revisioni di compliance
+            // (parties-enhanced-kyc-threshold, task 6.1; anticipata in task 1.2). «compliance» invariato (come sopra);
+            // «enhanced KYC» → «KYC rafforzata».
+            'compliance_reviews' => 'KYC rafforzata e revisioni di compliance',
             'state' => 'Stato',
             'metadata' => 'Metadati',
         ],

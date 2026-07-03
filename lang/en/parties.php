@@ -172,4 +172,28 @@ return [
         // NOT personal data (unlike an email), so it IS interpolated (the :producer / :club id discipline).
         'invalid_country_code' => 'Cannot create the Address: ":country" is not a valid ISO 3166-1 alpha-2 country code. A country code must be two uppercase letters (for example IT, FR or GB).',
     ],
+    'compliance_review' => [
+        // Human-readable DOMAIN labels for the Compliance review-queue enums (change parties-enhanced-kyc-threshold,
+        // design D6; party-registry — Requirements: Enhanced-KYC Threshold Detection, Compliance Review Queue).
+        // Unlike the rejection reasons above (surfaced by an Action's exception), these render the
+        // ComplianceReviewReason / ThresholdKind BACKING VALUES on a READ surface — the operator console's read-only
+        // enhanced-KYC panel (`operator_console.customer.compliance_reviews.*`, task 6.1), a future Compliance
+        // dashboard. They live here in the Module-K domain-copy file (not in operator_console.php) because a review's
+        // reason / threshold is DOMAIN vocabulary, not console chrome; a surface maps the enum `->value` through these
+        // keys (the enums carry NO label() method — the repo convention; SanctionsStatus / HoldType have none). Keyed
+        // by the persisted token so a value renders whatever surface reads it. Parties copy is EN-only in this repo
+        // (there is no lang/it/parties.php); under `it` it falls back per-key to EN (DEC-127).
+        'reason' => [
+            // ComplianceReviewReason::EnhancedKycThreshold — the SOLE reason in this change (a Customer crossing the
+            // €10k single-transaction OR €50k rolling-trailing-12-month cumulative enhanced-KYC threshold, DEC-035).
+            'enhanced_kyc_threshold' => 'Enhanced-KYC threshold',
+        ],
+        'threshold_kind' => [
+            // ThresholdKind — which of the two INDEPENDENT (OR) DEC-035 signals tripped. The `cumulative_annual` token
+            // measures a ROLLING trailing-12-month total (design D3 — NOT calendar-YTD); the label says "rolling" so it
+            // cannot be misread as a calendar-year reset that the token name might suggest.
+            'single_transaction' => 'Single transaction',
+            'cumulative_annual' => 'Rolling 12-month cumulative',
+        ],
+    ],
 ];

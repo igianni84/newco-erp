@@ -298,11 +298,16 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // ...alongside the compliance transition Actions (parties-compliance — the KYC/sanctions FSMs are SEPARATE
     // from the Customer/Producer status FSMs, § 9.1/§ 9.4, so they are legitimate non-Create transitions). This
     // list grows as the compliance slice lands its Actions (Customer KYC here; Producer KYC + sanctions
-    // screening follow), each task declaring its transitions in this guard.
+    // screening follow), each task declaring its transitions in this guard. `EvaluateEnhancedKycThreshold`
+    // (change parties-enhanced-kyc-threshold, task 4.2) is the enhanced-KYC AML-threshold detection orchestrator:
+    // it latches `enhanced_kyc_flag`, raises a Compliance review-queue entry and initiates the `under_review`
+    // AML re-screen. Named non-`Create*` (it Evaluates, it does not create a single primary entity), so the
+    // Create-filter below treats it as a transition Action and it MUST be whitelisted here.
     $complianceTransitions = [
         'RequireKyc', 'RecordKycVerified', 'RecordKycRejected',
         'RequireProducerKyc', 'RecordProducerKycVerified', 'RecordProducerKycRejected', 'WaiveProducerKyc',
         'RecordCustomerScreening',
+        'EvaluateEnhancedKycThreshold',
     ];
 
     // ...and the Hold lifecycle Actions (parties-holds — the unified Hold registry's place/lift). A Hold is neither

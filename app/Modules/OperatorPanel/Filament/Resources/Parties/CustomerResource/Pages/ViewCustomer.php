@@ -5,6 +5,7 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\
 use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource;
+use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerComplianceReviewsTable;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Widgets\CustomerHoldsTable;
 use App\Modules\Parties\Actions\ActivateCustomer;
 use App\Modules\Parties\Actions\AnonymiseCustomer;
@@ -251,9 +252,14 @@ class ViewCustomer extends ViewRecord
     }
 
     /**
-     * The Holds READ table, hosted as a footer widget — {@see CustomerHoldsTable}, the non-relation Filament 5
-     * TableWidget vehicle pinned in task 1.2 (a Hold is no Eloquent relation of Customer). The page passes its
-     * record EXPLICITLY: a ViewRecord does not auto-inject `record` into widgets (base `getWidgetData()` is `[]`).
+     * The two READ tables hosted as footer widgets, each a non-relation Filament 5 TableWidget (neither a Hold nor
+     * a ComplianceReview is an Eloquent relation of Customer). The page passes its record EXPLICITLY: a ViewRecord
+     * does not auto-inject `record` into widgets (base `getWidgetData()` is `[]`).
+     *
+     * {@see CustomerHoldsTable} — the cross-scope Holds table (operator-console-parties-holds, task 1.2).
+     * {@see CustomerComplianceReviewsTable} — the OPEN enhanced-KYC review-queue table
+     * (change parties-enhanced-kyc-threshold, task 6.1; a read-projection — the resolve action is deferred, § 9.1;
+     * always mounted, it simply surfaces no rows for an un-escalated Customer, mirroring the Holds table).
      *
      * @return array<int, WidgetConfiguration>
      */
@@ -261,6 +267,7 @@ class ViewCustomer extends ViewRecord
     {
         return [
             CustomerHoldsTable::make(['record' => $this->getRecord()]),
+            CustomerComplianceReviewsTable::make(['record' => $this->getRecord()]),
         ];
     }
 
