@@ -725,3 +725,5 @@
 ## [2026-07-02 22:15] ralph | parties-enhanced-kyc-threshold 7.1 | green | 1 file (new closing chain test); SQLite 1947/1947 + PG17 1947/1947, PHPStan 0, Pint clean, openspec valid; ALL 12 tasks done → CHANGE_COMPLETE
 
 ## [2026-07-03 08:00] close | parties-enhanced-kyc-threshold | §2.7 ritual: merged --no-ff to main (eb05b84), semantic-verify via 3 subagents CLEAN (0 CRITICAL/0 WARNING, only SUGGESTIONs), archived 2026-07-03-parties-enhanced-kyc-threshold; party-registry 42→44 reqs; SQLite 1947/1947, Pint+PHPStan clean; push to origin pending user OK
+
+## [2026-07-03 08:24] reconcile | Remediation_Tracker (RM-01+RM-02) | flipped RM-01 (yellow->done) + RM-02 (red->done) across tracker S1/S3/S4/S6; both built+merged+archived+PUSHED (main==origin in sync), suites 1883/1883 & 1947/1947 SQLite+PG17, semantic-verify CLEAN; hot.md refreshed (was stale on push); next=RM-03 (needs ADR). Doc-only, no code.
