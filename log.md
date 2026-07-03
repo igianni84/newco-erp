@@ -743,3 +743,5 @@
 ## [2026-07-03 11:47] ralph | parties-membership-charge-on-approval 3.1 | green | cross-engine gate: full suite 1951/1951 on SQLite + PG17.10 (10419 assertions), PHPStan max 0, Pint clean, openspec --strict valid, 4 guards diff-free; 0 code files
 
 ## [2026-07-03 11:53] ralph | parties-membership-charge-on-approval 4.1 | green | 5 docs/memory files | RM-03 COMPLETE 5/5: memory consolidated, FSM-shape-flip promoted to knowledge/testing (1/3, date-pending), CHANGE_COMPLETE
+
+## [2026-07-03 14:46] close-ritual §2.7 | parties-membership-charge-on-approval | merged 892ccf8 + archived e9892b9; 4 reqs folded into living party-registry spec; semantic verify WARNINGS-ONLY (no CRITICAL); suite 1951/1951 both engines; branch deleted; 8 commits unpushed (push gated)
