@@ -23,5 +23,5 @@
 
 ## 3. Protected-file terminology hand-off (human-owned — the loop does NOT edit)
 
-- [ ] 3.1 Record (do **not** edit — `CONTEXT.md` / `CLAUDE.md` are Protected, GUIDE §3) the still-"six/6 types" lines in `progress.md` for Giovanni's hand-edit: `CLAUDE.md` l.67; `CONTEXT.md` **Hold type** glossary l.370–372 (rewrite), l.215, l.222, l.234, l.379–380, l.367.
+- [x] 3.1 Record (do **not** edit — `CONTEXT.md` / `CLAUDE.md` are Protected, GUIDE §3) the still-"six/6 types" lines in `progress.md` for Giovanni's hand-edit: `CLAUDE.md` l.67; `CONTEXT.md` **Hold type** glossary l.370–372 (rewrite), l.215, l.222, l.234, l.379–380, l.367.
   - Acceptance: the flag list is in `progress.md`; the change's diff touches no Protected file.
