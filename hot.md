@@ -7,7 +7,7 @@ updated: 2026-07-03
 # Hot Cache
 
 ## Last Updated
-**2026-07-03 — RM-03 `parties-membership-charge-on-approval` MERGED (`892ccf8`) + ARCHIVED (`e9892b9`) via the §2.7 close ritual. Atomic approve = charge = activation is now LIVE truth: `ApproveProfile` drives `Applied → Approved(transient) → Active` in one tx; `activate` console verb retired; `MembershipFeePaid` seam re-homed E→S (docblock; INV1/no-INV0). The 4 delta requirements folded into `openspec/specs/party-registry/spec.md`; the change now lives under `openspec/changes/archive/2026-07-03-…`. Semantic verify: WARNINGS-ONLY, no CRITICAL. ⚠ 8 commits unpushed on main — awaiting Giovanni's push OK.**
+**2026-07-03 — RM-03 `parties-membership-charge-on-approval` MERGED (`892ccf8`) + ARCHIVED (`e9892b9`) via the §2.7 close ritual. Atomic approve = charge = activation is now LIVE truth: `ApproveProfile` drives `Applied → Approved(transient) → Active` in one tx; `activate` console verb retired; `MembershipFeePaid` seam re-homed E→S (docblock; INV1/no-INV0). The 4 delta requirements folded into `openspec/specs/party-registry/spec.md`; the change now lives under `openspec/changes/archive/2026-07-03-…`. Semantic verify: WARNINGS-ONLY, no CRITICAL. The RM-03 arc is pushed to `origin/main`.**
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -21,7 +21,6 @@ updated: 2026-07-03
 - **⭐ NEXT: author the next Remediation item** via `/spec-to-change`, grounded on LIVE canon (`git -C ../documentation fetch cmless main` — read the real register + acceptance, never the overlay). Candidates: **RM-04** (Hold Registry 6→8, DEC-008 already ADR'd — adoption debt); **RM-05** (Hero-Package seat gate MVP-DEC-017, ⏸ blocked on Module A `qty`); **RM-08** (SoD/four-eyes on approval).
 
 ## Blockers & Decisions Needed
-- **⚠ Push pending:** 8 commits (`2fb7539`→`e9892b9`) unpushed — ask before `git push` (close-ritual push gate).
 - **⚠ FLAG (RM-03 IT copy):** approve notification shipped **"Adesione approvata e attivata."** (the `lang/it` «adesione» convention) over tasks.md's "Iscrizione…" — one-word revert if Giovanni prefers "Iscrizione".
 - **Deferred by RM-03 (forward seams, not regressions):** real charge (mandate/instrument/`fee_paid_at`/invoice + `MembershipFeePaid` emitter) → Module S/E (F4–F6); Hero-Package seat gate → RM-05 (membership UNCAPPED at the atomic instant until then); SoD → RM-08.
 - **SUGGESTION (semantic verify):** `ProfileActivationTest.php` docblock/test-name still say "Module E" (stale post E→S; forced by landmine #8 "test stands unchanged") — future one-line prose cleanup, assertions valid.
