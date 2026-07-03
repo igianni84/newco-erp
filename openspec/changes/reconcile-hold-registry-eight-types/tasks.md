@@ -18,7 +18,7 @@
 - [x] 2.1 Fidelity check: diff each MODIFIED requirement in the two delta files against the live `openspec/specs/party-registry/spec.md` / `openspec/specs/operator-console/spec.md`; confirm the **only** semantic change is the eight-value reconciliation (six→eight; the two type names; the operator-liftable list `admin/fraud/compliance/credit` → +`chargeback_review`/`storage_payment_failed`; the DEC-008 / `AC-K-FSM-10` / `AC-K-FSM-11` / `AC-K-EVT-18/19` citations). Any other divergence = accidental edit → revert (design L2).
   - Acceptance: the diff is exactly the eight-value tokens; no normative change to *Hold-Driven Status Coupling* beyond its source note.
 
-- [ ] 2.2 `openspec validate reconcile-hold-registry-eight-types --strict` passes.
+- [x] 2.2 `openspec validate reconcile-hold-registry-eight-types --strict` passes.
   - Acceptance: green (fix structure until it passes).
 
 ## 3. Protected-file terminology hand-off (human-owned — the loop does NOT edit)

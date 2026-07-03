@@ -753,3 +753,5 @@
 ## [2026-07-03 19:37] ralph | reconcile-hold-registry-eight-types 1.2 | green | scenario→test traceability: 19/19 scenarios mapped, 0 unmapped → 0 new tests (design D4); 86 cited tests re-run green, 571 assns; verified console predicate !autoLiftable(); 4 files
 
 ## [2026-07-03 19:46] ralph | reconcile-hold-registry-eight-types 2.1 | green | fidelity diff: 4 MODIFIED reqs, only eight-value tokens changed, no accidental spec edit; status-coupling source-note-only
+
+## [2026-07-03 19:49] ralph | reconcile-hold-registry-eight-types 2.2 | green | openspec validate --strict valid (exit 0); verify-only, no code/spec/PHP touched; 3 doc files

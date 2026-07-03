@@ -93,3 +93,13 @@ Each MODIFIED block reproduces the live requirement **verbatim** except the eigh
   - **In-scope vs accidental edit:** an addition is in-scope if it's (a) a raw six→eight token, (b) one of the two type names, (c) a DEC-008/AC-family citation, (d) the operator-lift-only-at-launch + deferred-seam framing (D3/L4), or (e) the `HoldType::cases()`-derivation sentence — all enumerated in proposal "What Changes". Anything touching an unrelated normative clause (transaction discipline, scopes, coupling semantics) would be accidental → revert. None found.
   - Task 2.2 next: `openspec validate reconcile-hold-registry-eight-types --strict` (already passed at 1.2; re-confirm). Then 3.1 (Protected-file flag list — already drafted in hot.md Blockers + proposal Impact; transcribe into progress.md, edit nothing).
 ---
+
+## [2026-07-03 19:49] — 2.2 `openspec validate --strict` passes
+- **What was implemented:** verify-only. Ran `openspec validate reconcile-hold-registry-eight-types --strict` → **`Change 'reconcile-hold-registry-eight-types' is valid`**, exit 0. The change carries delta specs (party-registry + operator-console), so `--strict` is the mandatory RALPH §d gate — green. ZERO production code, ZERO new test, ZERO migration, ZERO Protected-file edit. Re-confirms the pass first observed at 1.2 (no delta-spec structure has moved since; 2.1 was a read-only diff).
+- **Files changed:** `progress.md`, `hot.md`, `log.md`, `tasks.md` (2.2 → `[x]`). No PHP, no spec, no `CLAUDE.md`/`CONTEXT.md`.
+- **Quality loop: green (N/A for PHP tools)** — the task's "test" IS the validator. format/test/type_check/lint N/A (zero PHP/code touched; the delta files are unchanged this task). Suite last green at 1.2 (86/86 across the 9 cited Hold files, this session); no code moved since.
+- **Acceptance walk (1 bullet):** "green (fix structure until it passes)" → validator returned valid on the first run; no structure fix needed.
+- **Learnings for future iterations:**
+  - `openspec validate <change> --strict` is the RALPH §d hard gate for any change with delta specs; here it stays green because the deltas are well-formed MODIFIED requirements whose names match live (verified byte-for-byte at 2.1). Nothing to fix.
+  - Only **3.1** remains (Protected-file terminology flag list → `progress.md`; edit NO Protected file). After it, all tasks `[x]` → final re-verify → `<promise>CHANGE_COMPLETE</promise>`.
+---
