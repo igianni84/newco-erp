@@ -733,3 +733,13 @@
 ## [2026-07-03 09:53] push | origin/main | pushed 2 doc-only commits: 9a9d556 (TASK-1 tracker reconcile + RM-09 mirror-staleness + F4) + 9e07f11 (RM-03 ADR adopt MVP-DEC-016). main==origin/main (0/0). No code touched.
 
 ## [2026-07-03 10:25] spec-to-change | parties-membership-charge-on-approval | authored+APPROVED (RM-03/MVP-DEC-016); 4 MODIFIED party-registry reqs (Approval/Activation/Demand-Side Events/+ombrello Birth States), 4 task groups; validate --strict green; Q2 console-copy=Opt A. Next=./ralph.sh
+
+## [2026-07-03 10:43] ralph | parties-membership-charge-on-approval 1.1 | green | ActivateProfile docblock re-homes MembershipFeePaid seam E->S (DEC-173/DEC-157) + 2 invocation modes, behaviour-neutral; suite 1947/1947 SQLite, phpstan max 0
+
+## [2026-07-03 11:07] ralph | parties-membership-charge-on-approval 1.2 | green | ApproveProfile drives Applied→Approved→Active atomically (MVP-DEC-016, injects ActivateProfile); 8 approve-outcome observers inverted; suite 1947/1947, PHPStan 0, Pint clean; 9 files
+
+## [2026-07-03 11:33] ralph | parties-membership-charge-on-approval 2.1 | green | 7 files: -activate console verb (ViewProfile 8 verbs), i18n realigned en+it+contract, ProfileActivationConsoleTest->ProfileStatusConsoleTest (coverage rehomed); suite 1951/1951
+
+## [2026-07-03 11:47] ralph | parties-membership-charge-on-approval 3.1 | green | cross-engine gate: full suite 1951/1951 on SQLite + PG17.10 (10419 assertions), PHPStan max 0, Pint clean, openspec --strict valid, 4 guards diff-free; 0 code files
+
+## [2026-07-03 11:53] ralph | parties-membership-charge-on-approval 4.1 | green | 5 docs/memory files | RM-03 COMPLETE 5/5: memory consolidated, FSM-shape-flip promoted to knowledge/testing (1/3, date-pending), CHANGE_COMPLETE

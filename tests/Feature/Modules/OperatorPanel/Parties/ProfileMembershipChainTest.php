@@ -6,9 +6,10 @@
 // Account FSM on the SAME Customer. It asserts the EMERGENT, ORDERED event sequence over the entire run (the
 // closing-integration rule, knowledge/testing/rules.md), proving things that hold over the COMPOSED chain which no
 // single per-task test asserts alone:
-//   1. the full demand-side Profile lifecycle walks create → approve → activate → suspend → reactivate → lapse →
-//      renew → deactivate through the Filament pages, advancing the state at every leg and recording EXACTLY its eight
-//      ROOT events IN ORDER — ProfileCreated, then the Customer-entity OriginatingClubLocked on the first-ever approval
+//   1. the full demand-side Profile lifecycle walks create → approve (atomic approve = activation, MVP-DEC-016) →
+//      suspend → reactivate → lapse → renew → deactivate through the Filament pages, advancing the state at every leg
+//      and recording EXACTLY its eight ROOT events IN ORDER — ProfileCreated, then the Customer-entity
+//      OriginatingClubLocked on the first-ever approval
 //      (§ 6.1, one-shot), then ProfileActivated / ProfileSuspended / ProfileReactivated / ProfileExpired (lapse — § 15.2
 //      names no `ProfileLapsed`, design L3) / ProfileRenewed (the grace restore — NOT `ProfileReactivated`, design L3) /
 //      ProfileInactive. The chain terminates at `deactivate` (the EVENTED terminal, ProfileInactive), which enriches the
@@ -103,28 +104,27 @@ it('drives the entire membership console slice end-to-end as an operator demo �
         ->sole();
     expect($profile->state)->toBe(ProfileState::Applied);
 
-    // ── APPROVE — applied → approved + exactly one OriginatingClubLocked (the Customer's first-ever approval locks the
-    //    Originating Club to THIS Club, § 6.1). Approve records NO Profile event; the lock is the event.
+    // ── APPROVE — applied → active ATOMICALLY (approve = charge = activation, canon MVP-DEC-016) + the Customer's
+    //    first-ever approval locks the Originating Club to THIS Club (§ 6.1) THEN the internal activation records
+    //    ProfileActivated. `approved` is a transient pass-through; the approve WRITE records no Profile event, so the
+    //    approve leg contributes exactly OriginatingClubLocked → ProfileActivated (both in the array below, in order).
     Livewire::test(ViewProfile::class, ['record' => $profile->id])
         ->callAction('approve')
         ->assertNotified((string) __('operator_console.profile.notifications.approved'));
 
-    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Approved)
+    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Active)
         ->and(Customer::findOrFail($customer->id)->originating_club_id)->toBe($club->id);
 
     $lock = DomainEvent::query()->where('name', 'OriginatingClubLocked')->sole();
     expect($lock->entity_type)->toBe('Customer')
         ->and($lock->entity_id)->toBe((string) $customer->id);
 
-    // ── ACTIVATE — approved → active + ProfileActivated. UNCAPPED (the Hero-Package capacity cap is a deferred
-    //    Module-A seam, design Non-Goals) — driven as-is, no cap invented.
-    Livewire::test(ViewProfile::class, ['record' => $profile->id])
-        ->callAction('activate')
-        ->assertNotified((string) __('operator_console.profile.notifications.activated'));
-    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Active);
+    // (No separate ACTIVATE leg — the approve above already drove the Profile to `active` atomically (MVP-DEC-016), so
+    //  the `activate` verb is hidden from `active`; the chain proceeds straight to the suspend self-edge. UNCAPPED —
+    //  the Hero-Package capacity cap is a deferred Module-A seam, MVP-DEC-017 / RM-05.)
 
     // ── SUSPEND — active → suspended + ProfileSuspended (state-preserving — design L9; the cross-entity Club-Credit
-    //    preservation is pinned by ProfileActivationConsoleTest).
+    //    preservation is pinned by ProfileStatusConsoleTest).
     Livewire::test(ViewProfile::class, ['record' => $profile->id])
         ->callAction('suspend')
         ->assertNotified((string) __('operator_console.profile.notifications.suspended'));

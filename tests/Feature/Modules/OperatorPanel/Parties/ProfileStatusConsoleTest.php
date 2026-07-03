@@ -1,15 +1,18 @@
 <?php
 
-// Task 4.1 / 4.2 (operator-console-parties-membership; design D4/D9) — the Profile console's membership-STATUS
-// surface on ViewProfile. The three form-less verbs the page APPENDS to its SurfacesDomainActions-built header-action
-// array, each routing through a Parties domain action by the Profile id and NEVER writing the model itself (the
+// Task 4.1 / 4.2 (operator-console-parties-membership; design D4/D9) — the Profile console's membership-STATUS surface
+// on ViewProfile. The two form-less verbs the page APPENDS to its SurfacesDomainActions-built header-action array,
+// each routing through a Parties domain action by the Profile id and NEVER writing the model itself (the
 // no-Eloquent-write rule):
-//   - activate    (`approved → active`)    — UNCAPPED: the Hero-Package capacity cap is a deferred Module-A seam
-//                                             (design Non-Goals); ActivateProfile is driven as-is, no cap invented.
 //   - suspend     (`active → suspended`)   — STATE-PRESERVING: only `Profile.state` moves; a co-existing active Club
 //                                             Credit is left entirely untouched (AC-K-FSM-2a — design L9).
 //   - reactivate  (`suspended → active`)   — the inverse restore (records `ProfileReactivated`, NOT `ProfileRenewed` —
 //                                             that is the deferred lapsed→active grace edge, design L3).
+//
+// The former `activate` verb (`approved → active`) is GONE (RM-03 / MVP-DEC-016): approval now drives `applied → active`
+// atomically (approve = charge = activation), so `approved` is a transient pass-through no verb can gate on. Its console
+// coverage retired with it; this file (renamed from ProfileActivationConsoleTest, which also held the now-deleted
+// activate verb's test) pins the TWO surviving group-4 status verbs.
 //
 // EACH VERB IS VISIBILITY-GATED to its own from-state (design D4) — the EXACT COMPLEMENT of the domain Action's
 // from-state guard, so an out-of-state transition is UNREACHABLE through the surface: the verb is simply hidden; its
@@ -17,9 +20,8 @@
 // hidden-action landmine, lessons.md 2026-06-22).
 //
 // THE EVENT SURFACE (verified in the Action bodies): each status edge records exactly one ROOT § 15.2 event when
-// directly invoked — ProfileActivated / ProfileSuspended / ProfileReactivated — carrying the operator audit envelope
-// (newco_ops + the operator id) resolved from the `operator` guard via ActorContext. The console constructs no
-// envelope itself.
+// directly invoked — ProfileSuspended / ProfileReactivated — carrying the operator audit envelope (newco_ops + the
+// operator id) resolved from the `operator` guard via ActorContext. The console constructs no envelope itself.
 //
 // DatabaseMigrations (mirroring ProfileApprovalConsoleTest): each console action drives a real domain action opening
 // its OWN DB::transaction, so the DomainEventRecorder's in-transaction append commits for real (RefreshDatabase would
@@ -29,12 +31,10 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages\ViewProfile;
 use App\Modules\OperatorPanel\Models\Operator;
-use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ReactivateProfile;
 use App\Modules\Parties\Actions\SuspendProfile;
 use App\Modules\Parties\Enums\ClubCreditState;
 use App\Modules\Parties\Enums\ProfileState;
-use App\Modules\Parties\Events\ProfileActivated;
 use App\Modules\Parties\Events\ProfileReactivated;
 use App\Modules\Parties\Events\ProfileSuspended;
 use App\Modules\Parties\Exceptions\IllegalProfileTransition;
@@ -48,34 +48,6 @@ use Livewire\Livewire;
 use function Pest\Laravel\actingAs;
 
 uses(DatabaseMigrations::class);
-
-it('activates an Approved Profile through the console — active + one ProfileActivated with the operator envelope', function () {
-    $operator = Operator::factory()->create();
-    actingAs($operator, 'operator');
-
-    // An `approved` Profile (the factory bypasses ApproveProfile → records no event), so the activate verb's lone
-    // ProfileActivated is the only event. Activation is UNCAPPED (the Hero-Package cap is a deferred Module-A seam).
-    $profile = Profile::factory()->create(['state' => ProfileState::Approved]);
-
-    Livewire::test(ViewProfile::class, ['record' => $profile->id])
-        // callAction asserts-visible-first (activate is visible iff `approved`), then drives the form-less verb into
-        // ActivateProfile by the Profile id — the console writes nothing itself (the no-Eloquent-write rule).
-        ->callAction('activate')
-        ->assertNotified((string) __('operator_console.profile.notifications.activated'));
-
-    // State advanced approved → active via the domain action (the console never writes `state`).
-    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Active);
-
-    // Exactly one ProfileActivated — a Profile-state ROOT event — carrying the operator audit envelope (newco_ops +
-    // the operator id) resolved by the action from the `operator` guard; the console constructs no envelope itself.
-    $event = DomainEvent::query()->where('name', ProfileActivated::NAME)->sole();
-
-    expect($event->module)->toBe('parties')
-        ->and($event->entity_type)->toBe('Profile')
-        ->and($event->entity_id)->toBe((string) $profile->id)
-        ->and($event->actor_role)->toBe(ActorRole::NewcoOps)
-        ->and($event->actor_id)->toEqual($operator->id);  // loose: PG returns a numeric string for the bigint
-});
 
 it('suspends an Active Profile through the console — suspended + one ProfileSuspended, the active Club Credit untouched (state-preserving, AC-K-FSM-2a)', function () {
     actingAs(Operator::factory()->create(), 'operator');
@@ -132,14 +104,15 @@ it('reactivates a Suspended Profile through the console — active + one Profile
 it('shows each status verb only from its own from-state (design D4)', function (ProfileState $from, ?string $visibleVerb) {
     actingAs(Operator::factory()->create(), 'operator');
 
-    // Each status verb is reachable from exactly ONE from-state (§ 4.2.1): activate iff `approved`, suspend iff
-    // `active`, reactivate iff `suspended` — each visible iff the page record is in that state, the EXACT COMPLEMENT
-    // of the Action's from-state guard. Every other (verb, state) pair is hidden.
+    // Each status verb is reachable from exactly ONE from-state (§ 4.2.1): suspend iff `active`, reactivate iff
+    // `suspended` — each visible iff the page record is in that state, the EXACT COMPLEMENT of the Action's from-state
+    // guard. Every other (verb, state) pair is hidden. `approved` surfaces NO status verb — the former `activate` verb
+    // that gated it is gone (MVP-DEC-016; approval reaches `active` atomically, `approved` is transient).
     $profile = Profile::factory()->create(['state' => $from]);
 
     $component = Livewire::test(ViewProfile::class, ['record' => $profile->id]);
 
-    foreach (['activate', 'suspend', 'reactivate'] as $verb) {
+    foreach (['suspend', 'reactivate'] as $verb) {
         if ($verb === $visibleVerb) {
             $component->assertActionVisible($verb);
         } else {
@@ -149,7 +122,7 @@ it('shows each status verb only from its own from-state (design D4)', function (
 })->with([
     'applied → none' => [ProfileState::Applied, null],
     'waiting_list → none' => [ProfileState::WaitingList, null],
-    'approved → activate' => [ProfileState::Approved, 'activate'],
+    'approved → none' => [ProfileState::Approved, null],
     'rejected → none' => [ProfileState::Rejected, null],
     'active → suspend' => [ProfileState::Active, 'suspend'],
     'suspended → reactivate' => [ProfileState::Suspended, 'reactivate'],
@@ -171,12 +144,10 @@ it('proves the status-verb reject floor — every verb hidden out of its from-st
     // Each status verb mapped to its from-state and its out-of-band domain invocation (literal `app(X::class)` so the
     // typed `handle(int): Profile` resolves under PHPStan-max — never an `app($variable)` call on an inferred mixed).
     $fromStateOf = [
-        'activate' => ProfileState::Approved,
         'suspend' => ProfileState::Active,
         'reactivate' => ProfileState::Suspended,
     ];
     $invokeOutOfBand = [
-        'activate' => fn () => app(ActivateProfile::class)->handle($profile->id),
         'suspend' => fn () => app(SuspendProfile::class)->handle($profile->id),
         'reactivate' => fn () => app(ReactivateProfile::class)->handle($profile->id),
     ];
@@ -198,6 +169,35 @@ it('proves the status-verb reject floor — every verb hidden out of its from-st
     // empty (every guarded transaction rolled back).
     expect(Profile::findOrFail($profile->id)->state)->toBe($from)
         ->and(DomainEvent::query()->count())->toBe(0);
+})->with([
+    'applied' => [ProfileState::Applied],
+    'waiting_list' => [ProfileState::WaitingList],
+    'approved' => [ProfileState::Approved],
+    'rejected' => [ProfileState::Rejected],
+    'active' => [ProfileState::Active],
+    'suspended' => [ProfileState::Suspended],
+    'lapsed' => [ProfileState::Lapsed],
+    'cancelled' => [ProfileState::Cancelled],
+    'inactive' => [ProfileState::Inactive],
+]);
+
+it('retired the activate verb — approve surfaces on applied but activate exists in no state (RM-03 / MVP-DEC-016)', function (ProfileState $from) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // The `activate` verb (formerly `approved → active`) is GONE: approval reaches `active` atomically (approve =
+    // charge = activation), so `approved` is a transient pass-through no verb gates on. Assert it is absent from EVERY
+    // membership state — a regression guard that fails loudly if a future change re-appends the verb (the
+    // ClubLifecycleConsoleTest assertActionDoesNotExist idiom). The surviving producer write, `approve`, stays
+    // reachable from `applied` (its sole from-state — the exact complement of ApproveProfile's guard).
+    $profile = Profile::factory()->create(['state' => $from]);
+
+    $component = Livewire::test(ViewProfile::class, ['record' => $profile->id]);
+
+    $component->assertActionDoesNotExist('activate');
+
+    if ($from === ProfileState::Applied) {
+        $component->assertActionVisible('approve');
+    }
 })->with([
     'applied' => [ProfileState::Applied],
     'waiting_list' => [ProfileState::WaitingList],

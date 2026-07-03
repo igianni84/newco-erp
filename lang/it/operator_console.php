@@ -609,16 +609,17 @@ return array_replace_recursive([
             'all' => 'Tutti',
         ],
 
-        // Verbi del ciclo di vita: `approve`/`decline` (gruppo 3) sull'azione di approvazione dell'adesione;
-        // `activate`/`suspend`/`reactivate` (gruppo 4) sui verbi di stato; `lapse`/`renew`/`cancel`/`deactivate`
+        // Verbi del ciclo di vita: `approve`/`decline` (gruppo 3) sull'azione di approvazione dell'adesione
+        // (l'approvazione porta `applied → active` atomicamente — approve = charge = activation, MVP-DEC-016);
+        // `suspend`/`reactivate` (gruppo 4) sui verbi di stato; `lapse`/`renew`/`cancel`/`deactivate`
         // (gruppo 5) sui verbi di scadenza/rinnovo/terminali. «decline» → «Rifiuta» (rifiuto della candidatura,
         // distinto da «Termina»/«Ritira» di altri domini); «reactivate» → «Riattiva»; «lapse» → «Fai scadere» (porta
-        // l'adesione a `scaduta`); «cancel» → «Annulla» (annullamento terminale); «deactivate» → «Disattiva».
+        // l'adesione a `scaduta`); «cancel» → «Annulla» (annullamento terminale); «deactivate» → «Disattiva». Il verbo
+        // `activate` è stato rimosso: l'approvazione raggiunge `active` in un'unica transazione (MVP-DEC-016).
         'actions' => [
             'create' => 'Nuovo Profilo',
             'approve' => 'Approva',
             'decline' => 'Rifiuta',
-            'activate' => 'Attiva',
             'suspend' => 'Sospendi',
             'reactivate' => 'Riattiva',
             'lapse' => 'Fai scadere',
@@ -629,14 +630,14 @@ return array_replace_recursive([
 
         // Notifiche di esito per i verbi di membership. «membership» → «adesione» (parola italiana naturale, come
         // «cliente» per Customer). `action_failed` è il titolo di errore condiviso (corpo dal messaggio localizzato
-        // della rejection — lang/*/parties.php). Gruppo 4 aggiunge `activated`/`suspended`/`reactivated` (i passaggi
-        // di stato dell'adesione); gruppo 5 aggiunge `lapsed`/`renewed`/`cancelled`/`deactivated` (scadenza, rinnovo
-        // e terminali) — `action_failed` è raggiungibile dall'interfaccia solo da un `renew` fuori dal periodo di
+        // della rejection — lang/*/parties.php). Gruppo 3: `approved` nomina l'esito atomico approvazione+attivazione
+        // (approve = charge = activation, MVP-DEC-016). Gruppo 4 aggiunge `suspended`/`reactivated` (i passaggi di
+        // stato dell'adesione); gruppo 5 aggiunge `lapsed`/`renewed`/`cancelled`/`deactivated` (scadenza, rinnovo e
+        // terminali) — `action_failed` è raggiungibile dall'interfaccia solo da un `renew` fuori dal periodo di
         // grazia (design D5).
         'notifications' => [
-            'approved' => 'Adesione approvata.',
+            'approved' => 'Adesione approvata e attivata.',
             'declined' => 'Candidatura all’adesione rifiutata.',
-            'activated' => 'Adesione attivata.',
             'suspended' => 'Adesione sospesa.',
             'reactivated' => 'Adesione riattivata.',
             'lapsed' => 'Adesione scaduta.',

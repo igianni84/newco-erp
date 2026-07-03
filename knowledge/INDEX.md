@@ -9,7 +9,7 @@
 | filament | `knowledge/filament/` | 1 rule |
 | laravel | `knowledge/laravel/` | 3 rules · 1 hypothesis |
 | module-k | `knowledge/module-k/` | 2 observations |
-| testing | `knowledge/testing/` | 4 rules · 1 hypothesis |
+| testing | `knowledge/testing/` | 4 rules · 2 hypotheses |
 
 Suggested domains as work begins: `architecture` · `data-model` · `laravel` · `filament` · `testing` · `integrations` · `module-{0,k,a,d,s,b,c,e}` (one per spec module).
 

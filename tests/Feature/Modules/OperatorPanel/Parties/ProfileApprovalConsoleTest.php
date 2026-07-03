@@ -40,7 +40,7 @@ use function Pest\Laravel\actingAs;
 
 uses(DatabaseMigrations::class);
 
-it('approves an Applied Profile through the console — approved, the Originating Club locked to that Club, one OriginatingClubLocked with the operator envelope', function () {
+it('approves an Applied Profile through the console — active (atomic approve = activation), the Originating Club locked to that Club, one OriginatingClubLocked with the operator envelope', function () {
     $operator = Operator::factory()->create();
     actingAs($operator, 'operator');
 
@@ -61,8 +61,9 @@ it('approves an Applied Profile through the console — approved, the Originatin
         ->callAction('approve')
         ->assertNotified((string) __('operator_console.profile.notifications.approved'));
 
-    // State advanced applied → approved via the domain action (the console never writes `state`).
-    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Approved)
+    // State advanced applied → active via the domain action, atomically (approve = charge = activation — MVP-DEC-016;
+    // the console never writes `state`); `approved` is a transient pass-through, never durably rested-in.
+    expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Active)
         // The Customer's first-ever approval locked the Originating Club to THIS approving Club (design L3 / § 6.1).
         ->and(Customer::findOrFail($customer->id)->originating_club_id)->toBe($club->id);
 
@@ -104,9 +105,9 @@ it('locks the Originating Club only once — a second Club approval for the same
         ->callAction('approve')
         ->assertNotified((string) __('operator_console.profile.notifications.approved'));
 
-    // Both memberships are `approved` …
-    expect(Profile::findOrFail($first->id)->state)->toBe(ProfileState::Approved)
-        ->and(Profile::findOrFail($second->id)->state)->toBe(ProfileState::Approved)
+    // Both memberships are `active` (each approval activates atomically — MVP-DEC-016) …
+    expect(Profile::findOrFail($first->id)->state)->toBe(ProfileState::Active)
+        ->and(Profile::findOrFail($second->id)->state)->toBe(ProfileState::Active)
         // … the Originating Club is locked to the FIRST approving Club and the second approval never re-set it
         // (immutable after the first — the NULL-gate found it set) …
         ->and(Customer::findOrFail($customer->id)->originating_club_id)->toBe($firstClub->id)

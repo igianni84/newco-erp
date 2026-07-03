@@ -30,7 +30,7 @@
 // envelope (newco_ops + the operator id) resolved from the `operator` guard via ActorContext; cancel records none. The
 // console constructs no envelope itself.
 //
-// DatabaseMigrations (mirroring ProfileActivationConsoleTest): each console action drives a real domain action opening
+// DatabaseMigrations (mirroring ProfileStatusConsoleTest): each console action drives a real domain action opening
 // its OWN DB::transaction, so the DomainEventRecorder's in-transaction append commits for real (RefreshDatabase would
 // wrap every write in a never-committed outer transaction). The factories bypass the actions → they record no event.
 // Parties enums/models/exceptions/events are imported freely here: the {Models, Actions} import-boundary carve-out

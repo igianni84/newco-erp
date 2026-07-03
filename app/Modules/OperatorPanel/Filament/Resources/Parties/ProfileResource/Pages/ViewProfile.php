@@ -4,7 +4,6 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\P
 
 use App\Modules\OperatorPanel\Filament\Console\Concerns\SurfacesDomainActions;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
-use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
 use App\Modules\Parties\Actions\CancelProfile;
 use App\Modules\Parties\Actions\DeactivateProfile;
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Built at the TRAIT level, NOT through the catalog-shaped {@see OperatorConsoleViewRecord} base: that base
  * hard-codes the five catalog governance verbs (submit · reject · activate[SoD] · retire · reopen), which neither
- * match nor extend to the Profile's 9-verb membership FSM. So this page extends Filament's {@see ViewRecord}
+ * match nor extend to the Profile's 8-verb membership FSM. So this page extends Filament's {@see ViewRecord}
  * directly and `use`s {@see SurfacesDomainActions}, assembling its OWN verb set in {@see getHeaderActions()} —
  * the established non-catalog pattern (ADR 2026-06-20 / 2026-06-21; the {@see ViewCustomer} precedent). The
  * read-only infolist lives on {@see ProfileResource}.
@@ -34,9 +33,10 @@ use Illuminate\Database\Eloquent\Model;
  * guard, so an out-of-state reject is structurally unreachable through the surface (a hidden verb cannot be driven —
  * lesson 2026-06-22). The domain still floors it (`IllegalProfileTransition`, named in PROSE so Pint cannot re-add a
  * boundary-breaching `Parties\Exceptions` import — lesson 2026-06-20). Group 4 (landed) appends the status verbs —
- * activate (`approved → active`, UNCAPPED — the Hero-Package capacity cap is a deferred Module-A seam, design
- * Non-Goals), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit untouched,
- * AC-K-FSM-2a) and reactivate (`suspended → active`). Group 5 (landed) appends the lapse / renew / terminal verbs:
+ * suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit untouched, AC-K-FSM-2a)
+ * and reactivate (`suspended → active`). The former `activate` verb is GONE (RM-03 / MVP-DEC-016): approval now drives
+ * `applied → active` atomically (approve = charge = activation), so `approved` is a transient pass-through, never a
+ * durable resting state a verb could gate on. Group 5 (landed) appends the lapse / renew / terminal verbs:
  * lapse (`active → lapsed`, recording `ProfileExpired`), renew (`lapsed → active` within the 30-day grace, recording
  * `ProfileRenewed`) — the ONE verb whose reject is UI-reachable (design D5: the predicate can only check `state ==
  * lapsed`, so a past-grace renew is visible, the domain rejects it on the grace sub-gate, and `surfaceLifecycleOutcome`
@@ -64,11 +64,11 @@ class ViewProfile extends ViewRecord
      * is unreachable through the surface (lesson 2026-06-22). A rejection still floors at the domain
      * (`IllegalProfileTransition`, a `RuntimeException` caught by base type in the trait — named in PROSE, never a
      * `{@see}`/`@throws` type, so Pint cannot add a forbidden `Parties\Exceptions` import, lesson 2026-06-20).
-     * Group 4 appends the three status verbs, each gated to its own from-state via {@see stateIs()}: activate
-     * (`approved → active`, UNCAPPED — the Hero-Package cap is a deferred Module-A seam, design Non-Goals; records
-     * `ProfileActivated`), suspend (`active → suspended`, state-preserving — only `state` moves, the active Club Credit
-     * untouched, AC-K-FSM-2a; records `ProfileSuspended`) and reactivate (`suspended → active`; records
-     * `ProfileReactivated`). Group 5 appends the lapse / renew / terminal verbs, each gated to its from-state via
+     * Group 4 appends the two status verbs, each gated to its own from-state via {@see stateIs()}: suspend
+     * (`active → suspended`, state-preserving — only `state` moves, the active Club Credit untouched, AC-K-FSM-2a;
+     * records `ProfileSuspended`) and reactivate (`suspended → active`; records `ProfileReactivated`). The former
+     * `activate` verb is removed — approval drives `applied → active` atomically (RM-03 / MVP-DEC-016), so `approved`
+     * never rests for a verb to gate on. Group 5 appends the lapse / renew / terminal verbs, each gated to its from-state via
      * {@see stateIs()}: lapse (`active → lapsed`; records `ProfileExpired`), renew (`lapsed → active`; records
      * `ProfileRenewed`) — the SOLE verb whose reject is UI-reachable: the predicate can only see `state == lapsed`, so a
      * past-grace renew is visible and the domain rejects it on the grace sub-gate, surfacing `action_failed` (design D5),
@@ -84,8 +84,6 @@ class ViewProfile extends ViewRecord
                 ->visible(fn (): bool => $this->stateIs('applied')),
             $this->lifecycleAction('decline', 'declined', fn (Model $record, string $notes) => app(DeclineProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
                 ->visible(fn (): bool => $this->stateIs('applied')),
-            $this->lifecycleAction('activate', 'activated', fn (Model $record, string $notes) => app(ActivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
-                ->visible(fn (): bool => $this->stateIs('approved')),
             $this->lifecycleAction('suspend', 'suspended', fn (Model $record, string $notes) => app(SuspendProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
                 ->visible(fn (): bool => $this->stateIs('active')),
             $this->lifecycleAction('reactivate', 'reactivated', fn (Model $record, string $notes) => app(ReactivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
