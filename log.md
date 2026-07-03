@@ -733,3 +733,5 @@
 ## [2026-07-03 09:53] push | origin/main | pushed 2 doc-only commits: 9a9d556 (TASK-1 tracker reconcile + RM-09 mirror-staleness + F4) + 9e07f11 (RM-03 ADR adopt MVP-DEC-016). main==origin/main (0/0). No code touched.
 
 ## [2026-07-03 10:25] spec-to-change | parties-membership-charge-on-approval | authored+APPROVED (RM-03/MVP-DEC-016); 4 MODIFIED party-registry reqs (Approval/Activation/Demand-Side Events/+ombrello Birth States), 4 task groups; validate --strict green; Q2 console-copy=Opt A. Next=./ralph.sh
+
+## [2026-07-03 10:43] ralph | parties-membership-charge-on-approval 1.1 | green | ActivateProfile docblock re-homes MembershipFeePaid seam E->S (DEC-173/DEC-157) + 2 invocation modes, behaviour-neutral; suite 1947/1947 SQLite, phpstan max 0
