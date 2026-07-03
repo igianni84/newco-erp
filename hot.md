@@ -7,24 +7,26 @@ updated: 2026-07-03
 # Hot Cache
 
 ## Last Updated
-**2026-07-03 — Round-2 P0 compliance floor CLOSED; `Remediation_Tracker` reconciled.** RM-01 (`parties-anonymisation`) + RM-02 (`parties-enhanced-kyc-threshold`) are both **built → merged → archived → PUSHED**; `main`↔`origin/main` in sync (0/0). `docs/validation/Remediation_Tracker.md` brought current (§1/§3/§4/§6): RM-01 🟡→✅, RM-02 🔴→✅, next = RM-03. **No active OpenSpec change.** Doc-only bookkeeping session — no code touched.
+**2026-07-03 — RM-03 ADR authored (MVP-DEC-016 membership charge-on-approval), canon-grounded.** Round-2 P0 floor (RM-01 + RM-02) shipped + merged + archived + **pushed** (`main`↔`origin` in sync). RM-03 ADR done via grill-with-docs, grounded on **live canon** (Giovanni's redirect). **No active OpenSpec change.** Next = `/spec-to-change` for RM-03.
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **Latest green: full suite 1947/1947 on SQLite AND PostgreSQL 17** (10459 assertions) at RM-02 task 7.1; PHPStan max 0, Pint clean. (RM-01 closed at 1883/1883 both engines.)
-- ⚠ **Full suite = `php -d memory_limit=2G vendor/bin/pest`** — `php artisan test` re-spawns a child ignoring `-d` (128M fatal at result-collection in the Filament panel tests, NOT a regression). Filtered/by-path runs fit 128M.
-- ⚠ **Local PG cross-engine recipe:** `postgres:17` via docker with `--tmpfs /var/lib/postgresql/data` + `--shm-size=256m` on a free port (5432 held by the invoicing PG16 → use 55432); run the FULL suite via the 2G pest cmd; `docker rm -f pg` after.
+- **Latest green: full suite 1947/1947 on SQLite AND PG17** (10459 assertions) at RM-02 task 7.1; PHPStan max 0, Pint clean. No code touched since (RM-03 = ADR/docs only so far).
+- ⚠ **Full suite = `php -d memory_limit=2G vendor/bin/pest`** (`php artisan test` re-spawns a child ignoring `-d` → 128M fatal in the Filament panel tests, NOT a regression). Filtered runs fit 128M.
+- ⚠ **Local PG cross-engine:** `postgres:17` docker with `--tmpfs …/data` + `--shm-size=256m` on a free port (5432 held by invoicing PG16 → 55432); full suite via the 2G pest cmd; `docker rm -f pg` after.
 
 ## Active Change & Next Task
-- **No active OpenSpec change** (`openspec list` empty). Round-2 P0 floor (RM-01 + RM-02) shipped + archived + pushed.
-- **⭐ NEXT: RM-03 — membership charge-on-approval (`DEC-016`).** P1 canon, size L, one of Paolo's 3 walkthrough scenarios (the flow canon declares "wrong": a distinct `approved`-but-unpaid state). **Requires an ADR BEFORE implementing** (grill-with-docs: read `decisions/INDEX.md` + existing ADRs + spec Module K §9/§4; the crux is the **charge seam** since Module S/E are stubs — propose 2–3 options) → then `/spec-to-change` → human APPROVED → `./ralph.sh`.
-- Knowledge-promotion confirmation date for anything learned in RM-02 = the archive-dir date **2026-07-03**.
+- **No active OpenSpec change** (`openspec list` empty).
+- **RM-03 ADR authored:** `decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md` (+ INDEX). **Decision = Option B (canon):** keep `Approved` **TRANSIENT** (`Applied → Approved → Active` atomic, never durable) — NOT remove it (AC-K-FSM-2 enumerates `Approved → Active` → removing fails it). Charge-fail → stays `Applied`, no seat, no OC lock. `MembershipFeePaid` re-home **E→S** (docblock-only, no event class). **INV1, no INV0.** Real charge (mandate-at-application, card/SEPA, `fee_paid_at`, invoice) deferred **Module S/E** (stubs); seat gate (`Active`+`Suspended`, MVP-DEC-017) deferred **RM-05** (Module A `qty`).
+- **⭐ NEXT: `/spec-to-change` for RM-03** → human `APPROVED` → `./ralph.sh`. Scope today = K-side shape-collapse + seam re-home + INV1 target; `ApproveProfile` drives through to `Active` synchronously (K-internal activate-on-approval that later delegates to Module-S `MembershipFeePaid`). Tests to invert: `MembershipActivationChainTest`, `ProfileMembershipChainTest`, the two console verbs.
+- Knowledge-promotion confirmation date for RM-03 work = its future archive-dir date.
 
 ## Blockers & Decisions Needed
-- **None blocking.** RM-03 is gated on writing its ADR first (the charge-seam decision). **RM-05** (capacity seat-set) stays ⏸️ pending Module A (empty stub).
-- **Durable design landmines (shipped, do NOT "fix"):** (RM-02) resolving AML `under_review` from the console re-tags `trigger_source=compliance_ad_hoc` (§9.5 — console never offers `aml_threshold`); the AML origin stays durable on the review row + event. Sanctions-clear leaves `enhanced_kyc_flag=true` + review `resolved_at=NULL` (resolve action deferred, §9.1).
+- **None blocking.** RM-05 (capacity) stays ⏸️ pending Module A.
+- **⚠ Number collision:** `MVP-DEC-016` (membership) ≠ greenfield `DEC-016` (AI-copilot, superseded by DEC-021) — always the full token.
+- **Canon grounding:** our `spec/` is frozen @ `4f48277` (MVP-DEC-007); canon `main` @ `6f3c2f8` (+23). For any canon-adoption, read-only `git -C ../documentation fetch cmless main` + read the real `MVP_Decisions_Register` + changed ACs (`lessons.md` 2026-07-03).
 
 ## Open Patterns
-- **Deferred Module-S seams still open (RM-02):** real `CustomerTransactionTotalsReader` adapter + at-order-completion trigger land with Module S (Commerce, Phase 4). The 12-month re-screen cadence job + the review-queue resolve action = separate deferred changes.
-- **F4 candidate (untriaged):** truth-spec *Hold Registry* still "six-value" vs code's 8 (RM-04 delta debt) — flagged in RM-01 §4, not yet a §7 row in the tracker.
+- **F4 candidate (untriaged):** truth-spec *Hold Registry* still "six-value" vs code's 8 (RM-04 debt) — §7 row in the tracker.
+- **Durable landmines RM-02 (do NOT "fix"):** console AML `under_review` re-tags `trigger_source=compliance_ad_hoc`; sanctions-clear leaves `enhanced_kyc_flag=true` + review `resolved_at=NULL`.
 - **Closing integration test = drive the chain through the REAL Actions, assert the emergent event-SET** (`DomainEvent::query()->distinct()->pluck('name')->toEqualCanonicalizing([...])`) — a `knowledge/testing` rule.

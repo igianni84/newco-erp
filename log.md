@@ -727,3 +727,5 @@
 ## [2026-07-03 08:00] close | parties-enhanced-kyc-threshold | §2.7 ritual: merged --no-ff to main (eb05b84), semantic-verify via 3 subagents CLEAN (0 CRITICAL/0 WARNING, only SUGGESTIONs), archived 2026-07-03-parties-enhanced-kyc-threshold; party-registry 42→44 reqs; SQLite 1947/1947, Pint+PHPStan clean; push to origin pending user OK
 
 ## [2026-07-03 08:24] reconcile | Remediation_Tracker (RM-01+RM-02) | flipped RM-01 (yellow->done) + RM-02 (red->done) across tracker S1/S3/S4/S6; both built+merged+archived+PUSHED (main==origin in sync), suites 1883/1883 & 1947/1947 SQLite+PG17, semantic-verify CLEAN; hot.md refreshed (was stale on push); next=RM-03 (needs ADR). Doc-only, no code.
+
+## [2026-07-03 09:49] adr | RM-03 MVP-DEC-016 membership charge-on-approval | full ADR+INDEX; grounded on live canon (git fetch cmless 6f3c2f8, +23 vs frozen 4f48277): canon KEEPS Approved transient (Opt B), removing fails AC-K-FSM-2 -> flipped from Opt A. +lessons +hot; tracker RM-03 red->yellow. Next /spec-to-change

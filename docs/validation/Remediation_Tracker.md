@@ -49,7 +49,7 @@
 |---|---|---|---|---|---|---|
 | RM-01 | P0 floor | GDPR erasure / anonymisation + Address entity | K J-9, J-9a, FSM-16, BR-Customer-2; canon J-9b, DEC-015 | mini | L | ✅ |
 | RM-02 | P0 floor | Enhanced-KYC €10k/€50k threshold + review-queue | K J-7a, EVT-12a | — | M | ✅ |
-| RM-03 | P1 canon | Membership charge-on-approval (collapse "approved-but-unpaid") | K J-16, J-1/2/3, EVT-15, FSM-2; DEC-016 | **yes** | L | 🔴 |
+| RM-03 | P1 canon | Membership charge-on-approval (collapse "approved-but-unpaid") | K J-16, J-1/2/3, EVT-15, FSM-2; MVP-DEC-016 | **yes** ✅ | L | 🟡 |
 | RM-04 | P1 canon | Hold enum 6→8 (+ lift discipline for the 2 new) | K FSM-10/11, EVT-18/19, MVP-2; DEC-008 | mini | S | ✅ |
 | RM-05 | P1 canon | Hero-Package capacity seat-set (Active+Suspended) + WaitingList | K J-13/14/15, XM-18/19, FSM-2; DEC-011/017 | **yes** | L | ⏸️ (Module A qty) |
 | RM-06 | P1 canon | PIM reject/edit review-freshness + explicit re-submit | 0 J-7, BR-Lifecycle-6; DEC-019 | mini | M | ✅ |
@@ -101,12 +101,13 @@
 
 ### P1 — Canon divergences (Paolo's walkthrough scenarios — make us *current*, not *wrong*)
 
-#### RM-03 — Membership charge-on-approval (collapse "approved-but-unpaid")  ·  L · needs ADR ·  🔴
-- **Fixes:** K `J-16`, `J-1/2/3`, `EVT-15`, `FSM-2`; **`DEC-016`**.
+#### RM-03 — Membership charge-on-approval (collapse "approved-but-unpaid")  ·  L · needs ADR ·  🟡
+- **Fixes:** K `J-16`, `J-1/2/3`, `EVT-15`, `FSM-2`; **`MVP-DEC-016`** (⚠️ ≠ greenfield `DEC-016` AI-copilot — number collision; always the full token).
 - **Why:** we built the exact flow canon declared **wrong** — distinct `Approved` state + separate `ActivateProfile` gated on a (deferred) Module-E signal. Canon = producer approval `= charge = activation`, atomic; `MembershipFeePaid` from Module S; INV1, no INV0.
-- **Scope decision (ADR first):** adopt DEC-016 locally; collapse the `approved`-but-unpaid intermediate; decide the launch seam for the charge trigger since **Module S/E don't exist yet** (options: a temporary K-internal atomic activate-on-approval that later delegates to the Module-S `MembershipFeePaid`, vs. wait). Write the ADR, then implement.
+- **Scope decision (ADR first):** adopt MVP-DEC-016 locally; collapse the durable `approved`-but-unpaid intermediate; decide the launch seam for the charge trigger since **Module S/E don't exist yet** (options: a temporary K-internal atomic activate-on-approval that later delegates to the Module-S `MembershipFeePaid`, vs. wait). Write the ADR, then implement.
 - **Done when:** ADR merged; no durable `approved`-unpaid state; approval atomically activates (charge-failure → not activated, no seat consumed); tests updated.
 - **Depends on:** interacts with RM-05 (capacity enforced "at the atomic approve moment").
+- **🟡 ADR authored (2026-07-03) — grill-with-docs, grounded on LIVE canon:** [`decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md`](../../decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md) (+ INDEX). Full ADR. **Key finding (Giovanni sent me to the GitHub canon — decisive):** canon **retains `Approved` as a *transient* pass-through** (`Applied → Approved → Active` in one operation, never durably resting) — `AC-K-FSM-2` enumerates `Approved → Active` **and** asserts "no durable resting state", so the initial lean to **remove** `Approved` (Option A) would **FAIL AC-K-FSM-2** → **keep-transient (Option B)** chosen. Charge-fail → stays `Applied`, no seat, no OC lock (canon-specified). Grounded via read-only `git fetch cmless/main` (@ `6f3c2f8`, +23 vs our frozen `4f48277`) — MVP-DEC-016 register + AC-K-FSM-2/J-16/J-2/3/EVT-15 verbatim; reinforced by MVP-DEC-022/CML-89 (no auto-approve). **Scope now = K-side shape-collapse + `MembershipFeePaid` E→S seam (docblock-only) + INV1 target;** real charge (mandate-at-application, card/SEPA, `fee_paid_at`, invoice) deferred **Module S/E**, seat gate (`Active`+`Suspended`, MVP-DEC-017) deferred **RM-05**. `ApproveProfile` drives through to `Active` synchronously today (K-internal activate-on-approval). **Next: `/spec-to-change` → APPROVED → `./ralph.sh`.**
 
 #### RM-04 — Hold enum 6→8 + lift discipline  ·  S · mini-ADR ·  ✅
 - **Fixes:** K `FSM-10/11`, `EVT-18/19`, `MVP-2`; **`DEC-008`**.
