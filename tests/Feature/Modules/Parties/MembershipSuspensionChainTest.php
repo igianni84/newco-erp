@@ -2,7 +2,6 @@
 
 use App\Modules\Module;
 use App\Modules\Parties\Actions\ActivateCustomer;
-use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
 use App\Modules\Parties\Actions\CancelProfile;
 use App\Modules\Parties\Actions\CloseAccount;
@@ -70,7 +69,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *   - every status edge lands its target state and the chain ends with the Customer + Account `closed`, P_a/P_b back
  *     to `Active` (suspended then restored), P_c `Cancelled` (lapse → cancel), P_d `Inactive` (deactivate);
  *   - the chain records EXACTLY the 29-event name-set the slice's surface produces — the Customer/Profile spine the
- *     real Create / Approve / Activate Actions drive, the two Hold events per place/lift, and the SIX of the eight
+ *     real Create / Approve (atomic activate — MVP-DEC-016) Actions drive, the two Hold events per place/lift, and the SIX of the eight
  *     status events that are evented; `CancelProfile` and ALL Account transitions are AUDIT-ONLY (record nothing), and
  *     `ProfileExpired` (not a non-existent `ProfileLapsed`) is the lapse event — every forbidden / invented name is
  *     pinned absent so nothing out of catalog can slip in;
@@ -82,8 +81,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *   - every from-state guard rejects an out-of-state call (incl. a past-grace renewal — the >30-day edge) leaving
  *     state and the event log untouched.
  *
- * Creation uses the REAL spine Actions (CreateCustomer/CreateProfile/ApproveProfile/ActivateProfile — not the
- * factories the per-transition siblings use) so the chain's emergent event-set is genuine end-to-end (the
+ * Creation uses the REAL spine Actions (CreateCustomer/CreateProfile/ApproveProfile — the approve now atomically
+ * activates, canon MVP-DEC-016 — not the factories the per-transition siblings use) so the chain's emergent event-set is genuine end-to-end (the
  * MembershipActivationChainTest philosophy). The three onboarding-acceptance moments have no production setter in this
  * slice, so the chain stands in for that writer with a direct update (no event); KYC is left NULL (cleared per
  * DEC-071) so no `kyc` Hold enters the main chain; the Holds the coupling rides on are the `admin`/`fraud` operator
@@ -144,13 +143,11 @@ function runMembershipSuspensionChain(): array
     );
     [$profileA, $profileB, $profileC, $profileD] = $profiles->all();
 
-    // 6. Approve all four → the first approval locks the Originating Club (one OriginatingClubLocked); the rest are
-    //    audit-only. 7. Activate all four → `approved → active`, four ProfileActivated.
+    // 6. Approve all four → each atomically approve = charge = activation (canon MVP-DEC-016): `applied → active` in
+    //    one transaction. The first approval also locks the Originating Club (one OriginatingClubLocked); all four
+    //    record ProfileActivated (four total). `Approved` is a transient pass-through, never durably rested-in.
     foreach ($profiles as $profile) {
         app(ApproveProfile::class)->handle($profile->id);
-    }
-    foreach ($profiles as $profile) {
-        app(ActivateProfile::class)->handle($profile->id);
     }
 
     // === PHASE B — P_a self-edges: suspend→restore (Active ↔ Suspended), then lapse→renew within the grace ===
@@ -224,7 +221,7 @@ it('records exactly the emergent suspension name-set — no invented, audit-only
         CustomerCreated::NAME,
         CustomerOnboardingScreeningPassed::NAME,
         CustomerActivated::NAME,
-        // — Profile spine: four memberships create → approve → activate; the OC lock is one-shot —
+        // — Profile spine: four memberships create → approve (atomic activate); the OC lock is one-shot —
         ProfileCreated::NAME, ProfileCreated::NAME, ProfileCreated::NAME, ProfileCreated::NAME,
         OriginatingClubLocked::NAME,
         ProfileActivated::NAME, ProfileActivated::NAME, ProfileActivated::NAME, ProfileActivated::NAME,

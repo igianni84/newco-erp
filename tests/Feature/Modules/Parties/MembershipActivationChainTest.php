@@ -2,7 +2,6 @@
 
 use App\Modules\Module;
 use App\Modules\Parties\Actions\ActivateCustomer;
-use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
 use App\Modules\Parties\Actions\CreateCustomer;
 use App\Modules\Parties\Actions\CreateProfile;
@@ -35,15 +34,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * MODIFIED ones (Customer Identity, "Birth States Recorded, Lifecycle Transitions Deferred")). Where each sibling
  * pins ONE transition in isolation ({@see CustomerOnboardingActivationTest}, {@see ProfileMembershipApprovalTest},
  * {@see ProfileActivationTest}), this one drives the WHOLE slice through its real Actions in one chain on a single
- * Customer — create → accept + onboarding-screen → activate the Customer → apply to two Clubs → approve both →
- * activate the originating-Club membership — and asserts the emergent contract of the slice as a whole:
- *   - every transition lands its target state (Customer `active`, the first Club's Profile `active`, the second's
- *     `approved`) and the Originating Club locks to the FIRST approved Club;
- *   - the chain records EXACTLY the seven-event name-set the slice's surface produces — the two spine *Created the
+ * Customer — create → accept + onboarding-screen → activate the Customer → apply to two Clubs → approve both (each
+ * atomically approve = charge = activation, canon MVP-DEC-016) — and asserts the emergent contract of the slice as a whole:
+ *   - every transition lands its target state (Customer `active`, BOTH Clubs' Profiles `active` — each approval
+ *     activates atomically) and the Originating Club locks to the FIRST approved Club;
+ *   - the chain records EXACTLY the eight-event name-set the slice's surface produces — the two spine *Created the
  *     Customer/Profiles drive through their real Create* Actions, the one onboarding screening completion, and the
- *     three demand-side activation events ({@see CustomerActivated} / {@see OriginatingClubLocked} /
- *     {@see ProfileActivated}) — with `ProfileCreated` recorded TWICE (two Clubs) and `OriginatingClubLocked` ONCE
- *     (one-shot). Approve/decline are AUDIT-ONLY (§ 15.2 names no `ProfileApproved` / `ProfileRejected`), and the
+ *     demand-side activation events ({@see CustomerActivated} / {@see OriginatingClubLocked} /
+ *     {@see ProfileActivated}) — with `ProfileCreated` recorded TWICE (two Clubs), `OriginatingClubLocked` ONCE
+ *     (one-shot) and `ProfileActivated` TWICE (both approvals activate atomically — MVP-DEC-016). The approve WRITE
+ *     is AUDIT-ONLY (§ 15.2 names no `ProfileApproved` / `ProfileRejected`), and the
  *     §6.1 spec signal `MembershipApprovedByProducer` is a name the codebase deliberately never records — all three
  *     are pinned absent so no invented event can slip in;
  *   - the Originating-Club lock fires exactly ONCE across two approvals and is immutable (the NULL-gate idempotency
@@ -114,16 +114,15 @@ function runMembershipActivationChain(): array
     $profileC = app(CreateProfile::class)->handle(customerId: $customer->id, clubId: $clubC->id);
     $profileD = app(CreateProfile::class)->handle(customerId: $customer->id, clubId: $clubD->id);
 
-    // 6. Approve the FIRST Club → `approved` + the one-shot Originating-Club lock (OC = clubC) + OriginatingClubLocked.
+    // 6. Approve the FIRST Club → ATOMIC approve = charge = activation (canon MVP-DEC-016): `applied → approved →
+    //    active` in one transaction + the one-shot Originating-Club lock (OC = clubC) → OriginatingClubLocked +
+    //    ProfileActivated. `Approved` is a transient pass-through, never durably rested-in.
     app(ApproveProfile::class)->handle($profileC->id);
 
-    // 7. Approve the SECOND Club → `approved`, but the OC is already locked → NO write, NO second OriginatingClubLocked
-    //    (the NULL-gate idempotency — design L3). Approve is audit-only either way (no ProfileApproved — § 15.2).
+    // 7. Approve the SECOND Club → also atomic `applied → active`, but the OC is already locked → NO OC write, NO
+    //    second OriginatingClubLocked (the NULL-gate idempotency — design L3); records only its own ProfileActivated.
+    //    The approve WRITE is audit-only either way (no ProfileApproved — § 15.2).
     app(ApproveProfile::class)->handle($profileD->id);
-
-    // 8. Activate the originating-Club Profile → `approved → active` + records ProfileActivated (the membership-fee
-    //    trigger is a deferred Module-E seam — design L5; here the free-club / operator path drives it directly).
-    app(ActivateProfile::class)->handle($profileC->id);
 
     return [
         'customer' => $customer,
@@ -146,18 +145,18 @@ it('drives the whole activation chain through the real Actions and lands every e
     // The co-provisioned billing Account is untouched by the Customer activation (§ 4.7 / AC-K-FSM-9).
     expect(Account::query()->where('customer_id', $customer->id)->sole()->status)->toBe(AccountStatus::Active);
 
-    // The originating-Club Profile reached `active`; the second-Club Profile stopped at `approved` (never activated).
+    // Both Clubs' Profiles reached `active` — each approval activates atomically in one transaction (MVP-DEC-016).
     expect(Profile::findOrFail($chain['profileC']->id)->state)->toBe(ProfileState::Active)
-        ->and(Profile::findOrFail($chain['profileD']->id)->state)->toBe(ProfileState::Approved);
+        ->and(Profile::findOrFail($chain['profileD']->id)->state)->toBe(ProfileState::Active);
 });
 
-it('records exactly the seven-event activation name-set — no ProfileApproved/ProfileRejected/invented event', function () {
+it('records exactly the eight-event activation name-set — no ProfileApproved/ProfileRejected/invented event', function () {
     runMembershipActivationChain();
 
     // The exact MULTISET the whole chain records, asserted BY NAME order-insensitively (trap 3 — never byte-compare PG
-    // jsonb): the two spine *Created the Customer/Profiles drive, the onboarding screening completion, and the three
+    // jsonb): the two spine *Created the Customer/Profiles drive, the onboarding screening completion, and the
     // demand-side activation events. `ProfileCreated` appears TWICE (two Clubs); `OriginatingClubLocked` ONCE (the OC
-    // lock is one-shot); `ProfileActivated` ONCE (only the originating-Club membership is activated).
+    // lock is one-shot); `ProfileActivated` TWICE (canon MVP-DEC-016 — BOTH approvals activate atomically).
     expect(DomainEvent::query()->pluck('name')->all())->toEqualCanonicalizing([
         CustomerCreated::NAME,
         ProfileCreated::NAME,
@@ -166,12 +165,13 @@ it('records exactly the seven-event activation name-set — no ProfileApproved/P
         CustomerActivated::NAME,
         OriginatingClubLocked::NAME,
         ProfileActivated::NAME,
+        ProfileActivated::NAME,
     ]);
 
-    // Seven rows total, all module `parties`, all resolved to the System actor (the ActorContext seam default — no
+    // Eight rows total, all module `parties`, all resolved to the System actor (the ActorContext seam default — no
     // operator is authenticated in the test context).
-    expect(DomainEvent::query()->count())->toBe(7)
-        ->and(DomainEvent::query()->where('module', Module::Parties->value)->count())->toBe(7)
+    expect(DomainEvent::query()->count())->toBe(8)
+        ->and(DomainEvent::query()->where('module', Module::Parties->value)->count())->toBe(8)
         ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
 
     // Approve/decline are AUDIT-ONLY (§ 15.2 names neither `ProfileApproved` nor `ProfileRejected` — design L2) and no

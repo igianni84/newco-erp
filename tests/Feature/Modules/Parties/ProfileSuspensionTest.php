@@ -1,6 +1,5 @@
 <?php
 
-use App\Modules\Parties\Actions\ActivateProfile;
 use App\Modules\Parties\Actions\ApproveProfile;
 use App\Modules\Parties\Actions\CreateProfile;
 use App\Modules\Parties\Actions\ReactivateProfile;
@@ -50,8 +49,7 @@ function createActiveProfile(): Profile
     $club = Club::factory()->create();
 
     $profile = app(CreateProfile::class)->handle($customer->id, $club->id);   // born `applied`
-    app(ApproveProfile::class)->handle($profile->id);                          // `applied → approved`
-    app(ActivateProfile::class)->handle($profile->id);                         // `approved → active`
+    app(ApproveProfile::class)->handle($profile->id);                          // `applied → active` (atomic approve = activation — MVP-DEC-016)
 
     return Profile::findOrFail($profile->id);
 }

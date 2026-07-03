@@ -735,3 +735,5 @@
 ## [2026-07-03 10:25] spec-to-change | parties-membership-charge-on-approval | authored+APPROVED (RM-03/MVP-DEC-016); 4 MODIFIED party-registry reqs (Approval/Activation/Demand-Side Events/+ombrello Birth States), 4 task groups; validate --strict green; Q2 console-copy=Opt A. Next=./ralph.sh
 
 ## [2026-07-03 10:43] ralph | parties-membership-charge-on-approval 1.1 | green | ActivateProfile docblock re-homes MembershipFeePaid seam E->S (DEC-173/DEC-157) + 2 invocation modes, behaviour-neutral; suite 1947/1947 SQLite, phpstan max 0
+
+## [2026-07-03 11:07] ralph | parties-membership-charge-on-approval 1.2 | green | ApproveProfile drives Applied→Approved→Active atomically (MVP-DEC-016, injects ActivateProfile); 8 approve-outcome observers inverted; suite 1947/1947, PHPStan 0, Pint clean; 9 files
