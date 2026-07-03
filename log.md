@@ -741,3 +741,5 @@
 ## [2026-07-03 11:33] ralph | parties-membership-charge-on-approval 2.1 | green | 7 files: -activate console verb (ViewProfile 8 verbs), i18n realigned en+it+contract, ProfileActivationConsoleTest->ProfileStatusConsoleTest (coverage rehomed); suite 1951/1951
 
 ## [2026-07-03 11:47] ralph | parties-membership-charge-on-approval 3.1 | green | cross-engine gate: full suite 1951/1951 on SQLite + PG17.10 (10419 assertions), PHPStan max 0, Pint clean, openspec --strict valid, 4 guards diff-free; 0 code files
+
+## [2026-07-03 11:53] ralph | parties-membership-charge-on-approval 4.1 | green | 5 docs/memory files | RM-03 COMPLETE 5/5: memory consolidated, FSM-shape-flip promoted to knowledge/testing (1/3, date-pending), CHANGE_COMPLETE
