@@ -7,26 +7,27 @@ updated: 2026-07-03
 # Hot Cache
 
 ## Last Updated
-**2026-07-03 — RM-03 ADR authored (MVP-DEC-016 membership charge-on-approval), canon-grounded.** Round-2 P0 floor (RM-01 + RM-02) shipped + merged + archived + **pushed** (`main`↔`origin` in sync). RM-03 ADR done via grill-with-docs, grounded on **live canon** (Giovanni's redirect). **No active OpenSpec change.** Next = `/spec-to-change` for RM-03.
+**2026-07-03 — RM-03 `/spec-to-change` DONE: change `parties-membership-charge-on-approval` authored + `APPROVED` + committed (local, unpushed).** Adopts canon MVP-DEC-016 (membership charge-on-approval), grounded on the committed ADR + live canon. `openspec validate --strict` green. **Next = `./ralph.sh` (Giovanni runs it).**
 
 ## Build & Quality Status
 - Stack unchanged: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **Latest green: full suite 1947/1947 on SQLite AND PG17** (10459 assertions) at RM-02 task 7.1; PHPStan max 0, Pint clean. No code touched since (RM-03 = ADR/docs only so far).
-- ⚠ **Full suite = `php -d memory_limit=2G vendor/bin/pest`** (`php artisan test` re-spawns a child ignoring `-d` → 128M fatal in the Filament panel tests, NOT a regression). Filtered runs fit 128M.
-- ⚠ **Local PG cross-engine:** `postgres:17` docker with `--tmpfs …/data` + `--shm-size=256m` on a free port (5432 held by invoicing PG16 → 55432); full suite via the 2G pest cmd; `docker rm -f pg` after.
+- **Latest green: full suite 1947/1947 on SQLite AND PG17** (RM-02 task 7.1). **No code touched by RM-03 yet** — the change is an APPROVED proposal; the flip lands when ralph runs.
+- ⚠ **Full suite = `php -d memory_limit=2G vendor/bin/pest`** (`php artisan test` re-spawns a child ignoring `-d` → 128M fatal in Filament panel tests). Filtered runs fit 128M.
+- ⚠ **Local PG cross-engine:** `postgres:17` docker `--tmpfs …/data` + `--shm-size=256m` on port 55432 (5432 = invoicing PG16); full suite via the 2G pest cmd; `docker rm -f pg` after.
 
 ## Active Change & Next Task
-- **No active OpenSpec change** (`openspec list` empty).
-- **RM-03 ADR authored:** `decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md` (+ INDEX). **Decision = Option B (canon):** keep `Approved` **TRANSIENT** (`Applied → Approved → Active` atomic, never durable) — NOT remove it (AC-K-FSM-2 enumerates `Approved → Active` → removing fails it). Charge-fail → stays `Applied`, no seat, no OC lock. `MembershipFeePaid` re-home **E→S** (docblock-only, no event class). **INV1, no INV0.** Real charge (mandate-at-application, card/SEPA, `fee_paid_at`, invoice) deferred **Module S/E** (stubs); seat gate (`Active`+`Suspended`, MVP-DEC-017) deferred **RM-05** (Module A `qty`).
-- **⭐ NEXT: `/spec-to-change` for RM-03** → human `APPROVED` → `./ralph.sh`. Scope today = K-side shape-collapse + seam re-home + INV1 target; `ApproveProfile` drives through to `Active` synchronously (K-internal activate-on-approval that later delegates to Module-S `MembershipFeePaid`). Tests to invert: `MembershipActivationChainTest`, `ProfileMembershipChainTest`, the two console verbs.
-- Knowledge-promotion confirmation date for RM-03 work = its future archive-dir date.
+- **ACTIVE (APPROVED): `parties-membership-charge-on-approval`.** RM-03 — collapse the two-step membership flow to one atomic **approve = charge = activation** (`Approved` transient); charge is a no-op Module-S seam today. **4 MODIFIED party-registry requirements**: Profile Membership Approval, Profile Activation, Demand-Side Activation Events, + the omnibus Birth States (Q1 = +ombrello).
+- **4 task groups (green per iteration):** 1.1 `ActivateProfile` docblock seam re-home E→S (behaviour-neutral) → **1.2 `ApproveProfile` atomic flip + invert ~8 observer files in ONE iteration** (red-green atomic) → 2.1 console: remove dead `activate` verb + realign `ProfileConsoleI18nTest` → 3.1 full suite SQLite+PG17 + guards unamended → 4.1 docs.
+- **⭐ NEXT: `./ralph.sh --change parties-membership-charge-on-approval <n>`** (Giovanni). Then review/merge → semantic-verify → `openspec archive`.
+- Knowledge-promotion confirmation date for RM-03 = its future archive-dir date.
 
 ## Blockers & Decisions Needed
-- **None blocking.** RM-05 (capacity) stays ⏸️ pending Module A.
+- **None blocking.** **Q2 (console copy):** proceeded on **Option A** (remove `activate`; Approve success → "approved and activated" / "approvata e attivata") — Giovanni away at ask-time; he can redirect before ralph.
+- **Deferred (NOT in RM-03):** real charge (mandate/instrument/`fee_paid_at`/invoice) → Module S/E (F4–F6); Hero-Package **seat gate** (`Active`+`Suspended`, MVP-DEC-017) → **RM-05** (⏸️ Module A `qty`); SoD/four-eyes → **RM-08**.
 - **⚠ Number collision:** `MVP-DEC-016` (membership) ≠ greenfield `DEC-016` (AI-copilot, superseded by DEC-021) — always the full token.
-- **Canon grounding:** our `spec/` is frozen @ `4f48277` (MVP-DEC-007); canon `main` @ `6f3c2f8` (+23). For any canon-adoption, read-only `git -C ../documentation fetch cmless main` + read the real `MVP_Decisions_Register` + changed ACs (`lessons.md` 2026-07-03).
 
 ## Open Patterns
-- **F4 candidate (untriaged):** truth-spec *Hold Registry* still "six-value" vs code's 8 (RM-04 debt) — §7 row in the tracker.
-- **Durable landmines RM-02 (do NOT "fix"):** console AML `under_review` re-tags `trigger_source=compliance_ad_hoc`; sanctions-clear leaves `enhanced_kyc_flag=true` + review `resolved_at=NULL`.
-- **Closing integration test = drive the chain through the REAL Actions, assert the emergent event-SET** (`DomainEvent::query()->distinct()->pluck('name')->toEqualCanonicalizing([...])`) — a `knowledge/testing` rule.
+- **RM-03 landmines (implementer):** keep `Approved` enum case; no `MembershipFeePaid` class (K only consumes); `SupplyLifecycleChainTest` allow-list + `ProfileApproved`-absent + `ComplianceIndependenceTest` OC-write guard stay green UNAMENDED; i18n contract = `ProfileConsoleI18nTest` (not Customer).
+- **Pattern candidate:** a behaviour flip inverts **every** observer in ONE iteration (no green-safe split); the isolated writer's contract (`ProfileActivationTest`) stands.
+- **F4 candidate (untriaged):** truth-spec *Hold Registry* still "six-value" vs code's 8 (RM-04 debt).
+- **Closing integration test = drive the chain through REAL Actions, assert the emergent event-SET** (`toEqualCanonicalizing`) — a `knowledge/testing` rule.

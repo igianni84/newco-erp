@@ -729,3 +729,7 @@
 ## [2026-07-03 08:24] reconcile | Remediation_Tracker (RM-01+RM-02) | flipped RM-01 (yellow->done) + RM-02 (red->done) across tracker S1/S3/S4/S6; both built+merged+archived+PUSHED (main==origin in sync), suites 1883/1883 & 1947/1947 SQLite+PG17, semantic-verify CLEAN; hot.md refreshed (was stale on push); next=RM-03 (needs ADR). Doc-only, no code.
 
 ## [2026-07-03 09:49] adr | RM-03 MVP-DEC-016 membership charge-on-approval | full ADR+INDEX; grounded on live canon (git fetch cmless 6f3c2f8, +23 vs frozen 4f48277): canon KEEPS Approved transient (Opt B), removing fails AC-K-FSM-2 -> flipped from Opt A. +lessons +hot; tracker RM-03 red->yellow. Next /spec-to-change
+
+## [2026-07-03 09:53] push | origin/main | pushed 2 doc-only commits: 9a9d556 (TASK-1 tracker reconcile + RM-09 mirror-staleness + F4) + 9e07f11 (RM-03 ADR adopt MVP-DEC-016). main==origin/main (0/0). No code touched.
+
+## [2026-07-03 10:25] spec-to-change | parties-membership-charge-on-approval | authored+APPROVED (RM-03/MVP-DEC-016); 4 MODIFIED party-registry reqs (Approval/Activation/Demand-Side Events/+ombrello Birth States), 4 task groups; validate --strict green; Q2 console-copy=Opt A. Next=./ralph.sh
