@@ -747,3 +747,5 @@
 ## [2026-07-03 14:46] close-ritual §2.7 | parties-membership-charge-on-approval | merged 892ccf8 + archived e9892b9; 4 reqs folded into living party-registry spec; semantic verify WARNINGS-ONLY (no CRITICAL); suite 1951/1951 both engines; branch deleted; 8 commits unpushed (push gated)
 
 ## [2026-07-03 19:16] spec-to-change | reconcile-hold-registry-eight-types | authored + APPROVED (RM-04 F4 / canon MVP-DEC-008): spec-only truth-spec 6→8 Hold types; party-registry ×3 + operator-console ×1 MODIFY; code already shipped (d8ec261), zero new code/test; validate --strict green; 71 cited Hold tests green
+
+## [2026-07-03 19:24] ralph | reconcile-hold-registry-eight-types 1.1 | green | verify-only: Hold suite 71/71 SQLite, all 8-value assertions present (none added) | 4 files

@@ -4,7 +4,7 @@
 
 ## 1. Regression-verify the shipped eight-value Hold contract
 
-- [ ] 1.1 Run the Hold suite and confirm it already encodes the eight-value contract the deltas assert. **No production code; no new test file.**
+- [x] 1.1 Run the Hold suite and confirm it already encodes the eight-value contract the deltas assert. **No production code; no new test file.**
   - Command: `php artisan test --filter='HoldEnums|HoldRegistry|HoldLifecycle|ComplianceReadApi|CustomerAnonymisationHoldPrecedence|CustomerHoldsConsole'` — all green on SQLite.
   - Assert present (do not re-add): `tests/Unit/Modules/Parties/Enums/HoldEnumsTest.php` pins the ordered eight-name value map (`admin…storage_payment_failed`), `HoldType::cases()->toHaveCount(8)`, and the `autoLiftable` partition (`kyc`/`payment` true; `admin`/`fraud`/`compliance`/`credit`/`chargeback_review`/`storage_payment_failed` false).
   - Assert present: `HoldRegistryTest` (manual `PlaceHold` covers `chargeback_review` + `storage_payment_failed`), `HoldLifecycleTest` (operator-lift succeeds on the two finance-driven types; auto-lift rejected only on `kyc`/`payment`), `ComplianceReadApiTest` (active-Hold-list reports the two new types), `CustomerAnonymisationHoldPrecedenceTest` (the two finance-driven types PROCEED — only `compliance` blocks), `CustomerHoldsConsoleTest` ("exposes the placeHold form with the eight Hold types"; options = `HoldType::cases()`).
