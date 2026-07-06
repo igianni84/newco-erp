@@ -7,7 +7,7 @@ updated: 2026-07-06
 # Hot Cache
 
 ## Last Updated
-**2026-07-06 — RM-08 `parties-producer-approval-sod` MERGED to main + ARCHIVED locally ✅ — only `git push` left (human, gated).** GUIDE §2.7 close ritual run in a fresh window: (1) branch review — SoD core correct; (2) **PG17 pre-merge gate 1975/1975** (10497 assn, 301s) on the `pg` container; (3) **independent semantic-verify subagent → VERDICT CLEAN, 0 CRITICAL** — it re-ran the tests itself (34/34 SoD + 46/46 console/seeder/chain + 3/3 boundary, PHPStan 0, Pint clean) rather than trusting the loop: self-approval blocked, int/string trap closed by `normalizeActorId`, no bypass writer, D6 order honored, no doc overclaim; 1 cosmetic SUGGESTION (console test asserts notification title not body) deferred; (4) `git merge --no-ff` → main **`bf4aff4`**; (5) `openspec archive` → `2026-07-06-parties-producer-approval-sod`, both delta specs folded into `openspec/specs/` (operator-console + party-registry), **10/10 truth-specs validate**.
+**2026-07-06 — RM-08 `parties-producer-approval-sod` CLOSED: merged + archived + PUSHED ✅ — GUIDE §2.7 complete.** Close ritual run in a fresh window: (1) branch review — SoD core correct; (2) **PG17 pre-merge gate 1975/1975** (10497 assn, 301s) on the `pg` container; (3) **independent semantic-verify subagent → VERDICT CLEAN, 0 CRITICAL** — it re-ran the tests itself (34/34 SoD + 46/46 console/seeder/chain + 3/3 boundary, PHPStan 0, Pint clean) rather than trusting the loop: self-approval blocked, int/string trap closed by `normalizeActorId`, no bypass writer, D6 order honored, no doc overclaim; 1 cosmetic SUGGESTION (console test asserts notification title not body) deferred; (4) `git merge --no-ff` → main **`bf4aff4`**; (5) `openspec archive` → `2026-07-06-parties-producer-approval-sod`, both delta specs folded into `openspec/specs/` (operator-console + party-registry), **10/10 truth-specs validate**; (6) pushed `52b9983..bfb8fc7`, branch `ralph/parties-producer-approval-sod` deleted.
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -16,13 +16,12 @@ updated: 2026-07-06
 - ⚠ Full suite must run via `php -d memory_limit=-1 vendor/bin/pest` — `php artisan test` (128 MB subprocess) OOMs on the full suite. Per-`--filter`/per-file runs fine under `artisan test`.
 
 ## Active Change & Next Task
-- **No active change.** `openspec list` → "No active changes found." RM-08 is merged to main (`bf4aff4`) + archived.
-- **NEXT human action: `git push`** — local `main` is ahead of `origin/main` (`52b9983`) by the cosmetic hot.md commit + the merge + 10 branch commits + this archive commit. Then `git branch -d ralph/parties-producer-approval-sod` once pushed.
-- After push, the human picks the next change. Tracker RM-05 (capacity seat-set) is ⏸️ blocked on Module A `qty`.
+- **No active change.** `openspec list` → "No active changes found." RM-08 is merged, archived, and pushed.
+- **NEXT: the human picks the next change.** Tracker RM-05 (capacity seat-set) is ⏸️ blocked on Module A `qty`; pick another remediation item or the next Build-Workplan phase via `/spec-to-change`.
 
 ## Blockers & Decisions Needed
-- None. Merged + archived locally, all gates green on both engines, semantic-verify CLEAN.
-- **Repo sync:** `origin/main` @ `52b9983`; local `main` @ `bf4aff4` (ahead — push pending). Assistant `git push` classifier-gated → Giovanni pushes.
+- None. RM-08 fully closed (merged + archived + pushed), all gates green on both engines, semantic-verify CLEAN.
+- **Repo sync:** `origin/main` == local `main` @ `bfb8fc7` (synced). No ralph branch (deleted).
 
 ## Open Patterns
 - **Independent semantic-verify as a subagent = faithful "nuova finestra"**: keeps main context clean AND is genuinely adversarial — re-run the suite yourself, don't trust the loop's self-report. Here CLEAN matched the loop's own report.

@@ -793,3 +793,5 @@
 ## [2026-07-06 16:02] ralph | parties-producer-approval-sod 6.1 | green | 6.1 close/verify: 1975/1975 SQLite+PG17, PHPStan 0, Pint clean, openspec valid, semantic-verify §2.7 CLEAN (0 CRIT; 1 WARN ADR-References overclaim fixed in-place); CHANGE_COMPLETE — awaiting human §2.7 merge/archive/push
 
 ## [2026-07-06 16:44] close §2.7 | parties-producer-approval-sod (RM-08) | PG17 1975/1975 + indep semantic-verify CLEAN (0 CRITICAL) → merged --no-ff main bf4aff4 + archived 2026-07-06; 10/10 specs validate; push pending (gated)
+
+## [2026-07-06 16:47] push §2.7 | parties-producer-approval-sod (RM-08) | pushed 52b9983..bfb8fc7 to origin/main; branch ralph deleted; origin==main synced; RM-08 fully closed
