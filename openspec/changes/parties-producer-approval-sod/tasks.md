@@ -6,7 +6,7 @@
   - Assert (test `tests/Unit/…/PartiesApprovalCopyTest.php` or reuse an i18n test): both keys resolve non-empty in `en` and `it`. `vendor/bin/pint --test` clean.
 - [x] 1.2 Add `app/Modules/Parties/Exceptions/SeparationOfDutiesViolation.php` (a domain exception) with static factories `requiresOperatorPrincipal(string $entity): self` and `creatorMayNotApprove(string $entity): self`, each resolving its localized message via the `parties.approval.*` keys.
   - Assert (`tests/Unit/Modules/Parties/Exceptions/SeparationOfDutiesViolationTest.php`): each factory produces the resolved localized message and carries the entity token. PHPStan/Pint clean.
-- [ ] 1.3 Add the guard `app/Modules/Parties/Governance/ProducerApprovalGovernance.php` (constructor injects `App\Platform\Events\ActorContext`) with `guard(string $entityType, int|string $entityId): void`, mirroring Catalog’s `ApprovalGovernance` minus the reviewer leg:
+- [x] 1.3 Add the guard `app/Modules/Parties/Governance/ProducerApprovalGovernance.php` (constructor injects `App\Platform\Events\ActorContext`) with `guard(string $entityType, int|string $entityId): void`, mirroring Catalog’s `ApprovalGovernance` minus the reviewer leg:
   - `operatorPrincipalOrFail()` → reject when `actor->role() !== ActorRole::NewcoOps` or `actor->actorId() === null` (`requiresOperatorPrincipal`); return the approver id.
   - `creatorOf()` → earliest `App\Platform\Events\DomainEvent` row for `(entity_type, entity_id)` by `id` (`orderBy('id')->value('actor_id')`), through a private `normalizeActorId()` copy (PG numeric-string vs SQLite int) so `===` holds on both engines.
   - if `creator !== null && approver === creator` → throw `creatorMayNotApprove`; a null creator is vacuous.
