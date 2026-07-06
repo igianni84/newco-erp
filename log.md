@@ -783,3 +783,5 @@
 ## [2026-07-06 14:28] ralph | parties-producer-approval-sod 2.1+2.2 | green | SoD floor wired into ActivateProducer + 6-file activation-test migration (distinct/vacuous operators, every(System)->split); suite 1969/1969, PHPStan 0
 
 ## [2026-07-06 14:43] ralph | parties-producer-approval-sod 3.1 | green | 5 files: ViewProducer second-actor affordance + SoD->action_failed surface; producer.affordance.second_actor copy EN+IT; console+i18n tests. Suite 1972/1972, PHPStan 0, Pint clean
+
+## [2026-07-06 14:53] ralph | parties-producer-approval-sod 3.2 | green | 1 file — migrated console activation happy path to genuine distinct-operator lineage (creator op A via CreateProducer, approver op B via console); suite 1972/1972

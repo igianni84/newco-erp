@@ -16,8 +16,10 @@
 // DatabaseMigrations (mirroring ProducerCreateConsoleTest + the catalog lifecycle console tests): each console
 // action drives a real domain action that opens its OWN DB::transaction, so the DomainEventRecorder's
 // transaction-level guard sees a real commit (level 0 → 1 → 0) — the faithful production shape (RefreshDatabase
-// would wrap every write in a never-committed outer transaction). The factories bypass the actions, so they
-// record NO event — the only events are the ones the console actions record. Parties enums/models are imported
+// would wrap every write in a never-committed outer transaction). Factory fixtures bypass the actions, so they
+// record NO event; the separation-of-duties activation tests instead stand the draft up through the real
+// CreateProducer action (one ProducerCreated whose actor_id the SoD floor recovers as the creator), so every
+// ProducerActivated assertion is scoped by name rather than a total-count of one. Parties enums/models are imported
 // freely here: the {Models, Actions} import-boundary carve-out governs OperatorPanel PRODUCTION code, not tests.
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages\ViewProducer;
@@ -38,15 +40,31 @@ use function Pest\Laravel\actingAs;
 
 uses(DatabaseMigrations::class);
 
-it('activates a draft Producer whose KYC is cleared through the console, recording one ProducerActivated with the operator envelope', function (?KycStatus $kyc) {
-    $operator = Operator::factory()->create();
-    actingAs($operator, 'operator');
+it('activates a draft Producer whose KYC is cleared through the console under a DISTINCT operator, recording one ProducerActivated carrying the approver (not the creator) envelope', function (?KycStatus $kyc) {
+    // The separation-of-duties floor (change parties-producer-approval-sod) requires a distinct operator-principal
+    // to approve activation — never the creator. The CREATOR (op A) stands the draft up through the real
+    // CreateProducer action (recording a ProducerCreated whose actor_id the floor's creatorOf() recovers), and a
+    // DISTINCT operator (op B) approves the activation through the console. A `factory()->create()` draft would
+    // record no ProducerCreated → null creator → the floor is vacuously cleared, which is exactly why the happy
+    // path now seeds the creator lineage through the real Action (the ProducerConsoleChainTest distinct-operator idiom).
+    $creator = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    actingAs($creator, 'operator');
+    $producer = app(CreateProducer::class)->handle(name: 'Domaine Distinct', region: 'Burgundy', country: 'FR');
 
     // A `draft` Producer whose KYC clears the activation gate — `verified`, `not_required`, or NULL (never
-    // screened, treated as cleared for additivity, ADR 2026-06-17). The KYC gate is the domain's (design L5);
-    // here it admits activation and the status transition is the subject under test.
-    $producer = Producer::factory()->create(['status' => ProducerStatus::Draft, 'kyc_status' => $kyc]);
+    // screened, treated as cleared for additivity, ADR 2026-06-17). CreateProducer leaves kyc_status NULL; the
+    // non-null variants are set directly as a precondition (the KYC FSM is audit-only, § 4.4 — the console KYC
+    // path is proven separately in ProducerConsoleChainTest). The KYC gate is the domain's (design L5); here it
+    // admits activation and the distinct-operator status transition is the subject under test.
+    if ($kyc !== null) {
+        $producer->update(['kyc_status' => $kyc]);
+    }
 
+    // The DISTINCT approver activates — a fresh Livewire component resolves the `operator` guard at record time,
+    // so switching actingAs between the create and the activate is what makes the approver ≠ creator.
+    actingAs($approver, 'operator');
     Livewire::test(ViewProducer::class, ['record' => $producer->id])
         ->callAction('activate')
         ->assertNotified((string) __('operator_console.producer.notifications.activated'));
@@ -54,15 +72,20 @@ it('activates a draft Producer whose KYC is cleared through the console, recordi
     // State advanced draft → active via the domain action (the console never writes `status`).
     expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active);
 
-    // Exactly one ProducerActivated, carrying the operator audit envelope (newco_ops + the operator id) resolved
-    // by the action from the `operator` guard — the console constructs no envelope itself.
+    // Exactly one ProducerActivated, carrying the APPROVER's audit envelope (newco_ops + the approver id) resolved
+    // by the action from the `operator` guard — NOT the creator's. The ProducerCreated from the create step also
+    // exists, so the activation event is scoped by name (not a total count).
     $event = DomainEvent::query()->where('name', 'ProducerActivated')->sole();
 
     expect($event->module)->toBe('parties')
         ->and($event->entity_type)->toBe('Producer')
         ->and($event->entity_id)->toBe((string) $producer->id)
         ->and($event->actor_role)->toBe(ActorRole::NewcoOps)
-        ->and($event->actor_id)->toEqual($operator->id);  // loose: PG returns a numeric string for the bigint
+        ->and($event->actor_id)->toEqual($approver->id)       // the approver approved — loose: PG returns a numeric string
+        ->and($event->actor_id)->not->toEqual($creator->id);  // …and it was NOT the creator (the SoD distinctness)
+
+    // The creator lineage is genuine: ProducerCreated carries op A, so creator ≠ approver is what cleared the floor.
+    expect(DomainEvent::query()->where('name', 'ProducerCreated')->sole()->actor_id)->toEqual($creator->id);
 })->with([
     'NULL kyc_status (never screened)' => [null],
     'not_required' => [KycStatus::NotRequired],
