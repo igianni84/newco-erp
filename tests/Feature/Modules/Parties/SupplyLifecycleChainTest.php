@@ -26,6 +26,7 @@ use App\Modules\Parties\Events\ProducerRetired;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use App\Platform\Money\Currency;
@@ -88,12 +89,15 @@ uses(RefreshDatabase::class);
 function runSupplyLifecycleChain(): array
 {
     // 1. Onboard the Producer (born `draft`) and activate it (`draft → active`) — ProducerActivated (root).
+    //    CreateProducer runs under the System actor (no operator context) → a null creator lineage; activation now
+    //    enforces the separation-of-duties floor (change parties-producer-approval-sod), so it runs under an
+    //    authenticated operator (5100), which the null creator makes vacuously distinct.
     $producer = app(CreateProducer::class)->handle(
         name: 'Chateau Margaux',
         region: 'Bordeaux',
         country: 'France',
     );
-    app(ActivateProducer::class)->handle($producer->id);
+    app(ActorContext::class)->runAs(ActorRole::NewcoOps, 5100, fn () => app(ActivateProducer::class)->handle($producer->id));
 
     // 2. The Producer operates two Clubs (both born `active`): one wound down standalone, one left active to be
     //    swept by the retirement cascade.
@@ -196,10 +200,14 @@ it('records exactly the seven supply-side lifecycle events with the expected cou
     ]);
     expect(DomainEvent::query()->count())->toBe(14);
 
-    // Every event is tagged module `parties` and resolved to the System actor (the ActorContext seam default — no
-    // operator is authenticated in the test context).
+    // Every event is tagged module `parties`. Actor provenance: all 13 non-activation events resolve to the System
+    // actor (the ActorContext seam default — no operator is authenticated for creation, agreement, club or
+    // retirement work), while the single ProducerActivated now carries the NewcoOps operator that cleared the
+    // separation-of-duties floor (change parties-producer-approval-sod).
     expect(DomainEvent::query()->where('module', 'parties')->count())->toBe(14)
-        ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
+        ->and(DomainEvent::query()->where('name', '!=', ProducerActivated::NAME)->get()
+            ->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue()
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->sole()->actor_role)->toBe(ActorRole::NewcoOps);
 });
 
 it('threads the two derived chains and leaves the standalone transitions as root events', function () {

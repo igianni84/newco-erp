@@ -113,7 +113,11 @@ function chainActiveSpineUnderRealProducer(): array
     // The REAL cross-module enable path: a Parties Producer (factory → `draft`) activated through Module K's
     // ActivateProducer. The recorded ProducerActivated fans out (post-commit, txn level 0) to Catalog's
     // ProducerLifecycleProjector, which upserts catalog_producer_states — the read model the Master gate reads.
+    // Activation now enforces the separation-of-duties floor (change parties-producer-approval-sod), so it needs an
+    // authenticated operator; the factory Producer has no ProducerCreated lineage → a null creator, so the
+    // distinctness check is vacuous and any single operator activates it.
     $producer = Producer::factory()->create();
+    actingAs(Operator::factory()->create(), 'operator');
     app(ActivateProducer::class)->handle($producer->id);
 
     // Master — gated on the producer projection being `active` (the cross-module Producer Activation Gate).

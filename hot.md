@@ -7,26 +7,26 @@ updated: 2026-07-06
 # Hot Cache
 
 ## Last Updated
-**2026-07-06 — RM-08 `parties-producer-approval-sod` building, task 1.3 ✅ (3/10): `ProducerApprovalGovernance` guard landed.** New `app/Modules/Parties/Governance/ProducerApprovalGovernance.php` — ctor-injects the `ActorContext` singleton; `guard('Producer', $id)` = operator-principal floor (reject non-`NewcoOps`/null → `requiresOperatorPrincipal`) then distinct-actor (`approver === creator` → `creatorMayNotApprove`; creator = earliest `DomainEvent` row via a private cross-engine `normalizeActorId()`, null = vacuous). Mirror of Catalog's guard MINUS the reviewer leg; **no `Catalog\*` import** (invariant 10 — Catalog in prose). Feature test 4/4, no behavior change yet (task 2.1 wires it into `ActivateProducer`). Committed.
+**2026-07-06 — RM-08 `parties-producer-approval-sod`, tasks 2.1 + 2.2 ✅ together (5/10): SoD floor wired into `ActivateProducer` + ALL activation call sites migrated to operators.** `ActivateProducer` ctor-injects `ProducerApprovalGovernance`; `guard('Producer', $id)` runs inside the txn AFTER the from-state assert and BEFORE the KYC gate (D6: from-state → operator-principal → distinct-actor → KYC → write) → any violation throws pre-write, status/event-log untouched. 2.1+2.2 landed in ONE iteration (inseparable under the green gate). Full suite **1969/1969**. Committed.
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- Full suite **1965/1965** (10450 assn) · PHPStan max **0** · Pint clean · `openspec validate parties-producer-approval-sod --strict` green. SQLite only (no schema delta yet; `normalizeActorId` cross-engine `===` runs on PG17 at close, task 6.1).
-- ⚠ **Full/arch suite = `php -d memory_limit=-1 vendor/bin/pest`** — `php artisan test` (128 MB subprocess) OOMs on the full suite AND on a single arch file (pest-arch loads the whole class graph). Per-`--filter` runs are fine under `artisan test`.
+- Full suite **1969/1969** (10468 assn) · PHPStan max **0** · Pint clean · `openspec validate parties-producer-approval-sod --strict` valid. SQLite only (cross-engine `===` + the split chain assertions ride PG17 at close, task 6.1).
+- ⚠ **Full/arch suite = `php -d memory_limit=-1 vendor/bin/pest`** — `php artisan test` (128 MB subprocess) OOMs on the full suite AND any single arch file. Per-`--filter`/per-file runs are fine under `artisan test`.
 
 ## Active Change & Next Task
-- **ACTIVE = `parties-producer-approval-sod` (RM-08)**, APPROVED, building. Branch `ralph/parties-producer-approval-sod`. **3/10 done.**
-- **NEXT = task 2.1:** inject `ProducerApprovalGovernance` into `ActivateProducer`; call `guard('Producer', $producer->id)` inside the existing `DB::transaction`, AFTER the locked from-state assert, BEFORE the KYC gate + `update` (design D6: from-state → operator-principal → distinct-actor → KYC → write). Extend `ProducerLifecycleTest` (TDD) under distinct operators: self-approval + `system` → `SeparationOfDutiesViolation` (stays `draft`, 0 events); distinct op + KYC cleared → `active` + one `ProducerActivated`, `actor_id`=approver; self-approval on KYC-`pending` rejected on the **SoD** floor (before KYC). Full bullets: tasks.md 2.1.
-- **Landmine (2.1 expected reds → fixed by 2.2):** existing `ProducerLifecycleTest` activations call `handle()` under the default `System` actor → the new floor breaks them. Write 2.1 under operators; **leave the old-test migration to 2.2** (note reds, don't fix ahead). Same for DemoSeeder (4.1).
-- **Pint `{@see}` trap (2.x/3.x):** name Catalog in **backticked prose** in `ActivateProducer`/`ViewProducer` docblocks, never `{@see \…Catalog\…}` (Pint auto-adds a `use` → invariant-10 red; arch test absent from `--filter`). Re-run Pint + `grep -n Catalog` before the full suite. Rule: lessons.md 2026-07-06.
-- Then 3.x console, 4.1 DemoSeeder fixture, 5.1 ADR honesty, 6.1 close.
+- **ACTIVE = `parties-producer-approval-sod` (RM-08)**, APPROVED, building. Branch `ralph/parties-producer-approval-sod`. **5/10 done.**
+- **NEXT = task 3.1:** `ViewProducer` console (`app/Modules/OperatorPanel/Filament/Resources/Parties/ProducerResource/Pages/ViewProducer.php`) — surface the **"second actor required"** affordance on the `activate` verb + map a thrown `SeparationOfDutiesViolation` to a notification (state unchanged), the "surface, not reimplement" contract Catalog uses. Keep the KYC-rejection notification path; add NO submit/reject/reopen. Bullets: tasks.md 3.1.
+- **Pint `{@see}` trap is LIVE on 3.1** (`ViewProducer` docblock describes Catalog's mirror): name Catalog in **backticked prose**, never `{@see \…Catalog\…}` (Pint auto-adds a `use` → invariant-10 red; arch test absent from `--filter`). Re-run Pint + `grep -n Catalog` before the full suite. Rule: lessons.md 2026-07-06.
+- Then 3.2 console tests, 4.1 DemoSeeder fixture, 5.1 ADR honesty, 6.1 close.
 
 ## Blockers & Decisions Needed
-- None blocking. Scope resolved (Giovanni 2026-07-06): membership SoD deferred (Producer-only); 2-step Creator→Approver depth.
+- None blocking. Scope (Giovanni 2026-07-06): Producer-only SoD, 2-step Creator→Approver.
+- **Blast-radius lesson (2.1/2.2):** the floor broke SIX test files, only 1 named in tasks — all migrated (distinct-operator lineage OR factory-null-creator vacuous; SET-WIDE `every(System)`→split so ProducerActivated=NewcoOps). **Task 3.x: grep `callAction('activate')` sites, not just `ActivateProducer::class` callers** (`ProducerConsoleChainTest` was the sole first-run miss). lessons.md 2026-07-06 floor-blast-radius.
 - **ADR honesty (5.1):** `decisions/2026-06-17-approval-separation-of-duties-role-gated` "already built in `parties-producer-lifecycle`" overclaim → in-place correction (RM-09-style, no supersede).
-- **F2 go-live flag:** enforced Producer SoD → "1 prod operator = SoD unsatisfiable" (same as Catalog); not a demo blocker (RM-07 seeds 3 ops).
+- **F2 go-live flag:** enforced Producer SoD → "1 prod operator = SoD unsatisfiable"; not a demo blocker (RM-07 seeds 3 ops).
 - **Repo sync:** `origin/main` @ `067f459`; ralph branch ahead. Assistant `git push` classifier-gated → Giovanni pushes at close.
 
 ## Open Patterns
-- **Direct-guard test pattern:** seed creator lineage via real `CreateProducer` inside `ActorContext::runAs(NewcoOps, $creatorId, …)` (restores context → system case = `(System,null)`, no logout); approve in a 2nd `runAs`; `factory()->create()` → null creator. Detail: progress.md Codebase Patterns.
-- **Parties i18n = per-key EN fallback (DEC-127):** per-locale file carries only its keys; every `it` key needs an `en` counterpart. Unit copy tests `uses(TestCase::class)`. Don't chain `->toBeString()->not->…` off `trans()` (union breaks PHPStan-max).
+- **Two migration shapes for an actor floor:** real `Create*` lineage → activate under a DISTINCT operator; `factory()->create()` (null creator) → any single `actingAs`/`runAs(operator)` is vacuously distinct. `actingAs` can switch MID Livewire-chain (fresh component reads the guard at record time). Pest global helpers don't cross single-file runs → define per-file or inline `runAs`.
+- **Parties i18n = per-key EN fallback (DEC-127):** per-locale file carries only its keys; every `it` key needs an `en` counterpart. Unit copy tests `uses(TestCase::class)`.

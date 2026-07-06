@@ -779,3 +779,5 @@
 ## [2026-07-06 11:50] ralph | parties-producer-approval-sod 1.2 | green | 2 files (new SeparationOfDutiesViolation exception + Unit test 5/5); suite 1961/1961, phpstan 0, pint clean
 
 ## [2026-07-06 12:05] ralph | parties-producer-approval-sod 1.3 | green | 3 files (guard + Feature test + lessons); ProducerApprovalGovernance SoD guard, no Catalog import; suite 1965/1965, PHPStan 0
+
+## [2026-07-06 14:28] ralph | parties-producer-approval-sod 2.1+2.2 | green | SoD floor wired into ActivateProducer + 6-file activation-test migration (distinct/vacuous operators, every(System)->split); suite 1969/1969, PHPStan 0

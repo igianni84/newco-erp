@@ -45,10 +45,12 @@ use function Pest\Laravel\actingAs;
 uses(DatabaseMigrations::class);
 
 it('drives the entire Producer console slice end-to-end as an operator demo, asserting the emergent event set and the newco_ops envelope on every write', function () {
-    // ONE operator drives the whole demo — Producer activation is KYC-gated, not a Creator → Reviewer → Approver
-    // separation-of-duties transition (design D3), so no distinct lineage is needed. Every event below must carry
-    // this operator's id (actor_role newco_ops), resolved by the actions from the `operator` guard.
+    // The primary operator drives creation, KYC and retirement; a DISTINCT operator approves the activation —
+    // Producer activation now enforces the separation-of-duties floor (change parties-producer-approval-sod,
+    // design D1/D4), so the creator may not self-approve. Every event still carries the operator envelope
+    // (actor_role newco_ops, a non-null operator id), resolved by the actions from the `operator` guard.
     $operator = Operator::factory()->create();
+    $approver = Operator::factory()->create();
     actingAs($operator, 'operator');
 
     // ── CREATE through the console page → a `draft` Producer, never screened (kyc_status NULL), 1 ProducerCreated.
@@ -82,7 +84,10 @@ it('drives the entire Producer console slice end-to-end as an operator demo, ass
     expect($afterKyc->kyc_status)->toBe(KycStatus::Verified)
         ->and($afterKyc->status)->toBe(ProducerStatus::Draft);
 
-    // ── ACTIVATE — KYC `verified` clears the activation gate: draft → active + exactly one ProducerActivated.
+    // ── ACTIVATE — KYC `verified` clears the activation gate. A DISTINCT operator ($approver) approves it, since
+    // the SoD floor forbids the creator self-approving: draft → active + exactly one ProducerActivated (carrying
+    // the approver as actor).
+    actingAs($approver, 'operator');
     Livewire::test(ViewProducer::class, ['record' => $producer->id])
         ->callAction('activate')
         ->assertNotified((string) __('operator_console.producer.notifications.activated'));
@@ -93,7 +98,9 @@ it('drives the entire Producer console slice end-to-end as an operator demo, ass
     $clubA = Club::factory()->create(['producer_id' => $producer->id]);
     $clubB = Club::factory()->create(['producer_id' => $producer->id]);
 
-    // ── RETIRE — active → retired + the § 10.2 cascade: each operated active Club is sunset (one ClubSunset each).
+    // ── RETIRE — back under the primary operator (retirement carries only the operator-principal floor, no
+    // distinctness): active → retired + the § 10.2 cascade: each operated active Club is sunset (one ClubSunset each).
+    actingAs($operator, 'operator');
     Livewire::test(ViewProducer::class, ['record' => $producer->id])
         ->callAction('retire')
         ->assertNotified((string) __('operator_console.producer.notifications.retired'));
