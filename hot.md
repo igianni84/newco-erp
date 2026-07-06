@@ -20,7 +20,7 @@ updated: 2026-07-06
 - **NEXT actionable = RM-08** — Separation-of-Duties on Parties approval (Producer + membership four-eyes; K J-10; P2 demo, size M, 🔴). **No new ADR** — foundation is `decisions/2026-06-17-approval-separation-of-duties-role-gated`. Workflow: `/spec-to-change` → `APPROVED` → `./ralph.sh`. **RM-05** (capacity seat-set) ⏸️ (Module A `qty`); lower = P3/P4 backlog (RM-12/13/14/19-23). Giovanni confirms the pick.
 
 ## Blockers & Decisions Needed
-- **✅ Close ritual PUSHED — `origin/main` synced through `067f459`** (Giovanni ran `! git push`: `dc67aae..067f459`). The full backlog (change lifecycle + follow-ups CONTEXT.md/tracker/docblock/CLAUDE.md + the earlier RM-03 memory commit `a8c8bdb`) is now on origin. **Note:** the auto-mode classifier blocks the assistant's own `git push` — Giovanni pushes. This memory-refresh commit trails by 1 → rides with RM-03's close (or a quick `! git push`).
+- **✅ Repo fully synced** — `origin/main` @ `52b9983` (close ritual + follow-ups CONTEXT.md/tracker/docblock/CLAUDE.md + the RM-03 tracker reconcile, all pushed). **Note:** the auto-mode classifier blocks the assistant's own `git push` — Giovanni runs `! git push`; any bookkeeping commit made after a push trails until the next one (rides with the next change's close).
 - **CONTEXT.md + CLAUDE.md reconciliation ✅ DONE & committed** — CONTEXT.md Hold-type glossary + 7 spots to eight-value (no "six" left); CLAUDE.md l.67 `(6 types)`→`(8 types)` (Giovanni-authorized commit of his hard-Protected edit).
 - **F4 ✅ DONE** — `Remediation_Tracker.md` l.30 + l.92 mark F4 resolved 2026-07-06.
 - **Stale docblock ✅ DONE** — `CustomerHoldsTable` docblock 4→6 operator-liftable types (Pint green).
