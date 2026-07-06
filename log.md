@@ -757,3 +757,5 @@
 ## [2026-07-03 19:49] ralph | reconcile-hold-registry-eight-types 2.2 | green | openspec validate --strict valid (exit 0); verify-only, no code/spec/PHP touched; 3 doc files
 
 ## [2026-07-03 19:57] ralph | reconcile-hold-registry-eight-types 3.1 | green | 4 files (progress/tasks/hot/log) | CHANGE_COMPLETE 5/5 — Protected-file terminology hand-off recorded in progress.md; NO Protected file edited (CLAUDE.md/CONTEXT.md stay un-staged M); Hold suite 86/86 + validate --strict green
+
+## [2026-07-06 09:53] close-ritual | reconcile-hold-registry-eight-types | merged --no-ff (8f2f6bf) + archived 2026-07-06; party-registry+operator-console truth-specs now eight-value HoldType; F4/RM-04 closed; independent semantic verify CLEAN; not pushed (gate)
