@@ -29,7 +29,7 @@
 
 ## 4. Demo enablement (P2) — a walkable Producer SoD fixture
 
-- [ ] 4.1 Extend the demo seeder (`OperatorDemoSeeder`/`DemoSeeder`, mirroring RM-07’s `seedSodReviewScenario`) with a `draft`, KYC-cleared Producer built through the **real** `CreateProducer` Action as one seeded operator, leaving it activatable only by a distinct seeded operator (genuine creator lineage — a `factory()->create()` row would prove nothing). Keep the production guard.
+- [x] 4.1 Extend the demo seeder (`OperatorDemoSeeder`/`DemoSeeder`, mirroring RM-07’s `seedSodReviewScenario`) with a `draft`, KYC-cleared Producer built through the **real** `CreateProducer` Action as one seeded operator, leaving it activatable only by a distinct seeded operator (genuine creator lineage — a `factory()->create()` row would prove nothing). Keep the production guard.
   - Assert (extend the DemoSeeder test): the fixture Producer is `draft` with a real creator `actor_id`; a distinct seeded operator activates it end-to-end while the creator is blocked on the SoD floor.
 
 ## 5. Documentation honesty

@@ -16,6 +16,7 @@ use App\Modules\Catalog\Models\ProductReference;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Models\SellableSku;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\CreateProducer;
 use App\Modules\Parties\Enums\AccountStatus;
 use App\Modules\Parties\Enums\AccountType;
 use App\Modules\Parties\Enums\ClubCreditState;
@@ -94,6 +95,13 @@ class DemoSeeder extends Seeder
      */
     public const SOD_FIXTURE_MASTER_NAME = 'Échézeaux Grand Cru';
 
+    /**
+     * The name of the Producer activation separation-of-duties walkthrough fixture
+     * ({@see seedProducerApprovalScenario}) — the RM-08 counterpart to {@see SOD_FIXTURE_MASTER_NAME}. A public
+     * constant so tests resolve the fixture by a single source of truth rather than a duplicated literal.
+     */
+    public const SOD_FIXTURE_PRODUCER_NAME = 'Domaine Leroy';
+
     public function run(): void
     {
         // A demo fixture must NEVER touch a production database: it truncates real business tables and the
@@ -132,9 +140,13 @@ class DemoSeeder extends Seeder
         $this->seedSellableSkus($references, $cases);
         $this->seedCompositeSkus($references);
 
-        // SoD / rejection walkthrough fixture — a reviewable Master with REAL creator/reviewer lineage,
-        // built last so its producer projection (seedProducerStates) already exists (RM-07).
+        // SoD / rejection walkthrough fixtures — built through the REAL domain actions so they carry genuine
+        // lineage the separation-of-duties floors read back (a directly-seeded row has none → a distinct-actor
+        // gate would pass vacuously). Catalog: a reviewable Master (3-step Creator → Reviewer → Approver), built
+        // after the catalog spine so its producer projection (seedProducerStates) already exists (RM-07).
+        // Parties: a draft, KYC-cleared Producer (2-step Creator → Approver) — the RM-08 activation SoD fixture.
         $this->seedSodReviewScenario($producers);
+        $this->seedProducerApprovalScenario();
 
         $this->summarize();
     }
@@ -895,6 +907,50 @@ class DemoSeeder extends Seeder
         ));
 
         $actor->runAs(ActorRole::NewcoOps, $reviewerId, fn () => app(SubmitProductMasterForReview::class)->handle($master));
+    }
+
+    /**
+     * The Producer activation separation-of-duties walkthrough fixture (RM-08, parties-producer-approval-sod):
+     * ONE Producer built through the REAL {@see CreateProducer} action, so it carries genuine creator lineage —
+     * the Parties separation-of-duties floor (`ProducerApprovalGovernance`) reads the creator from the entity's
+     * `ProducerCreated` event. Created as `creator@newco.test` and left `draft` + KYC-cleared (`verified`); only a
+     * DISTINCT operator (`approver@newco.test`) can then activate it — the self-approval block the walkthrough proves.
+     *
+     * The Producer FSM is linear (`draft → active → retired`) with NO reviewer leg, so this is the 2-step
+     * Creator → Approver depth — unlike the Catalog Master's 3-step review flow ({@see seedSodReviewScenario}).
+     * A directly-seeded `draft` row (e.g. the Leflaive demo producer, seeded via plain `create()`) carries no
+     * lineage, so any operator could activate it and the SoD floor would prove nothing — the fixture MUST go
+     * through the real action.
+     *
+     * A seeder has no authenticated operator guard, so actor provenance is supplied via {@see ActorContext::runAs()}.
+     * KYC is then set directly to `verified` (audit-only, § 4.4 — {@see CreateProducer} takes no KYC param and
+     * leaves it NULL, which also clears; `verified` reads legibly in the demo), so the SOLE block on the creator's
+     * self-activation is the SoD floor, not the KYC gate.
+     */
+    private function seedProducerApprovalScenario(): void
+    {
+        $actor = app(ActorContext::class);
+
+        // firstOrFail (not value('id')): reads the typed `int` primary key and guarantees the chained
+        // OperatorDemoSeeder actually provisioned the persona — a missing login fails loud, never actor_id 0.
+        $creatorId = Operator::query()->where('email', 'creator@newco.test')->firstOrFail()->id;
+
+        // Create as the creator (records ProducerCreated with the creator's actor_id — the lineage the floor reads
+        // back); the Producer is born `draft`. Only a DISTINCT operator (approver@newco.test) can then activate it.
+        $producer = $actor->runAs(ActorRole::NewcoOps, $creatorId, fn () => app(CreateProducer::class)->handle(
+            name: self::SOD_FIXTURE_PRODUCER_NAME,
+            region: 'Côte de Nuits',
+            country: 'France',
+            appellation: 'Vosne-Romanée Grand Cru',
+            description: TranslatableText::of([
+                'en' => 'Legendary Vosne-Romanée domaine — the draft producer for the activation approval walkthrough.',
+                'it' => 'Leggendario dominio di Vosne-Romanée — il produttore in bozza per il walkthrough di approvazione.',
+            ]),
+        ));
+
+        // KYC-cleared so the separation-of-duties floor is the SOLE block on the creator's self-activation (a
+        // direct, audit-only set, § 4.4 — the console requireKyc/verifyKyc path is proven in ProducerConsoleChainTest).
+        $producer->update(['kyc_status' => KycStatus::Verified]);
     }
 
     /**

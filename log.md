@@ -785,3 +785,5 @@
 ## [2026-07-06 14:43] ralph | parties-producer-approval-sod 3.1 | green | 5 files: ViewProducer second-actor affordance + SoD->action_failed surface; producer.affordance.second_actor copy EN+IT; console+i18n tests. Suite 1972/1972, PHPStan 0, Pint clean
 
 ## [2026-07-06 14:53] ralph | parties-producer-approval-sod 3.2 | green | 1 file — migrated console activation happy path to genuine distinct-operator lineage (creator op A via CreateProducer, approver op B via console); suite 1972/1972
+
+## [2026-07-06 15:07] ralph | parties-producer-approval-sod 4.1 | green | 2 files — DemoSeeder Producer SoD fixture (real CreateProducer lineage, distinct-operator activatable) + 3 DemoSeederTest cases; suite 1975/1975, PHPStan max 0, Pint clean
