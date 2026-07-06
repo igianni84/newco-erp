@@ -4,7 +4,7 @@
 
 - [x] 1.1 Add the localized copy keys to `lang/en/parties.php` **and** `lang/it/parties.php`: an `approval` group with `requires_operator_principal` and `creator_may_not_approve` (i18n invariant 12 — no hardcoded strings).
   - Assert (test `tests/Unit/…/PartiesApprovalCopyTest.php` or reuse an i18n test): both keys resolve non-empty in `en` and `it`. `vendor/bin/pint --test` clean.
-- [ ] 1.2 Add `app/Modules/Parties/Exceptions/SeparationOfDutiesViolation.php` (a domain exception) with static factories `requiresOperatorPrincipal(string $entity): self` and `creatorMayNotApprove(string $entity): self`, each resolving its localized message via the `parties.approval.*` keys.
+- [x] 1.2 Add `app/Modules/Parties/Exceptions/SeparationOfDutiesViolation.php` (a domain exception) with static factories `requiresOperatorPrincipal(string $entity): self` and `creatorMayNotApprove(string $entity): self`, each resolving its localized message via the `parties.approval.*` keys.
   - Assert (`tests/Unit/Modules/Parties/Exceptions/SeparationOfDutiesViolationTest.php`): each factory produces the resolved localized message and carries the entity token. PHPStan/Pint clean.
 - [ ] 1.3 Add the guard `app/Modules/Parties/Governance/ProducerApprovalGovernance.php` (constructor injects `App\Platform\Events\ActorContext`) with `guard(string $entityType, int|string $entityId): void`, mirroring Catalog’s `ApprovalGovernance` minus the reviewer leg:
   - `operatorPrincipalOrFail()` → reject when `actor->role() !== ActorRole::NewcoOps` or `actor->actorId() === null` (`requiresOperatorPrincipal`); return the approver id.

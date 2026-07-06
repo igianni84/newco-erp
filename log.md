@@ -775,3 +775,5 @@
 ## [2026-07-06 11:12] approve | parties-producer-approval-sod (RM-08) | Giovanni approved; APPROVED marker created; ready to build via ./ralph.sh --change parties-producer-approval-sod (Producer SoD, 10 tasks)
 
 ## [2026-07-06 11:43] ralph | parties-producer-approval-sod 1.1 | green | 3 files | approval copy (EN+IT parties.php) + PartiesApprovalCopyTest 5/5; full suite 1956/1956, phpstan 0, pint clean, validate --strict green
+
+## [2026-07-06 11:50] ralph | parties-producer-approval-sod 1.2 | green | 2 files (new SeparationOfDutiesViolation exception + Unit test 5/5); suite 1961/1961, phpstan 0, pint clean
