@@ -761,3 +761,5 @@
 ## [2026-07-06 09:53] close-ritual | reconcile-hold-registry-eight-types | merged --no-ff (8f2f6bf) + archived 2026-07-06; party-registry+operator-console truth-specs now eight-value HoldType; F4/RM-04 closed; independent semantic verify CLEAN; not pushed (gate)
 
 ## [2026-07-06 10:08] docs | hold-eight-value follow-ups | CONTEXT.md glossary 6->8 (8 spots) + F4 marked resolved in Remediation_Tracker (l.30/l.92) + CustomerHoldsTable docblock 4->6 (Pint green); local, not pushed (ritual push classifier-blocked)
+
+## [2026-07-06 10:15] docs | CLAUDE.md Hold terminology | committed CLAUDE.md l.67 Hold (6 types)->(8 types), Giovanni-authorized; completes eight-value terminology reconciliation; working tree clean; awaiting Giovanni push

@@ -64,7 +64,7 @@ Use spec terms verbatim in code identifiers. The glossary of record is **`CONTEX
 | **Voucher** | Customer's entitlement to one bottle, 7-state FSM (never "coupon"/"credit") | Module S |
 | **Club Credit** | Monetary credit entity on membership (distinct from Voucher) | Module K |
 | **Originating Club (OC)** | Club a customer joined through; accrues 5% on their Discovery purchases | Module K/S |
-| **Hold** | Unified, trigger-agnostic account restriction (6 types); never auto-lifted | Module K |
+| **Hold** | Unified, trigger-agnostic account restriction (8 types); never auto-lifted | Module K |
 | **InboundBatch / StockPosition** | Physical receipt / 5-dimension inventory authority view (ATP source) | Module B |
 | **INV1 / INV2 / INV3** | Bottle / shipment (excise+VAT) / storage invoices — all Module S | Module S |
 | **SerializedBottle / NS** | NFC-serialized bottle vs non-serialized fallback path | Module B |

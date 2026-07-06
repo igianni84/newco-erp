@@ -19,8 +19,8 @@ updated: 2026-07-06
 - **NEXT:** author the next change (`/spec-to-change`). Candidate: **RM-01 `parties-anonymisation`** was authored + awaiting `APPROVED` (Remediation_Tracker §6); or the next Remediation / Build-Workplan item.
 
 ## Blockers & Decisions Needed
-- **⭐ PUSH PENDING (classifier-blocked):** local `main` is ahead of `origin/main` (`dc67aae`), 0 behind → clean fast-forward. The in-session `git push` was **denied by the auto-mode classifier** — **Giovanni runs `! git push`** (or adds a Bash push permission). Bundles this change's full lifecycle + the 2 follow-up commits + the earlier unpushed RM-03 memory commit (`a8c8bdb`).
-- **CONTEXT.md reconciliation ✅ DONE** (committed in follow-up — Hold-type glossary + 7 other spots to eight-value; no "six" wording left). **`CLAUDE.md` l.67** stays Giovanni's un-staged `M` edit (hard-Protected — assistant leaves it; commit at will).
+- **⭐ PUSH PENDING (classifier-blocked):** local `main` is ahead of `origin/main` (`dc67aae`), 0 behind → clean fast-forward. **Working tree is now clean — everything committed.** The in-session `git push` was **denied by the auto-mode classifier** — **Giovanni runs `! git push`** (or adds a Bash push permission). Bundles this change's full lifecycle + follow-ups (CONTEXT.md/tracker/docblock/CLAUDE.md) + the earlier unpushed RM-03 memory commit (`a8c8bdb`).
+- **CONTEXT.md + CLAUDE.md reconciliation ✅ DONE & committed** — CONTEXT.md Hold-type glossary + 7 spots to eight-value (no "six" left); CLAUDE.md l.67 `(6 types)`→`(8 types)` (Giovanni-authorized commit of his hard-Protected edit).
 - **F4 ✅ DONE** — `Remediation_Tracker.md` l.30 + l.92 mark F4 resolved 2026-07-06.
 - **Stale docblock ✅ DONE** — `CustomerHoldsTable` docblock 4→6 operator-liftable types (Pint green).
 
