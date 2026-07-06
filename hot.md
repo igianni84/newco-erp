@@ -7,7 +7,7 @@ updated: 2026-07-06
 # Hot Cache
 
 ## Last Updated
-**2026-07-06 — `reconcile-hold-registry-eight-types` MERGED (`--no-ff` 8f2f6bf) + ARCHIVED (`2026-07-06-…`). Close ritual §2.7 done locally (NOT pushed).** F4/RM-04 closed: the two truth-specs (`party-registry`, `operator-console`) now state the **eight-value** `HoldType` domain, matching shipped code (`d8ec261`) + canon MVP-DEC-008. Independent semantic verification (2nd agent, fresh read): **CLEAN-WITH-SUGGESTIONS** — zero CRITICAL/WARNING.
+**2026-07-06 — `reconcile-hold-registry-eight-types` MERGED (`--no-ff` 8f2f6bf) + ARCHIVED (`2026-07-06-…`) + follow-ups. Close ritual §2.7 done locally (NOT pushed — classifier-blocked).** F4/RM-04 closed: the two truth-specs (`party-registry`, `operator-console`) now state the **eight-value** `HoldType` domain, matching shipped code (`d8ec261`) + canon MVP-DEC-008. Independent semantic verification (2nd agent, fresh read): **CLEAN-WITH-SUGGESTIONS** — zero CRITICAL/WARNING. **Follow-ups DONE locally:** `CONTEXT.md` Hold-type glossary reconciled 6→8 (8 spots), `Remediation_Tracker.md` F4 marked ✅ resolved (l.30 + l.92), `CustomerHoldsTable` docblock 4→6 types (Pint green).
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -19,10 +19,10 @@ updated: 2026-07-06
 - **NEXT:** author the next change (`/spec-to-change`). Candidate: **RM-01 `parties-anonymisation`** was authored + awaiting `APPROVED` (Remediation_Tracker §6); or the next Remediation / Build-Workplan item.
 
 ## Blockers & Decisions Needed
-- **⭐ PUSH PENDING (gated):** local `main` is **8 commits ahead** of `origin/main` (`dc67aae`), 0 behind → clean fast-forward. Includes this change's full lifecycle + the earlier unpushed RM-03 memory commit (`a8c8bdb`). Awaiting Giovanni's OK (close-ritual push gate).
-- **⭐ Giovanni Protected hand-edit (still open):** `CONTEXT.md` Hold-type glossary still six-value / self-contradictory — l.371 (half-fix: says "eight", lists six), l.372, l.215, l.222, l.234, l.379, l.380 (recommended prose in archived `…/2026-07-06-reconcile-hold-registry-eight-types/progress.md` §3.1). `CLAUDE.md` l.67 ✅ done (working-tree `M`, un-staged).
-- **F4 bookkeeping:** `docs/validation/Remediation_Tracker.md` §7 l.30 still calls F4 "candidate (untriaged)" — mark resolved (archived 2026-07-06), mirroring F3's inline ✅. Not Protected; left to Giovanni's convention.
-- **Stale docblock (out of scope, pre-existing):** `CustomerHoldsTable.php:51-53` & `:300-304` name four operator-liftable types; code at `:311` is correct (`!autoLiftable()`). Future one-line cleanup.
+- **⭐ PUSH PENDING (classifier-blocked):** local `main` is ahead of `origin/main` (`dc67aae`), 0 behind → clean fast-forward. The in-session `git push` was **denied by the auto-mode classifier** — **Giovanni runs `! git push`** (or adds a Bash push permission). Bundles this change's full lifecycle + the 2 follow-up commits + the earlier unpushed RM-03 memory commit (`a8c8bdb`).
+- **CONTEXT.md reconciliation ✅ DONE** (committed in follow-up — Hold-type glossary + 7 other spots to eight-value; no "six" wording left). **`CLAUDE.md` l.67** stays Giovanni's un-staged `M` edit (hard-Protected — assistant leaves it; commit at will).
+- **F4 ✅ DONE** — `Remediation_Tracker.md` l.30 + l.92 mark F4 resolved 2026-07-06.
+- **Stale docblock ✅ DONE** — `CustomerHoldsTable` docblock 4→6 operator-liftable types (Pint green).
 
 ## Open Patterns
 - **Spec-reconciliation change:** code shipped ahead of truth-spec → MODIFIED-only delta reproducing each requirement VERBATIM + surgical eight-value tokens; faithfulness = word-diff delta vs live + `openspec validate --strict` + independent semantic pass; `openspec archive` applies it into `openspec/specs/**`.

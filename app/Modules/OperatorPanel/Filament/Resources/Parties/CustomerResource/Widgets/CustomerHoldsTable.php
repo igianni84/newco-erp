@@ -49,7 +49,7 @@ use Illuminate\Support\Str;
  *
  * Task 4.1 wires that per-row `lift` — the console's FIRST per-row action. It is VISIBLE iff the Hold is
  * operator-liftable ({@see isOperatorLiftable}: still `active` AND not auto-managed — `admin`/`fraud`/`compliance`/
- * `credit`, design D5/D6), carries an optional `lift_reason`, and routes the Hold's own id (`$record->id`, the
+ * `credit`/`chargeback_review`/`storage_payment_failed`, design D5/D6), carries an optional `lift_reason`, and routes the Hold's own id (`$record->id`, the
  * typed `int` key — NOT the untyped `getKey()`) into {@see LiftHold} through
  * {@see SurfacesDomainActions::surfaceLifecycleOutcome()} — the SAME write-through kit the
  * {@see ViewCustomer} page uses, REUSED here (the widget `use`s the trait and implements {@see i18nKey()} → its

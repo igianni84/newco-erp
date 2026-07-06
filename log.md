@@ -759,3 +759,5 @@
 ## [2026-07-03 19:57] ralph | reconcile-hold-registry-eight-types 3.1 | green | 4 files (progress/tasks/hot/log) | CHANGE_COMPLETE 5/5 — Protected-file terminology hand-off recorded in progress.md; NO Protected file edited (CLAUDE.md/CONTEXT.md stay un-staged M); Hold suite 86/86 + validate --strict green
 
 ## [2026-07-06 09:53] close-ritual | reconcile-hold-registry-eight-types | merged --no-ff (8f2f6bf) + archived 2026-07-06; party-registry+operator-console truth-specs now eight-value HoldType; F4/RM-04 closed; independent semantic verify CLEAN; not pushed (gate)
+
+## [2026-07-06 10:08] docs | hold-eight-value follow-ups | CONTEXT.md glossary 6->8 (8 spots) + F4 marked resolved in Remediation_Tracker (l.30/l.92) + CustomerHoldsTable docblock 4->6 (Pint green); local, not pushed (ritual push classifier-blocked)
