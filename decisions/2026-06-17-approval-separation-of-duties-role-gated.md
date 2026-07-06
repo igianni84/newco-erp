@@ -58,5 +58,5 @@ Shipped, tested code enforces it:
 
 - `docs/spec-errata/2026-06-17-approval-sod-same-actor.md` — the erratum to Paolo.
 - Spec (current floor): `spec/02-prd/Admin_Panel_PRD_v0.3-MVP.md` §5.2/§4.3/§1.4; `spec/02-prd/Module_0_PRD_v0.3-MVP.md` §4.1/§4.2/§13.2; `spec/02-prd/Module_K_PRD_v0.3-MVP.md` §2/§4.4; `spec/04-decisions/MVP_Decisions_Register_v0.1.md` MVP-DEC-007; `feedback_prd_rr_approval`.
-- Shipped enforcement: `openspec/changes/archive/2026-06-16-catalog-lifecycle-approval`; `openspec/changes/archive/2026-06-16-parties-producer-lifecycle`; [2026-06-15-identity-auth.md](2026-06-15-identity-auth.md).
+- Shipped SoD enforcement (Catalog only): `openspec/changes/archive/2026-06-16-catalog-lifecycle-approval`; the floor was registered by [2026-06-15-identity-auth.md](2026-06-15-identity-auth.md). `openspec/changes/archive/2026-06-16-parties-producer-lifecycle` shipped Producer activation **single-operator** — no SoD floor (see the Correction note at top); the Parties floor is added by **RM-08** (`parties-producer-approval-sod`).
 - Spec sync: [2026-06-17-spec-synced-from-documentation-repo.md](2026-06-17-spec-synced-from-documentation-repo.md).

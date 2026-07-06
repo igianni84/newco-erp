@@ -789,3 +789,5 @@
 ## [2026-07-06 15:07] ralph | parties-producer-approval-sod 4.1 | green | 2 files — DemoSeeder Producer SoD fixture (real CreateProducer lineage, distinct-operator activatable) + 3 DemoSeederTest cases; suite 1975/1975, PHPStan max 0, Pint clean
 
 ## [2026-07-06 15:17] ralph | parties-producer-approval-sod 5.1 | green | 2 files (ADR honesty in-place correction, RM-09-style; no supersede; INDEX untouched; diff +4/-2)
+
+## [2026-07-06 16:02] ralph | parties-producer-approval-sod 6.1 | green | 6.1 close/verify: 1975/1975 SQLite+PG17, PHPStan 0, Pint clean, openspec valid, semantic-verify §2.7 CLEAN (0 CRIT; 1 WARN ADR-References overclaim fixed in-place); CHANGE_COMPLETE — awaiting human §2.7 merge/archive/push
