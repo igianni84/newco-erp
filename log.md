@@ -769,3 +769,9 @@
 ## [2026-07-06 10:26] fix | hot.md next-task | corrected: RM-03 already shipped (ADR + archive e9892b9 on main, pushed a8c8bdb); tracker stale (RM-03 shown 🟡); real next actionable = RM-08 SoD (unblocked, no new ADR)
 
 ## [2026-07-06 10:33] docs | Remediation_Tracker RM-03 reconcile | RM-03 stale 🟡->✅ across §3 table + §2 round-plan/next-pointer (now ->RM-08) + §4 detail; RM-03 was shipped 2026-07-03 (archive e9892b9) but never marked done
+
+## [2026-07-06 11:05] spec-to-change | parties-producer-approval-sod (RM-08) | SoD on Producer activation authored: 2 MODIFIED deltas (party-registry Producer Lifecycle + operator-console), validate --strict green; membership SoD deferred, no ADR; awaiting APPROVED
+
+## [2026-07-06 11:12] approve | parties-producer-approval-sod (RM-08) | Giovanni approved; APPROVED marker created; ready to build via ./ralph.sh --change parties-producer-approval-sod (Producer SoD, 10 tasks)
+
+## [2026-07-06 11:43] ralph | parties-producer-approval-sod 1.1 | green | 3 files | approval copy (EN+IT parties.php) + PartiesApprovalCopyTest 5/5; full suite 1956/1956, phpstan 0, pint clean, validate --strict green

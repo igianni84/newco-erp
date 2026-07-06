@@ -20,6 +20,20 @@ return [
         // :state is the offending blocking KYC token (pending | rejected) — a business enum value, not PII.
         'kyc_not_cleared' => 'Cannot activate this Producer while its KYC is :state. Activation requires KYC cleared — verified or not_required.',
     ],
+    'approval' => [
+        // Producer separation-of-duties floor on ActivateProducer (change parties-producer-approval-sod, design
+        // D1/D4; party-registry — Requirement: Producer Lifecycle; Module K PRD § 4.4 / AC-K-J-10; Admin Panel
+        // PRD § 5.2). ProducerApprovalGovernance guards the `draft → active` transition at the spec-admissible
+        // 2-step Creator → Approver depth: the activator SHALL be an authenticated newco_ops operator
+        // (requires_operator_principal — a system/null actor is rejected, closing the "System actor accepted"
+        // hole) AND SHALL differ from the Producer's creator (creator_may_not_approve — the ProducerCreated actor
+        // read from domain_events). Mirrors lang/en/catalog.php's `approval` group MINUS the reviewer leg (the
+        // Producer FSM is linear — no `reviewed` state, no reviewer source). :entity is the entity-type label
+        // ('Producer') — NEVER PII; the acting principal lives on the event/audit row (the system of record for
+        // who performed each step), so the copy names only the violated RULE, mirroring the Catalog discipline.
+        'requires_operator_principal' => 'Activating this :entity requires an authenticated operator principal; a system actor cannot satisfy the separation-of-duties floor.',
+        'creator_may_not_approve' => 'Separation of duties on this :entity: its creator may not also activate it.',
+    ],
     'club' => [
         // BR-K-Club-1 rejection (design D3/D4): a Club requires exactly one EXISTING operating Producer.
         // :producer is the operator-facing producer-id reference (not PII).
@@ -181,8 +195,8 @@ return [
         // dashboard. They live here in the Module-K domain-copy file (not in operator_console.php) because a review's
         // reason / threshold is DOMAIN vocabulary, not console chrome; a surface maps the enum `->value` through these
         // keys (the enums carry NO label() method — the repo convention; SanctionsStatus / HoldType have none). Keyed
-        // by the persisted token so a value renders whatever surface reads it. Parties copy is EN-only in this repo
-        // (there is no lang/it/parties.php); under `it` it falls back per-key to EN (DEC-127).
+        // by the persisted token so a value renders whatever surface reads it. These compliance-review labels are
+        // EN-only (lang/it/parties.php covers only the `approval` group); under `it` they fall back per-key to EN (DEC-127).
         'reason' => [
             // ComplianceReviewReason::EnhancedKycThreshold — the SOLE reason in this change (a Customer crossing the
             // €10k single-transaction OR €50k rolling-trailing-12-month cumulative enhanced-KYC threshold, DEC-035).

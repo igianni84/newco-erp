@@ -2,7 +2,7 @@
 
 ## 1. Domain — the separation-of-duties guard (mirror Catalog, Parties-local)
 
-- [ ] 1.1 Add the localized copy keys to `lang/en/parties.php` **and** `lang/it/parties.php`: an `approval` group with `requires_operator_principal` and `creator_may_not_approve` (i18n invariant 12 — no hardcoded strings).
+- [x] 1.1 Add the localized copy keys to `lang/en/parties.php` **and** `lang/it/parties.php`: an `approval` group with `requires_operator_principal` and `creator_may_not_approve` (i18n invariant 12 — no hardcoded strings).
   - Assert (test `tests/Unit/…/PartiesApprovalCopyTest.php` or reuse an i18n test): both keys resolve non-empty in `en` and `it`. `vendor/bin/pint --test` clean.
 - [ ] 1.2 Add `app/Modules/Parties/Exceptions/SeparationOfDutiesViolation.php` (a domain exception) with static factories `requiresOperatorPrincipal(string $entity): self` and `creatorMayNotApprove(string $entity): self`, each resolving its localized message via the `parties.approval.*` keys.
   - Assert (`tests/Unit/Modules/Parties/Exceptions/SeparationOfDutiesViolationTest.php`): each factory produces the resolved localized message and carries the entity token. PHPStan/Pint clean.
