@@ -564,9 +564,10 @@ return array_replace_recursive([
 
         // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs (task 3.1)
         // and the four KYC verbs require/waive/verify/reject (task 4.1). Every action routes through a Parties
-        // domain action, never a Filament default mutating path (ADR 2026-06-19). Producer has NO
-        // separation-of-duties activation (it is KYC-gated, not Creator→Reviewer→Approver), so there is no
-        // `affordance` block and no verb carries a confirmation modal (design D3). The KYC verbs are audit-only
+        // domain action, never a Filament default mutating path (ADR 2026-06-19). Producer activation now carries a
+        // separation-of-duties floor (a distinct operator-principal approves, never the creator — RM-08,
+        // parties-producer-approval-sod) LAYERED ON the KYC gate, so `activate` surfaces the `affordance.second_actor`
+        // confirmation cue (below) while the other five verbs carry no modal. The KYC verbs are audit-only
         // (the domain records no event and places no Hold); `waive` is the operator "deselect" of the KYC
         // requirement (any outstanding state → not_required, clearing the activation gate as if verified).
         'actions' => [
@@ -592,6 +593,14 @@ return array_replace_recursive([
             'kyc_verified' => 'Producer KYC verified.',
             'kyc_rejected' => 'Producer KYC rejected.',
             'action_failed' => 'The action could not be completed.',
+        ],
+
+        // The "second actor required" cue on `activate` — Producer activation is separation-of-duties-gated
+        // (a distinct operator-principal must approve, never the Producer's creator; RM-08,
+        // parties-producer-approval-sod), so the console surfaces this confirmation modal exactly as the catalog
+        // consoles do. Producer's status FSM is linear (no reviewer leg), so the copy names only the creator.
+        'affordance' => [
+            'second_actor' => 'Activation must be approved by a different operator than the one who created this Producer.',
         ],
     ],
 

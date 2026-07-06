@@ -23,7 +23,7 @@
 
 ## 3. Operator console — surface the affordance, don’t reimplement
 
-- [ ] 3.1 Update the Producer `activate` verb on `app/Modules/OperatorPanel/Filament/Resources/Parties/ProducerResource/Pages/ViewProducer.php` to present the **"second actor required"** affordance and map a thrown `SeparationOfDutiesViolation` to a surfaced notification (state unchanged) — the same "surface, not reimplement" contract Catalog uses. Keep the KYC-rejection notification path intact; do not add submit/reject/reopen.
+- [x] 3.1 Update the Producer `activate` verb on `app/Modules/OperatorPanel/Filament/Resources/Parties/ProducerResource/Pages/ViewProducer.php` to present the **"second actor required"** affordance and map a thrown `SeparationOfDutiesViolation` to a surfaced notification (state unchanged) — the same "surface, not reimplement" contract Catalog uses. Keep the KYC-rejection notification path intact; do not add submit/reject/reopen.
   - Assert: the activate action exposes the affordance; a domain SoD violation renders a notification without changing state.
 - [ ] 3.2 Console tests (extend `tests/Feature/Modules/OperatorPanel/Parties/ProducerLifecycleConsoleTest.php`): distinct operators activate a KYC-cleared Producer (happy → `active` + event); creator self-approval via the console → notification, Producer stays `draft`, 0 `ProducerActivated`; the surface exposes the "second actor required" affordance. Migrate existing console activation assertions to distinct operator principals.
 

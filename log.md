@@ -781,3 +781,5 @@
 ## [2026-07-06 12:05] ralph | parties-producer-approval-sod 1.3 | green | 3 files (guard + Feature test + lessons); ProducerApprovalGovernance SoD guard, no Catalog import; suite 1965/1965, PHPStan 0
 
 ## [2026-07-06 14:28] ralph | parties-producer-approval-sod 2.1+2.2 | green | SoD floor wired into ActivateProducer + 6-file activation-test migration (distinct/vacuous operators, every(System)->split); suite 1969/1969, PHPStan 0
+
+## [2026-07-06 14:43] ralph | parties-producer-approval-sod 3.1 | green | 5 files: ViewProducer second-actor affordance + SoD->action_failed surface; producer.affordance.second_actor copy EN+IT; console+i18n tests. Suite 1972/1972, PHPStan 0, Pint clean

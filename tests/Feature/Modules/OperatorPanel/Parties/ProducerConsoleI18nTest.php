@@ -43,7 +43,9 @@ use Illuminate\Support\Facades\Lang;
  * columns (the kit's `lifecycle_state` analogue):
  *   - OperatorConsoleResource: label, plural_label, columns.version;
  *   - ProducerResource: columns.status, columns.kyc_status (own badge columns — Producer's two FSMs, design D2);
- *   - SurfacesDomainActions: the six action labels + their six success notifications + notifications.action_failed.
+ *   - SurfacesDomainActions: the six action labels + their six success notifications + notifications.action_failed
+ *     + the `activate` confirmation affordance (`affordance.second_actor`, the separation-of-duties second-actor
+ *     cue — change parties-producer-approval-sod).
  * A console that resolves all of these MUST author them all or a label renders as a raw key under any locale.
  *
  * @return list<string> dot-paths WITHOUT the `operator_console.producer.` prefix
@@ -58,6 +60,7 @@ function producerConsoleKitKeys(): array
         'notifications.activated', 'notifications.retired',
         'notifications.kyc_required', 'notifications.kyc_waived', 'notifications.kyc_verified', 'notifications.kyc_rejected',
         'notifications.action_failed',
+        'affordance.second_actor',
     ];
 }
 

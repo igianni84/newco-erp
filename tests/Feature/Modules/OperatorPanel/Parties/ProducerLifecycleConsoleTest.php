@@ -7,9 +7,11 @@
 // cascade-retire action are deliberately ABSENT (scope guard). Each action routes through a Parties domain
 // action by the producer id (design D4) and NEVER writes `status` itself (the no-Eloquent-write rule); the
 // console SURFACES the domain's decision — an out-of-state transition becomes the `action_failed` danger
-// notification (design D5). Activation is KYC-gated, not separation-of-duties, so activate carries NO "second
-// actor" confirmation affordance (design D3). Retirement CASCADES sunset onto the operated active Clubs, each
-// ClubSunset causally linked to the retirement (§ 10.2, Producer → Club leg).
+// notification (design D5). Activation now carries a separation-of-duties floor (a distinct operator-principal
+// approves, never the creator — change parties-producer-approval-sod), so activate surfaces the "second actor
+// required" confirmation affordance and a creator self-approval becomes the `action_failed` notification, state
+// unchanged. Retirement CASCADES sunset onto the operated active Clubs, each ClubSunset causally linked to the
+// retirement (§ 10.2, Producer → Club leg).
 //
 // DatabaseMigrations (mirroring ProducerCreateConsoleTest + the catalog lifecycle console tests): each console
 // action drives a real domain action that opens its OWN DB::transaction, so the DomainEventRecorder's
@@ -20,6 +22,7 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\Pages\ViewProducer;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\CreateProducer;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
@@ -158,7 +161,7 @@ it('surfaces an out-of-state retire as a danger notification, changing nothing',
         ->and(DomainEvent::query()->count())->toBe(0);
 });
 
-it('exposes only the two status verbs — activate (no second-actor affordance) and retire — and none of the catalog governance verbs nor a cascade-retire action', function () {
+it('exposes only the two status verbs — activate (with the second-actor SoD affordance) and retire — and none of the catalog governance verbs nor a cascade-retire action', function () {
     actingAs(Operator::factory()->create(), 'operator');
     $producer = Producer::factory()->create(['status' => ProducerStatus::Draft]);
 
@@ -166,13 +169,41 @@ it('exposes only the two status verbs — activate (no second-actor affordance) 
         // The two Producer status verbs are present …
         ->assertActionExists('activate')
         ->assertActionExists('retire')
-        // … activate is form-less and carries NO "second actor" confirmation affordance — Producer activation is
-        // KYC-gated, not a Creator → Reviewer → Approver SoD transition (design D3) …
-        ->assertActionExists('activate', fn (Action $action): bool => ! $action->isConfirmationRequired())
+        // … activate carries the "second actor required" confirmation affordance — Producer activation is now a
+        // separation-of-duties floor (a distinct operator-principal approves, never the creator — change
+        // parties-producer-approval-sod), surfaced exactly as the catalog consoles do …
+        ->assertActionExists('activate', fn (Action $action): bool => $action->isConfirmationRequired()
+            && $action->getModalDescription() === (string) __('operator_console.producer.affordance.second_actor'))
         // … none of the catalog governance verbs leak in (this page is NOT OperatorConsoleViewRecord — design D1) …
         ->assertActionDoesNotExist('submit')
         ->assertActionDoesNotExist('reject')
         ->assertActionDoesNotExist('reopen')
         // … and there is no separate cascade-retire action (retire cascades inside the one RetireProducer action).
         ->assertActionDoesNotExist('retireCascade');
+});
+
+it('surfaces a creator self-approval activate through the console as a danger notification, leaving the Producer draft with no ProducerActivated', function () {
+    // The separation-of-duties floor (change parties-producer-approval-sod) forbids the operator who CREATED a
+    // Producer from approving its own activation. A single operator both creates and tries to activate the same
+    // Producer through the console: the domain throws a SeparationOfDutiesViolation (a RuntimeException), the trait
+    // catches it by base type and surfaces the `action_failed` danger notification, and the rejecting action's
+    // transaction rolls back — so nothing moves (the "surface, not reimplement" contract, design D5).
+    $creator = Operator::factory()->create();
+    actingAs($creator, 'operator');
+
+    // Genuine creator lineage: CreateProducer records a ProducerCreated whose actor_id is $creator (resolved from
+    // the operator guard), so the floor's creatorOf() recovers $creator and the same-operator activation below is a
+    // self-approval. A `factory()->create()` row records no ProducerCreated (null creator) → the floor is vacuously
+    // cleared, which is exactly why this case seeds the creator lineage through the real Action.
+    $producer = app(CreateProducer::class)->handle(name: 'Domaine Leflaive', region: 'Burgundy', country: 'FR');
+
+    Livewire::test(ViewProducer::class, ['record' => $producer->id])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.producer.notifications.action_failed'));
+
+    // Unchanged: still draft, and the rejected self-approval recorded NO ProducerActivated (its transaction rolled
+    // back — the SoD floor runs inside the domain transaction, before any write). The ProducerCreated from the
+    // create step remains, so the assertion is scoped by name rather than a total-count of zero.
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
+        ->and(DomainEvent::query()->where('name', 'ProducerActivated')->count())->toBe(0);
 });
