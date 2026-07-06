@@ -25,8 +25,9 @@
 - **Round 2 P0 compliance floor ✅ COMPLETE (2026-07-03) — both built, merged, archived, PUSHED:**
   - **RM-01 ✅** GDPR erasure/anonymisation + Address (`parties-anonymisation`) — archived `2026-07-02-parties-anonymisation`; merge `2385772` / archive `1109392` / push `9f0ac46` (ralph branch deleted). Full suite **1883/1883** SQLite+PG17 (10189 assn), **4× semantic-verify CLEAN**; party-registry **+4 ADDED / ~1 MODIFIED**; mini-ADR adopts canon **MVP-DEC-015** (`compliance`-only Hold block), J-9b export minimal-synchronous-in-memory.
   - **RM-02 ✅** enhanced-KYC €10k/€50k threshold + review-queue (`parties-enhanced-kyc-threshold`) — archived `2026-07-03-parties-enhanced-kyc-threshold`; merge `eb05b84` / archive `e2cff76`; **`main`↔`origin` in sync**. Full suite **1947/1947** SQLite+PG17 (10459 assn), **semantic-verify 3 subagents CLEAN (0 CRITICAL/0 WARNING)**; party-registry **42→44**; no ADR gate (interview: Option B AML→`under_review` blocks + rolling-12mo).
-- **▶ NEXT — RM-03** (membership charge-on-approval, `DEC-016`): P1 canon · L · **needs ADR FIRST**. We built the flow canon declares *wrong* (a distinct `approved`-but-unpaid state); it's one of Paolo's 3 walkthrough scenarios. The ADR must settle the **charge seam** (Module S/E are stubs) → then `/spec-to-change` → APPROVED → `./ralph.sh`. **RM-05** (capacity seat-set) stays ⏸️ pending Module A.
-- **Overall goal:** **Round 1 ✅ + Round-2 P0 floor ✅ cleared** before Paolo; now work the P1 canon divergences (RM-03 → RM-05) that map to Paolo's walkthrough scenarios.
+- **RM-03 ✅ DONE** (membership charge-on-approval, `MVP-DEC-016`) — ADR `2026-07-03-adopt-mvp-dec-016-…` + change archived `2026-07-03-parties-membership-charge-on-approval` (`e9892b9`, on `main`, pushed). Round-2 P1-canon builds cleared (RM-03 ✅ / RM-04 ✅); **RM-05** (capacity seat-set) stays ⏸️ pending Module A `qty`.
+- **▶ NEXT — RM-08** (Separation-of-Duties on Parties approval — Producer + membership; K J-10): P2 demo · M · **no new ADR** (foundation `decisions/2026-06-17-approval-separation-of-duties-role-gated`) → `/spec-to-change` → APPROVED → `./ralph.sh`.
+- **Overall goal:** **Round 1 ✅ + Round-2 P0 floor ✅ cleared** before Paolo; now work the P1 canon divergences (RM-03 ✅ → RM-05 ⏸️) that map to Paolo's walkthrough scenarios.
 - **Open incidental findings (§7):** **F1** DemoSeeder SQLite-only (PG-truncate) · **F2** prod operator-mgmt missing → SoD unsatisfiable in prod. (**F3** ✅ resolved 2026-07-02. **F4** ✅ resolved 2026-07-06 — truth-spec *Hold Registry* reconciled six→eight via `reconcile-hold-registry-eight-types` (archived `2026-07-06`); specs now match shipped code + canon MVP-DEC-008.) Neither open finding blocks the pre-Paolo demo; tracked so a later step picks them up.
 
 ---
@@ -37,7 +38,7 @@
 `RM-07` seed operators · `RM-04` Hold 6→8 · `RM-09` reconcile erasure ADR · `RM-10` ClubCredit event rename · `RM-24` Product-Type immutability guard · `RM-06` reject/edit review-freshness (S/M — it's also Paolo's "rejection round" scenario).
 
 **Round 2 — the compliance-floor builds + the canon design changes** (M/L, own OpenSpec changes)
-`RM-01` GDPR erasure + Address (floor, headline) · `RM-02` enhanced-KYC threshold (floor) · `RM-03` membership charge-on-approval (DEC-016 — needs ADR) · `RM-05` capacity seat-set (decide K-side seam vs wait for Module A).
+`RM-01` GDPR erasure + Address (floor, headline) · `RM-02` enhanced-KYC threshold (floor) · `RM-03` membership charge-on-approval (MVP-DEC-016) ✅ · `RM-05` capacity seat-set (decide K-side seam vs wait for Module A) ⏸️.
 
 **Later / blocked** — everything in P3–P4 below: Module 0 completeness (bulk import, whitelist…) and Module K cross-module items that legitimately wait on Modules A/S/E. Kept in the backlog so nothing is silently dropped.
 
@@ -49,7 +50,7 @@
 |---|---|---|---|---|---|---|
 | RM-01 | P0 floor | GDPR erasure / anonymisation + Address entity | K J-9, J-9a, FSM-16, BR-Customer-2; canon J-9b, DEC-015 | mini | L | ✅ |
 | RM-02 | P0 floor | Enhanced-KYC €10k/€50k threshold + review-queue | K J-7a, EVT-12a | — | M | ✅ |
-| RM-03 | P1 canon | Membership charge-on-approval (collapse "approved-but-unpaid") | K J-16, J-1/2/3, EVT-15, FSM-2; MVP-DEC-016 | **yes** ✅ | L | 🟡 |
+| RM-03 | P1 canon | Membership charge-on-approval (collapse "approved-but-unpaid") | K J-16, J-1/2/3, EVT-15, FSM-2; MVP-DEC-016 | **yes** ✅ | L | ✅ |
 | RM-04 | P1 canon | Hold enum 6→8 (+ lift discipline for the 2 new) | K FSM-10/11, EVT-18/19, MVP-2; DEC-008 | mini | S | ✅ |
 | RM-05 | P1 canon | Hero-Package capacity seat-set (Active+Suspended) + WaitingList | K J-13/14/15, XM-18/19, FSM-2; DEC-011/017 | **yes** | L | ⏸️ (Module A qty) |
 | RM-06 | P1 canon | PIM reject/edit review-freshness + explicit re-submit | 0 J-7, BR-Lifecycle-6; DEC-019 | mini | M | ✅ |
@@ -101,13 +102,13 @@
 
 ### P1 — Canon divergences (Paolo's walkthrough scenarios — make us *current*, not *wrong*)
 
-#### RM-03 — Membership charge-on-approval (collapse "approved-but-unpaid")  ·  L · needs ADR ·  🟡
+#### RM-03 — Membership charge-on-approval (collapse "approved-but-unpaid")  ·  L · ADR ✅ ·  ✅
 - **Fixes:** K `J-16`, `J-1/2/3`, `EVT-15`, `FSM-2`; **`MVP-DEC-016`** (⚠️ ≠ greenfield `DEC-016` AI-copilot — number collision; always the full token).
 - **Why:** we built the exact flow canon declared **wrong** — distinct `Approved` state + separate `ActivateProfile` gated on a (deferred) Module-E signal. Canon = producer approval `= charge = activation`, atomic; `MembershipFeePaid` from Module S; INV1, no INV0.
 - **Scope decision (ADR first):** adopt MVP-DEC-016 locally; collapse the durable `approved`-but-unpaid intermediate; decide the launch seam for the charge trigger since **Module S/E don't exist yet** (options: a temporary K-internal atomic activate-on-approval that later delegates to the Module-S `MembershipFeePaid`, vs. wait). Write the ADR, then implement.
 - **Done when:** ADR merged; no durable `approved`-unpaid state; approval atomically activates (charge-failure → not activated, no seat consumed); tests updated.
 - **Depends on:** interacts with RM-05 (capacity enforced "at the atomic approve moment").
-- **🟡 ADR authored (2026-07-03) — grill-with-docs, grounded on LIVE canon:** [`decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md`](../../decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md) (+ INDEX). Full ADR. **Key finding (Giovanni sent me to the GitHub canon — decisive):** canon **retains `Approved` as a *transient* pass-through** (`Applied → Approved → Active` in one operation, never durably resting) — `AC-K-FSM-2` enumerates `Approved → Active` **and** asserts "no durable resting state", so the initial lean to **remove** `Approved` (Option A) would **FAIL AC-K-FSM-2** → **keep-transient (Option B)** chosen. Charge-fail → stays `Applied`, no seat, no OC lock (canon-specified). Grounded via read-only `git fetch cmless/main` (@ `6f3c2f8`, +23 vs our frozen `4f48277`) — MVP-DEC-016 register + AC-K-FSM-2/J-16/J-2/3/EVT-15 verbatim; reinforced by MVP-DEC-022/CML-89 (no auto-approve). **Scope now = K-side shape-collapse + `MembershipFeePaid` E→S seam (docblock-only) + INV1 target;** real charge (mandate-at-application, card/SEPA, `fee_paid_at`, invoice) deferred **Module S/E**, seat gate (`Active`+`Suspended`, MVP-DEC-017) deferred **RM-05**. `ApproveProfile` drives through to `Active` synchronously today (K-internal activate-on-approval). **Next: `/spec-to-change` → APPROVED → `./ralph.sh`.**
+- **✅ SHIPPED 2026-07-03 — ADR (grill-with-docs, grounded on LIVE canon):** [`decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md`](../../decisions/2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval.md) (+ INDEX). Full ADR. **Key finding (Giovanni sent me to the GitHub canon — decisive):** canon **retains `Approved` as a *transient* pass-through** (`Applied → Approved → Active` in one operation, never durably resting) — `AC-K-FSM-2` enumerates `Approved → Active` **and** asserts "no durable resting state", so the initial lean to **remove** `Approved` (Option A) would **FAIL AC-K-FSM-2** → **keep-transient (Option B)** chosen. Charge-fail → stays `Applied`, no seat, no OC lock (canon-specified). Grounded via read-only `git fetch cmless/main` (@ `6f3c2f8`, +23 vs our frozen `4f48277`) — MVP-DEC-016 register + AC-K-FSM-2/J-16/J-2/3/EVT-15 verbatim; reinforced by MVP-DEC-022/CML-89 (no auto-approve). **Scope now = K-side shape-collapse + `MembershipFeePaid` E→S seam (docblock-only) + INV1 target;** real charge (mandate-at-application, card/SEPA, `fee_paid_at`, invoice) deferred **Module S/E**, seat gate (`Active`+`Suspended`, MVP-DEC-017) deferred **RM-05**. `ApproveProfile` drives through to `Active` synchronously today (K-internal activate-on-approval). **Built + archived: `2026-07-03-parties-membership-charge-on-approval` (`e9892b9`, 5/5 tasks, on `main`, pushed).**
 
 #### RM-04 — Hold enum 6→8 + lift discipline  ·  S · mini-ADR ·  ✅
 - **Fixes:** K `FSM-10/11`, `EVT-18/19`, `MVP-2`; **`DEC-008`**.

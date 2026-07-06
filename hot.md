@@ -16,7 +16,7 @@ updated: 2026-07-06
 
 ## Active Change & Next Task
 - **NO active change** — `openspec/changes/` clear of in-flight work; working tree clean.
-- **⚠ RM-03 is actually DONE — tracker stale:** ADR `2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval` (active) + change archived `2026-07-03-parties-membership-charge-on-approval` (`e9892b9`, on main, pushed `a8c8bdb`). But `Remediation_Tracker.md` §3 l.52 still shows **🟡** and §2/l.28 + §4/l.104 list it "NEXT — needs ADR". **Reconcile RM-03 → ✅** (same discipline as the F4 fix).
+- **RM-03 ✅ DONE + tracker reconciled** — ADR `2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval` (active) + change archived `2026-07-03-parties-membership-charge-on-approval` (`e9892b9`, on main). `Remediation_Tracker.md` updated 🟡→✅ (§3 table, §2 round-plan + next-pointer, §4 detail).
 - **NEXT actionable = RM-08** — Separation-of-Duties on Parties approval (Producer + membership four-eyes; K J-10; P2 demo, size M, 🔴). **No new ADR** — foundation is `decisions/2026-06-17-approval-separation-of-duties-role-gated`. Workflow: `/spec-to-change` → `APPROVED` → `./ralph.sh`. **RM-05** (capacity seat-set) ⏸️ (Module A `qty`); lower = P3/P4 backlog (RM-12/13/14/19-23). Giovanni confirms the pick.
 
 ## Blockers & Decisions Needed

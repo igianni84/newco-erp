@@ -767,3 +767,5 @@
 ## [2026-07-06 10:19] close-ritual | reconcile-hold-registry-eight-types | PUSHED dc67aae..067f459 (Giovanni ! git push); origin synced; F4/RM-04 closed end-to-end; close ritual COMPLETE
 
 ## [2026-07-06 10:26] fix | hot.md next-task | corrected: RM-03 already shipped (ADR + archive e9892b9 on main, pushed a8c8bdb); tracker stale (RM-03 shown 🟡); real next actionable = RM-08 SoD (unblocked, no new ADR)
+
+## [2026-07-06 10:33] docs | Remediation_Tracker RM-03 reconcile | RM-03 stale 🟡->✅ across §3 table + §2 round-plan/next-pointer (now ->RM-08) + §4 detail; RM-03 was shipped 2026-07-03 (archive e9892b9) but never marked done
