@@ -34,7 +34,7 @@
 
 ## 5. Documentation honesty
 
-- [ ] 5.1 Add a dated in-place correction to `decisions/2026-06-17-approval-separation-of-duties-role-gated.md`: distinguish the SoD floor **built in Catalog** (`catalog-lifecycle-approval`) from **Producer activation**, which shipped KYC-gated single-operator — RM-08 (`parties-producer-approval-sod`) is what makes the "already correct for Parties" claim true. No supersede, no decision-text change; `decisions/INDEX.md` unchanged (mirror the RM-09 in-place-correction precedent).
+- [x] 5.1 Add a dated in-place correction to `decisions/2026-06-17-approval-separation-of-duties-role-gated.md`: distinguish the SoD floor **built in Catalog** (`catalog-lifecycle-approval`) from **Producer activation**, which shipped KYC-gated single-operator — RM-08 (`parties-producer-approval-sod`) is what makes the "already correct for Parties" claim true. No supersede, no decision-text change; `decisions/INDEX.md` unchanged (mirror the RM-09 in-place-correction precedent).
   - Assert: `git diff` shows only the added correction marker + reworded overclaim clause; the ADR’s Decision/Alternatives/Trade-offs are untouched.
 
 ## 6. Verification

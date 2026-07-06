@@ -787,3 +787,5 @@
 ## [2026-07-06 14:53] ralph | parties-producer-approval-sod 3.2 | green | 1 file — migrated console activation happy path to genuine distinct-operator lineage (creator op A via CreateProducer, approver op B via console); suite 1972/1972
 
 ## [2026-07-06 15:07] ralph | parties-producer-approval-sod 4.1 | green | 2 files — DemoSeeder Producer SoD fixture (real CreateProducer lineage, distinct-operator activatable) + 3 DemoSeederTest cases; suite 1975/1975, PHPStan max 0, Pint clean
+
+## [2026-07-06 15:17] ralph | parties-producer-approval-sod 5.1 | green | 2 files (ADR honesty in-place correction, RM-09-style; no supersede; INDEX untouched; diff +4/-2)
