@@ -400,6 +400,12 @@ return array_replace_recursive([
             'kyc_rejected' => 'KYC del Producer rifiutato.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
+
+        // Cue «secondo attore richiesto» sull'azione `activate` — la separazione dei compiti impone che ad
+        // approvare l'attivazione sia un operatore diverso dal creatore del Producer (RM-08).
+        'affordance' => [
+            'second_actor' => 'L’attivazione deve essere approvata da un operatore diverso da quello che ha creato questo Producer.',
+        ],
     ],
 
     // Club — programma di membership operato da un Producer (Module K § 4.3). `label` / `plural_label` assenti →

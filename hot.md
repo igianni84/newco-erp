@@ -7,25 +7,25 @@ updated: 2026-07-06
 # Hot Cache
 
 ## Last Updated
-**2026-07-06 — `reconcile-hold-registry-eight-types` MERGED (`--no-ff` 8f2f6bf) + ARCHIVED (`2026-07-06-…`) + follow-ups. Close ritual §2.7 COMPLETE + PUSHED (`dc67aae..067f459`, origin synced).** F4/RM-04 closed: the two truth-specs (`party-registry`, `operator-console`) now state the **eight-value** `HoldType` domain, matching shipped code (`d8ec261`) + canon MVP-DEC-008. Independent semantic verification (2nd agent, fresh read): **CLEAN-WITH-SUGGESTIONS** — zero CRITICAL/WARNING. **Follow-ups DONE (committed + pushed):** `CONTEXT.md` Hold-type glossary reconciled 6→8 (8 spots), `Remediation_Tracker.md` F4 marked ✅ resolved (l.30 + l.92), `CustomerHoldsTable` docblock 4→6 types (Pint green), `CLAUDE.md` l.67 `(6 types)`→`(8 types)`.
+**2026-07-06 — RM-08 `parties-producer-approval-sod` COMPLETE (10/10) ✅ — awaiting human §2.7 merge/archive/push.** Task 6.1 (close/verify) green: full suite **1975/1975** (10497 assn) on **SQLite AND PG17** (the `pg` container, postgres:17.10 / `newco_test` — the `normalizeActorId` cross-engine `===`, the `actor_role` CHECK, partial indexes and plpgsql triggers finally exercised on Postgres), PHPStan max **0**, Pint `--test` clean, `openspec validate --strict` green. **GUIDE §2.7 semantic-verify** via an independent subagent (the "nuova finestra" intent) → **0 CRITICAL**: completeness (12/12 delta scenarios → asserting tests), correctness (self-approval can't slip — int-to-int cross-engine compare; D6 order proven; no bypass writer), coherence (D1–D8, invariant 10, surface-not-reimplement) all CLEAN. 1 WARNING (residual `parties-producer-lifecycle` overclaim in the ADR *References* "Shipped enforcement:" bullet — RM-09 "F3" residual class) **fixed in-place**; 1 SUGGESTION (console-test body assertion) deferred. All 10 tasks `[x]` → **CHANGE_COMPLETE**.
 
 ## Build & Quality Status
 - Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- This change touched **zero code/test/migration** → full suite byte-identical to pre-merge (1951/1951). Hold suite re-run green this session: **86/86** (571 assertions, ~3s, SQLite).
-- ⚠ Hold filter via `php -d memory_limit=2G vendor/bin/pest --filter='HoldEnums|HoldRegistry|HoldLifecycle|ComplianceReadApi|CustomerAnonymisationHoldPrecedence|CustomerHoldsConsole|HoldStatusCoupling|CustomerHoldsChain'` (artisan `--filter` multi-class = 128M fatal). PG17 close-ritual recipe applies to **code-bearing** changes; **skipped here** (no code delta — nothing new to verify cross-engine).
+- Full suite **1975/1975** (10497 assn) green on **SQLite (~93s) AND PG17 (~490s)** · PHPStan max **0** · Pint clean · `openspec validate parties-producer-approval-sod --strict` valid.
+- **PG17 recipe (env has it wired):** `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=-1 vendor/bin/pest` (the `pg` docker container; phpunit sqlite `<env>` is `force=false` so real env wins — matches `docs/development.md` `tests-pgsql`). **NOT** `invoicing-system-db-1` on 5432 (different project).
+- ⚠ Full suite = `php -d memory_limit=-1 vendor/bin/pest` — `php artisan test` (128 MB subprocess) OOMs on the full suite. Per-`--filter`/per-file runs fine under `artisan test`.
 
 ## Active Change & Next Task
-- **NO active change** — `openspec/changes/` clear of in-flight work; working tree clean.
-- **RM-03 ✅ DONE + tracker reconciled** — ADR `2026-07-03-adopt-mvp-dec-016-membership-charge-on-approval` (active) + change archived `2026-07-03-parties-membership-charge-on-approval` (`e9892b9`, on main). `Remediation_Tracker.md` updated 🟡→✅ (§3 table, §2 round-plan + next-pointer, §4 detail).
-- **NEXT actionable = RM-08** — Separation-of-Duties on Parties approval (Producer + membership four-eyes; K J-10; P2 demo, size M, 🔴). **No new ADR** — foundation is `decisions/2026-06-17-approval-separation-of-duties-role-gated`. Workflow: `/spec-to-change` → `APPROVED` → `./ralph.sh`. **RM-05** (capacity seat-set) ⏸️ (Module A `qty`); lower = P3/P4 backlog (RM-12/13/14/19-23). Giovanni confirms the pick.
+- **RM-08 `parties-producer-approval-sod` is COMPLETE (10/10) and VERIFIED — but NOT merged/archived/pushed** (the loop never does that). Tracker RM-08 flipped ✅ *awaiting review* across §1/§3/detail/§6. Branch `ralph/parties-producer-approval-sod`.
+- **NEXT action is the HUMAN's GUIDE §2.7 close:** `git checkout main && git merge --no-ff ralph/parties-producer-approval-sod` → `openspec archive 2026-07-06-parties-producer-approval-sod --yes` → `git push` → `git branch -d ralph/parties-producer-approval-sod`.
+- No further ralph task in this change → this iteration emits `<promise>CHANGE_COMPLETE</promise>`. After merge, the next tracker item RM-05 (capacity seat-set) is ⏸️ blocked on Module A `qty`; the human picks the next change.
 
 ## Blockers & Decisions Needed
-- **✅ Repo fully synced** — `origin/main` @ `52b9983` (close ritual + follow-ups CONTEXT.md/tracker/docblock/CLAUDE.md + the RM-03 tracker reconcile, all pushed). **Note:** the auto-mode classifier blocks the assistant's own `git push` — Giovanni runs `! git push`; any bookkeeping commit made after a push trails until the next one (rides with the next change's close).
-- **CONTEXT.md + CLAUDE.md reconciliation ✅ DONE & committed** — CONTEXT.md Hold-type glossary + 7 spots to eight-value (no "six" left); CLAUDE.md l.67 `(6 types)`→`(8 types)` (Giovanni-authorized commit of his hard-Protected edit).
-- **F4 ✅ DONE** — `Remediation_Tracker.md` l.30 + l.92 mark F4 resolved 2026-07-06.
-- **Stale docblock ✅ DONE** — `CustomerHoldsTable` docblock 4→6 operator-liftable types (Pint green).
+- None. Change built, all gates green on **both** engines, semantic-verify CLEAN.
+- **Repo sync:** `origin/main` @ `067f459`; ralph branch ahead (7 commits incl. this close). Assistant `git push` classifier-gated → Giovanni pushes at §2.7.
 
 ## Open Patterns
-- **Spec-reconciliation change:** code shipped ahead of truth-spec → MODIFIED-only delta reproducing each requirement VERBATIM + surgical eight-value tokens; faithfulness = word-diff delta vs live + `openspec validate --strict` + independent semantic pass; `openspec archive` applies it into `openspec/specs/**`.
-- **Half-fixed Protected file:** a pre-edit can swap a count token yet leave the body contradicting it — word-diff `git diff HEAD` + re-grep the working tree; report *current* per-line status, never the authored flag list.
-- **Close ritual with uncommitted Protected WIP:** stage the archive with targeted `git add openspec/ hot.md log.md`, **NEVER `git add -A`** (would sweep Giovanni's un-staged `CLAUDE.md`/`CONTEXT.md`).
+- **PG17 is reachable here** (the `pg` container) — the close-ritual PG run is no longer a deferred "document-for-human" step; run it directly with the env-var recipe above.
+- **Honesty-correction "reword every instance" must sweep pointer/reference lists too**, not just prose: a References bullet under an evaluative header ("Shipped enforcement:") listing the disproven change re-plants the overclaim. Generalizes RM-09 F3 → lessons.md 2026-07-06. Final step of any doc-honesty task: `grep -n '<disproven-name>' <adr>`, eyeball each hit.
+- **RM-09-style in-place ADR correction:** dated `**Correction (YYYY-MM-DD · RM-XX).**` banner after frontmatter; NO supersede when the decision is unchanged; Decision/Alternatives/Trade-offs byte-identical + `decisions/INDEX.md` untouched.
+- **Genuine-lineage fixture idiom:** `app(ActorContext::class)->runAs(NewcoOps, $creatorId, fn () => app(CreateProducer::class)->handle(...))` records `ProducerCreated` with the creator's actor_id; `callAction('activate')` auto-confirms the second-actor modal.

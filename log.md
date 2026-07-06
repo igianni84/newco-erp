@@ -769,3 +769,25 @@
 ## [2026-07-06 10:26] fix | hot.md next-task | corrected: RM-03 already shipped (ADR + archive e9892b9 on main, pushed a8c8bdb); tracker stale (RM-03 shown 🟡); real next actionable = RM-08 SoD (unblocked, no new ADR)
 
 ## [2026-07-06 10:33] docs | Remediation_Tracker RM-03 reconcile | RM-03 stale 🟡->✅ across §3 table + §2 round-plan/next-pointer (now ->RM-08) + §4 detail; RM-03 was shipped 2026-07-03 (archive e9892b9) but never marked done
+
+## [2026-07-06 11:05] spec-to-change | parties-producer-approval-sod (RM-08) | SoD on Producer activation authored: 2 MODIFIED deltas (party-registry Producer Lifecycle + operator-console), validate --strict green; membership SoD deferred, no ADR; awaiting APPROVED
+
+## [2026-07-06 11:12] approve | parties-producer-approval-sod (RM-08) | Giovanni approved; APPROVED marker created; ready to build via ./ralph.sh --change parties-producer-approval-sod (Producer SoD, 10 tasks)
+
+## [2026-07-06 11:43] ralph | parties-producer-approval-sod 1.1 | green | 3 files | approval copy (EN+IT parties.php) + PartiesApprovalCopyTest 5/5; full suite 1956/1956, phpstan 0, pint clean, validate --strict green
+
+## [2026-07-06 11:50] ralph | parties-producer-approval-sod 1.2 | green | 2 files (new SeparationOfDutiesViolation exception + Unit test 5/5); suite 1961/1961, phpstan 0, pint clean
+
+## [2026-07-06 12:05] ralph | parties-producer-approval-sod 1.3 | green | 3 files (guard + Feature test + lessons); ProducerApprovalGovernance SoD guard, no Catalog import; suite 1965/1965, PHPStan 0
+
+## [2026-07-06 14:28] ralph | parties-producer-approval-sod 2.1+2.2 | green | SoD floor wired into ActivateProducer + 6-file activation-test migration (distinct/vacuous operators, every(System)->split); suite 1969/1969, PHPStan 0
+
+## [2026-07-06 14:43] ralph | parties-producer-approval-sod 3.1 | green | 5 files: ViewProducer second-actor affordance + SoD->action_failed surface; producer.affordance.second_actor copy EN+IT; console+i18n tests. Suite 1972/1972, PHPStan 0, Pint clean
+
+## [2026-07-06 14:53] ralph | parties-producer-approval-sod 3.2 | green | 1 file — migrated console activation happy path to genuine distinct-operator lineage (creator op A via CreateProducer, approver op B via console); suite 1972/1972
+
+## [2026-07-06 15:07] ralph | parties-producer-approval-sod 4.1 | green | 2 files — DemoSeeder Producer SoD fixture (real CreateProducer lineage, distinct-operator activatable) + 3 DemoSeederTest cases; suite 1975/1975, PHPStan max 0, Pint clean
+
+## [2026-07-06 15:17] ralph | parties-producer-approval-sod 5.1 | green | 2 files (ADR honesty in-place correction, RM-09-style; no supersede; INDEX untouched; diff +4/-2)
+
+## [2026-07-06 16:02] ralph | parties-producer-approval-sod 6.1 | green | 6.1 close/verify: 1975/1975 SQLite+PG17, PHPStan 0, Pint clean, openspec valid, semantic-verify §2.7 CLEAN (0 CRIT; 1 WARN ADR-References overclaim fixed in-place); CHANGE_COMPLETE — awaiting human §2.7 merge/archive/push

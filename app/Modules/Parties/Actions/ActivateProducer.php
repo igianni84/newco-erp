@@ -6,6 +6,7 @@ use App\Modules\Module;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ProducerActivated;
 use App\Modules\Parties\Exceptions\IllegalProducerTransition;
+use App\Modules\Parties\Governance\ProducerApprovalGovernance;
 use App\Modules\Parties\Models\Producer;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\DomainEventRecorder;
@@ -30,10 +31,22 @@ use Illuminate\Support\Facades\DB;
  * Producer `draft` with no event recorded. This closes the seam the previously-shipped `parties-producer-lifecycle`
  * slice left ungated; the cleared semantics ride {@see ProducerActivated} (§ 15.4 — there is no separate KYC event).
  *
+ * SEPARATION-OF-DUTIES FLOOR (change parties-producer-approval-sod, design D1/D4/D6; Module K PRD § 4.4 /
+ * AC-K-J-10; Admin Panel PRD § 5.2): activation additionally requires an authenticated `newco_ops` operator
+ * principal DISTINCT from the Producer's creator (the actor on its `ProducerCreated` event). The
+ * {@see ProducerApprovalGovernance} guard enforces both legs — a `system`/null actor, or a self-approval
+ * (approver === creator), throws a `SeparationOfDutiesViolation` and the transaction rolls back, leaving the
+ * Producer `draft` with no event recorded; a Producer with no recoverable creator (system/seed) imposes no
+ * distinctness constraint but still needs an operator principal. The floor runs AFTER the from-state assert and
+ * BEFORE the KYC gate (design D6 order: from-state → operator-principal → distinct-actor → KYC → write), so a
+ * self-approval is rejected on the SoD floor even when KYC is not cleared — it closes the "System actor accepted"
+ * hole the previously-shipped `parties-producer-lifecycle` slice left open.
+ *
  * From-state guarded and race-safe (design L2): inside ONE {@see DB::transaction} it re-reads the row
  * `->lockForUpdate()` (a real row lock on PostgreSQL, a harmless no-op under SQLite's single writer — the
- * from-state assert carries correctness either way), asserts `status === draft` and that KYC is cleared, then
- * writes `active` and records the event. A call on a Producer not in `draft` throws
+ * from-state assert carries correctness either way), asserts `status === draft`, enforces the separation-of-duties
+ * floor, asserts that KYC is cleared, then writes `active` and records the event. A call on a Producer not in
+ * `draft` throws
  * {@see IllegalProducerTransition::cannotActivate()}, and a `draft` Producer whose KYC is not cleared throws
  * {@see IllegalProducerTransition::kycNotCleared()}; either way the transaction rolls back, leaving the row and
  * the event log unchanged. The status write and the event
@@ -41,13 +54,15 @@ use Illuminate\Support\Facades\DB;
  * the payload reflects the POST-transition state. `version` is NOT bumped — it is reserved for identity-attribute
  * revisions (its parties-core meaning), and the immutable domain event is the audit record of the transition
  * (design L3). The Model stays persistence-only; this action is the only state writer (design L1). The actor is
- * resolved from the {@see ActorContext} seam (System until real principals wire in — design L9).
+ * resolved from the {@see ActorContext} seam — necessarily an authenticated operator now, since the
+ * separation-of-duties floor rejects a `system`/null actor (design L9 / D4).
  */
 class ActivateProducer
 {
     public function __construct(
         private readonly DomainEventRecorder $recorder,
         private readonly ActorContext $actor,
+        private readonly ProducerApprovalGovernance $governance,
     ) {}
 
     public function handle(int $producerId): Producer
@@ -60,6 +75,15 @@ class ActivateProducer
             if ($producer->status !== ProducerStatus::Draft) {
                 throw IllegalProducerTransition::cannotActivate($producer->status);
             }
+
+            // Separation-of-duties floor (change parties-producer-approval-sod, design D1/D4/D6): activation
+            // requires an authenticated `newco_ops` operator distinct from the Producer's creator (the actor on
+            // its `ProducerCreated` event). Evaluated AFTER the from-state assert and BEFORE the KYC gate, so a
+            // `system`/null actor or a self-approval (approver === creator) is rejected on the SoD floor even
+            // when KYC is not cleared. The guard throws SeparationOfDutiesViolation before any write, so `status`
+            // and the event log are left unchanged; a Producer with no recoverable creator (system/seed) imposes
+            // no distinctness constraint but still requires an operator principal.
+            $this->governance->guard('Producer', $producer->id);
 
             // KYC-cleared gate (design L5; § 4.4 / BR-K-Producer-2): a Producer activates only with KYC
             // cleared — `verified`, `not_required`, or NULL (never touched, treated as cleared for additivity,

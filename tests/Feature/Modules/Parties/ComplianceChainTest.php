@@ -21,6 +21,7 @@ use App\Modules\Parties\Events\ProducerActivated;
 use App\Modules\Parties\Exceptions\IllegalProducerTransition;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Producer;
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,8 +98,10 @@ function runComplianceChain(): array
     app(WaiveProducerKyc::class)->handle($producer->id);
 
     // 5. Activate the Producer through the NEW KYC-cleared gate (design L5): `not_required` clears, so the
-    //    activation succeeds and records the one ProducerActivated.
-    app(ActivateProducer::class)->handle($producer->id);
+    //    activation succeeds and records the one ProducerActivated. Activation now enforces the separation-of-duties
+    //    floor (change parties-producer-approval-sod), so it runs under an authenticated operator; the factory
+    //    Producer has no ProducerCreated lineage → a null creator, so any single operator clears the floor.
+    app(ActorContext::class)->runAs(ActorRole::NewcoOps, 5100, fn () => app(ActivateProducer::class)->handle($producer->id));
 
     return ['customer' => $customer, 'producer' => $producer];
 }
@@ -138,11 +141,18 @@ it('records exactly the two sanctions events, the one ProducerActivated and the 
     }
 
     // Exactly these five distinct names and NO other — pinned so no surprise event can slip in. 5 rows total, all
-    // module `parties`, all resolved to the System actor (the ActorContext seam default).
+    // module `parties`.
     expect(DomainEvent::query()->pluck('name')->unique()->values()->all())->toEqualCanonicalizing(array_keys($expected));
     expect(DomainEvent::query()->count())->toBe(5)
-        ->and(DomainEvent::query()->where('module', 'parties')->count())->toBe(5)
-        ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
+        ->and(DomainEvent::query()->where('module', 'parties')->count())->toBe(5);
+
+    // Actor provenance: the four Customer-side compliance events (the two sanctions completions + the coupled `kyc`
+    // Hold's place/lift) resolve to the System actor — audit/coupling side-effects, not operator decisions — while
+    // the ProducerActivated now carries the NewcoOps operator that cleared the separation-of-duties floor (change
+    // parties-producer-approval-sod).
+    expect(DomainEvent::query()->where('name', '!=', ProducerActivated::NAME)->get()
+        ->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue()
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->sole()->actor_role)->toBe(ActorRole::NewcoOps);
 
     // KYC is event-silent (Customer AND Producer): no event name carries "Kyc" (the coupled Hold events are named
     // CustomerHold*, not *Kyc*). The only Hold events are the coupled `kyc` Hold's place + lift — exactly two.
@@ -189,14 +199,17 @@ it('admits or blocks Producer activation per the KYC-cleared matrix, driving the
     // The real Producer-KYC FSM landed the intended state before the gate runs.
     expect(Producer::findOrFail($producer->id)->kyc_status)->toBe($target);
 
+    // Activation runs under an authenticated operator (5100) — the separation-of-duties floor (change
+    // parties-producer-approval-sod) requires one; the factory Producer's null creator makes the distinctness
+    // check vacuous, so the KYC gate remains the sole variable this matrix exercises.
     if ($activates) {
-        app(ActivateProducer::class)->handle($producer->id);
+        app(ActorContext::class)->runAs(ActorRole::NewcoOps, 5100, fn () => app(ActivateProducer::class)->handle($producer->id));
         expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active)
             ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(1);
     } else {
-        // The `draft` from-state assert passes (the Producer IS draft), so the KYC-cleared gate is the sole reason
-        // for the throw — its localized message names KYC, distinguishing it from the from-state guard.
-        expect(fn () => app(ActivateProducer::class)->handle($producer->id))
+        // The `draft` from-state assert and the SoD floor both pass (draft Producer, distinct operator, null
+        // creator), so the KYC-cleared gate is the sole reason for the throw — its localized message names KYC.
+        expect(fn () => app(ActorContext::class)->runAs(ActorRole::NewcoOps, 5100, fn () => app(ActivateProducer::class)->handle($producer->id)))
             ->toThrow(IllegalProducerTransition::class, 'KYC');
         expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
             ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(0);
@@ -217,7 +230,9 @@ it('holds the asymmetric NULL semantics — a NULL-kyc Producer is cleared (acti
     //     before parties-compliance — DEC-071, nullable, no backfill).
     $producer = Producer::factory()->create();   // NULL kyc_status, `draft`
     expect($producer->kyc_status)->toBeNull();
-    app(ActivateProducer::class)->handle($producer->id);
+    // Activation runs under an operator (the SoD floor, change parties-producer-approval-sod); the factory
+    // Producer's null creator makes the distinctness check vacuous, so the NULL-kyc → cleared semantics is proven.
+    app(ActorContext::class)->runAs(ActorRole::NewcoOps, 5100, fn () => app(ActivateProducer::class)->handle($producer->id));
     expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active);
 
     // (b) Customer sanctions_status NULL ⇒ NOT passed: a never-screened Customer is NOT in `passed`; `passed` is

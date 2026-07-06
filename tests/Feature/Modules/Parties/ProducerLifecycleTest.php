@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Parties\Actions\ActivateProducer;
+use App\Modules\Parties\Actions\CreateProducer;
 use App\Modules\Parties\Actions\RetireProducer;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\KycStatus;
@@ -9,8 +10,10 @@ use App\Modules\Parties\Events\ClubSunset;
 use App\Modules\Parties\Events\ProducerActivated;
 use App\Modules\Parties\Events\ProducerRetired;
 use App\Modules\Parties\Exceptions\IllegalProducerTransition;
+use App\Modules\Parties\Exceptions\SeparationOfDutiesViolation;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
+use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,6 +41,27 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * on both engines (SQLite here; PostgreSQL 17 in the cross-engine close — knowledge/testing).
  */
 uses(RefreshDatabase::class);
+
+/**
+ * Create a draft Producer through the real {@see CreateProducer} Action as operator $creatorId, so its
+ * ProducerCreated event carries that actor_id — the creator lineage the separation-of-duties floor recovers
+ * from `domain_events` (change parties-producer-approval-sod, design D3). Named distinctly from the sibling
+ * ProducerApprovalGovernanceTest's `producerSodDraft` (the one shared Pest function namespace forbids a redeclare).
+ */
+function producerCreatedByOperator(int $creatorId): Producer
+{
+    return app(ActorContext::class)->runAs(ActorRole::NewcoOps, $creatorId, fn (): Producer => app(CreateProducer::class)->handle(
+        name: 'Domaine Leflaive',
+        region: 'Burgundy',
+        country: 'FR',
+    ));
+}
+
+/** Activate $producerId as operator $approverId — the distinct approver that clears the SoD operator/distinctness floor. */
+function activateProducerAsOperator(int $producerId, int $approverId): Producer
+{
+    return app(ActorContext::class)->runAs(ActorRole::NewcoOps, $approverId, fn (): Producer => app(ActivateProducer::class)->handle($producerId));
+}
 
 it('exposes the operated Clubs through the within-module clubs() hasMany', function () {
     $producer = Producer::factory()->create();
@@ -74,24 +98,28 @@ it('scopes clubs() to the owning Producer — Clubs of a different Producer are 
 });
 
 it('activates a draft Producer and records a ProducerActivated in the same transaction, tagged parties and PII-free', function () {
-    $producer = Producer::factory()->create();   // born `draft`
+    // Created by operator 101 through the real CreateProducer (recording its ProducerCreated lineage), then
+    // activated by a DISTINCT operator 202 — the separation-of-duties floor (change parties-producer-approval-sod)
+    // requires an authenticated operator distinct from the creator.
+    $producer = producerCreatedByOperator(101);   // born `draft`, creator lineage 101
 
-    $returned = app(ActivateProducer::class)->handle($producer->id);
+    $returned = activateProducerAsOperator($producer->id, 202);
 
     // The action returns the transitioned model, and the persisted row re-hydrates to `active`.
     expect($returned->status)->toBe(ProducerStatus::Active)
         ->and(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active);
 
-    // Exactly one domain event total — the factory bypasses the action and records nothing, so the only
-    // event is the ProducerActivated this transition recorded.
-    expect(DomainEvent::query()->count())->toBe(1);
+    // Exactly one ProducerActivated — the real CreateProducer also recorded a ProducerCreated, so the total is
+    // two events, but the transition under test contributes exactly the one ProducerActivated.
+    expect(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(1);
 
     $event = DomainEvent::query()->where('name', ProducerActivated::NAME)->sole();
 
     expect($event->module)->toBe('parties')                     // Module::Parties->value
         ->and($event->entity_type)->toBe('Producer')
         ->and($event->entity_id)->toBe((string) $producer->id)  // envelope entity_id is a string
-        ->and($event->actor_role)->toBe(ActorRole::System);     // the ActorContext seam default
+        ->and($event->actor_role)->toBe(ActorRole::NewcoOps)    // the approving operator (the SoD floor)
+        ->and($event->actor_id)->toEqual(202);                  // uncast bigint — loose compare spans engines
 
     // Payload asserted BY KEY (knowledge/testing trap 3 — never byte-compare PG jsonb): the Producer by id and
     // the POST-transition status, and nothing more — the exact key set is pinned so the PII-free contract
@@ -116,10 +144,14 @@ it('activates a draft Producer and records a ProducerActivated in the same trans
 it('activates a draft Producer whose KYC is cleared (verified, not_required, or NULL), recording a ProducerActivated', function (?KycStatus $kyc) {
     // AC-K-FSM-7 positive arm (parties-compliance, design L5; § 4.4 / BR-K-Producer-2): the cleared KYC
     // states — `verified`, `not_required`, and a NULL `kyc_status` (never touched, treated as cleared for
-    // additivity, ADR 2026-06-17) — all admit activation. The gate runs after the `draft` from-state assert.
-    $producer = Producer::factory()->create(['kyc_status' => $kyc]);   // born `draft`
+    // additivity, ADR 2026-06-17) — all admit activation. Created by operator 101 and activated by a DISTINCT
+    // operator 202 (the SoD floor); the KYC value is set on the created row (CreateProducer takes no kyc_status —
+    // a persistence-only update, no event), leaving the ProducerCreated lineage intact. The gate runs after the
+    // `draft` from-state assert and the SoD floor.
+    $producer = producerCreatedByOperator(101);
+    $producer->update(['kyc_status' => $kyc]);   // NULL | not_required | verified — cleared, no event
 
-    $returned = app(ActivateProducer::class)->handle($producer->id);
+    $returned = activateProducerAsOperator($producer->id, 202);
 
     expect($returned->status)->toBe(ProducerStatus::Active)
         ->and(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active)
@@ -131,13 +163,14 @@ it('activates a draft Producer whose KYC is cleared (verified, not_required, or 
 ]);
 
 it('rejects activating a draft Producer whose KYC is not cleared (pending or rejected), leaving it draft with no event', function (KycStatus $kyc) {
-    // AC-K-FSM-7 negative arm: the blocking KYC states reject activation. The `draft` from-state assert
-    // passes (the Producer IS draft), so the KYC-cleared gate is the sole reason for the throw — its message
-    // names KYC, distinguishing it from the from-state guard. The transaction rolls back: status stays
-    // `draft` and no ProducerActivated is recorded.
-    $producer = Producer::factory()->create(['kyc_status' => $kyc]);   // born `draft`, KYC blocking
+    // AC-K-FSM-7 negative arm: the blocking KYC states reject activation. Activated by an operator (202) distinct
+    // from the creator (101), so the SoD floor PASSES and the KYC-cleared gate is the sole reason for the throw —
+    // its message names KYC, distinguishing it from both the from-state guard and the SoD floor. The transaction
+    // rolls back: status stays `draft` and no ProducerActivated is recorded.
+    $producer = producerCreatedByOperator(101);
+    $producer->update(['kyc_status' => $kyc]);   // pending | rejected — blocking, no event
 
-    expect(fn () => app(ActivateProducer::class)->handle($producer->id))
+    expect(fn () => activateProducerAsOperator($producer->id, 202))
         ->toThrow(IllegalProducerTransition::class, 'KYC');
 
     expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
@@ -148,16 +181,74 @@ it('rejects activating a draft Producer whose KYC is not cleared (pending or rej
 ]);
 
 it('still activates a Producer created before parties-compliance — NULL kyc_status is cleared (additive regression)', function () {
-    // The additive-safety regression (design L5): a Producer created before this change carries NULL
-    // `kyc_status` (the nullable column has no default and no backfill — DEC-071). NULL is treated as cleared
-    // at the gate, so existing Producers keep activating — tightening the gate must never break shipped rows.
-    $producer = Producer::factory()->create();   // born `draft`; the factory sets no kyc_status → NULL
+    // The additive-safety regression (design L5): a Producer with NULL `kyc_status` (the nullable column has no
+    // default and no backfill — DEC-071) is treated as cleared at the gate, so it keeps activating. Created by
+    // operator 101 (CreateProducer sets no kyc_status → NULL) and activated by a distinct operator 202 (the SoD
+    // floor) — tightening the gate must never break shipped rows.
+    $producer = producerCreatedByOperator(101);   // born `draft`; CreateProducer sets no kyc_status → NULL
     expect($producer->kyc_status)->toBeNull();
 
-    $returned = app(ActivateProducer::class)->handle($producer->id);
+    $returned = activateProducerAsOperator($producer->id, 202);
 
     expect($returned->status)->toBe(ProducerStatus::Active)
         ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(1);
+});
+
+it('rejects a creator self-approval on the separation-of-duties floor, leaving the Producer draft with no event', function () {
+    // design D1/D3 — the approver SHALL differ from the creator. Operator 101 creates the Producer and then attempts
+    // to activate it itself → the distinct-actor floor is breached, so the guard throws `creator_may_not_approve`
+    // before any write. The Producer stays `draft` and no ProducerActivated is recorded (the transaction rolls back).
+    $producer = producerCreatedByOperator(101);
+
+    expect(fn () => activateProducerAsOperator($producer->id, 101))
+        ->toThrow(SeparationOfDutiesViolation::class, (string) __('parties.approval.creator_may_not_approve', ['entity' => 'Producer']));
+
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(0);
+});
+
+it('rejects activation under the system/null actor on the operator-principal floor, leaving the Producer draft', function () {
+    // design D4 (CLAUDE.md invariant 8): activation requires an authenticated operator. The default System actor
+    // (no runAs, no operator guard) cannot satisfy a distinct-actor floor and is rejected on the operator-principal
+    // leg — closing the "System actor accepted" hole. A genuine creator lineage (101) exists, but the principal
+    // check fires FIRST, so the violation is `requires_operator_principal`, not `creator_may_not_approve`.
+    $producer = producerCreatedByOperator(101);
+
+    expect(fn () => app(ActivateProducer::class)->handle($producer->id))
+        ->toThrow(SeparationOfDutiesViolation::class, (string) __('parties.approval.requires_operator_principal', ['entity' => 'Producer']));
+
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(0);
+});
+
+it('activates under a distinct operator and records the ProducerActivated with the approver as actor', function () {
+    // design D1 — the 2-step Creator → Approver happy path (AC-K-J-10 at the configured depth): operator 101 creates,
+    // a distinct operator 202 activates. The floor is satisfied, the Producer reaches `active`, and the recorded
+    // ProducerActivated carries operator 202 (the approver) as its actor.
+    $producer = producerCreatedByOperator(101);
+
+    activateProducerAsOperator($producer->id, 202);
+
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Active);
+
+    $event = DomainEvent::query()->where('name', ProducerActivated::NAME)->sole();
+    expect($event->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($event->actor_id)->toEqual(202);   // the approver — uncast bigint, loose compare spans engines
+});
+
+it('rejects a self-approval on a KYC-pending Producer on the SoD floor, before the KYC gate', function () {
+    // design D6 order (from-state → operator-principal → distinct-actor → KYC → write): a self-approval is rejected
+    // on the SoD floor even when KYC is NOT cleared. Operator 101 creates the Producer, its KYC is set `pending`
+    // (blocking), and 101 self-approves → the guard throws `creator_may_not_approve` (SoD), NOT the KYC violation,
+    // proving SoD precedes KYC. Nothing is written.
+    $producer = producerCreatedByOperator(101);
+    $producer->update(['kyc_status' => KycStatus::Pending]);   // blocking KYC — but SoD is evaluated first
+
+    expect(fn () => activateProducerAsOperator($producer->id, 101))
+        ->toThrow(SeparationOfDutiesViolation::class, (string) __('parties.approval.creator_may_not_approve', ['entity' => 'Producer']));
+
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerActivated::NAME)->count())->toBe(0);
 });
 
 it('rejects activating a Producer already in active and records nothing', function () {

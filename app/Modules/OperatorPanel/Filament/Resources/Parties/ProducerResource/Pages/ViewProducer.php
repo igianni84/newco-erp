@@ -30,9 +30,14 @@ use Illuminate\Database\Eloquent\Model;
  * the four KYC verbs — require (`not_required`/NULL → `pending`), waive (any outstanding state → `not_required`),
  * verify and reject (`pending → verified`/`rejected`) — appended in task 4.1. The KYC FSM is SEPARATE from the
  * status FSM (a KYC verb never moves `status`) and is AUDIT-ONLY: its actions record NO domain event and place NO
- * Hold (§ 4.4). All six are built with {@see SurfacesDomainActions::lifecycleAction()} as FORM-LESS actions with
- * NO confirmation affordance (D3): Producer activation is KYC-gated, not a Creator → Reviewer → Approver
- * separation-of-duties transition, so it carries no "second actor" modal; and no verb collects notes.
+ * Hold (§ 4.4). All six are built with {@see SurfacesDomainActions::lifecycleAction()} as FORM-LESS actions (no
+ * verb collects notes). Five carry no confirmation affordance; `activate` alone carries the "second actor
+ * required" affordance (`operator_console.producer.affordance.second_actor`) — Producer activation is now a
+ * separation-of-duties floor (a distinct operator-principal must approve, never the creator; RM-08,
+ * parties-producer-approval-sod) LAYERED ON the KYC gate, so the console surfaces the second-actor requirement
+ * exactly as the catalog consoles do. A creator self-approval throws a separation-of-duties violation (a
+ * RuntimeException, named in PROSE) which the trait catches and renders as the `action_failed` notification with
+ * the domain's localized message, state unchanged.
  *
  * Each invocation has the uniform `fn (Model $record, string $notes)` signature the trait expects (`$notes`
  * unused — no Producer action has a form) and routes to a Parties domain action, which (unlike the catalog
@@ -59,16 +64,17 @@ class ViewProducer extends ViewRecord
 
     /**
      * The Producer's six header actions — the two status verbs activate/retire (task 3.1) followed by the four
-     * KYC verbs require/waive/verify/reject (task 4.1). All are form-less and carry no confirmation affordance
-     * (D3); each routes to its typed Parties action by the producer `int $id` (D4), never an Eloquent write. The
-     * KYC verbs are audit-only — the domain records no event and places no Hold — and never move `status`.
+     * KYC verbs require/waive/verify/reject (task 4.1). All are form-less (no notes); only `activate` carries a
+     * confirmation affordance — the "second actor required" separation-of-duties cue (RM-08). Each routes to its
+     * typed Parties action by the producer `int $id` (D4), never an Eloquent write. The KYC verbs are audit-only
+     * — the domain records no event and places no Hold — and never move `status`.
      *
      * @return array<int, Action>
      */
     protected function getHeaderActions(): array
     {
         return [
-            $this->lifecycleAction('activate', 'activated', fn (Model $record, string $notes) => app(ActivateProducer::class)->handle($this->recordOf(Producer::class, $record)->id)),
+            $this->lifecycleAction('activate', 'activated', fn (Model $record, string $notes) => app(ActivateProducer::class)->handle($this->recordOf(Producer::class, $record)->id), confirmationKey: 'affordance.second_actor'),
             $this->lifecycleAction('retire', 'retired', fn (Model $record, string $notes) => app(RetireProducer::class)->handle($this->recordOf(Producer::class, $record)->id)),
             $this->lifecycleAction('requireKyc', 'kyc_required', fn (Model $record, string $notes) => app(RequireProducerKyc::class)->handle($this->recordOf(Producer::class, $record)->id)),
             $this->lifecycleAction('waiveKyc', 'kyc_waived', fn (Model $record, string $notes) => app(WaiveProducerKyc::class)->handle($this->recordOf(Producer::class, $record)->id)),
