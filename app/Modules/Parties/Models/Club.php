@@ -26,8 +26,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * mass-assignment-from-request risk. The per-Club `fee` is held as {@see Money} via {@see MoneyCast} (integer
  * minor units + ISO 4217 code across `fee_minor`/`fee_currency`, never a float — invariant 6); it is nullable
  * (a Club MAY carry no fee). `registration_flow_type` is a fixed per-Club classifier; `generates_credit` /
- * `invite_only` are the single-tier-at-launch flags (DEC-062). This change defines no transition out of
- * `active` (design D2).
+ * `invite_only` are the single-tier-at-launch flags (DEC-062). `auto_renew_default` is the Club-level
+ * auto-renewal default a new Profile inherits at creation (Profile-5, parties-module-k-br-guards task 2.2) —
+ * the standalone `auto_renew` element of the deferred `renewal_policy` blob (MVP-DEC-013), born `true`. This
+ * change defines no transition out of `active` (design D2).
  *
  * @property int $id
  * @property string $display_name
@@ -37,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ClubRegistrationFlowType $registration_flow_type
  * @property bool $generates_credit
  * @property bool $invite_only
+ * @property bool $auto_renew_default
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -91,6 +94,9 @@ class Club extends Model
             'registration_flow_type' => ClubRegistrationFlowType::class,
             'generates_credit' => 'boolean',
             'invite_only' => 'boolean',
+            // the Club-level auto-renew default a new Profile inherits at creation (Profile-5;
+            // parties-module-k-br-guards task 2.2) — additive NOT-NULL boolean, DB-defaulted `true`.
+            'auto_renew_default' => 'boolean',
             'version' => 'integer',
         ];
     }

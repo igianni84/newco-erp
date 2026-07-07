@@ -807,3 +807,5 @@
 ## [2026-07-07 15:25] ralph | parties-module-k-br-guards 1.3 | green | 4 files (ADR MVP-DEC-022 Club-6/Identity-6/Profile-5/Producer-5 + INDEX row) | 3/23, mini-ADRs done
 
 ## [2026-07-07 15:50] ralph | parties-module-k-br-guards 2.1 | green | SettlementCadence enum+cast+PG-CHECK; suite 1980/1980, phpstan 0, pint clean; 11 files
+
+## [2026-07-07 16:08] ralph | parties-module-k-br-guards 2.2 | green | auto_renew + auto_renew_default cols (bool not-null, default true) + casts; SQLite 1984/1984, focused 4/4 on PG17; up/down clean both engines; 5 files

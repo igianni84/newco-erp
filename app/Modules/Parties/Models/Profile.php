@@ -38,6 +38,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * carries the domain data a deferred Module-S offboarding consumer reads). Born `NULL`; the transition Actions are
  * the sole writers (the model stays persistence-only); the values are never carried into a domain-event payload.
  *
+ * `auto_renew` is the per-Profile renewal preference (Profile-5, parties-module-k-br-guards task 2.2) — added
+ * additively NOT-NULL with a `true` DB floor. Task 4.2 makes `CreateProfile` set it by inheriting the owning
+ * Club's `auto_renew_default` at creation; an operator Action is the sole post-creation writer (audit-only, no
+ * domain event — § 15.2 names none for `auto_renew`); the customer self-toggle is a deferred Consumer-Portal seam.
+ *
  * @property int $id
  * @property int $customer_id
  * @property int $club_id
@@ -45,6 +50,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $tier
  * @property string|null $role
  * @property int|null $invited_by_customer_id
+ * @property bool $auto_renew
  * @property CarbonImmutable|null $lapsed_at
  * @property string|null $cancellation_reason
  * @property int $version
@@ -123,6 +129,9 @@ class Profile extends Model
     {
         return [
             'state' => ProfileState::class,
+            // the auto-renewal preference (Profile-5; parties-module-k-br-guards task 2.2) — additive NOT-NULL
+            // boolean, DB-defaulted `true`. The cast carries the typed read on both engines.
+            'auto_renew' => 'boolean',
             'version' => 'integer',
             // demand-side lifecycle anchor (parties-membership-suspension task 1.1; design L1) — additive
             // nullable timestamp stamped by LapseProfile / cleared by RenewProfile (the 30-day grace, DEC-034).
