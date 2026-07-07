@@ -407,15 +407,26 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
         'ExportCustomerData',
     ];
 
+    // ...and the Profile-preference operator writer (change parties-module-k-br-guards, task 4.2 — Profile-5 / canon
+    // MVP-DEC-022). `SetProfileAutoRenew` is the operator-override SOLE writer of the per-Profile `auto_renew`
+    // preference after creation (`CreateProfile` inherits the Club's `auto_renew_default` at birth). It is AUDIT-ONLY
+    // — § 15.2 names no `auto_renew` event, so it records NO Parties event — and it performs NO status transition
+    // (`auto_renew` is a last-writer-wins preference, not an FSM edge), so it does not breach the demand-side scope
+    // guard; but being named non-`Create*` it IS caught by the transition filter and MUST be whitelisted here. The
+    // customer self-toggle stays a deferred Consumer-Portal seam (no Action class).
+    $profilePreferenceWriters = [
+        'SetProfileAutoRenew',
+    ];
+
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
-    // demand-side activation + demand-side status + Club Credit-writer + anonymisation ones. With task 3.2 the
+    // demand-side activation + demand-side status + Club Credit-writer + anonymisation + Profile-preference ones. With task 3.2 the
     // demand-side status set is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born
     // `active` — design L8) and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
     // `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock lives inside `ApproveProfile`, never a
     // standalone Action). If a deferred-seam Action were added without declaring it here, it would appear in this set
     // and fail the assertion (the whitelist grew one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
-    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters, ...$anonymisationWriters]);
+    expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters, ...$anonymisationWriters, ...$profilePreferenceWriters]);
 
     // Reflect the Events namespace the same way: the still-deferred demand-side lifecycle event types do not even
     // EXIST in this change — they are not recordable (the follow-on demand-side changes introduce them). This

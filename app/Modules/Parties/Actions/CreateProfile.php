@@ -39,10 +39,13 @@ use Illuminate\Support\Facades\DB;
  * non-nullable `customerId` / `clubId` parameters; the within-module FKs are the structural backstop for a
  * non-existent reference. A Customer MAY hold Profiles across MANY Clubs (the multi-profile model) — a per-Club
  * non-terminal duplicate is what the uniqueness guard rejects. Then, in ONE {@see DB::transaction}: insert the Profile (born
- * `applied`) and record the PII-free event via the platform {@see DomainEventRecorder} (the actor resolved from
- * the {@see ActorContext} seam — System until real principals wire in). This change writes NO transition out of
- * `applied` (design D2); the recorder's own transaction guard makes write + emit atomic. The model stays
- * persistence-only; this action is the seam the deferred lifecycle change extends.
+ * `applied`, with `auto_renew` DEFAULT-INHERITED from the target Club's `auto_renew_default` — Profile-5, canon
+ * MVP-DEC-022) and record the PII-free event via the platform {@see DomainEventRecorder} (the actor resolved from
+ * the {@see ActorContext} seam — System until real principals wire in). The `auto_renew` inheritance reuses the
+ * `$club` the Club-active guard already fetched; the operator override {@see SetProfileAutoRenew} is the sole
+ * post-creation writer of the preference (the customer self-toggle is a deferred Consumer-Portal seam). This change
+ * writes NO transition out of `applied` (design D2); the recorder's own transaction guard makes write + emit
+ * atomic. The model stays persistence-only; this action is the seam the deferred lifecycle change extends.
  */
 class CreateProfile
 {
@@ -97,6 +100,13 @@ class CreateProfile
                 throw DuplicateProfileForClub::forCustomerAndClub($customerId, $clubId);
             }
 
+            // Profile-5 (canon MVP-DEC-022): the new Profile's `auto_renew` DEFAULT-INHERITS the owning Club's
+            // `auto_renew_default` at creation — the `auto_renew` element of the (otherwise deferred) `renewal_policy`
+            // config, shipped standalone here. Reuses the `$club` the Club-active guard above already fetched (no
+            // re-query). The ternary preserves the non-existent-Club path: a null `$club` inherits the DB floor
+            // `true` — never persisted, since the insert FK-rejects first (the documented backstop) — keeping that a
+            // clean FK error rather than a property-on-null one (Larastan reads `first()` as non-null, so a plain
+            // `$club->` would report nullsafe.neverNull; the `=== null` arm is the runtime-safety guard).
             $profile = Profile::create([
                 'customer_id' => $customerId,
                 'club_id' => $clubId,
@@ -104,6 +114,7 @@ class CreateProfile
                 'tier' => $tier,
                 'role' => $role,
                 'invited_by_customer_id' => $invitedByCustomerId,
+                'auto_renew' => $club === null ? true : $club->auto_renew_default,
             ]);
 
             $this->recorder->record(
