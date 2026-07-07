@@ -795,3 +795,5 @@
 ## [2026-07-06 16:44] close §2.7 | parties-producer-approval-sod (RM-08) | PG17 1975/1975 + indep semantic-verify CLEAN (0 CRITICAL) → merged --no-ff main bf4aff4 + archived 2026-07-06; 10/10 specs validate; push pending (gated)
 
 ## [2026-07-06 16:47] push §2.7 | parties-producer-approval-sod (RM-08) | pushed 52b9983..bfb8fc7 to origin/main; branch ralph deleted; origin==main synced; RM-08 fully closed
+
+## [2026-07-07 11:00] plan | RM-08 close-out + batch cadence | Tracker: RM-08 → DONE (merged/archived/pushed); §1+§6 record batch decision (RM-19/20/21/22/23 → one /spec-to-change) + cadence rule in lessons.md; hot.md next-task = batch, prep-only in fresh window
