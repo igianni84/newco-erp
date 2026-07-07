@@ -797,3 +797,5 @@
 ## [2026-07-06 16:47] push §2.7 | parties-producer-approval-sod (RM-08) | pushed 52b9983..bfb8fc7 to origin/main; branch ralph deleted; origin==main synced; RM-08 fully closed
 
 ## [2026-07-07 11:00] plan | RM-08 close-out + batch cadence | Tracker: RM-08 → DONE (merged/archived/pushed); §1+§6 record batch decision (RM-19/20/21/22/23 → one /spec-to-change) + cadence rule in lessons.md; hot.md next-task = batch, prep-only in fresh window
+
+## [2026-07-07 11:51] spec-to-change | parties-module-k-br-guards | Authored prep-only (batch RM-19/20/21/22/23-partial, Module K party-registry): proposal+design+2 delta specs (party-registry 4A/6M, operator-console 4M)+tasks; validate --strict green; no APPROVED/no code; awaiting review
