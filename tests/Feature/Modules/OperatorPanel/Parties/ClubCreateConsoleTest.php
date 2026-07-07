@@ -19,12 +19,14 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ClubResource\Pages\CreateClub;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Enums\ClubRegistrationFlowType;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use App\Platform\Money\Currency;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -116,7 +118,7 @@ it('surfaces MissingClubProducer on the producer_id field for a non-existent Pro
         ->and(DomainEvent::query()->where('name', 'ClubCreated')->exists())->toBeFalse();
 });
 
-it('exposes the Club create fields and no status field', function () {
+it('exposes the Club create fields and no status or invite-only field', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     Livewire::test(CreateClub::class)
@@ -128,5 +130,40 @@ it('exposes the Club create fields and no status field', function () {
         ->assertFormFieldExists('generates_credit')
         // A Club is born `active` by CreateClub (no activate verb — design D9), so the create form never sets
         // `status`; it advances only through the ViewClub lifecycle actions (task 4.1).
-        ->assertFormFieldDoesNotExist('status');
+        ->assertFormFieldDoesNotExist('status')
+        // BR-K-Club-6 / MVP-DEC-022: the invite-only channel is the `invitation_only` registration flow, so the
+        // former `invite_only` boolean is removed/subsumed — there is no separate invite-only field.
+        ->assertFormFieldDoesNotExist('invite_only');
+});
+
+it('offers the registration flow as a select over only the launch-selectable channels, excluding the latent open_registration (BR-K-Club-6/MVP-DEC-022)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // The `Select $field` type-hint IS the "it is a Select" assertion. getOptions() pins the THREE launch channels
+    // (keyed by the enum backing values), and the latent `open_registration` is filtered out of the picker — the
+    // `Club` model's `saving` guard is the server floor, this narrows the console to match (design D7).
+    Livewire::test(CreateClub::class)
+        ->assertFormFieldExists(
+            'registration_flow_type',
+            fn (Select $field): bool => array_keys($field->getOptions())
+                === ['application_with_approval', 'invitation_only', 'link_onboarding'],
+        );
+});
+
+it('defaults the registration flow to application_with_approval when the operator leaves it untouched', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $producer = Producer::factory()->create();
+
+    // The Select pre-fills `application_with_approval` (the launch default, BR-K-Club-6) — fill only the required
+    // display name and Producer, leaving the registration flow at its mounted default.
+    Livewire::test(CreateClub::class)
+        ->fillForm([
+            'display_name' => 'Cercle Par Défaut',
+            'producer_id' => $producer->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Club::query()->where('display_name', 'Cercle Par Défaut')->sole()->registration_flow_type)
+        ->toBe(ClubRegistrationFlowType::ApplicationWithApproval);
 });

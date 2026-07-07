@@ -103,6 +103,7 @@ class ClubResource extends OperatorConsoleResource
                 Select::make('registration_flow_type')
                     ->label((string) __('operator_console.club.fields.registration_flow_type'))
                     ->options(self::registrationFlowTypeOptions(...))
+                    ->default(ClubRegistrationFlowType::ApplicationWithApproval->value)
                     ->required(),
                 TextInput::make('amount')
                     ->label((string) __('operator_console.club.fields.amount'))
@@ -298,17 +299,21 @@ class ClubResource extends OperatorConsoleResource
 
     /**
      * Create-form registration-flow options, keyed by the {@see ClubRegistrationFlowType} backing value → the
-     * same token as its label (the per-Club classifier is a fixed enum; the four flows are the full launch
-     * domain). Driven off the OPERAND enum (design D7) — the import the {Models, Actions, Enums} carve-out admits
-     * for OperatorPanel (ADR 2026-06-21); `CreateClub::createViaAction` constructs the same enum from the
-     * selected value. The token is domain data (like the read column), not UI chrome, so no per-value i18n key is
-     * introduced — only the Select's own `label` is localized.
+     * same token as its label. Only the THREE launch-selectable channels are offered — `application_with_approval`
+     * (the default), `invitation_only`, `link_onboarding` — the latent `OpenRegistration` is filtered out (canon
+     * MVP-DEC-022 / BR-K-Club-6: `open_registration` is carried latent, never selectable at launch; the `Club`
+     * model's `saving` guard is the server floor, this narrows the picker to match). Driven off the OPERAND enum
+     * (design D7) — the import the {Models, Actions, Enums} carve-out admits for OperatorPanel (ADR 2026-06-21);
+     * `CreateClub::createViaAction` constructs the same enum from the selected value. The token is domain data
+     * (like the read column), not UI chrome, so no per-value i18n key is introduced — only the Select's own
+     * `label` is localized.
      *
      * @return array<string, string>
      */
     private static function registrationFlowTypeOptions(): array
     {
         return collect(ClubRegistrationFlowType::cases())
+            ->reject(static fn (ClubRegistrationFlowType $flow): bool => $flow === ClubRegistrationFlowType::OpenRegistration)
             ->mapWithKeys(static fn (ClubRegistrationFlowType $flow): array => [$flow->value => $flow->value])
             ->all();
     }

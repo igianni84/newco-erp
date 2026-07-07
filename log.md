@@ -837,3 +837,5 @@
 ## [2026-07-07 21:05] ralph | parties-module-k-br-guards 6.2 | green | 7 files | ProfileResource active-only club picker + ViewProfile auto-renew toggle; 2074/2074 phpstan0 pint-clean; 18/23
 
 ## [2026-07-07 21:22] ralph | parties-module-k-br-guards 6.3 | green | 2 files | CustomerResource age gate routes to date_of_birth field; suite 2077/2077
+
+## [2026-07-07 21:37] ralph | parties-module-k-br-guards 6.4 | green | 3 files — Club registration-flow picker narrowed to 3 launch values (latent open_registration excluded) + application_with_approval default; §1-6 complete, loop done (20/23); §7 human-gated
