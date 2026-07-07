@@ -2,6 +2,7 @@
 
 use App\Modules\Parties\Actions\CreateProducerAgreement;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
 use App\Modules\Parties\Models\Club;
@@ -47,7 +48,7 @@ it('creates a Producer-wide draft agreement with term dates and settlement caden
         ->and($read->status)->toBe(ProducerAgreementStatus::Draft)          // born draft (design D2)
         ->and($read->term_start?->toDateString())->toBe('2026-01-01')       // term dates round-trip via the cast
         ->and($read->term_end?->toDateString())->toBe('2026-12-31')
-        ->and($read->settlement_cadence)->toBe('quarterly')                 // the D19 seam
+        ->and($read->settlement_cadence)->toBe(SettlementCadence::Quarterly) // the D19 seam (closed enum, read through the cast)
         ->and($read->version)->toBe(1);                                     // version floor, born at 1
 
     // The required Producer resolves through the within-module belongsTo (relations are allowed within Module K).

@@ -21,6 +21,7 @@
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResource\Pages\CreateProducerAgreement;
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
@@ -63,7 +64,7 @@ it('creates a draft ProducerAgreement through the console, recording one Produce
         ->and($agreement->club_id)->toBe($club->id)
         ->and($agreement->term_start?->toDateString())->toBe('2026-03-01')
         ->and($agreement->term_end?->toDateString())->toBe('2026-12-31')
-        ->and($agreement->settlement_cadence)->toBe('quarterly');
+        ->and($agreement->settlement_cadence)->toBe(SettlementCadence::Quarterly);
 
     // Exactly one ProducerAgreementCreated, carrying the operator audit envelope (newco_ops + the operator id)
     // resolved by the action from the `operator` guard — the console constructs no envelope itself.

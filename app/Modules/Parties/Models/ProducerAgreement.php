@@ -4,6 +4,7 @@ namespace App\Modules\Parties\Models;
 
 use App\Modules\Parties\Actions\CreateProducerAgreement;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -23,7 +24,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Persistence-only by design (D7): the {@see CreateProducerAgreement} action is the sole writer — it inserts
  * the row (born `draft`) and records {@see ProducerAgreementCreated} in one transaction — so `$guarded = []`
  * carries no mass-assignment-from-request risk. `term_start` / `term_end` are the (nullable) agreement term
- * dates; `settlement_cadence` is the nullable D19 settlement-cadence seam Module E reads. This change defines
+ * dates; `settlement_cadence` is the nullable D19 settlement-cadence seam Module E reads — the closed
+ * {@see SettlementCadence} set (`quarterly`/`monthly`/`semi_annual`; MVP-DEC-010). This change defines
  * no transition out of `draft` (design D2), and the "at most one active agreement per Producer scope" rule
  * (BR-K-Agreement-1) is an activation-time invariant, out of this creation-only slice.
  *
@@ -33,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ProducerAgreementStatus $status
  * @property CarbonImmutable|null $term_start
  * @property CarbonImmutable|null $term_end
- * @property string|null $settlement_cadence
+ * @property SettlementCadence|null $settlement_cadence
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -95,6 +97,7 @@ class ProducerAgreement extends Model
     {
         return [
             'status' => ProducerAgreementStatus::class,
+            'settlement_cadence' => SettlementCadence::class,
             'term_start' => 'immutable_date',
             'term_end' => 'immutable_date',
             'version' => 'integer',

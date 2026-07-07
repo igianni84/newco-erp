@@ -293,7 +293,7 @@ class DemoSeeder extends Seeder
             ['margaux', null, ProducerAgreementStatus::Active, '2026-01-01', '2026-12-31', 'quarterly'],
             ['krug', 'krug', ProducerAgreementStatus::Active, '2026-01-01', '2026-12-31', 'monthly'],
             ['gaja', 'gaja', ProducerAgreementStatus::Active, '2026-01-01', '2026-12-31', 'monthly'],
-            ['sanguido', null, ProducerAgreementStatus::Active, '2026-01-01', '2026-12-31', 'annual'],
+            ['sanguido', null, ProducerAgreementStatus::Active, '2026-01-01', '2026-12-31', 'semi_annual'],
             ['vegasicilia', null, ProducerAgreementStatus::Draft, '2026-07-01', '2027-06-30', 'quarterly'],
             ['penfolds', null, ProducerAgreementStatus::Terminated, '2024-01-01', '2024-12-31', 'monthly'],
             ['leflaive', null, ProducerAgreementStatus::Draft, null, null, null],

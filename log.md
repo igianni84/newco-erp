@@ -805,3 +805,5 @@
 ## [2026-07-07 15:15] ralph | parties-module-k-br-guards 1.2 | green | 4 files | mini-ADR MVP-DEC-010 settlement-cadence closed set {quarterly,monthly,semi-annual} + INDEX row; DemoSeeder annual->semi-annual recorded; openspec valid; 2/23
 
 ## [2026-07-07 15:25] ralph | parties-module-k-br-guards 1.3 | green | 4 files (ADR MVP-DEC-022 Club-6/Identity-6/Profile-5/Producer-5 + INDEX row) | 3/23, mini-ADRs done
+
+## [2026-07-07 15:50] ralph | parties-module-k-br-guards 2.1 | green | SettlementCadence enum+cast+PG-CHECK; suite 1980/1980, phpstan 0, pint clean; 11 files
