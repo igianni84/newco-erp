@@ -7,6 +7,7 @@ use App\Modules\Parties\Actions\CreateProducerAgreement;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
 use App\Modules\Parties\Events\ProducerCreated;
+use App\Modules\Parties\Exceptions\ProducerReviewGovernedContentLocked;
 use App\Platform\I18n\TranslatableText;
 use App\Platform\I18n\TranslatableTextCast;
 use Carbon\CarbonInterface;
@@ -26,6 +27,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * mass-assignment-from-request risk. Born `draft`; this change defines no transition out of it (design D2),
  * and no auto-created Supplier (BR-K-Producer-3, design D10). The translatable `description` is held as
  * i18n-keyed JSON via {@see TranslatableTextCast} with per-attribute English fallback.
+ *
+ * The one model-level guard it DOES carry is the Producer-5 review-governed content lock ({@see booted()}): the
+ * review-governed descriptive fields ({@see REVIEW_GOVERNED_FIELDS}) are immutable once the Producer is `active`
+ * — a rule invariant on the persisted status, not a state transition (the RM-24 immutability-guard pattern).
  *
  * The `kyc_status` column is the provenance-KYC lifecycle (`not_required → pending → verified | rejected`),
  * distinct from Customer KYC (§ 4.4), added additively as nullable (parties-compliance task 1.2, DEC-071). A
@@ -63,6 +68,15 @@ class Producer extends Model
     protected $guarded = [];
 
     /**
+     * The review-governed descriptive fields whose edit re-enters the Creator → Reviewer → Approver workflow
+     * (canon MVP-DEC-022 / AC-K-BR-Producer-5). Named once here so the {@see booted()} `updating` guard and its
+     * regression test share one source (no magic-list drift — the 4.4 `public const` precedent).
+     *
+     * @var list<string>
+     */
+    public const REVIEW_GOVERNED_FIELDS = ['name', 'description', 'region', 'website'];
+
+    /**
      * The Clubs this Producer operates — a WITHIN-module `hasMany` (both entities are Module K, so the
      * cross-module relation ban does not apply), the inverse of {@see Club::producer()}. It is the read the
      * retirement cascade walks (design L6): the `RetireProducer` Action (task 3.2) sunsets every `active` Club
@@ -97,6 +111,34 @@ class Producer extends Model
     protected static function newFactory(): ProducerFactory
     {
         return ProducerFactory::new();
+    }
+
+    /**
+     * BR-K-Producer-5 (canon MVP-DEC-022 / AC-K-BR-Producer-5; change parties-module-k-br-guards, design D9):
+     * the review-governed descriptive content ({@see REVIEW_GOVERNED_FIELDS}) is IMMUTABLE while the Producer is
+     * `active` — an update dirtying any of it is rejected with the localized {@see ProducerReviewGovernedContentLocked},
+     * leaving the row unchanged. This is the INTERIM safety core of the review-freshness rule (unreviewed content
+     * never publishes on an active Producer); the full "edit re-arms Creator → Reviewer → Approver" UX is deferred
+     * (no Producer `reviewed` state / content-edit path today — RM-06 / RM-14 precedent).
+     *
+     * Enforced at the `updating` chokepoint — the RM-24 immutability-guard pattern (Catalog's `ProductMaster::booted()`,
+     * named in prose to keep this module import-clean) — because the content columns are real + mutable with
+     * `$guarded = []` and there is NO Action-layer
+     * content-edit writer to guard, so the model event is the only path-complete place that catches EVERY mutation
+     * surface. It fires on UPDATE only (creation runs through `creating`, so `draft` content is set freely at
+     * birth), keys on `isDirty` of the review-governed set (a status/kyc-only transition — activation, retirement,
+     * KYC — dirties none of them, so it passes untouched, the design R5 no-false-positive floor), and gates on the
+     * PERSISTED `status` via `getOriginal('status')` (so the lock binds an already-published Producer, and a
+     * `draft` — including one being activated in the same write — sets content freely).
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (self $producer): void {
+            if ($producer->getOriginal('status') === ProducerStatus::Active
+                && $producer->isDirty(self::REVIEW_GOVERNED_FIELDS)) {
+                throw ProducerReviewGovernedContentLocked::whileActive($producer->id);
+            }
+        });
     }
 
     /**
