@@ -825,3 +825,5 @@
 ## [2026-07-07 18:47] ralph | parties-module-k-br-guards 4.2 | green | 6 files | Profile-5 auto_renew inherit + SetProfileAutoRenew audit-only writer; suite 2029/2029, phpstan 0
 
 ## [2026-07-07 19:16] ralph | parties-module-k-br-guards 4.3 | green | Club-6: open_registration non-selectable via Club saving-guard + no-auto-approve characterization + invite_only lang sweep grep-empty | 13 files | suite 2035/2035, phpstan 0, pint clean
+
+## [2026-07-07 19:31] ralph | parties-module-k-br-guards 4.4 | green | 3 files (RetireProducer Profile-leg cascade, audit-only; suite 2037)

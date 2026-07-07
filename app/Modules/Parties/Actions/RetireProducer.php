@@ -5,9 +5,11 @@ namespace App\Modules\Parties\Actions;
 use App\Modules\Module;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
+use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Events\ProducerRetired;
 use App\Modules\Parties\Exceptions\IllegalProducerTransition;
 use App\Modules\Parties\Models\Producer;
+use App\Modules\Parties\Models\Profile;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\DomainEventRecorder;
 use Illuminate\Support\Facades\DB;
@@ -33,9 +35,18 @@ use Illuminate\Support\Facades\DB;
  * audit log). Clubs already in `sunset` or `closed` are filtered out — the cascade is idempotent over
  * already-transitioned Clubs (belt-and-braced by SunsetClub's own from-state guard). The cascade runs INSIDE
  * this action's transaction (SunsetClub's nested {@see DB::transaction} is a savepoint), so the whole
- * retirement + every cascade sunset commit or roll back together — all-or-nothing (design L6). The PROFILE leg
- * of the § 10.2 cascade (per-Profile cancellation, the Module-S Club-Credit conversion signal) is NOT performed
- * here — Profile transitions are demand-side and deferred (design L6).
+ * retirement + every cascade sunset commit or roll back together — all-or-nothing (design L6). The cascade THEN
+ * performs the PROFILE leg of the § 10.2 offboarding (parties-module-k-br-guards RM-19, design D1): after every
+ * operated Club is sunset it queries Profiles by the sunsetting Clubs' ids (there is NO `Club → Profile`
+ * relation — the walk is `whereIn('club_id', …)`) and drives {@see CancelProfile} — the `Active | Lapsed →
+ * Cancelled` transition — with a Producer-initiated `cancellation_reason` (`OFFBOARDING_CANCELLATION_REASON`) for
+ * every Profile still `Active`/`Lapsed` under a sunsetting Club, in this SAME transaction and AFTER the
+ * corresponding `ClubSunset` (parent-before-child, AC-K-EVT-20). Profiles in other states
+ * (`Applied`/`Suspended`/already-terminal) are out of this leg — the from-state filter also keeps CancelProfile's
+ * own guard from tripping. Faithful to zero-invention (design D1): frozen § 15.2 names NO `ProfileCancelled`, so
+ * the per-Profile cancellation is AUDIT-ONLY (no domain event); the subscribable Module-S signal event and the
+ * Club-Credit conversion math (§ 15.7 / DEC-043 / AC-K-XM-23) stay the deferred Module-S seam — Module K's role
+ * ends at the per-Profile cancellation with its reason.
  *
  * From-state guarded and race-safe (design L2): inside ONE {@see DB::transaction} it re-reads the row
  * `->lockForUpdate()` (a real row lock on PostgreSQL, a harmless no-op under SQLite's single writer — the
@@ -50,10 +61,20 @@ use Illuminate\Support\Facades\DB;
  */
 class RetireProducer
 {
+    /**
+     * The Producer-initiated `cancellation_reason` stamped on every Profile the § 10.2 offboarding cascade
+     * cancels — a plain domain token a future Module-S Club-Credit-conversion consumer reads, NOT display copy
+     * (the `cancellation_reason` column is uncast free text; this is the `ProfileCancellationTest`
+     * producer-offboarding token). It distinguishes an offboarding-driven cancellation from a voluntary/admin one
+     * at the audit boundary.
+     */
+    public const OFFBOARDING_CANCELLATION_REASON = 'producer_offboarding';
+
     public function __construct(
         private readonly DomainEventRecorder $recorder,
         private readonly ActorContext $actor,
         private readonly SunsetClub $sunsetClub,
+        private readonly CancelProfile $cancelProfile,
     ) {}
 
     public function handle(int $producerId): Producer
@@ -93,6 +114,25 @@ class RetireProducer
                     causationId: $retired->id,
                     correlationId: $retired->correlation_id,
                 );
+            }
+
+            // § 10.2 offboarding cascade (Profile leg — parent-before-child, AC-K-EVT-20): AFTER every operated
+            // Club is sunset, cancel every Profile still `Active`/`Lapsed` under one of those sunsetting Clubs,
+            // stamping the Producer-initiated reason. There is NO `Club → Profile` relation, so the walk queries
+            // Profiles by the sunsetting Clubs' ids (the just-sunset `$activeClubs` — a since-`closed` Club is not
+            // sunsetting now, so its Profiles are out of scope). Filtered to the two cancellable from-states so
+            // CancelProfile's own from-state guard never trips — an `Applied`/`Suspended`/already-terminal Profile
+            // is out of this leg and left to its own lifecycle. AUDIT-ONLY (design D1): CancelProfile records NO
+            // domain event (§ 15.2 names no `ProfileCancelled`), so the cascade adds no event; the subscribable
+            // Module-S signal event + the Club-Credit conversion math stay the deferred Module-S seam (§ 15.7 /
+            // DEC-043). Runs inside this SAME transaction → retirement + sunsets + cancellations are all-or-nothing.
+            $sunsetProfiles = Profile::query()
+                ->whereIn('club_id', $activeClubs->pluck('id')->all())
+                ->whereIn('state', [ProfileState::Active->value, ProfileState::Lapsed->value])
+                ->get();
+
+            foreach ($sunsetProfiles as $profile) {
+                $this->cancelProfile->handle($profile->id, self::OFFBOARDING_CANCELLATION_REASON);
             }
 
             return $producer;
