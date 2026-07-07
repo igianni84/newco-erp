@@ -43,7 +43,6 @@ class ClubFactory extends Factory
             'fee' => Money::of(25000, Currency::EUR),
             'registration_flow_type' => ClubRegistrationFlowType::OpenRegistration,
             'generates_credit' => true,
-            'invite_only' => false,
             'version' => 1,
         ];
     }

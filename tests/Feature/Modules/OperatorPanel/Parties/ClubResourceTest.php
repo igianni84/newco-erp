@@ -60,7 +60,6 @@ it('renders the read-only attributes including the fee on the view page', functi
         'registration_flow_type' => ClubRegistrationFlowType::OpenRegistration,
         'fee' => Money::of(50000, Currency::EUR),
         'generates_credit' => true,
-        'invite_only' => false,
     ]);
 
     Livewire::test(ViewClub::class, ['record' => $club->getKey()])

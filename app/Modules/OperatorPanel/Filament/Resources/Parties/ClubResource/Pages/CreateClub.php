@@ -52,8 +52,8 @@ class CreateClub extends OperatorConsoleCreateRecord
     {
         // Filament types the post-validation form state as array<string, mixed>; narrow each value to the
         // Parties action's typed contract at the boundary. The required display_name/producer_id/
-        // registration_flow_type make the happy path well-formed; the fee amount/currency and the two flags are
-        // optional. InvalidArgumentException is a LogicException, so it propagates past the base's
+        // registration_flow_type make the happy path well-formed; the fee amount/currency and the generates_credit
+        // flag are optional. InvalidArgumentException is a LogicException, so it propagates past the base's
         // RuntimeException catch — a programming bug, not a form error.
         $displayName = $data['display_name'] ?? null;
         $producerId = $data['producer_id'] ?? null;
@@ -61,7 +61,6 @@ class CreateClub extends OperatorConsoleCreateRecord
         $amount = $data['amount'] ?? null;
         $currency = $data['currency'] ?? null;
         $generatesCredit = $data['generates_credit'] ?? true;
-        $inviteOnly = $data['invite_only'] ?? false;
 
         if (
             ! is_string($displayName)
@@ -70,7 +69,6 @@ class CreateClub extends OperatorConsoleCreateRecord
             || ! (is_null($amount) || $amount === '' || is_numeric($amount))
             || ! (is_null($currency) || is_string($currency))
             || ! is_bool($generatesCredit)
-            || ! is_bool($inviteOnly)
         ) {
             throw new InvalidArgumentException('Unexpected Club create payload.');
         }
@@ -87,7 +85,6 @@ class CreateClub extends OperatorConsoleCreateRecord
             registrationFlowType: ClubRegistrationFlowType::from($registrationFlowType),
             fee: $fee,
             generatesCredit: $generatesCredit,
-            inviteOnly: $inviteOnly,
         );
     }
 }

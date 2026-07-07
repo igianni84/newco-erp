@@ -81,7 +81,7 @@ class ClubResource extends OperatorConsoleResource
      * required display_name, the operating Producer (a WITHIN-Parties picker; a Club belongs to exactly one
      * Producer, BR-K-Club-1), the required `registration_flow_type` classifier, the OPTIONAL fee (an amount in
      * integer minor units + an ISO 4217 currency, assembled into a `Money` only when both are present — D11),
-     * and the two single-tier flags. It deliberately exposes NO `status`: a Club is born `active` by the action,
+     * and the `generates_credit` flag. It deliberately exposes NO `status`: a Club is born `active` by the action,
      * with no activate verb (design D9), so state never enters as a create input. The form only COLLECTS; the
      * write routes through the action in {@see Pages\CreateClub::createViaAction()}, which constructs the
      * `ClubRegistrationFlowType` operand enum from the selected value (the {Models, Actions, Enums} carve-out —
@@ -113,9 +113,6 @@ class ClubResource extends OperatorConsoleResource
                 Toggle::make('generates_credit')
                     ->label((string) __('operator_console.club.fields.generates_credit'))
                     ->default(true),
-                Toggle::make('invite_only')
-                    ->label((string) __('operator_console.club.fields.invite_only'))
-                    ->default(false),
             ]);
     }
 
@@ -163,8 +160,8 @@ class ClubResource extends OperatorConsoleResource
      * The read-only view (design D2). Grouped into premium, icon-headed sections mirroring the catalog spine
      * (the `ProductMasterResource` shape): Identity (the Club's `display_name`, its operating Producer NAME — a
      * within-Parties read — and the registration-flow classifier, humanized from its snake_case token), Membership
-     * terms (the optional `fee` rendered as a readable amount + ISO 4217 code, and the two single-tier flags as
-     * boolean icons), State (the `status` FSM rendered as the SAME semantic colored badge the list carries, via
+     * terms (the optional `fee` rendered as a readable amount + ISO 4217 code, and the `generates_credit` flag as
+     * a boolean icon), State (the `status` FSM rendered as the SAME semantic colored badge the list carries, via
      * {@see badgedStateEntry()}), and a collapsed Metadata section for the optimistic-lock `version`. Every entry
      * is display-only; the producer NAME resolves through the within-Parties `producer()` relation, never a
      * cross-module join (invariant 10). All copy localized (invariant 12).
@@ -217,9 +214,6 @@ class ClubResource extends OperatorConsoleResource
                             }),
                         IconEntry::make('generates_credit')
                             ->label((string) __('operator_console.club.fields.generates_credit'))
-                            ->boolean(),
-                        IconEntry::make('invite_only')
-                            ->label((string) __('operator_console.club.fields.invite_only'))
                             ->boolean(),
                     ]),
                 Section::make((string) __('operator_console.club.sections.state'))

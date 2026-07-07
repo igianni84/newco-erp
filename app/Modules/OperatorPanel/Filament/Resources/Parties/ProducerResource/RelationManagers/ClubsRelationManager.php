@@ -91,9 +91,6 @@ class ClubsRelationManager extends RelationManager
                         Toggle::make('generates_credit')
                             ->label((string) __('operator_console.club.fields.generates_credit'))
                             ->default(true),
-                        Toggle::make('invite_only')
-                            ->label((string) __('operator_console.club.fields.invite_only'))
-                            ->default(false),
                     ])
                     ->using($this->createClub(...)),
             ])
@@ -116,7 +113,6 @@ class ClubsRelationManager extends RelationManager
         $amount = $data['amount'] ?? null;
         $currency = $data['currency'] ?? null;
         $generatesCredit = $data['generates_credit'] ?? true;
-        $inviteOnly = $data['invite_only'] ?? false;
 
         if (
             ! is_string($displayName)
@@ -124,7 +120,6 @@ class ClubsRelationManager extends RelationManager
             || ! (is_null($amount) || $amount === '' || is_numeric($amount))
             || ! (is_null($currency) || is_string($currency))
             || ! is_bool($generatesCredit)
-            || ! is_bool($inviteOnly)
         ) {
             throw new InvalidArgumentException('Unexpected Club create payload.');
         }
@@ -139,7 +134,6 @@ class ClubsRelationManager extends RelationManager
             registrationFlowType: ClubRegistrationFlowType::from($registrationFlowType),
             fee: $fee,
             generatesCredit: $generatesCredit,
-            inviteOnly: $inviteOnly,
         );
     }
 

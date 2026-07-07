@@ -48,14 +48,13 @@ it('creates an active Club through the console, recording one ClubCreated with t
             'amount' => '50000',
             'currency' => 'EUR',
             'generates_credit' => true,
-            'invite_only' => true,
         ])
         ->call('create')
         ->assertHasNoFormErrors();
 
     // The write routed through the action: a Club born `active`, linked to the operating Producer, carrying the
-    // assembled Money fee (50000 EUR minor units) and the two flags — the operand enum constructed from the form
-    // value, the fee assembled from amount + currency.
+    // assembled Money fee (50000 EUR minor units) and the generates_credit flag — the operand enum constructed
+    // from the form value, the fee assembled from amount + currency.
     $club = Club::query()->where('display_name', 'Premier Cercle Console')->sole();
 
     expect($club->status)->toBe(ClubStatus::Active)
@@ -64,8 +63,7 @@ it('creates an active Club through the console, recording one ClubCreated with t
         ->and($club->fee)->not->toBeNull()
         ->and($club->fee?->minorUnits)->toBe(50000)
         ->and($club->fee?->currency)->toBe(Currency::EUR)
-        ->and($club->generates_credit)->toBeTrue()
-        ->and($club->invite_only)->toBeTrue();
+        ->and($club->generates_credit)->toBeTrue();
 
     // Exactly one ClubCreated, carrying the operator audit envelope (newco_ops + the operator id) resolved by the
     // action from the `operator` guard — the console constructs no envelope itself.
@@ -128,7 +126,6 @@ it('exposes the Club create fields and no status field', function () {
         ->assertFormFieldExists('amount')
         ->assertFormFieldExists('currency')
         ->assertFormFieldExists('generates_credit')
-        ->assertFormFieldExists('invite_only')
         // A Club is born `active` by CreateClub (no activate verb — design D9), so the create form never sets
         // `status`; it advances only through the ViewClub lifecycle actions (task 4.1).
         ->assertFormFieldDoesNotExist('status');

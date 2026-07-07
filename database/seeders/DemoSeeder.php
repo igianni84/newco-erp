@@ -248,21 +248,21 @@ class DemoSeeder extends Seeder
     private function seedClubs(array $producers): array
     {
         $rows = [
-            'drc' => ['drc', 'Romanée-Conti Cercle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 100_000, true, true],
-            'margaux' => ['margaux', 'Premier Cru Margaux Club', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 50_000, true, false],
-            'krug' => ['krug', 'Krug Ambassade', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 35_000, true, false],
-            'krug-decouverte' => ['krug', 'Krug Découverte', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 12_000, true, false],
-            'gaja' => ['gaja', 'Langhe Collectors', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 15_000, true, false],
-            'gaja-riserva' => ['gaja', 'Gaja Riserva Circle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 60_000, true, true],
-            'sanguido' => ['sanguido', 'Sassicaia Club', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 20_000, false, false],
-            'vegasicilia' => ['vegasicilia', 'Único Reserva Club', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 25_000, true, false],
-            'penfolds' => ['penfolds', 'Penfolds Collectors', ClubStatus::Sunset, ClubRegistrationFlowType::LinkOnboarding, null, false, false],
-            'leflaive' => ['leflaive', 'Montrachet Circle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 40_000, true, true],
+            'drc' => ['drc', 'Romanée-Conti Cercle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 100_000, true],
+            'margaux' => ['margaux', 'Premier Cru Margaux Club', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 50_000, true],
+            'krug' => ['krug', 'Krug Ambassade', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 35_000, true],
+            'krug-decouverte' => ['krug', 'Krug Découverte', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 12_000, true],
+            'gaja' => ['gaja', 'Langhe Collectors', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 15_000, true],
+            'gaja-riserva' => ['gaja', 'Gaja Riserva Circle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 60_000, true],
+            'sanguido' => ['sanguido', 'Sassicaia Club', ClubStatus::Active, ClubRegistrationFlowType::OpenRegistration, 20_000, false],
+            'vegasicilia' => ['vegasicilia', 'Único Reserva Club', ClubStatus::Active, ClubRegistrationFlowType::ApplicationWithApproval, 25_000, true],
+            'penfolds' => ['penfolds', 'Penfolds Collectors', ClubStatus::Sunset, ClubRegistrationFlowType::LinkOnboarding, null, false],
+            'leflaive' => ['leflaive', 'Montrachet Circle', ClubStatus::Active, ClubRegistrationFlowType::InvitationOnly, 40_000, true],
         ];
 
         $clubs = [];
 
-        foreach ($rows as $slug => [$producerSlug, $name, $status, $flow, $feeMinor, $generatesCredit, $inviteOnly]) {
+        foreach ($rows as $slug => [$producerSlug, $name, $status, $flow, $feeMinor, $generatesCredit]) {
             $clubs[$slug] = Club::create([
                 'producer_id' => $producers[$producerSlug]->id,
                 'display_name' => $name,
@@ -270,7 +270,6 @@ class DemoSeeder extends Seeder
                 'fee' => $feeMinor === null ? null : Money::of($feeMinor, Currency::EUR),
                 'registration_flow_type' => $flow,
                 'generates_credit' => $generatesCredit,
-                'invite_only' => $inviteOnly,
             ]);
         }
 

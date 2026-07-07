@@ -31,7 +31,7 @@ return new class extends Migration
      *   - `registration_flow_type` — the § 4.3 registration-flow CLASSIFIER ({@see ClubRegistrationFlowType}),
      *     carrying NO default: like the party-type marker it is set explicitly by the action at creation, not
      *     defaulted to a birth state.
-     * `generates_credit` / `invite_only` are the single-tier-at-launch configuration flags (DEC-062). On
+     * `generates_credit` is the single-tier-at-launch configuration flag (DEC-062). On
      * SQLite both CHECKs are skipped; the casts + NOT-NULL defaults carry the value-set floor.
      *
      * Postgres-truthful, SQLite-compatible (ADR decisions/2026-06-12-production-db-engine.md).
@@ -60,10 +60,8 @@ return new class extends Migration
             // engines, PLUS the PG-only CHECK below. NO default — a classifier is set explicitly at creation
             // (like the party-type marker), not defaulted to a birth state.
             $table->string('registration_flow_type');
-            // single-tier-at-launch configuration flags (DEC-062). Whether the Club accrues Club Credit, and
-            // whether membership is invitation-gated.
+            // single-tier-at-launch configuration flag (DEC-062). Whether the Club accrues Club Credit.
             $table->boolean('generates_credit')->default(true);
-            $table->boolean('invite_only')->default(false);
             // version-immutability floor: identity-bearing changes create new versions, never deletes. Born at
             // 1; this spine change writes no edit, so it stays 1.
             $table->unsignedInteger('version')->default(1);

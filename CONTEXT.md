@@ -170,7 +170,7 @@ On creation, each evented spine entity records its `*Created` Domain Event throu
 |---|---|---|
 | `CustomerCreated` | `Customer` | `customer_id`, `party_type`, `status`, `preferred_currency`, `preferred_locale`, `originating_club_id` — **PII-free** (no name/email/phone/date_of_birth) |
 | `ProfileCreated` | `Profile` | `profile_id`, `customer_id`, `club_id`, `state`, `tier`, `role`, `invited_by_customer_id` |
-| `ClubCreated` | `Club` | `club_id`, `display_name`, `producer_id`, `status`, `fee` (`{minor_units, currency}` or null), `registration_flow_type`, `generates_credit`, `invite_only` |
+| `ClubCreated` | `Club` | `club_id`, `display_name`, `producer_id`, `status`, `fee` (`{minor_units, currency}` or null), `registration_flow_type`, `generates_credit` |
 | `ProducerCreated` | `Producer` | `producer_id`, `name`, `region`, `appellation`, `country`, `status` |
 | `ProducerAgreementCreated` | `ProducerAgreement` | `agreement_id`, `producer_id`, `club_id`, `status`, `term_start`, `term_end`, `settlement_cadence` |
 
@@ -290,7 +290,7 @@ _Source: spec/02-prd/Module_K_PRD_v0.3-MVP.md §4.1 (Customer FSM `pending → a
 ## Commerce & Membership
 
 **Club**:
-A Producer-operated membership community — a **Module K (Parties)** registry entity (`parties_clubs`), born `active`, owned by exactly one Producer through a **required and immutable** link. Members pay an annual `fee` (a `Money` — integer minor units + ISO 4217, never a float) equal to that year's Hero Package price. A `registration_flow_type` classifier (`open_registration` / `application_with_approval` / `invitation_only` / `link_onboarding`) governs how members join; `generates_credit` and `invite_only` are launch flags. Its lifecycle is `active → sunset → closed` (§4.3): **sunset** (`active → sunset`) blocks new memberships and new offers while preserving existing Profiles, and is also the per-Club step of the Producer-retirement cascade (§10.2); **close** (`sunset → closed`) is terminal (supply-side transitions implemented by `parties-producer-lifecycle`).
+A Producer-operated membership community — a **Module K (Parties)** registry entity (`parties_clubs`), born `active`, owned by exactly one Producer through a **required and immutable** link. Members pay an annual `fee` (a `Money` — integer minor units + ISO 4217, never a float) equal to that year's Hero Package price. A `registration_flow_type` classifier (`open_registration` / `application_with_approval` / `invitation_only` / `link_onboarding`) governs how members join; `generates_credit` is a launch flag. Its lifecycle is `active → sunset → closed` (§4.3): **sunset** (`active → sunset`) blocks new memberships and new offers while preserving existing Profiles, and is also the per-Club step of the Producer-retirement cascade (§10.2); **close** (`sunset → closed`) is terminal (supply-side transitions implemented by `parties-producer-lifecycle`).
 _Avoid_: subscription, tier
 
 **Hero Package**:
