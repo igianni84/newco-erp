@@ -815,3 +815,5 @@
 ## [2026-07-07 17:34] ralph | parties-module-k-br-guards 2.4 | green | 9 files: 5 exceptions + EN/IT copy + BrGuardExceptionsTest; suite 2004/2004, phpstan 0, pint clean, openspec valid
 
 ## [2026-07-07 17:49] ralph | parties-module-k-br-guards 3.1 | green | 6 files — RM-22 cadence closed-set reject (InvalidSettlementCadence) in CreateProducerAgreement; suite 2008/2008, phpstan 0, pint clean
+
+## [2026-07-07 18:01] ralph | parties-module-k-br-guards 3.2 | green | 3 files | Agreement-4 Club-active guard in CreateProducerAgreement (2012/2012, phpstan 0, pint clean)

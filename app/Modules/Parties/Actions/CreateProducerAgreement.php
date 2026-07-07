@@ -3,11 +3,14 @@
 namespace App\Modules\Parties\Actions;
 
 use App\Modules\Module;
+use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
 use App\Modules\Parties\Exceptions\InvalidSettlementCadence;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
+use App\Modules\Parties\Exceptions\ProducerAgreementClubNotActive;
+use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
 use App\Platform\Events\ActorContext;
@@ -20,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  * its {@see ProducerAgreementCreated} event atomically (parties-core, design D3/D4/D7; party-registry —
  * Requirement: ProducerAgreement, Spine Creation Events).
  *
- * Two guards make the launch invariants enforced, not advised:
+ * Three guards make the launch invariants enforced, not advised:
  *   - REQUIRED PRODUCER (§ 4.6): a ProducerAgreement references EXACTLY ONE Producer. Inside the transaction a
  *     presence check rejects a `producer_id` that matches no Producer with a localized
  *     {@see MissingAgreementProducer} reason. The within-module FK on `parties_producer_agreements.producer_id`
@@ -32,9 +35,17 @@ use Illuminate\Support\Facades\DB;
  *     with a localized {@see InvalidSettlementCadence} BEFORE the write — ahead of the raw ValueError the model's
  *     enum cast would throw on create(). Enforced server-side (not UI-only) because the cadence times Module-E
  *     settlement and Module-D PO issuance; the PostgreSQL CHECK is the DB backstop, the cast the SQLite floor.
+ *   - CLUB-ACTIVE SCOPING (§ 4.6 / BR-K-Agreement-4, canon MVP-DEC-009): a per-Club-narrowed agreement's Club
+ *     MUST be `active` at the time of scoping. Inside the transaction, a `clubId` whose Club is `sunset` or
+ *     `closed` is rejected with a localized {@see ProducerAgreementClubNotActive} reason BEFORE the write — no
+ *     agreement, no event. Producer-wide scope (`clubId` NULL) is ungated, and a non-existent Club falls through
+ *     to the within-module FK backstop (only a real, non-active Club trips the guard). Supersession/renewal
+ *     INHERITS the superseded scope and is EXEMPT, but that path runs through activation (task 3.3), not this
+ *     creation Action, so no exemption branch is needed here.
  *
  * The Club narrowing is OPTIONAL — a null `clubId` is a Producer-wide agreement; a value scopes it to that one
- * Club (the FK is the structural backstop for a non-existent Club). The "at most one ACTIVE agreement per
+ * Club, which MUST be `active` (the CLUB-ACTIVE SCOPING guard above; the FK is the structural backstop for a
+ * non-existent Club). The "at most one ACTIVE agreement per
  * Producer scope" rule (BR-K-Agreement-1) is an ACTIVATION-time invariant and is therefore NOT enforced here:
  * draft agreements are created freely (design D2, the spec's creation-only scope). Then, in ONE
  * {@see DB::transaction}: insert the agreement (born `draft`) and record the PII-free event via the platform
@@ -77,6 +88,20 @@ class CreateProducerAgreement
             // rule is an activation-time invariant — NOT checked here; drafts create freely.
             if (! Producer::query()->whereKey($producerId)->exists()) {
                 throw MissingAgreementProducer::forId($producerId);
+            }
+
+            // BR-K-Agreement-4 (canon MVP-DEC-009): a per-Club-narrowed agreement's Club MUST be `active` at the
+            // time of scoping. A `clubId` whose Club is `sunset`/`closed` is rejected with a localized reason, so
+            // no agreement and no event are recorded. Producer-wide scope (clubId NULL) is ungated; a non-existent
+            // Club falls through to the within-module FK backstop — only a real, non-active Club trips this guard.
+            // Supersession/renewal inherits the superseded scope and is EXEMPT, but that runs through the
+            // activation path (task 3.3), never this creation Action, so no exemption branch is needed here.
+            if ($clubId !== null) {
+                $club = Club::query()->whereKey($clubId)->first();
+
+                if ($club !== null && $club->status !== ClubStatus::Active) {
+                    throw ProducerAgreementClubNotActive::forClub($clubId, $club->status->value);
+                }
             }
 
             $agreement = ProducerAgreement::create([

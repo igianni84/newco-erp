@@ -1,11 +1,13 @@
 <?php
 
 use App\Modules\Parties\Actions\CreateProducerAgreement;
+use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
 use App\Modules\Parties\Exceptions\InvalidSettlementCadence;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
+use App\Modules\Parties\Exceptions\ProducerAgreementClubNotActive;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
@@ -212,4 +214,52 @@ it('produces a draft agreement via the factory without recording an event', func
         ->and($agreement->club_id)->toBeNull()                                              // Producer-wide default
         ->and(Producer::query()->whereKey($agreement->producer_id)->exists())->toBeTrue()   // parent Producer built
         ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects a per-Club agreement scoped to a non-active Club with no row and no event (Agreement-4 / MVP-DEC-009)', function (string $state) {
+    // BR-K-Agreement-4 (canon MVP-DEC-009): a per-Club-narrowed agreement's Club MUST be `active` at scoping. A
+    // Club in `sunset` or `closed` is rejected with a localized ProducerAgreementClubNotActive BEFORE the write —
+    // no agreement row and no ProducerAgreementCreated event. (The supersession-inherits-scope exemption is a
+    // task-3.3 activation-path concern, never this creation Action.)
+    $producer = Producer::factory()->create();
+    $club = Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::from($state)]);
+
+    expect(fn () => app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: $club->id,
+    ))->toThrow(ProducerAgreementClubNotActive::class);
+
+    expect(ProducerAgreement::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
+})->with(['sunset', 'closed']);   // the two non-active Club states — both reject a fresh per-Club narrowing
+
+it('admits a per-Club agreement scoped to an active Club (Agreement-4 admit path)', function () {
+    // The admit half of Agreement-4: an `active` Club is a valid narrowing scope — the agreement persists in
+    // `draft` and records its event.
+    $producer = Producer::factory()->create();
+    $club = Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::Active]);
+
+    $agreement = app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: $club->id,
+    );
+
+    $read = ProducerAgreement::findOrFail($agreement->id);
+    expect($read->club_id)->toBe($club->id)
+        ->and($read->status)->toBe(ProducerAgreementStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(1);
+});
+
+it('admits a Producer-wide agreement even when the Producer has a non-active Club (Producer-wide is ungated)', function () {
+    // Producer-wide scope (club_id NULL) is UNGATED by Agreement-4 — even a Producer whose Club is `sunset` may
+    // take a fresh Producer-wide agreement; the guard fires only on a per-Club narrowing, never on Producer-wide.
+    $producer = Producer::factory()->create();
+    Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::Sunset]);
+
+    $agreement = app(CreateProducerAgreement::class)->handle(producerId: $producer->id);
+
+    $read = ProducerAgreement::findOrFail($agreement->id);
+    expect($read->club_id)->toBeNull()
+        ->and($read->status)->toBe(ProducerAgreementStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(1);
 });
