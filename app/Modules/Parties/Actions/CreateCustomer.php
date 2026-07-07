@@ -8,12 +8,14 @@ use App\Modules\Parties\Enums\AccountType;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Enums\PartyType;
 use App\Modules\Parties\Events\CustomerCreated;
+use App\Modules\Parties\Exceptions\BelowMinimumRegistrationAge;
 use App\Modules\Parties\Exceptions\DuplicateCustomerEmail;
 use App\Modules\Parties\Models\Customer;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\DomainEventRecorder;
 use App\Platform\I18n\SupportedLocale;
 use App\Platform\Money\Currency;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +24,14 @@ use Illuminate\Support\Facades\DB;
  * event — all atomically in ONE transaction (parties-core, design D3/D5/D6/D7; party-registry — Requirements:
  * Customer Identity, Account — Billing Container, Spine Creation Events).
  *
- * One guard makes the launch invariant enforced, not advised:
+ * Two guards make the launch invariants enforced, not advised:
+ *   - REGISTRATION AGE GATE (§ 7.1, BR-K-Identity-6 / canon MVP-DEC-022; BMD § 2.8): registration is blocked when
+ *     the self-attested `date_of_birth` implies an age below the platform minimum ({@see MINIMUM_REGISTRATION_AGE})
+ *     at the registration date, and when no `date_of_birth` is attested at all (age attestation is mandatory at
+ *     launch). A localized {@see BelowMinimumRegistrationAge} is thrown as PURE input validation at the boundary —
+ *     no DB read — so it fails fast AHEAD of the transaction (nothing is created: no Customer, no co-provisioned
+ *     Account, no {@see CustomerCreated}). This is the launch check: self-attestation plus the payment-method-bound
+ *     minimum-age signal, no physical-document verification (BMD § 2.8; per-jurisdiction higher floors are deferred).
  *   - GLOBALLY-UNIQUE EMAIL (§ 4.1, BR-K-Identity-1): a Customer's email is unique across all Customers. Inside
  *     the transaction a presence check rejects a colliding email with a localized {@see DuplicateCustomerEmail}
  *     reason. The `unique` index on `parties_customers.email` is the true structural guard; the pre-check
@@ -46,6 +55,14 @@ use Illuminate\Support\Facades\DB;
  */
 class CreateCustomer
 {
+    /**
+     * The minimum registration age in whole years (default 18 — the EU alcohol-purchase baseline across the launch
+     * markets). An admin-configurable platform constant, NOT hard-coded, mirroring the enhanced-KYC threshold
+     * constants (RM-02 / MVP-DEC-014); its representation is the dev team's call (DEC-073). A public class constant
+     * keeps it a single source of truth the console surface (task 6.3) and the tests reference rather than repeat.
+     */
+    public const MINIMUM_REGISTRATION_AGE = 18;
+
     public function __construct(
         private readonly DomainEventRecorder $recorder,
         private readonly ActorContext $actor,
@@ -59,6 +76,25 @@ class CreateCustomer
         ?string $phone = null,
         ?CarbonInterface $dateOfBirth = null,
     ): Customer {
+        // § 7.1 / BR-K-Identity-6 / canon MVP-DEC-022 / BMD § 2.8 — the registration age gate. Block a self-attested
+        // date_of_birth whose implied age is below the platform minimum at the registration date, and a missing DOB
+        // (age attestation is mandatory at launch). A pure input-validity reject — no DB read — so it fails fast at
+        // the boundary AHEAD of the transaction (contrast the DuplicateCustomerEmail pre-check, which reads), leaving
+        // nothing created. PII discipline: only the :min_age constant reaches the localized reason — never the DOB or
+        // the derived age.
+        if ($dateOfBirth === null) {
+            throw BelowMinimumRegistrationAge::missingDateOfBirth(self::MINIMUM_REGISTRATION_AGE);
+        }
+
+        // The registrant must be born on or before "now minus the minimum age"; a birth date AFTER that cutoff implies
+        // an age below the minimum. Arithmetic runs on the guaranteed-immutable CarbonImmutable::now() (the module's
+        // single-moment idiom — RenewProfile), so date_of_birth is only ever compared, never mutated.
+        $latestAdmissibleBirthDate = CarbonImmutable::now()->subYears(self::MINIMUM_REGISTRATION_AGE);
+
+        if ($dateOfBirth->greaterThan($latestAdmissibleBirthDate)) {
+            throw BelowMinimumRegistrationAge::belowMinimum(self::MINIMUM_REGISTRATION_AGE);
+        }
+
         return DB::transaction(function () use (
             $email,
             $name,

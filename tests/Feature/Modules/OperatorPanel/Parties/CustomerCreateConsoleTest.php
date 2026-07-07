@@ -96,6 +96,8 @@ it('surfaces DuplicateCustomerEmail on the email field for a colliding email, pe
             'name' => 'Duplicate Attempt',
             'preferred_currency' => 'EUR',
             'preferred_locale' => 'en',
+            // An adult DOB clears the age gate so the reject under test is DuplicateCustomerEmail, not the age gate.
+            'date_of_birth' => '1985-07-15',
         ])
         ->call('create')
         ->assertHasFormErrors(['email']);
