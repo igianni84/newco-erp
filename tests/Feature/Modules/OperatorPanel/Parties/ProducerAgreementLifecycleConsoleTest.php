@@ -25,6 +25,7 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResour
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
+use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
 use App\Platform\Events\ActorRole;
@@ -153,6 +154,37 @@ it('surfaces an out-of-state activate (a non-draft agreement) as a danger notifi
 
     // Unchanged: still active, and the rejected attempt recorded NO event (its transaction rolled back).
     expect(ProducerAgreement::findOrFail($agreement->id)->status)->toBe(ProducerAgreementStatus::Active)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('surfaces a cross-shape activation conflict (a per-Club activation while a Producer-wide agreement is active) as a danger notification, changing nothing', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // BR-K-Agreement-1 clause 2 (cross-shape mutual exclusion): a Producer with an active Producer-wide agreement.
+    // Activating a draft per-Club agreement for the SAME Producer is rejected by the domain with
+    // ProducerAgreementScopeConflict (a RuntimeException) — the console catches it by base type and surfaces the
+    // `action_failed` danger notification, exactly like an out-of-state transition (design D5); it never pre-checks
+    // the rule itself.
+    $producer = Producer::factory()->create();
+    $club = Club::factory()->create(['producer_id' => $producer->id]);
+    ProducerAgreement::factory()->create([
+        'producer_id' => $producer->id,
+        'club_id' => null,
+        'status' => ProducerAgreementStatus::Active,
+    ]);
+    $clubDraft = ProducerAgreement::factory()->create([
+        'producer_id' => $producer->id,
+        'club_id' => $club->id,
+        'status' => ProducerAgreementStatus::Draft,
+    ]);
+
+    Livewire::test(ViewProducerAgreement::class, ['record' => $clubDraft->id])
+        ->callAction('activate')
+        ->assertNotified((string) __('operator_console.producer_agreement.notifications.action_failed'));
+
+    // Unchanged: the per-Club draft stays draft and the rejected attempt recorded NO event (its transaction rolled
+    // back) — only the factory-seeded active exists, and the factory records nothing.
+    expect(ProducerAgreement::findOrFail($clubDraft->id)->status)->toBe(ProducerAgreementStatus::Draft)
         ->and(DomainEvent::query()->count())->toBe(0);
 });
 
