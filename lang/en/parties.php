@@ -19,6 +19,14 @@ return [
         // activates only with KYC cleared (verified ∨ not_required; a NULL kyc_status is treated as cleared).
         // :state is the offending blocking KYC token (pending | rejected) — a business enum value, not PII.
         'kyc_not_cleared' => 'Cannot activate this Producer while its KYC is :state. Activation requires KYC cleared — verified or not_required.',
+        // Review-governed content lock (change parties-module-k-br-guards, design D9; party-registry — Requirement:
+        // Producer Review-Governed Content Lock; BR-K-Producer-5 / canon MVP-DEC-022 — interim safety core). The
+        // descriptive fields name/description/region/website are immutable while a Producer is `active`: a
+        // model-level `updating` chokepoint (the RM-24 pattern) rejects any edit that dirties them, leaving content
+        // unchanged. The full "edit re-arms Creator→Reviewer→Approver review" UX is deferred (no Producer `reviewed`
+        // state / content-edit path today) — this lock is replaced when it lands. :producer is the operator-facing
+        // id reference (not PII); the copy names the locked field-set and the rule, never customer data.
+        'review_governed_content_locked' => 'Cannot edit the review-governed content (name, description, region, website) of Producer :producer while it is active. This content is immutable on an active Producer — a content edit would require a fresh review pass, which is not yet available.',
     ],
     'approval' => [
         // Producer separation-of-duties floor on ActivateProducer (change parties-producer-approval-sod, design
@@ -42,6 +50,12 @@ return [
         // reasons. :state is the offending from-state token (a business enum value, not PII).
         'cannot_sunset' => 'Cannot sunset this Club from state :state. A Club sunsets only from active.',
         'cannot_close' => 'Cannot close this Club from state :state. A Club closes only from sunset.',
+        // New-membership block at Profile creation (change parties-module-k-br-guards, design D3; party-registry —
+        // Requirement: Profile — Multi-Profile Membership; BR-K-Club-3 / AC-K-FSM-6). A `CreateProfile` targeting a
+        // `sunset` or `closed` Club is rejected (no Profile, no ProfileCreated) — enforcing the frozen "sunset
+        // blocks new memberships" rule at the creation chokepoint. :club is the operator-facing id reference (not
+        // PII); :state is the offending ClubStatus token (a business enum, not PII) — the cannot_sunset discipline.
+        'not_accepting_memberships' => 'Cannot create a Profile in Club :club: the Club is :state and no longer accepts new memberships. New memberships are accepted only by an active Club.',
     ],
     'producer_agreement' => [
         // § 4.6 rejection (design D3/D4): a ProducerAgreement references exactly one EXISTING Producer.
@@ -51,6 +65,20 @@ return [
         // design L2; § 4.6.1) illegal-transition reasons. :state is the offending from-state token (not PII).
         'cannot_activate' => 'Cannot activate this ProducerAgreement from state :state. An agreement activates only from draft.',
         'cannot_terminate' => 'Cannot terminate this ProducerAgreement from state :state. An agreement terminates only from active.',
+        // Per-Club scope requires an active Club (change parties-module-k-br-guards, design D5; party-registry —
+        // Requirement: ProducerAgreement; BR-K-Agreement-4 / canon MVP-DEC-009). A new agreement scoped to a
+        // `sunset`/`closed` Club is rejected; Producer-wide (club_id NULL) is ungated and supersession inherits
+        // scope (exempt). :club is the operator-facing id reference (not PII); :state is the offending ClubStatus
+        // token (a business enum, not PII).
+        'club_not_active' => 'Cannot scope a ProducerAgreement to Club :club: the Club is :state, not active. A per-Club agreement requires an active Club — Producer-wide agreements are ungated.',
+        // Cross-shape mutual exclusion at activation (change parties-module-k-br-guards, design D2; party-registry —
+        // Requirement: ProducerAgreement Lifecycle; BR-K-Agreement-1 clause 2). A Producer's Producer-wide (club_id
+        // NULL) and per-Club shapes SHALL NOT both be active — activating one while the other is active is rejected
+        // (pre-write, state + event log unchanged); the operator terminates/supersedes the existing shape first.
+        // Two direction-aware reasons. :producer is the operator-facing id reference (not PII); the copy names only
+        // the rule (which agreements are involved lives on the event/audit rows).
+        'scope_conflict_producer_wide' => 'Cannot activate a Producer-wide agreement for Producer :producer: a per-Club agreement is already active. A Producer\'s Producer-wide and per-Club agreements are mutually exclusive — terminate or supersede the active per-Club agreement first.',
+        'scope_conflict_club_scope' => 'Cannot activate a per-Club agreement for Producer :producer: a Producer-wide agreement is already active. A Producer\'s Producer-wide and per-Club agreements are mutually exclusive — terminate or supersede the active Producer-wide agreement first.',
     ],
     'customer' => [
         // § 4.1 / BR-K-Identity-1 rejection (design D5): a Customer's email is globally unique. The reason
@@ -58,6 +86,15 @@ return [
         // logs (unlike the producer-id references above, which are not PII). The operator supplied the value, so
         // the rule alone is fully actionable.
         'duplicate_email' => 'Cannot create a Customer: a Customer with this email address already exists. Each Customer email must be globally unique.',
+        // Registration age gate (change parties-module-k-br-guards, design D7; party-registry — Requirement:
+        // Registration Age Gate; BR-K-Identity-6 / canon MVP-DEC-022; BMD § 2.8). CreateCustomer blocks a
+        // registration whose self-attested date of birth implies an age below the configurable platform minimum
+        // (default 18) — OR that omits a date of birth (attestation is mandatory) — creating no Customer/Account/
+        // event. The copy names the rule and interpolates ONLY the :min_age platform constant (a public config
+        // value, not PII); the date of birth and the derived age are PII (the duplicate_email / gate_not_met
+        // discipline) and are DELIBERATELY never surfaced, so the reason is safe to reach logs.
+        'below_minimum_registration_age' => 'Cannot register this Customer: the self-attested date of birth is below the platform minimum registration age of :min_age. Registration requires an age of at least :min_age years.',
+        'missing_date_of_birth' => 'Cannot register this Customer: a self-attested date of birth is required to verify the minimum registration age of :min_age. Registration requires a date of birth at or above :min_age years.',
         // Customer status FSM `pending → active → …` (parties-membership-activation, design L6; § 4.1 /
         // AC-K-FSM-1) illegal-transition reason. :state is the offending from-state token (a business enum
         // value, not PII).

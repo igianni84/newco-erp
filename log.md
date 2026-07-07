@@ -811,3 +811,5 @@
 ## [2026-07-07 16:08] ralph | parties-module-k-br-guards 2.2 | green | auto_renew + auto_renew_default cols (bool not-null, default true) + casts; SQLite 1984/1984, focused 4/4 on PG17; up/down clean both engines; 5 files
 
 ## [2026-07-07 16:33] ralph | parties-module-k-br-guards 2.3 | green | drop parties_clubs.invite_only (Club-6), 14-file atomic sweep, create-table edited in-place; SQLite 1984/1984 + PG17 col-gone; PHPStan 0, Pint clean
+
+## [2026-07-07 17:34] ralph | parties-module-k-br-guards 2.4 | green | 9 files: 5 exceptions + EN/IT copy + BrGuardExceptionsTest; suite 2004/2004, phpstan 0, pint clean, openspec valid
