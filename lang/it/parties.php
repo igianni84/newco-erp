@@ -2,9 +2,10 @@
 
 // Parties (Module K) operator-facing copy — IT. Italian rendering for the Producer separation-of-duties
 // governance surfaced by ActivateProducer (change parties-producer-approval-sod, task 1.1; design D1/D4;
-// DEC-127) AND the module-K business-rule guards of change parties-module-k-br-guards (task 2.4): the
-// ProducerAgreement scope-conflict / Club-not-active, Club not-accepting-memberships, registration age-gate and
-// Producer content-lock rejection reasons. This file authors a SUBSET of `parties.*`; every other key is
+// DEC-127) AND the module-K business-rule guards of change parties-module-k-br-guards (tasks 2.4 + 3.1): the
+// ProducerAgreement scope-conflict / Club-not-active / settlement-cadence closed-set reject, Club
+// not-accepting-memberships, registration age-gate and Producer content-lock rejection reasons. This file
+// authors a SUBSET of `parties.*`; every other key is
 // authored in lang/en/parties.php and resolves under `it` via per-key EN fallback (Laravel chain [it, en]).
 // Product-domain terms (Producer, Club, Profile, ProducerAgreement) stay in English even in Italian copy, per
 // Crurated convention (CRURATED/CLAUDE.md — terminologia tecnica di prodotto può restare in inglese). Every key
@@ -35,6 +36,10 @@ return [
         // :producer is the operator-facing id reference (not PII); the copy names only the rule.
         'scope_conflict_producer_wide' => 'Impossibile attivare un accordo Producer-wide per il Producer :producer: un accordo per-Club è già attivo. Gli accordi Producer-wide e per-Club di un Producer si escludono a vicenda — termina o sostituisci prima l\'accordo per-Club attivo.',
         'scope_conflict_club_scope' => 'Impossibile attivare un accordo per-Club per il Producer :producer: un accordo Producer-wide è già attivo. Gli accordi Producer-wide e per-Club di un Producer si escludono a vicenda — termina o sostituisci prima l\'accordo Producer-wide attivo.',
+        // Settlement-cadence closed-set reject (BR-K-Agreement-2 / canon MVP-DEC-010). Mirrors the EN key. The three
+        // accepted tokens (quarterly/monthly/semi_annual, enum backing values) stay in English; :cadence echoes the
+        // offending operator-supplied token — a cadence token is NOT PII (the :producer / :club id discipline).
+        'invalid_settlement_cadence' => 'Impossibile creare un ProducerAgreement: ":cadence" non è una cadenza di regolamento valida. La cadenza di regolamento deve essere una tra quarterly, monthly o semi_annual.',
     ],
     'customer' => [
         // Registration age gate (BR-K-Identity-6 / canon MVP-DEC-022; BMD § 2.8). Mirrors the two EN reasons. The

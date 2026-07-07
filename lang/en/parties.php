@@ -79,6 +79,14 @@ return [
         // the rule (which agreements are involved lives on the event/audit rows).
         'scope_conflict_producer_wide' => 'Cannot activate a Producer-wide agreement for Producer :producer: a per-Club agreement is already active. A Producer\'s Producer-wide and per-Club agreements are mutually exclusive — terminate or supersede the active per-Club agreement first.',
         'scope_conflict_club_scope' => 'Cannot activate a per-Club agreement for Producer :producer: a Producer-wide agreement is already active. A Producer\'s Producer-wide and per-Club agreements are mutually exclusive — terminate or supersede the active Producer-wide agreement first.',
+        // Settlement-cadence closed-set boundary validation (change parties-module-k-br-guards, task 3.1; design D4;
+        // party-registry — Requirement: ProducerAgreement; BR-K-Agreement-2 / canon MVP-DEC-010). CreateProducerAgreement
+        // resolves the free-text cadence operand against the closed SettlementCadence set server-side; an out-of-set/typo
+        // token (`annual`, a sub-monthly cadence, a misspelling) is rejected at the boundary — ahead of the raw ValueError
+        // the enum cast would throw — persisting no agreement/event. The three accepted tokens are the enum backing values
+        // (label "semi-annual" → token `semi_annual`). :cadence echoes the offending operator-supplied token — a cadence
+        // token is NOT personal data (the :country / :producer / :club id discipline), so it IS interpolated.
+        'invalid_settlement_cadence' => 'Cannot create a ProducerAgreement: ":cadence" is not a valid settlement cadence. The settlement cadence must be one of quarterly, monthly or semi_annual.',
     ],
     'customer' => [
         // § 4.1 / BR-K-Identity-1 rejection (design D5): a Customer's email is globally unique. The reason

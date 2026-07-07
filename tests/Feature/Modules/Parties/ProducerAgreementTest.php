@@ -4,6 +4,7 @@ use App\Modules\Parties\Actions\CreateProducerAgreement;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
+use App\Modules\Parties\Exceptions\InvalidSettlementCadence;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
@@ -100,6 +101,44 @@ it('rejects a ProducerAgreement creation that names no existing Producer (§ 4.6
     expect(ProducerAgreement::query()->count())->toBe(0)
         ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
 });
+
+it('admits every in-set settlement cadence and round-trips it through the cast (RM-22 / MVP-DEC-010)', function () {
+    // The closed set of three (canon MVP-DEC-010) is admitted server-side and each token round-trips through the
+    // SettlementCadence cast on re-hydration. `quarterly`/`monthly` are also exercised by the create/event tests
+    // above; iterating cases() pins the WHOLE set — notably `semi_annual`, the underscore-backed third member
+    // (label "semi-annual") — end-to-end through the action.
+    $producer = Producer::factory()->create();
+
+    foreach (SettlementCadence::cases() as $cadence) {
+        $agreement = app(CreateProducerAgreement::class)->handle(
+            producerId: $producer->id,
+            settlementCadence: $cadence->value,
+        );
+
+        // Re-fetch so the assertion exercises the read cast, not the in-memory create() value.
+        expect(ProducerAgreement::findOrFail($agreement->id)->settlement_cadence)->toBe($cadence);
+    }
+
+    // Three in-set creates → three agreements and three events (nothing rejected).
+    expect(ProducerAgreement::query()->where('producer_id', $producer->id)->count())->toBe(3)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(3);
+});
+
+it('rejects an out-of-set settlement cadence server-side with no row and no event (RM-22 / MVP-DEC-010)', function (string $cadence) {
+    // canon MVP-DEC-010: `annual` (the migrated-away DemoSeeder value), `weekly` (a sub-monthly cadence) and a
+    // free-text typo are OUT of the closed set. The action rejects the out-of-set token with a clean localized
+    // InvalidSettlementCadence at the boundary — ahead of the raw ValueError the enum cast would throw — persisting
+    // no agreement and no event (server-side enforcement, not UI-only).
+    $producer = Producer::factory()->create();
+
+    expect(fn () => app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        settlementCadence: $cadence,
+    ))->toThrow(InvalidSettlementCadence::class);
+
+    expect(ProducerAgreement::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
+})->with(['annual', 'weekly', 'quaterly']);   // out-of-set value · sub-monthly cadence · a free-text misspelling
 
 it('records a ProducerAgreementCreated domain event in the same transaction, tagged parties and PII-free', function () {
     $producer = Producer::factory()->create();

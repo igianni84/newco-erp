@@ -813,3 +813,5 @@
 ## [2026-07-07 16:33] ralph | parties-module-k-br-guards 2.3 | green | drop parties_clubs.invite_only (Club-6), 14-file atomic sweep, create-table edited in-place; SQLite 1984/1984 + PG17 col-gone; PHPStan 0, Pint clean
 
 ## [2026-07-07 17:34] ralph | parties-module-k-br-guards 2.4 | green | 9 files: 5 exceptions + EN/IT copy + BrGuardExceptionsTest; suite 2004/2004, phpstan 0, pint clean, openspec valid
+
+## [2026-07-07 17:49] ralph | parties-module-k-br-guards 3.1 | green | 6 files — RM-22 cadence closed-set reject (InvalidSettlementCadence) in CreateProducerAgreement; suite 2008/2008, phpstan 0, pint clean

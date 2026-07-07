@@ -4,7 +4,9 @@ namespace App\Modules\Parties\Actions;
 
 use App\Modules\Module;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
+use App\Modules\Parties\Exceptions\InvalidSettlementCadence;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
@@ -18,12 +20,18 @@ use Illuminate\Support\Facades\DB;
  * its {@see ProducerAgreementCreated} event atomically (parties-core, design D3/D4/D7; party-registry —
  * Requirement: ProducerAgreement, Spine Creation Events).
  *
- * One guard makes the launch invariant enforced, not advised:
+ * Two guards make the launch invariants enforced, not advised:
  *   - REQUIRED PRODUCER (§ 4.6): a ProducerAgreement references EXACTLY ONE Producer. Inside the transaction a
  *     presence check rejects a `producer_id` that matches no Producer with a localized
  *     {@see MissingAgreementProducer} reason. The within-module FK on `parties_producer_agreements.producer_id`
  *     is the true structural guard; the pre-check surfaces a clean operator reason ahead of the raw integrity
  *     error.
+ *   - SETTLEMENT-CADENCE CLOSED SET (§ 4.6 / BR-K-Agreement-2, canon MVP-DEC-010, RM-22): the free-text cadence
+ *     operand is resolved against the closed {@see SettlementCadence} set at the action boundary. A null operand
+ *     stays null (the cadence is optional — the column is nullable); a non-null out-of-set/typo token is rejected
+ *     with a localized {@see InvalidSettlementCadence} BEFORE the write — ahead of the raw ValueError the model's
+ *     enum cast would throw on create(). Enforced server-side (not UI-only) because the cadence times Module-E
+ *     settlement and Module-D PO issuance; the PostgreSQL CHECK is the DB backstop, the cast the SQLite floor.
  *
  * The Club narrowing is OPTIONAL — a null `clubId` is a Producer-wide agreement; a value scopes it to that one
  * Club (the FK is the structural backstop for a non-existent Club). The "at most one ACTIVE agreement per
@@ -48,12 +56,21 @@ class CreateProducerAgreement
         ?CarbonInterface $termEnd = null,
         ?string $settlementCadence = null,
     ): ProducerAgreement {
+        // RM-22 (BR-K-Agreement-2 / canon MVP-DEC-010): resolve the free-text settlement-cadence operand against
+        // the closed SettlementCadence set at the action boundary — a null operand stays null (cadence is optional,
+        // the column is nullable), a non-null out-of-set/typo token is rejected with a localized reason BEFORE the
+        // write (ahead of the raw ValueError the enum cast would throw on create()). Pure input validation, so it
+        // fails fast outside the transaction — the resolved enum is what the insert persists.
+        $cadence = $settlementCadence === null
+            ? null
+            : (SettlementCadence::tryFrom($settlementCadence) ?? throw InvalidSettlementCadence::forCadence($settlementCadence));
+
         return DB::transaction(function () use (
             $producerId,
             $clubId,
             $termStart,
             $termEnd,
-            $settlementCadence,
+            $cadence,
         ): ProducerAgreement {
             // § 4.6: a ProducerAgreement requires an EXISTING Producer. Reject a missing/non-existent reference
             // with a clean localized reason (the FK is the structural backstop). The single-active-per-scope
@@ -68,7 +85,7 @@ class CreateProducerAgreement
                 'status' => ProducerAgreementStatus::Draft,
                 'term_start' => $termStart,
                 'term_end' => $termEnd,
-                'settlement_cadence' => $settlementCadence,
+                'settlement_cadence' => $cadence,
             ]);
 
             $this->recorder->record(
