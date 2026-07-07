@@ -84,7 +84,7 @@ it('creates a Club with a null fee when the amount and currency are left blank',
         ->fillForm([
             'display_name' => 'Cercle Sans Frais',
             'producer_id' => $producer->id,
-            'registration_flow_type' => 'open_registration',
+            'registration_flow_type' => 'application_with_approval',
             // amount + currency left blank → the page assembles no Money, passing the action's `?Money $fee = null`
             // default (D11).
         ])
@@ -107,7 +107,7 @@ it('surfaces MissingClubProducer on the producer_id field for a non-existent Pro
         ->fillForm([
             'display_name' => 'Cercle Orphelin',
             'producer_id' => 999999,
-            'registration_flow_type' => 'open_registration',
+            'registration_flow_type' => 'application_with_approval',
         ])
         ->call('create')
         ->assertHasFormErrors(['producer_id']);

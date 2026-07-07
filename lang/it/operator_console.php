@@ -427,7 +427,6 @@ return array_replace_recursive([
             'currency' => 'Valuta quota',
             'fee' => 'Quota',
             'generates_credit' => 'Genera credito',
-            'invite_only' => 'Solo su invito',
         ],
 
         'actions' => [

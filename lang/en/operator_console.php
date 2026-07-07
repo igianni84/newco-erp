@@ -628,8 +628,8 @@ return array_replace_recursive([
         // Create-form input labels + the view-infolist labels for the attributes the list omits. The form uses
         // `fields.*` for every input (mirroring the Producer console): display_name/producer/registration_flow_type
         // re-label the create inputs; amount/currency are the OPTIONAL fee inputs (assembled into a Money only when
-        // both are present — D11); generates_credit/invite_only are the two single-tier flags (also view-infolist
-        // labels). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
+        // both are present — D11); generates_credit is the single-tier-at-launch flag (also a view-infolist
+        // label). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
         // `active` (design D9).
         'fields' => [
             'display_name' => 'Name',
@@ -639,7 +639,6 @@ return array_replace_recursive([
             'currency' => 'Fee currency',
             'fee' => 'Fee',
             'generates_credit' => 'Generates credit',
-            'invite_only' => 'Invite only',
         ],
 
         // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs sunset

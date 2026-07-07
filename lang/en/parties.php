@@ -56,6 +56,12 @@ return [
         // blocks new memberships" rule at the creation chokepoint. :club is the operator-facing id reference (not
         // PII); :state is the offending ClubStatus token (a business enum, not PII) — the cannot_sunset discipline.
         'not_accepting_memberships' => 'Cannot create a Profile in Club :club: the Club is :state and no longer accepts new memberships. New memberships are accepted only by an active Club.',
+        // Registration-flow value-domain reject (change parties-module-k-br-guards, task 4.3; party-registry —
+        // Requirement: Club Registration Flow and Onboarding Channel; BR-K-Club-6 / canon MVP-DEC-022). The
+        // `open_registration` value is carried latent in the enum but is NOT selectable at launch — it would
+        // bypass the mandatory producer-approval write (DEC-069). :flow is the offending registration-flow token
+        // (a business enum value, not PII) — the invalid_settlement_cadence discipline.
+        'registration_flow_not_selectable' => 'The :flow registration flow is not selectable at launch: it is carried latent and would bypass the mandatory producer approval. Select one of application_with_approval, invitation_only, or link_onboarding.',
     ],
     'producer_agreement' => [
         // § 4.6 rejection (design D3/D4): a ProducerAgreement references exactly one EXISTING Producer.

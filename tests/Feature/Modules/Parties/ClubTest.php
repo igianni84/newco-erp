@@ -68,7 +68,7 @@ it('rejects a Club creation that names no existing operating Producer (BR-K-Club
     expect(fn () => app(CreateClub::class)->handle(
         displayName: 'Orphan Club',
         producerId: 999_999,
-        registrationFlowType: ClubRegistrationFlowType::OpenRegistration,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
         fee: Money::of(10000, Currency::of('EUR')),
     ))->toThrow(MissingClubProducer::class);
 
@@ -148,7 +148,7 @@ it('records no lifecycle-transition event — the Club stays active (scope guard
     $club = app(CreateClub::class)->handle(
         displayName: 'Steady Club',
         producerId: $producer->id,
-        registrationFlowType: ClubRegistrationFlowType::OpenRegistration,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
         fee: Money::of(5000, Currency::of('EUR')),
     );
 

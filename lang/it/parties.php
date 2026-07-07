@@ -27,6 +27,9 @@ return [
         // New-membership block at Profile creation (BR-K-Club-3 / AC-K-FSM-6). Mirrors the EN key. :club is the
         // operator-facing id reference (not PII); :state is the offending ClubStatus token (a business enum, not PII).
         'not_accepting_memberships' => 'Impossibile creare un Profile nel Club :club: il Club è :state e non accetta più nuove membership. Le nuove membership sono accettate solo da un Club attivo.',
+        // Registration-flow value-domain reject (BR-K-Club-6 / canon MVP-DEC-022). Mirrors the EN key. :flow is the
+        // offending registration-flow token (a business enum value, not PII).
+        'registration_flow_not_selectable' => 'Il flusso di registrazione :flow non è selezionabile al lancio: è mantenuto latente e aggirerebbe l\'approvazione obbligatoria del produttore. Seleziona uno tra application_with_approval, invitation_only o link_onboarding.',
     ],
     'producer_agreement' => [
         // Per-Club scope requires an active Club (BR-K-Agreement-4 / canon MVP-DEC-009). Mirrors the EN key.

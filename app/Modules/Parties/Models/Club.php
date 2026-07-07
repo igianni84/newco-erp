@@ -6,6 +6,7 @@ use App\Modules\Parties\Actions\CreateClub;
 use App\Modules\Parties\Enums\ClubRegistrationFlowType;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Events\ClubCreated;
+use App\Modules\Parties\Exceptions\ClubRegistrationFlowNotSelectable;
 use App\Platform\Money\Money;
 use App\Platform\Money\MoneyCast;
 use Carbon\CarbonInterface;
@@ -29,7 +30,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * the single-tier-at-launch flag (DEC-062). `auto_renew_default` is the Club-level
  * auto-renewal default a new Profile inherits at creation (Profile-5, parties-module-k-br-guards task 2.2) —
  * the standalone `auto_renew` element of the deferred `renewal_policy` blob (MVP-DEC-013), born `true`. This
- * change defines no transition out of `active` (design D2).
+ * change defines no transition out of `active` (design D2). The one model-level guard it DOES carry is the
+ * Club-6 latent-value reject ({@see booted()}): `open_registration` is a non-selectable-at-launch flow, rejected
+ * on every write path — a value invariant, not a state transition.
  *
  * @property int $id
  * @property string $display_name
@@ -80,6 +83,27 @@ class Club extends Model
     protected static function newFactory(): ClubFactory
     {
         return ClubFactory::new();
+    }
+
+    /**
+     * Club-6 (canon MVP-DEC-022 / AC-K-BR-Club-6; change parties-module-k-br-guards, design D6): the
+     * `open_registration` value (auto-join without approval) is CARRIED LATENT in {@see ClubRegistrationFlowType}
+     * but SHALL NOT be selectable at launch — it would contradict the mandatory producer-approval write
+     * (DEC-069: approval = charge = activation is mandatory for every flow; no value auto-approves). This
+     * `saving` guard rejects persisting it on EVERY write path — create OR update (the spec's literal scope) —
+     * so the value invariant holds beneath the {@see CreateClub} action, the factory, the seeder, and any future
+     * update writer, ahead of any NOT-NULL/enum backstop, with the localized {@see ClubRegistrationFlowNotSelectable}
+     * reason. The read goes through the enum cast, so a value set as either the enum or its backing string is caught.
+     * The three launch-selectable channels are `application_with_approval` (the default), `invitation_only`, and
+     * `link_onboarding`.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Club $club): void {
+            if ($club->registration_flow_type === ClubRegistrationFlowType::OpenRegistration) {
+                throw ClubRegistrationFlowNotSelectable::forFlow($club->registration_flow_type->value);
+            }
+        });
     }
 
     /**
