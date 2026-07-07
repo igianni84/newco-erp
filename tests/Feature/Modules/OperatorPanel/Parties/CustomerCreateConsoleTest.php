@@ -18,18 +18,33 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\CustomerResource\Pages\CreateCustomer;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Actions\CreateCustomer as CreateCustomerAction;
 use App\Modules\Parties\Enums\AccountStatus;
 use App\Modules\Parties\Enums\CustomerStatus;
 use App\Modules\Parties\Models\Account;
 use App\Modules\Parties\Models\Customer;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
 use function Pest\Laravel\actingAs;
 
 uses(DatabaseMigrations::class);
+
+// Reset the frozen clock after each test so a boundary DOB freeze never leaks into a sibling (the SweepTest /
+// RegistrationAgeGateTest idiom). Harmless for the tests that never set it.
+afterEach(fn () => CarbonImmutable::setTestNow());
+
+/** A fixed registration instant; the age-gate console tests derive their boundary DOBs from it + the min-age constant. */
+function customerConsoleFreezeNow(): CarbonImmutable
+{
+    $now = CarbonImmutable::parse('2026-07-07 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+
+    return $now;
+}
 
 it('creates a pending Customer through the console, co-provisioning one active Account and recording one CustomerCreated with the operator envelope', function () {
     $operator = Operator::factory()->create();
@@ -120,4 +135,88 @@ it('exposes the Customer create fields and no status field', function () {
         // A Customer is born `pending` by CreateCustomer (status advances only through the ViewCustomer verbs —
         // task 3.1), so the create form never sets `status` (design D5).
         ->assertFormFieldDoesNotExist('status');
+});
+
+// Task 6.3 (parties-module-k-br-guards; BR-K-Identity-6 / canon MVP-DEC-022) — the registration age gate surfaces on
+// the DATE-OF-BIRTH field, not the base's `email`. The action (task 5.1) raises `BelowMinimumRegistrationAge` for a
+// null or under-minimum `date_of_birth`; the create page routes THAT rejection to `date_of_birth` (discriminating it
+// by re-deriving the age condition against the shared `CreateCustomer::MINIMUM_REGISTRATION_AGE` constant), while a
+// `DuplicateCustomerEmail` still lands on `email`. The clock is frozen so the boundary DOBs are deterministic.
+
+it('surfaces the age gate on the date_of_birth field for an under-age registrant, persisting no Customer, Account or event', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $now = customerConsoleFreezeNow();
+
+    // Born one day after the "exactly the minimum" mark → below the age gate today. Derived from the enforced
+    // constant so the boundary can never drift from the value the action checks.
+    $underAge = $now->subYears(CreateCustomerAction::MINIMUM_REGISTRATION_AGE)->addDay()->toDateString();
+
+    $accountsBefore = Account::query()->count();
+
+    Livewire::test(CreateCustomer::class)
+        ->fillForm([
+            'email' => 'under.age.console@example.test',
+            'name' => 'Too Young',
+            'preferred_currency' => 'EUR',
+            'preferred_locale' => 'en',
+            'date_of_birth' => $underAge,
+        ])
+        ->call('create')
+        // The rejection surfaces on the date-of-birth field (NOT the base's `email`) — the console routes the age
+        // gate there per the delta spec.
+        ->assertHasFormErrors(['date_of_birth']);
+
+    // The reject preceded the transaction: no Customer, no co-provisioned Account, no CustomerCreated event.
+    expect(Customer::query()->where('email', 'under.age.console@example.test')->exists())->toBeFalse()
+        ->and(Account::query()->count())->toBe($accountsBefore)
+        ->and(DomainEvent::query()->where('name', 'CustomerCreated')->exists())->toBeFalse();
+});
+
+it('makes the date_of_birth field effectively required — a submit with no date of birth is rejected on that field, creating nothing', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    customerConsoleFreezeNow();
+
+    $accountsBefore = Account::query()->count();
+
+    // No date_of_birth attested → the domain's missing-DOB gate fires (attestation is mandatory at launch); the
+    // console routes it to the DOB field, so the field is EFFECTIVELY required though the form marks it optional.
+    Livewire::test(CreateCustomer::class)
+        ->fillForm([
+            'email' => 'no.dob.console@example.test',
+            'name' => 'No Birthdate',
+            'preferred_currency' => 'EUR',
+            'preferred_locale' => 'en',
+            'date_of_birth' => null,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['date_of_birth']);
+
+    expect(Customer::query()->where('email', 'no.dob.console@example.test')->exists())->toBeFalse()
+        ->and(Account::query()->count())->toBe($accountsBefore)
+        ->and(DomainEvent::query()->where('name', 'CustomerCreated')->exists())->toBeFalse();
+});
+
+it('admits a registrant at exactly the minimum age through the console, recording CustomerCreated with no form error', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $now = customerConsoleFreezeNow();
+
+    // Born exactly the minimum number of years ago today → age == minimum → the inclusive boundary is ADMITTED
+    // (the gate rejects only STRICTLY-younger). Proves the console surface does not over-reject a valid adult.
+    $exactlyMinimum = $now->subYears(CreateCustomerAction::MINIMUM_REGISTRATION_AGE)->toDateString();
+
+    Livewire::test(CreateCustomer::class)
+        ->fillForm([
+            'email' => 'exactly.min.console@example.test',
+            'name' => 'Just Old Enough',
+            'preferred_currency' => 'EUR',
+            'preferred_locale' => 'en',
+            'date_of_birth' => $exactlyMinimum,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $customer = Customer::query()->where('email', 'exactly.min.console@example.test')->sole();
+    expect($customer->status)->toBe(CustomerStatus::Pending)
+        ->and($customer->date_of_birth?->toDateString())->toBe($exactlyMinimum)
+        ->and(DomainEvent::query()->where('name', 'CustomerCreated')->where('entity_id', (string) $customer->id)->count())->toBe(1);
 });
