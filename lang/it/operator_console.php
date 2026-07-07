@@ -607,6 +607,7 @@ return array_replace_recursive([
             'cancellation_reason' => 'Motivo di cancellazione',
             'customer' => 'Cliente',
             'club' => 'Club',
+            'auto_renew' => 'Rinnovo automatico',
         ],
 
         'tabs' => [
@@ -631,6 +632,7 @@ return array_replace_recursive([
             'renew' => 'Rinnova',
             'cancel' => 'Annulla',
             'deactivate' => 'Disattiva',
+            'set_auto_renew' => 'Imposta rinnovo automatico',
         ],
 
         // Notifiche di esito per i verbi di membership. «membership» → «adesione» (parola italiana naturale, come
@@ -649,6 +651,7 @@ return array_replace_recursive([
             'renewed' => 'Adesione rinnovata.',
             'cancelled' => 'Adesione annullata.',
             'deactivated' => 'Adesione disattivata.',
+            'auto_renew_set' => 'Preferenza di rinnovo automatico aggiornata.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],

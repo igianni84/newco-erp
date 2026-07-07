@@ -93,11 +93,15 @@ class ProfileResource extends OperatorConsoleResource
      * The create form — the membership-application inputs the Parties `CreateProfile` action consumes: a Customer
      * select (the within-Parties Customer registry, labelled email + name) and a Club select (labelled by the
      * Club's `display_name`). Both are WITHIN-Parties reads (the boundary law forbids only CROSS-module relations —
-     * Customer and Club are Module K). It deliberately exposes NO `state` / `tier` / `role`: a Profile is born
-     * `applied` by the action and single-tier/role at launch (DEC-062, design D6); the lifecycle verbs live on
-     * {@see Pages\ViewProfile} (groups 3–5), never as a create-form input. The form only COLLECTS; the write routes
-     * through the action in {@see Pages\CreateProfile::createViaAction()}, which narrows the selected ids to the
-     * action's typed int contract. All labels localized (invariant 12).
+     * Customer and Club are Module K). The Club picker offers only `active` Clubs (BR-K-Club-3 / AC-K-FSM-6, RM-21:
+     * a `sunset`/`closed` Club no longer accepts new memberships — § 4.3), so an operator can't compose a membership
+     * against a non-accepting Club; the action's `ClubNotAcceptingMemberships` guard is the server floor that
+     * SURFACES a forced non-active value as a `club_id` form error (via {@see Pages\CreateProfile::createRejectionField()}).
+     * It deliberately exposes NO `state` / `tier` / `role`: a Profile is born `applied` by the action and
+     * single-tier/role at launch (DEC-062, design D6); the lifecycle verbs live on {@see Pages\ViewProfile}
+     * (groups 3–5), never as a create-form input. The form only COLLECTS; the write routes through the action in
+     * {@see Pages\CreateProfile::createViaAction()}, which narrows the selected ids to the action's typed int
+     * contract. All labels localized (invariant 12).
      */
     public static function form(Schema $schema): Schema
     {
@@ -109,7 +113,7 @@ class ProfileResource extends OperatorConsoleResource
                     ->required(),
                 Select::make('club_id')
                     ->label((string) __('operator_console.profile.fields.club'))
-                    ->options(self::clubOptions(...))
+                    ->options(self::activeClubOptions(...))
                     ->required(),
             ]);
     }
@@ -299,5 +303,30 @@ class ProfileResource extends OperatorConsoleResource
         }
 
         return $options;
+    }
+
+    /**
+     * Create-form Club-select options — only `active` Clubs, keyed by Club id → the `display_name` label
+     * (BR-K-Club-3 / AC-K-FSM-6, RM-21: a `sunset`/`closed` Club no longer accepts new memberships — § 4.3, so it is
+     * not selectable). Distinct from {@see clubOptions()} (which lists ALL Clubs for the read list's `club_id`
+     * FILTER — an existing membership under a since-`sunset` Club must stay filterable); the CREATE picker narrows to
+     * the accepting Clubs. A WITHIN-Parties read off the {@see Club} registry (Club is Module K — no cross-module
+     * access), filtering on the `status` cast's `->value` token so NO `ClubStatus` STATE enum is imported (the
+     * read-path discipline: the console compares/renders state through the model cast, never the enum — only OPERAND
+     * enums cross the carve-out). The server-side `ClubNotAcceptingMemberships` guard in `CreateProfile` is the floor
+     * beneath this picker (a forced non-active value surfaces as a `club_id` form error).
+     *
+     * @return array<int, string>
+     */
+    private static function activeClubOptions(): array
+    {
+        return Club::query()
+            ->orderBy('display_name')
+            ->get()
+            ->filter(static fn (Club $club): bool => $club->status->value === 'active')
+            ->mapWithKeys(static fn (Club $club): array => [
+                $club->id => $club->display_name,
+            ])
+            ->all();
     }
 }
