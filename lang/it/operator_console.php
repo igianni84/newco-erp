@@ -818,7 +818,7 @@ return array_replace_recursive([
         ],
         'fields' => [
             'club_help' => 'Lascia vuoto per un accordo valido per tutto il Producer; seleziona un Club per restringerlo.',
-            'settlement_cadence_help' => 'Facoltativo. Testo libero — la cadenza di liquidazione letta dal Modulo E (es. mensile, trimestrale).',
+            'settlement_cadence_help' => 'Facoltativo. La cadenza di liquidazione letta dal Modulo E, dall\'insieme chiuso (predefinito trimestrale).',
         ],
         'not_set' => 'Non impostato',
     ],

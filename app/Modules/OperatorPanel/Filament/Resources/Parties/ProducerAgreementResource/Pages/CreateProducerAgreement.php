@@ -21,11 +21,16 @@ use InvalidArgumentException;
  * (`actor_role: newco_ops` + the operator id) is resolved by the action through the platform `ActorContext` seam
  * off the authenticated `operator` guard — the page constructs none.
  *
- * Unlike the Club create (design D7), this surface constructs NO operand enum: the action takes only the required
- * Producer id, the OPTIONAL Club id (blank = a Producer-wide agreement — § 4.6), the OPTIONAL term dates and the
- * OPTIONAL free-string settlement cadence — so {@see createViaAction()} narrows ids/dates/string at the boundary
- * and stays inside the {Models, Actions} carve-out (no `Parties\Enums` import). The agreement's `status` is born
- * `draft` by the action, so the form exposes no status input.
+ * The action takes the required Producer id, the OPTIONAL Club id (blank = a Producer-wide agreement — § 4.6), the
+ * OPTIONAL term dates and the OPTIONAL settlement cadence as a `?string` — so {@see createViaAction()} narrows
+ * ids/dates/string at the boundary and stays inside the {Models, Actions} carve-out (this PAGE imports no
+ * `Parties\Enums`). The settlement cadence is now selected from the closed set: the resource form drives its Select
+ * off the `SettlementCadence` OPERAND enum (canon MVP-DEC-010/RM-22 — the carve-out widening lives in the RESOURCE,
+ * ADR 2026-06-21), and the page passes the selected backing string straight to the action, which resolves + server-
+ * validates it against that set and SURFACES an out-of-set token via the base's create-rejection catch (so the page
+ * defers cadence resolution to the RM-22 floor rather than constructing the enum here — a bad token surfaces as a
+ * form error instead of a raw `ValueError`). The agreement's `status` is born `draft` by the action, so the form
+ * exposes no status input.
  *
  * The page/action class-name collision (this page is `CreateProducerAgreement`, the domain action is also
  * `CreateProducerAgreement`) is resolved by aliasing the action import to `CreateProducerAgreementAction` (design

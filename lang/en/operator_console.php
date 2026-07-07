@@ -1153,7 +1153,7 @@ return array_replace_recursive([
         ],
         'fields' => [
             'club_help' => 'Leave blank for a Producer-wide agreement; select a Club to narrow it.',
-            'settlement_cadence_help' => 'Optional. Free text — the settlement cadence Module E reads (e.g. monthly, quarterly).',
+            'settlement_cadence_help' => 'Optional. The settlement cadence Module E reads, from the closed set (default quarterly).',
         ],
         'not_set' => 'Not set',
     ],
