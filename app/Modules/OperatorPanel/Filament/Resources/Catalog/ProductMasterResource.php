@@ -13,6 +13,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -34,9 +35,12 @@ use Filament\Tables\Table;
  * It read-binds to {@see ProductMaster} — the ADR-sanctioned exception, OperatorPanel-only and
  * display-only: the resource queries the model for the list table + the view infolist and NEVER writes it.
  * Every mutation is a separate Filament Action routed through a Catalog domain action (tasks 3–5); there is
- * deliberately NO Edit page and NO Delete/Create default action here — the Catalog backend ships no update
- * Action, so post-creation field edits are out of scope (proposal slice-boundary), and create lands as its
- * own write-through page in task 3.1. The no-Eloquent-write PHPStan rule (task 1.2) guards the discipline.
+ * deliberately NO Edit page and NO Delete/Create default action here. The reason is the read-projection
+ * discipline itself, not a missing backend: since catalog-module-0-completeness-sweep the Catalog backend DOES
+ * ship an update Action (`UpdateProductMasterIdentity`), and post-creation identity edits are surfaced — as a
+ * modal header action on the View page ({@see identityEditSchema()}, design D8), never as a Filament Edit page
+ * whose default `$record->save()` would bypass the domain. Create likewise lands as its own write-through page.
+ * The no-Eloquent-write PHPStan rule (task 1.2) guards the discipline.
  *
  * The producer column resolves the producer's display NAME, denormalized onto Catalog's OWN producer-state
  * projection ({@see ProducerState}, `catalog_producer_states`), never Module K (invariant 10). The
@@ -69,63 +73,137 @@ class ProductMasterResource extends OperatorConsoleResource
      * (appellation/region) and an optional winery story. The producer is a select sourced from
      * Catalog's OWN producer-state projection ({@see ProducerState}), read-only and Catalog-local, never
      * Module K (invariant 10). The form only COLLECTS; the write routes through the action in
-     * {@see Pages\CreateProductMaster::handleRecordCreation()} (there is no Edit page —
-     * the Catalog backend ships no update Action). All labels localized (invariant 12).
+     * {@see Pages\CreateProductMaster::handleRecordCreation()}. All labels localized (invariant 12).
+     *
+     * The producer is bound at creation and never re-bound, so it is the ONE field the create form carries and
+     * the identity-edit modal ({@see identityEditSchema()}) does not — every other field is shared verbatim.
      */
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextInput::make('name')
-                    ->label((string) __('operator_console.product_master.fields.name'))
-                    ->required()
-                    ->maxLength(255),
-                Select::make('producer_id')
-                    ->label((string) __('operator_console.product_master.fields.producer'))
-                    ->options(self::producerOptions(...))
-                    ->required()
-                    ->searchable()
-                    ->live()
-                    ->afterStateUpdated(function (mixed $state, Set $set): void {
-                        // Prefill the wine's Country + Region from the chosen producer — a producer is the
-                        // wine's home, so its geography is the sensible (editable) default. Read off Catalog's
-                        // OWN producer-state projection, never Module K (invariant 10).
-                        if (! is_numeric($state)) {
-                            return;
-                        }
-
-                        $geography = self::producerGeography((int) $state);
-                        $set('country', $geography['country']);
-                        $set('region', $geography['region']);
-                    }),
-                // Country is a UI cascade filter only — it scopes the Region options and is prefilled from the
-                // producer. The Catalog domain stores region + appellation (not country), so it is NOT dehydrated.
-                Select::make('country')
-                    ->label((string) __('operator_console.product_master.fields.country'))
-                    ->options(self::countryOptions())
-                    ->searchable()
-                    ->live()
-                    ->dehydrated(false)
-                    ->afterStateUpdated(fn (Set $set) => $set('region', null)),
-                Select::make('region')
-                    ->label((string) __('operator_console.product_master.fields.region'))
-                    ->options(fn (Get $get): array => self::regionOptions(self::str($get('country')), self::str($get('region'))))
-                    ->required()
-                    ->searchable()
-                    ->live(),
-                TextInput::make('appellation')
-                    ->label((string) __('operator_console.product_master.fields.appellation'))
-                    ->required()
-                    ->maxLength(255)
-                    // Region-scoped autocomplete: suggests known appellations for the chosen region but stays
-                    // FREE text — appellation is part of the BR-Identity-1 key, so a new wine's appellation is
-                    // never blocked by the picklist (the "light cascade" decision, 2026-06-24).
-                    ->datalist(fn (Get $get): array => self::appellationSuggestions(self::str($get('region'))))
-                    ->helperText((string) __('operator_console.product_master.fields.appellation_help')),
-                Textarea::make('winery_story')
-                    ->label((string) __('operator_console.product_master.fields.winery_story'))
-                    ->helperText((string) __('operator_console.product_master.fields.winery_story_help')),
+                self::nameField(),
+                self::producerField(),
+                ...self::wineIdentityFields(),
             ]);
+    }
+
+    /**
+     * The identity-edit modal's form (catalog-module-0-completeness-sweep task 6.1; design D8/R8; spec —
+     * Operator edits catalog identity content through the console): the four review-governed identity fields
+     * `UpdateProductMasterIdentity` replaces — product name, region, appellation and the winery-story prose.
+     *
+     * It is the create form MINUS the producer select (a Master's producer is fixed at creation, exactly as its
+     * `product_type` is), reusing the very same field builders — so the Country → Region cascade that kills
+     * free-text typo-variants of the identity key, the region-scoped appellation datalist and the translatable
+     * prose input (design R8) behave identically on both surfaces, by construction rather than by copy.
+     *
+     * @return array<int, Component>
+     */
+    public static function identityEditSchema(): array
+    {
+        return [
+            self::nameField(),
+            ...self::wineIdentityFields(),
+        ];
+    }
+
+    /**
+     * The identity-edit modal's PREFILL state, read off the Master and its 1:1 WINE attribute set. `country` is
+     * the cascade filter only (never dehydrated, never stored): it is reverse-derived from the stored region so
+     * the Region select opens on the right country's options.
+     *
+     * The winery story is prefilled from — and, on submit, written back as — the ENGLISH baseline, the sole
+     * locale the create form authors (`fields.winery_story_help`). A multi-locale prose surface is a deferred
+     * seam; until it exists no other locale can be present, so replacing the value cannot lose one.
+     *
+     * @return array<string, mixed>
+     */
+    public static function identityEditState(ProductMaster $record): array
+    {
+        $wine = $record->wineAttributes;
+
+        return [
+            'name' => $record->name,
+            'country' => self::countryOfRegion($wine?->region),
+            'region' => $wine?->region,
+            'appellation' => $wine?->appellation,
+            'winery_story' => $wine?->winery_story?->resolve('en'),
+        ];
+    }
+
+    /** The Master's own core identity column, shared by the create form and the identity-edit modal. */
+    private static function nameField(): TextInput
+    {
+        return TextInput::make('name')
+            ->label((string) __('operator_console.product_master.fields.name'))
+            ->required()
+            ->maxLength(255);
+    }
+
+    /**
+     * The producer select — CREATE-ONLY (a Master's producer is fixed at creation). Sourced from Catalog's OWN
+     * producer-state projection ({@see producerOptions()}); choosing one prefills the wine's geography.
+     */
+    private static function producerField(): Select
+    {
+        return Select::make('producer_id')
+            ->label((string) __('operator_console.product_master.fields.producer'))
+            ->options(self::producerOptions(...))
+            ->required()
+            ->searchable()
+            ->live()
+            ->afterStateUpdated(function (mixed $state, Set $set): void {
+                // Prefill the wine's Country + Region from the chosen producer — a producer is the
+                // wine's home, so its geography is the sensible (editable) default. Read off Catalog's
+                // OWN producer-state projection, never Module K (invariant 10).
+                if (! is_numeric($state)) {
+                    return;
+                }
+
+                $geography = self::producerGeography((int) $state);
+                $set('country', $geography['country']);
+                $set('region', $geography['region']);
+            });
+    }
+
+    /**
+     * The WINE per-type identity fields — country (cascade filter), region, appellation and the winery story.
+     * Shared VERBATIM by the create form and the identity-edit modal.
+     *
+     * @return array<int, Component>
+     */
+    private static function wineIdentityFields(): array
+    {
+        return [
+            // Country is a UI cascade filter only — it scopes the Region options and is prefilled from the
+            // producer. The Catalog domain stores region + appellation (not country), so it is NOT dehydrated.
+            Select::make('country')
+                ->label((string) __('operator_console.product_master.fields.country'))
+                ->options(self::countryOptions())
+                ->searchable()
+                ->live()
+                ->dehydrated(false)
+                ->afterStateUpdated(fn (Set $set) => $set('region', null)),
+            Select::make('region')
+                ->label((string) __('operator_console.product_master.fields.region'))
+                ->options(fn (Get $get): array => self::regionOptions(self::str($get('country')), self::str($get('region'))))
+                ->required()
+                ->searchable()
+                ->live(),
+            TextInput::make('appellation')
+                ->label((string) __('operator_console.product_master.fields.appellation'))
+                ->required()
+                ->maxLength(255)
+                // Region-scoped autocomplete: suggests known appellations for the chosen region but stays
+                // FREE text — appellation is part of the BR-Identity-1 key, so a new wine's appellation is
+                // never blocked by the picklist (the "light cascade" decision, 2026-06-24).
+                ->datalist(fn (Get $get): array => self::appellationSuggestions(self::str($get('region'))))
+                ->helperText((string) __('operator_console.product_master.fields.appellation_help')),
+            Textarea::make('winery_story')
+                ->label((string) __('operator_console.product_master.fields.winery_story'))
+                ->helperText((string) __('operator_console.product_master.fields.winery_story_help')),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -374,6 +452,26 @@ class ProductMasterResource extends OperatorConsoleResource
         }
 
         return $options;
+    }
+
+    /**
+     * The curated country a region belongs to, or null when the region is unset or falls outside the picklist
+     * (a legacy or hand-seeded value). The inverse of {@see regionOptions()}: the identity-edit modal stores no
+     * country, so it re-derives the cascade filter from the region it IS editing.
+     */
+    private static function countryOfRegion(?string $region): ?string
+    {
+        if ($region === null) {
+            return null;
+        }
+
+        foreach (self::geography() as $country => $regions) {
+            if (is_string($country) && is_array($regions) && array_key_exists($region, $regions)) {
+                return $country;
+            }
+        }
+
+        return null;
     }
 
     /**

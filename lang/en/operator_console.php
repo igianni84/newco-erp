@@ -76,6 +76,9 @@ return array_replace_recursive([
             'retire' => 'Retire',
             'retire_cascade' => 'Retire (cascade)',
             'reopen' => 'Reopen',
+            // The one field-edit surface (catalog-module-0-completeness-sweep, task 6.1): a modal over the four
+            // review-governed identity fields, routed through UpdateProductMasterIdentity — never an Edit page.
+            'edit_identity' => 'Edit identity',
         ],
 
         // The "second actor required" affordance (design L5/L6) — rendered as the activate confirmation copy.
@@ -101,6 +104,9 @@ return array_replace_recursive([
             'cascade_retired' => 'Product Master and its active descendants retired.',
             'reopened' => 'Product Master reopened for review.',
             'action_failed' => 'The action could not be completed.',
+            // The identity-edit success title. A domain rejection on that path is NOT `action_failed`: it
+            // surfaces as a validation error on the modal's own field, carrying the action's localized message.
+            'identity_updated' => 'Product Master identity updated; a new version was recorded.',
         ],
 
         // Shown for a producer that has no row in Catalog's producer-state projection yet

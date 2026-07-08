@@ -66,6 +66,7 @@ return array_replace_recursive([
             'retire' => 'Ritira',
             'retire_cascade' => 'Ritira (a cascata)',
             'reopen' => 'Riapri',
+            'edit_identity' => 'Modifica identità',
         ],
 
         'affordance' => [
@@ -82,6 +83,7 @@ return array_replace_recursive([
             'cascade_retired' => 'Product Master e i suoi discendenti attivi ritirati.',
             'reopened' => 'Product Master riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
+            'identity_updated' => 'Identità del Product Master aggiornata; registrata una nuova versione.',
         ],
 
         'producer_unprojected' => 'Non proiettato',

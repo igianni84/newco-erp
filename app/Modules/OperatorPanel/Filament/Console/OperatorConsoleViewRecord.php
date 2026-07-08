@@ -7,9 +7,14 @@ use App\Platform\Audit\AuditRecord;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Component;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 /**
  * OperatorConsoleViewRecord — the shared base view page for every catalog operator console
@@ -26,6 +31,11 @@ use Illuminate\Database\Eloquent\Model;
  * operator-driven cascade retire) are appended by overriding {@see getHeaderActions()} and spreading
  * `parent::getHeaderActions()` — the base owns the uniform five, the subclass owns only its divergence
  * (design L6). The read-only list/infolist lives on the {@see \Filament\Resources\Resource}, not here.
+ *
+ * Alongside the verb-shaped lifecycle actions the base owns the FORM-shaped ones: {@see contentEditAction()}
+ * builds a content-edit modal (catalog-module-0-completeness-sweep design D8) whose write routes through a
+ * Catalog content-edit Action. There are still NO Edit PAGES — the read-projection discipline stands (ADR
+ * 2026-06-19); an edit is a modal header action like every other write-through.
  */
 abstract class OperatorConsoleViewRecord extends ViewRecord
 {
@@ -63,6 +73,98 @@ abstract class OperatorConsoleViewRecord extends ViewRecord
             $this->lifecycleAction('retire', 'retired', $invocations['retire']),
             $this->lifecycleAction('reopen', 'reopened', $invocations['reopen']),
         ];
+    }
+
+    /**
+     * Build a FORM-shaped write-through action — a content-edit modal (catalog-module-0-completeness-sweep
+     * design D8; spec — Operator edits catalog identity content through the console). The modal is prefilled
+     * from the record by `$fill`, and on submit `$invoke` routes the validated form state into the entity's
+     * Catalog content-edit Action — never an Eloquent write (the no-Eloquent-write rule).
+     *
+     * WHERE THE REJECTION LANDS is the one thing that distinguishes this from {@see lifecycleAction()}. A
+     * verb-shaped write (submit, activate, retire) has no form, so the domain's localized rejection can only be
+     * a danger notification. A form-shaped write DOES have a form, and one of its rejections — Product Master's
+     * BR-Identity-1 dedup collision — is REQUIRED by the spec to surface as a form validation error. The console
+     * cannot type-discriminate the rejections it catches (it imports nothing from a module's `Exceptions`
+     * namespace — the {Models, Actions} surface, task 1.3), so every localized domain rejection on this path
+     * lands UNIFORMLY on `$rejectionField` as a validation error, exactly as
+     * {@see OperatorConsoleCreateRecord::handleRecordCreation()} does for a create. The modal stays open with the
+     * operator's input intact and the domain's own message beneath the field; the entity, the audit log and the
+     * domain-event log are untouched (the rejecting action's transaction rolled back). The spec permits this for
+     * the state guard and the composition floors ("validation error or notification") and demands it for the
+     * dedup collision — one shape serves all three, and the console still reimplements no gate (design L4).
+     *
+     * `InvalidArgumentException` (a `LogicException`, thrown by a page narrowing an impossible form payload)
+     * deliberately sails past the catch: a programming bug is not a form error.
+     *
+     * The view needs NO re-read after a successful edit, and that is a property of the domain rather than a
+     * coincidence: `recordOf()` hands the Action the page's own record instance, and the `CatalogContentEdit`
+     * mechanism performs its locked re-read and its `UPDATE` on THAT instance — so the page's `version` and
+     * content are the post-edit truth by the time the infolist renders (the per-type attribute sets it reads
+     * through relations are lazy-loaded after the write, fresh). A `$record->refresh()` here would be a query
+     * that changes nothing. The property is load-bearing, so it is asserted, not assumed: the happy-path test
+     * reads `version` back off the PAGE's record, and reds if a future Action ever writes a copy instead.
+     *
+     * `$invoke` receives the form state as a bare `array<array-key, mixed>`, not the `array<string, mixed>` map
+     * Filament's own `getData()` documents. That is deliberate: the value Filament hands the action closure
+     * arrives through a native `array` parameter, so the string-keyed claim is unprovable at this boundary — and
+     * it buys nothing, because a caller reads it by string literal (`$data['name']`) and must narrow each `mixed`
+     * value anyway. Declaring what we can prove keeps the analyser honest instead of silenced.
+     *
+     * @param  string  $verb  the Filament action id (also the `actions.<verb>` label key, snake-cased)
+     * @param  string  $successKey  the `notifications.<successKey>` suffix for the success title
+     * @param  string  $rejectionField  the form field a localized domain rejection is surfaced on
+     * @param  array<int, Component>  $form  the modal's form components
+     * @param  Closure(Model): array<string, mixed>  $fill  the modal's prefill state, read off the record
+     * @param  Closure(Model, array<array-key, mixed>): mixed  $invoke  routes the validated form state into the domain Action
+     */
+    protected function contentEditAction(
+        string $verb,
+        string $successKey,
+        string $rejectionField,
+        array $form,
+        Closure $fill,
+        Closure $invoke,
+    ): Action {
+        $i18nKey = $this->i18nKey();
+
+        $handle = function (Model $record, array $data) use ($invoke, $i18nKey, $successKey, $rejectionField): void {
+            try {
+                $invoke($record, $data);
+            } catch (RuntimeException $exception) {
+                // A localized domain rejection → a form field error carrying the action's own message.
+                throw ValidationException::withMessages([
+                    $this->mountedActionErrorKey($rejectionField) => $exception->getMessage(),
+                ]);
+            }
+
+            Notification::make()
+                ->success()
+                ->title((string) __("operator_console.{$i18nKey}.notifications.{$successKey}"))
+                ->send();
+        };
+
+        return Action::make($verb)
+            ->label((string) __("operator_console.{$i18nKey}.actions.".Str::snake($verb)))
+            ->schema($form)
+            ->fillForm(fn (Model $record): array => $fill($record))
+            ->action($handle);
+    }
+
+    /**
+     * The Livewire error-bag key a domain rejection lands on inside the CURRENTLY MOUNTED action's form. Filament
+     * state-paths a mounted action's schema at `mountedActions.<nestingIndex>.data`, so a bare field name would
+     * raise an error the modal renders nowhere. Rather than reconstruct that path from the index, read it off the
+     * mounted schema itself — the same derivation Filament's own `assertHasFormErrors()` test helper performs, so
+     * the assertion and the production error can never disagree. Falls back to the bare field name when no action
+     * is mounted (unreachable from an action's own `->action()` closure; it exists to keep the return typed).
+     */
+    private function mountedActionErrorKey(string $field): string
+    {
+        $schemaName = $this->getMountedActionSchemaName();
+        $statePath = $schemaName === null ? null : $this->getSchema($schemaName)?->getStatePath();
+
+        return ($statePath === null || $statePath === '') ? $field : $statePath.'.'.$field;
     }
 
     /**

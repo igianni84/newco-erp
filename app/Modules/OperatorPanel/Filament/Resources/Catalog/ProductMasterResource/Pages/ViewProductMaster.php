@@ -9,12 +9,15 @@ use App\Modules\Catalog\Actions\ResubmitProductMasterForReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\RetireProductMasterCascade;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
+use App\Modules\Catalog\Actions\UpdateProductMasterIdentity;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductMasterResource;
+use App\Platform\I18n\TranslatableText;
 use Closure;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
  * ViewProductMaster — the Product Master console view page, retrofitted onto the shared
@@ -29,8 +32,13 @@ use Illuminate\Database\Eloquent\Model;
  * Every action routes to a Catalog domain action and NEVER writes `lifecycle_state` itself (the
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard, the
  * Creator → Reviewer → Approver separation-of-duties floor, the Producer activation gate, the cascade ordering
- * — it reimplements none of them (design L4). There is still NO field-edit (the Catalog backend ships no update
- * action — lifecycle TRANSITIONS only, proposal slice-boundary). All copy is localized (invariant 12).
+ * — it reimplements none of them (design L4). All copy is localized (invariant 12).
+ *
+ * Since catalog-module-0-completeness-sweep (task 6.1) the page also carries the ONE field-edit surface Module 0
+ * ships: `editIdentity`, a {@see contentEditAction()} modal routing the four review-governed identity fields into
+ * `UpdateProductMasterIdentity`. It is still not an Edit PAGE (the read-projection discipline stands) — the write
+ * routes through the domain Action, which owns the BR-Identity-1 dedup re-check, the `version` increment, the
+ * audited before/after and the review re-arm. Post-creation edits are no longer out of scope; Edit pages are.
  */
 class ViewProductMaster extends OperatorConsoleViewRecord
 {
@@ -61,7 +69,70 @@ class ViewProductMaster extends OperatorConsoleViewRecord
     }
 
     /**
-     * The kit's five uniform lifecycle actions PLUS re-submit and Master's operator-driven cascade retire.
+     * The `editIdentity` header action — Module 0's one field-edit surface (catalog-module-0-completeness-sweep
+     * task 6.1; design D8/R8; spec — Operator edits catalog identity content through the console). A
+     * {@see contentEditAction()} modal prefilled from the Master's current identity
+     * ({@see ProductMasterResource::identityEditState()}) over the create form's own field builders
+     * ({@see ProductMasterResource::identityEditSchema()}), routing the validated state into
+     * {@see UpdateProductMasterIdentity}.
+     *
+     * The Action owns everything the console must not: the BR-Identity-1 dedup re-check against every OTHER
+     * non-retired Master, the `retired` state guard, the operator floor, the in-place `version` increment, the
+     * audited before/after of only the CHANGED fields, and the review re-arm (`identity_updated` is a
+     * review-freshness verb — editing a `reviewed` Master blocks its activation until an explicit re-submit,
+     * whose button this page already surfaces). Every one of those rejections is a localized RuntimeException;
+     * the kit maps it onto the `name` field of this very modal, so a dedup collision reads as a form validation
+     * error (the spec's requirement) and nothing is written.
+     *
+     * REPLACEMENT semantics: the Action takes all four fields on every call, so the modal submits all four —
+     * `null`/`''` winery story CLEARS the prose, deliberately. `country` is the Region cascade's filter and is
+     * never dehydrated, so it never reaches the Action.
+     */
+    protected function editIdentityAction(): Action
+    {
+        return $this->contentEditAction(
+            'editIdentity',
+            'identity_updated',
+            'name',
+            ProductMasterResource::identityEditSchema(),
+            fn (Model $record): array => ProductMasterResource::identityEditState($this->recordOf(ProductMaster::class, $record)),
+            /** @param  array<string, mixed>  $data */
+            function (Model $record, array $data): void {
+                // Filament types the post-validation form state as array<string, mixed>; narrow each value to the
+                // Catalog action's typed contract at the boundary (the create page's discipline). The three
+                // `required` fields make the happy path well-formed; winery_story is the one optional input.
+                // InvalidArgumentException is a LogicException, so it sails past the kit's RuntimeException catch
+                // — an impossible payload is a programming bug, not a form error.
+                $name = $data['name'];
+                $appellation = $data['appellation'];
+                $region = $data['region'];
+                $wineryStory = $data['winery_story'] ?? null;
+
+                if (
+                    ! is_string($name)
+                    || ! is_string($appellation)
+                    || ! is_string($region)
+                    || ! (is_null($wineryStory) || is_string($wineryStory))
+                ) {
+                    throw new InvalidArgumentException('Unexpected Product Master identity-edit payload.');
+                }
+
+                app(UpdateProductMasterIdentity::class)->handle(
+                    $this->recordOf(ProductMaster::class, $record),
+                    name: $name,
+                    appellation: $appellation,
+                    region: $region,
+                    wineryStory: ($wineryStory === null || $wineryStory === '')
+                        ? null
+                        : TranslatableText::of(['en' => $wineryStory]),
+                );
+            },
+        );
+    }
+
+    /**
+     * The kit's five uniform lifecycle actions PLUS re-submit, Master's operator-driven cascade retire, and the
+     * identity-edit modal.
      *
      * Re-submit (RM-06 / canon MVP-DEC-019 and its edit leg; design D2/D5 + catalog-module-0-completeness-sweep
      * D4/D9) RE-ARMS the approval flow after a rejection OR an identity edit — a `reviewed → reviewed` audit-only
@@ -94,6 +165,7 @@ class ViewProductMaster extends OperatorConsoleViewRecord
                 fn (Model $record, string $notes) => app(RetireProductMasterCascade::class)->handle($this->recordOf(ProductMaster::class, $record)),
                 confirmationKey: 'affordance.cascade_warning',
             ),
+            $this->editIdentityAction(),
         ];
     }
 }

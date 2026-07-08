@@ -73,7 +73,7 @@
 
 ## 6. Console surfaces
 
-- [ ] 6.1 `ViewProductMaster` edit-identity modal action + create-page unknown-producer mapping (D8, delta *Operator edits catalog identity content…* + *Operator creates a Product Master…*)
+- [x] 6.1 `ViewProductMaster` edit-identity modal action + create-page unknown-producer mapping (D8, delta *Operator edits catalog identity content…* + *Operator creates a Product Master…*)
   - Kit modal action prefilled with current name/appellation/region/winery-story (reuse the create-form translatable-prose field pattern — R8), invoking `UpdateProductMasterIdentity`; dedup collision AND unknown-producer (create page) mapped to form validation errors (precedent: `CreateProductReference` unique-violation mapping); success notification; `version` visible on the View reflects the increment; new keys authored EN+IT (R5); update the Master resource/view "no Edit page" comment rationale (R12 partial)
   - Livewire tests: happy edit (version+1 rendered, audit envelope `newco_ops`+operator id), dedup validation error (unchanged), create-page unknown-producer validation error (no Master, no event), retired Master → action hidden or rejection surfaced (pick the kit-consistent shape and assert it)
   - Typecheck passes; tests pass
