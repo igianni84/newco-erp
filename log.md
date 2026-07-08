@@ -889,3 +889,5 @@
 ## [2026-07-08 21:08] archive | catalog-module-0-completeness-sweep | delta merged into truth specs: product-catalog 18->21 reqs, operator-console 29->31; archived as 2026-07-08-*; no active changes
 
 ## [2026-07-08 21:14] close-ritual | catalog-module-0-completeness-sweep | pushed main to origin (22 commits), deleted ralph branch; main==origin/main, worktree clean
+
+## [2026-07-08 21:56] tracker-sync | Remediation_Tracker | P3 sweep RM-12/13/14/15 closed in tracker (was stale at approve commit); RM-05 marked NEXT + ADR open questions; F5/F6/F7 opened from the sweep's 7 latent follow-ups

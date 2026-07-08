@@ -7,7 +7,7 @@ updated: 2026-07-08
 # Hot Cache
 
 ## Last Updated
-**2026-07-08 (late) — `catalog-module-0-completeness-sweep` MERGED, semantic-verified, ARCHIVED, PUSHED.** Full §2.7 ritual: review → PG17 verify → `--no-ff` merge → 3-pass semantic verify → remediation (tasks 8.1–8.4) → `openspec archive` → `git push` + branch deleted. `main` == `origin/main`; `openspec list` = no active changes. Clean slate.
+**2026-07-08 (late) — `catalog-module-0-completeness-sweep` MERGED, semantic-verified, ARCHIVED, PUSHED; `Remediation_Tracker` re-synced.** Full §2.7 ritual: review → PG17 verify → `--no-ff` merge → 3-pass semantic verify → remediation (tasks 8.1–8.4) → `openspec archive` → `git push` + branch deleted. `main` == `origin/main`; `openspec list` = no active changes. Then the tracker (the backlog's source of truth, left at the `approve:` commit) was aligned: RM-12/13/14/15 → ✅, RM-05 → ▶️ NEXT, the 7 latent follow-ups triaged into §7 as **F5/F6/F7**. Clean slate.
 
 ## Build & Quality Status
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -16,7 +16,7 @@ updated: 2026-07-08
 
 ## Active Change & Next Task
 - **None in flight.** Archive: `openspec/changes/archive/2026-07-08-catalog-module-0-completeness-sweep/`. Its `progress.md` carries the delta→test table, the 5 deferred seams, the §2.7 verify section, **7 latent follow-ups** (DemoSeeder watermark trap; `isReviewStale()` missing `module` predicate; `catch (RuntimeException)` swallowing `QueryException`; `is_breakable` asserted on 2 of 11 catalog tables; no `lang/it/catalog.php`; 6 spine console re-submit tests understated; `producer_name` never projected) and `## Codebase Patterns` (132 bullets). **Read it before touching Module 0.**
-- **NEXT: RM-05** (capacity seat-set + WaitingList, the last P1) via the **K-side seam, ADR-first** — its own session.
+- **NEXT: RM-05** (capacity seat-set + WaitingList, the last P1) via the **K-side seam, ADR-first** (`grill-with-docs` on LIVE canon, then `/spec-to-change`) — its own session. Open questions + the 7 latent follow-ups: `docs/validation/Remediation_Tracker.md` §1/§4/§7.
 - Landmines: console keys EN+IT (catalog **domain** reasons EN-only); a `{@see FQCN}` on a `Catalog\Events`/`Lifecycle` type — Pint auto-imports it, redding `ModuleBoundariesTest`.
 
 ## Blockers & Decisions Needed
