@@ -847,3 +847,7 @@
 ## [2026-07-08 11:22] push | parties-module-k-br-guards | git push by Giovanni: main→origin 36ee05b..50f834e in sync; §2.7 ritual fully closed; memory push-pending flags cleared
 
 ## [2026-07-08 11:34] scope-decision | Remediation P3 + RM-05 | P3 sweep mega-batch decided (RM-12+13+14+15, one change, S1 fold-in) + RM-05 K-side seam after (ADR-first); lessons amendment; prep prompt handed to Giovanni
+
+## [2026-07-08 12:47] spec-to-change | catalog-module-0-completeness-sweep | P3 sweep authored prep-only: 12 delta reqs (5 ADDED/7 MODIFIED) + design D1-D11 + 15 tasks; S1 4-suffix filter on both readers; RM-15 via widened projection (registered); validate --strict green; no build, no APPROVED - awaits Giovanni review
+
+## [2026-07-08 14:54] approve | catalog-module-0-completeness-sweep | APPROVED marker created by Giovanni (14:53, human-only); scaffolding+marker+tracker/hot/log in one approve: commit (local, no push); next ./ralph.sh --change catalog-module-0-completeness-sweep (15 tasks)
