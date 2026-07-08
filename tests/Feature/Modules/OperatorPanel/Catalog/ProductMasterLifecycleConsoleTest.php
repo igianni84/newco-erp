@@ -57,6 +57,7 @@ use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 use function Pest\Laravel\actingAs;
 
@@ -64,14 +65,17 @@ uses(DatabaseMigrations::class);
 
 /**
  * A draft Master created through the real Catalog action as the currently-acting operator (records
- * ProductMasterCreated, no audit row). Submit/reject do not consult the producer gate (only activate does),
- * so no producer-state projection is needed for these checkpoints.
+ * ProductMasterCreated, no audit row). Submit/reject do not consult the producer GATE (only activate does), but
+ * creation itself now demands the producer EXIST (AC-0-XM-2, task 5.2) — so the projection row is seeded here,
+ * `registered`: the weakest status that admits creation and still leaves the gate closed. A caller that needs an
+ * ACTIVATABLE producer projects `active` first (see lifecycleConsoleActiveMaster); the fixture is idempotent, so
+ * the richer status survives.
  */
 function lifecycleConsoleDraftMaster(int $producerId = 55, string $name = 'Château Console', string $appellation = 'Pauillac'): ProductMaster
 {
     return app(CreateProductMaster::class)->handle(
         name: $name,
-        producerId: $producerId,
+        producerId: ProducerProjectionFixture::known($producerId),
         appellation: $appellation,
         region: 'Bordeaux',
     );
@@ -298,8 +302,9 @@ it('surfaces the Producer-activation gate block as a danger notification, leavin
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    // Producer 9 is NEVER projected active (no row) — the gate rejects. The three actors are distinct, so the
-    // approval governance passes and the GATE is the sole rejection (proving the console surfaces the gate).
+    // Producer 9 is only `registered` — it EXISTS (so creation is admitted, AC-0-XM-2) but is not `active`, so
+    // the gate rejects. The three actors are distinct, so approval governance passes and the GATE is the sole
+    // rejection (proving the console surfaces the gate).
     actingAs($creator, 'operator');
     $master = lifecycleConsoleDraftMaster(producerId: 9);
 

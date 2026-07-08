@@ -871,3 +871,5 @@
 ## [2026-07-08 17:22] ralph | catalog-module-0-completeness-sweep 4.1 | green | 5 files | EnrichmentDataUpdated + UpdateProductVariantEnrichment; apply-contract gains null=no-op; 2162/2162 SQLite, 76/76 PG17, PHPStan 0
 
 ## [2026-07-08 17:43] ralph | catalog-module-0-completeness-sweep 5.1 | green | 8 files | ProducerCreated→registered; enum 2→3, no ALTER (CHECK derives from cases()); gate untouched+proven; 2167/2167 SQLite, PG17 60/60; 3 mutations reverted
+
+## [2026-07-08 18:08] ralph | catalog-module-0-completeness-sweep 5.2 | green | 11 files | CreateProductMaster producer-existence guard (AC-0-XM-2); UnknownCatalogReference reused + FK-claim corrected; ProducerProjectionFixture; 5 fixture files migrated; 2172/2172 SQLite, PG17 90/90, PHPStan 0

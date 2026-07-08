@@ -24,6 +24,7 @@ use App\Platform\Events\DomainEvent;
 use App\Platform\Events\DomainEventRecorder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 use function Pest\Laravel\actingAs;
 
@@ -51,7 +52,7 @@ it('submits a draft Master to reviewed, recording one audit row and no domain ev
     // The real creation Action (per the task hint) — records ProductMasterCreated, but NO audit row.
     $master = app(CreateProductMaster::class)->handle(
         name: 'Château Margaux',
-        producerId: 42,
+        producerId: ProducerProjectionFixture::known(42),
         appellation: 'Margaux',
         region: 'Bordeaux',
     );
@@ -188,6 +189,12 @@ it('round-trips draft → reviewed → (retired) → reviewed, recording an audi
  * Leaves $creator as the acting principal (the caller switches before the next governance step). The
  * name/appellation default to a single identity; a caller standing up two Masters under one producer passes
  * a DISTINCT identity for the second, else the create-time BR-Identity-1 dedup rejects it.
+ *
+ * The producer is made KNOWN to Catalog first (AC-0-XM-2, task 5.2 — creation refuses an unprojected id).
+ * `registered` is the weakest status that admits creation, so nothing here accidentally opens the ACTIVATION
+ * gate the tests below are pinning; a caller wanting an activatable producer calls lifecycleProjectProducer
+ * with `ProducerActivated` (in either order — the fixture is idempotent and the projector's watermark, seeded
+ * at 0, is strictly advanced by any real producer event).
  */
 function lifecycleCreateDraftMaster(Operator $creator, int $producerId = 7, string $name = 'Château Margaux', string $appellation = 'Margaux'): ProductMaster
 {
@@ -195,7 +202,7 @@ function lifecycleCreateDraftMaster(Operator $creator, int $producerId = 7, stri
 
     return app(CreateProductMaster::class)->handle(
         name: $name,
-        producerId: $producerId,
+        producerId: ProducerProjectionFixture::known($producerId),
         appellation: $appellation,
         region: 'Bordeaux',
     );
@@ -706,15 +713,20 @@ it('activates a reviewed Master to active when its Producer is active, recording
         ->and($event->payload)->not->toHaveKey('name');             // PII-free (no descriptive core)
 });
 
-it('blocks activation when the linked Producer is absent from the projection (draft/unknown), holding it reviewed', function () {
+it('blocks activation when the linked Producer is absent from the projection, holding it reviewed', function () {
     $creator = Operator::factory()->create();
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    // Producer 9 emits nothing, so it has NO projection row — a producer wholly unknown to Catalog — and the
-    // gate treats "no row" as not-gated-open (fail-closed). The Master is still saveable and held in reviewed
-    // (AC-0-J-2), but not activatable.
+    // The gate's ABSENT-row branch: no row ⇒ not-gated-open (fail-closed). Reaching it takes a deliberate
+    // detour now, and the detour is the point. Since AC-0-XM-2 (task 5.2) creation itself demands a projection
+    // row, so a Master can no longer be BORN under an unknown producer — the branch survives for the states
+    // creation cannot police: a Master predating the guard, or a read model purged/not yet rebuilt beneath a
+    // live Master. We construct exactly that: create through the real lineage (the SoD triple below reads the
+    // creator off `ProductMasterCreated`, so a factory Master would not do), then remove the row.
     $master = lifecycleCreateDraftMaster($creator, 9);
+    ProducerState::query()->where('producer_id', 9)->delete();
+
     actingAs($reviewer, 'operator');
     app(SubmitProductMasterForReview::class)->handle($master);
 

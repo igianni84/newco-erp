@@ -14,6 +14,7 @@ use App\Platform\Events\DomainEvent;
 use App\Platform\I18n\TranslatableText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 /**
  * Pins the Product Master — the first MULTI-TABLE spine entity and the dedup gate (catalog-product-spine
@@ -34,7 +35,7 @@ uses(RefreshDatabase::class);
 it('creates a WINE Product Master in draft with its neutral core and 1:1 wine attribute set', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Château Margaux',
-        producerId: 42,
+        producerId: ProducerProjectionFixture::known(42),
         appellation: 'Margaux',
         region: 'Bordeaux',
         wineryStory: TranslatableText::of(['en' => 'A First Growth estate.']),
@@ -60,7 +61,7 @@ it('creates a WINE Product Master in draft with its neutral core and 1:1 wine at
 it('records a ProductMasterCreated domain event in the same transaction, tagged catalog and PII-free', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Penfolds Grange',
-        producerId: 88,
+        producerId: ProducerProjectionFixture::known(88),
         appellation: 'Barossa Valley',
         region: 'South Australia',
     );
@@ -88,7 +89,7 @@ it('records a ProductMasterCreated domain event in the same transaction, tagged 
 it('holds no wine-specific attribute on the neutral core — they live in the WINE attribute set (AC-0-GEN-2)', function () {
     app(CreateProductMaster::class)->handle(
         name: 'Tenuta San Guido',
-        producerId: 3,
+        producerId: ProducerProjectionFixture::known(3),
         appellation: 'Bolgheri',
         region: 'Tuscany',
     );
@@ -117,7 +118,7 @@ it('holds no wine-specific attribute on the neutral core — they live in the WI
 it('resolves the winery story with per-attribute English fallback (assert through the cast — trap 3)', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Domaine Leflaive',
-        producerId: 7,
+        producerId: ProducerProjectionFixture::known(7),
         appellation: 'Puligny-Montrachet',
         region: 'Burgundy',
         wineryStory: TranslatableText::of([
@@ -139,15 +140,15 @@ it('resolves the winery story with per-attribute English fallback (assert throug
 it('rejects a duplicate identity key; two distinct identity tuples both succeed (BR-Identity-1)', function () {
     $create = app(CreateProductMaster::class);
 
-    $create->handle(name: 'Vega Sicilia', producerId: 5, appellation: 'Ribera del Duero', region: 'Castilla y León');
+    $create->handle(name: 'Vega Sicilia', producerId: ProducerProjectionFixture::known(5), appellation: 'Ribera del Duero', region: 'Castilla y León');
 
     // Same producer + name + appellation → rejected with a clear (localized) reason.
-    expect(fn () => $create->handle(name: 'Vega Sicilia', producerId: 5, appellation: 'Ribera del Duero', region: 'Castilla y León'))
+    expect(fn () => $create->handle(name: 'Vega Sicilia', producerId: ProducerProjectionFixture::known(5), appellation: 'Ribera del Duero', region: 'Castilla y León'))
         ->toThrow(DuplicateProductMasterIdentity::class);
 
     // Distinct identity tuples both succeed — a different name, and a different producer.
-    $create->handle(name: 'Vega Sicilia Único', producerId: 5, appellation: 'Ribera del Duero', region: 'Castilla y León');
-    $create->handle(name: 'Vega Sicilia', producerId: 6, appellation: 'Ribera del Duero', region: 'Castilla y León');
+    $create->handle(name: 'Vega Sicilia Único', producerId: ProducerProjectionFixture::known(5), appellation: 'Ribera del Duero', region: 'Castilla y León');
+    $create->handle(name: 'Vega Sicilia', producerId: ProducerProjectionFixture::known(6), appellation: 'Ribera del Duero', region: 'Castilla y León');
 
     // The rejected duplicate never persisted (the check runs before any write, inside the transaction).
     expect(ProductMaster::query()->count())->toBe(3);
@@ -165,7 +166,7 @@ it('ignores a retired Master when deduplicating — only non-retired collisions 
     // The same tuple is accepted — the colliding Master is retired, so it does not block (design D6).
     $master = app(CreateProductMaster::class)->handle(
         name: 'Château Latour',
-        producerId: 11,
+        producerId: ProducerProjectionFixture::known(11),
         appellation: 'Pauillac',
         region: 'Bordeaux',
     );
@@ -180,7 +181,7 @@ it('rejects a non-WINE product type fail-closed — WINE is the only launch type
 
     expect(fn () => $create->handle(
         name: 'Some Spirit',
-        producerId: 1,
+        producerId: ProducerProjectionFixture::known(1),
         appellation: 'n/a',
         region: 'n/a',
         productType: 'beer',
@@ -191,14 +192,14 @@ it('rejects a non-WINE product type fail-closed — WINE is the only launch type
         ->and(DomainEvent::query()->count())->toBe(0);
 
     // WINE is accepted (the positive half of the scenario).
-    $create->handle(name: 'A Wine', producerId: 1, appellation: 'Somewhere', region: 'Somewhere');
+    $create->handle(name: 'A Wine', producerId: ProducerProjectionFixture::known(1), appellation: 'Somewhere', region: 'Somewhere');
     expect(ProductMaster::query()->where('product_type', ProductType::Wine->value)->count())->toBe(1);
 });
 
 it('records no lifecycle-transition event — the Master stays draft (scope guard)', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Opus One',
-        producerId: 2,
+        producerId: ProducerProjectionFixture::known(2),
         appellation: 'Napa Valley',
         region: 'California',
     );
@@ -225,7 +226,7 @@ it('produces a draft Master with its wine attribute set via the factory without 
 it('rejects a change to an existing Master\'s Product Type — it is fixed at creation (BR-Identity-5 / DEC-023)', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Sassicaia',
-        producerId: 9,
+        producerId: ProducerProjectionFixture::known(9),
         appellation: 'Bolgheri',
         region: 'Tuscany',
     );
@@ -249,7 +250,7 @@ it('rejects a change to an existing Master\'s Product Type — it is fixed at cr
 it('permits a same-type write and a lifecycle transition — the guard keys on a TYPE CHANGE, not presence', function () {
     $master = app(CreateProductMaster::class)->handle(
         name: 'Masseto',
-        producerId: 9,
+        producerId: ProducerProjectionFixture::known(9),
         appellation: 'Toscana',
         region: 'Tuscany',
     );

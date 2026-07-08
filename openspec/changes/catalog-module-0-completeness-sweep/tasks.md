@@ -65,7 +65,7 @@
   - `ProducerActivationGate` untouched and proven: a `registered` producer still blocks Master activation (extend the gate test matrix)
   - Typecheck passes; tests pass
 
-- [ ] 5.2 `CreateProductMaster` existence guard + blast-radius migration (D7, R1)
+- [x] 5.2 `CreateProductMaster` existence guard + blast-radius migration (D7, R1)
   - Guard before any write, inside the transaction: no `ProducerState` row for `producer_id` → new localized exception (e.g. `UnknownProducerReference`), no Master row, no `ProductMasterCreated`; a `registered` or `retired` row admits creation
   - BEFORE wiring: `grep -rn 'CreateProductMaster' app/ tests/ database/` + console create tests; classify every caller (real producer lineage vs bare int) and migrate fixtures (seed a `ProducerState` row or create the producer through the real action); check `DemoSeeder` (creates producers via real actions → projected inline; extend its truncation sweep to the whitelist table if it sweeps catalog tables — design Migration note)
   - Tests: unknown id rejected (no row, no event); `registered` id admitted and the Master holds in `draft` with activation still gate-blocked (ties to 5.1); FULL suite green on SQLite (the only proof the blast radius is covered — R1)

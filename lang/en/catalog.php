@@ -69,16 +69,19 @@ return [
         'cannot_edit' => 'Cannot edit this :entity from state :state. A retired :entity must be reopened for review before its content can be changed.',
     ],
     'reference' => [
-        // A catalog write named a within-module entity by id and that entity does not exist (design D6;
-        // product-catalog — Requirement: Layer-1 Case-Configuration Whitelist). The referenced ids are
-        // FK-backed, so the DATABASE would refuse the write anyway — as a driver error carrying a constraint
-        // name and no operator-facing meaning. This reason is the DOMAIN rejection that replaces it, raised
-        // inside the write's transaction before any row is touched (the FK stays as the structural backstop).
-        // One parameterized UnknownCatalogReference serves every reference kind (Format, CaseConfiguration, …):
-        // :entity is the entity-type name and :ids the OFFENDING subset — the ids that resolved to nothing,
-        // never the whole input — so a single stale id in a set names itself. NEITHER is PII (an entity-type
-        // label and surrogate keys). The reason deliberately avoids the word `edited`, the discriminating token
-        // of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
+        // A catalog write named an entity by id and that entity does not exist (design D6/D7; product-catalog —
+        // Requirements: Layer-1 Case-Configuration Whitelist, Product Master). For the WITHIN-MODULE references
+        // (Format, CaseConfiguration) the ids are FK-backed, so the DATABASE would refuse the write anyway — as a
+        // driver error carrying a constraint name and no operator-facing meaning; this reason is the DOMAIN
+        // rejection that replaces it, raised inside the write's transaction before any row is touched (the FK
+        // stays as the structural backstop). For the CROSS-MODULE Producer reference (CreateProductMaster,
+        // AC-0-XM-2) there is no FK to fall back on — invariant 10 forbids one — and this reason IS the whole
+        // protection, read off the Catalog-owned ProducerState projection.
+        // One parameterized UnknownCatalogReference serves every reference kind (Format, CaseConfiguration,
+        // Producer, …): :entity is the entity-type name and :ids the OFFENDING subset — the ids that resolved to
+        // nothing, never the whole input — so a single stale id in a set names itself. NEITHER is PII (an
+        // entity-type label and surrogate keys). The reason deliberately avoids the word `edited`, the
+        // discriminating token of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
         'unknown_reference' => 'Cannot complete this catalog write: it references :entity ids that do not exist (:ids). Only existing entities may be referenced.',
     ],
     'approval' => [
