@@ -96,7 +96,7 @@
   - Acceptance: each grep hit either updated or justified in progress.md; no code-behavior change in this task
   - Typecheck passes; tests pass (unchanged counts)
 
-- [ ] 7.2 Full verify + wrap
+- [x] 7.2 Full verify + wrap
   - `php -d memory_limit=-1 vendor/bin/pest` green on SQLite AND PG17 (recipe in hot.md), PHPStan max 0, Pint clean, `openspec validate catalog-module-0-completeness-sweep --strict` green
   - Traceability check against the delta: every ADDED/MODIFIED requirement's scenarios covered by named tests (list the mapping in progress.md); deferred seams (Module A Layer-2, Module S consumer, adapter columns) named once in progress.md
   - progress.md `## Codebase Patterns` consolidated; tracker/hot/log updates are session-close work, not this task

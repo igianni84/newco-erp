@@ -60,6 +60,13 @@
 - **Sweeping N uniform docblocks: normalise → prove uniformity → substitute → paragraph-scoped rewrap.** `re.sub(r'\s*\n\s*\*\s?', ' ', docblock)` collapses ` * ` continuations, which is the only way to see that differently-wrapped docblocks carry byte-identical prose (7.1: 14 files, 3 wrap shapes, 1 sentence). Then substitute on the normalised text and re-emit with `textwrap.wrap(width=112 - len(indent) - 3)` over the ONE paragraph that changed — the diff stays small and the repo's ~112-col docblock convention holds. Protect `{@see A::b()}` from the wrapper first (its internal space is a legal break point; a tag split across lines is broken): swap the spaces for a sentinel char, wrap, swap back. **But re-derive the replacement per file** — see `lessons.md` 2026-07-08 (a sweep fans out a NEW claim N times).
 - **`{@see Class::MEMBER}` pointing at a `private` member is a broken pointer for every reader outside the class.** Name the class in `{@see}` and spell the values in prose instead. Same instinct as R6's "backticked prose, never `{@see FQCN}`, for cross-module and Lifecycle types in console/action classes" — reach for a tag only when it resolves for the person reading it.
 - **A docblock's claim can be inverted by a change that never opens the file.** `2026_06_24_000001`'s "the producer lifecycle events do not carry the name yet" survived task 5.1 untouched, but 5.1 made the projector consume `ProducerCreated` — whose payload DOES carry `name`. Observable behaviour (a null `producer_name`) was identical; the explanation had inverted. When a change widens what a consumer reads, grep the docblocks of everything that reasons about what that consumer *could* read, not just what it does.
+
+---
+
+- **A scenario's coverage is an ORDERING claim, not a set-of-facts claim.** When a scenario's GIVEN establishes state and its WHEN is an *event landing on that state*, a test that establishes the state AFTER the event proves every individual fact and none of the scenario: the "no side effect on the pre-existing entity" clause is unobservable when no entity was in flight. Ten tests delivered `ProducerActivated`; in all ten it landed before the Master existed, so AC-0-EVT-20's "no Master state changed as a side effect" had never once been observed — while its SIBLING clause (`ProducerRetired` → preserve-actives) was always tested the right way round, in the same file. **Sibling scenarios of one requirement diverge silently in test SHAPE.** Read a delta's scenarios back clause by clause, checking the order the test builds the world in — a green suite and a per-fact grep both miss this (7.2).
+- **An ids-snapshot "untouched" assertion passes for free on an EMPTY trail.** `$before = ids(); … expect(ids())->toBe($before)` is vacuous when the entity has no rows yet — and `CreateProductMaster` writes no audit row, so a Master's trail before its submit is `[]`. Pin the literal ordered ACTION list instead (`toBe(['catalog.product_master.submitted'])`): it still catches a row the disturbance appends, and an empty/wrong trail reds at the snapshot rather than sailing through. Refines the snapshot pattern above — take the snapshot, but make it *assert its own non-vacuity* (7.2).
+- **A residual-claim sweep must include `tests/`.** Test docblocks carry claims about production behaviour and rot exactly like production docblocks; no compiler, linter or type-checker catches them, and the suite stays green because the *assertions* were right and only the *prose* was wrong. 7.1 swept `app/` and left `ProductMasterLifecycleTest`'s "the gate's three negative paths (absent / **draft-as-absent** / retired)" standing — pre-5.1 wording, from when a `draft` producer had no projection row (7.2).
+
 ## [2026-07-08 15:03] — 1.1 Layer-1 whitelist pivot: migration + model + relation
 
 - **What was implemented.** The Layer-1 possible-case-configurations whitelist substrate (design D6; product-catalog — *Layer-1 Case-Configuration Whitelist*; Module 0 PRD § 3.3 + § 7.1; AC-0-J-13 / AC-0-XM-11).
@@ -498,4 +505,169 @@ First attempt narrowed `?ProductReference` with `@phpstan-assert !null $parent` 
   - **The scripted swap over-claimed, and only per-entity reasoning caught it.** My first pass told all seven `Resubmit*` docblocks that re-submit clears "an un-re-reviewed identity edit". Only **Master** and **CompositeSku** have an `identity_updated` path. Format/CaseConfiguration/PR/SellableSku carry *no* identity-edit path, and **ProductVariant**'s two edits are maintenance (`enrichment_updated`/`whitelist_updated`, invisible to the filter). A doc sweep can *introduce* the very class of stale claim it was sent to remove — the uniformity of the OLD text is no evidence of uniformity in the NEW.
   - **A migration docblock's claim can be inverted by a change that never touches the migration.** `2026_06_24_000001` explained the null `producer_name` with "the producer lifecycle events do not carry the name yet". Task 5.1 made the projector consume `ProducerCreated`, whose payload **does** carry `name`. The column is still null — but for a completely different reason (the projector deliberately reads only `producer_id`). The *observable behaviour* was untouched while the *explanation* inverted; only reading `ProducerCreated::payload()` proved it.
   - **`{@see Foo::BAR}` at a `private const` is a broken pointer.** Reached for `{@see ApprovalGovernance::REVIEW_FRESHNESS_VERBS}` from `LifecycleTransition`; the const is private. Named the class and spelled the four verbs instead. Same discipline as R6: prose over tags when the tag cannot resolve for the reader.
+---
+
+## [2026-07-08 20:19] — 7.2 Full verify + wrap
+
+- **Full verify, both engines.** SQLite `2205/2205` (11 673 assertions) before the traceability sweep; **`2206/2206` (11 682 assertions)** after it added one test. **PG17 `2206/2206` (11 685 assertions)**, full suite re-run from scratch with the new test in place — the 3-assertion surplus over SQLite is the engine-guarded PG-only lane (`ProducerStateProjectionTest`'s CHECK-constraint probes). PHPStan max **0**, Pint clean, `openspec validate catalog-module-0-completeness-sweep --strict` valid.
+- **The traceability sweep found one uncovered scenario and closed it** (below). One test added, zero production files touched.
+- Files changed: `tests/Feature/Modules/Catalog/ProductMasterLifecycleTest.php` (+1 test, section docblock), `progress.md`, `knowledge/testing/hypotheses.md`, `tasks.md`.
+- Quality loop: green.
+
+### The one gap the sweep found
+
+The delta's `MODIFIED → Producer-State Projection and Event Consumption` carries:
+
+> **Scenario: ProducerActivated enables a previously-blocked Master**
+> **GIVEN** a Product Master in `reviewed` whose linked Producer is not yet `active` (its activation is currently gate-blocked) · **WHEN** a `ProducerActivated` event for that `producer_id` is delivered · **THEN** the projection records `active`, the Master is now activatable by an operator — but **no Master state changed as a side effect of consuming the event**
+
+Every *fact* in it was covered. The *scenario* was not. Ten tests deliver `ProducerActivated`; in **all ten** the event lands **before** the Master exists (`lifecycleProjectProducer(...)` then `lifecycleCreateDraftMaster(...)`). With no Master in flight there is no state for the consumer to leave alone — so the "no side effect" clause had never been observed. The closest assertion, `ProducerLifecycleProjectorTest`'s `ProductMaster::count() === 0`, proves only that the consumer creates nothing from nothing.
+
+Its **sibling scenario** — `ProducerRetired` blocks new activations and preserves existing actives — has *always* been tested the right way round (`ProductMasterLifecycleTest::it('blocks a new activation after the Producer retires while preserving an already-active Master')`, `CatalogLifecycleChainTest::it('blocks a new Master activation after a real ProducerRetired …')`). The retire leg landed its event on live Masters; the enable leg never did. Two scenarios in one requirement, one shape apart, and only one of them tested the shape.
+
+Closed by `ProductMasterLifecycleTest::it('unblocks a reviewed Master when ProducerActivated lands, without touching the Master itself')`: a `reviewed` Master under a merely `registered` producer, activation attempted and rejected on the gate; then the real `ProducerActivated` is delivered; then the projection is `active`, the Master's `lifecycle_state`, `version` and ordered audit trail are **unchanged** (no auto-replay, AC-0-BR-BulkImport-4), no `ProductMasterActivated`; then the same distinct approver activates it, recording exactly one. Mutation-proven: deleting the `lifecycleProjectProducer('ProducerActivated', …)` line reds it on the projection assertion.
+
+Note the audit assertion is the **ordered action list** (`['catalog.product_master.submitted']`), not an ids-snapshot: `CreateProductMaster` writes no audit row, so an ids-vs-ids comparison of an empty trail against an empty trail would have passed for free. Pinning the literal list makes an empty/wrong trail red at the snapshot, and still catches a row the consumer might append.
+
+Also corrected in the same docblock: the gate's three negative paths read `absent / draft-as-absent / retired` — pre-5.1 wording, from when a `draft` producer had no projection row. It is now `absent / registered / retired`. A residual stale claim the 7.1 sweep missed because 7.1 swept `app/`, not `tests/`.
+
+### Traceability — every ADDED/MODIFIED delta requirement's scenarios → its covering tests
+
+**12 requirements · 52 scenarios · all covered.** `tests/Feature/Modules/Catalog/` = `C/`, `tests/Feature/Modules/OperatorPanel/Catalog/` = `OC/`, `tests/Unit/Modules/Catalog/` = `U/`.
+
+#### `specs/product-catalog/spec.md` — ADDED: Layer-1 Case-Configuration Whitelist
+
+| Scenario | Covering test(s) |
+|---|---|
+| Reducing an active Variant's whitelist blocks only new SKU activations | `C/SellableSkuWhitelistGateTest::it('blocks a new SKU activation on a removed Case Configuration while the already-active SKU stands (AC-0-J-13)')` · `C/SetVariantCaseWhitelistTest::it('replaces a pair's admitted set …')` (audit before/after, version untouched, event log untouched) |
+| An empty whitelist is permissive | `C/SellableSkuWhitelistGateTest::it('admits any Case Configuration when the pair has no whitelist rows (the permissive default)')` |
+| Layer 1 exposes no breakability flag | `C/VariantCaseWhitelistSchemaTest::it('carries no breakability attribute or column — Layer 1 catalogs possibility only (AC-0-XM-11)')` + its FK/unique-triple siblings |
+| Whitelist maintenance is operator-floored and state-guarded | `C/SetVariantCaseWhitelistTest::it('rejects whitelist maintenance on a retired Variant, ahead of its own reference re-checks')` · `it('rejects whitelist maintenance under a system actor, writing nothing')` |
+
+Per-pair scoping (`it('scopes the whitelist to the (Variant, Format) pair …')`) and the cascade-before-whitelist ordering (`it('rejects a non-active Case Configuration on the cascade gate before consulting the whitelist')`) exceed the scenarios.
+
+#### ADDED: Identity Edit and Re-Versioning
+
+| Scenario | Covering test(s) |
+|---|---|
+| A Master identity edit creates a new version with full before and after | `C/UpdateProductMasterIdentityTest::it('re-versions an active Master identity edit in place, auditing before and after and recording no domain event')` |
+| A Composite composition edit follows the same versioning semantics (both halves) | `C/UpdateCompositeSkuCompositionTest::it('re-versions an active Composite composition edit in place, auditing the before and after ordered id lists …')` · `it('rejects a composition edit with fewer than two distinct constituents, leaving the bundle unchanged')` · `it('rejects a composition edit that would make an active Composite reference a non-active constituent')` |
+| The dedup key is re-checked on edit | `C/UpdateProductMasterIdentityTest::it('rejects an identity edit that collides with another non-retired Master, leaving values and version unchanged')` · `it('admits an identity edit that collides only with a retired Master, or only with the Master under edit')` |
+| Identity edits are operator-floored and blocked on retired | `C/UpdateProductMasterIdentityTest::it('rejects an identity edit on a retired Master, writing nothing')` · `it('rejects an identity edit under a system actor, writing nothing')` · `C/UpdateCompositeSkuCompositionTest` twins · `C/CatalogContentEditTest::it('rejects an edit on a retired entity, writing nothing and never invoking the change closure')` · `it('rejects an edit under a system actor …')` |
+| A draft edit versions the entity without arming review | `C/UpdateProductMasterIdentityTest::it('does not block activation when a draft identity edit is followed by a submit and a distinct-approver activation')` · `C/ReviewFreshnessVerbFilterTest::it('lets a draft-stage identity edit through — the following submit is itself a review-freshness action that clears it')` |
+
+The Requirement's closing prose — "the Product Reference is explicitly **not** an edit surface" — states negative space and carries no scenario. It is discharged by construction: `ls app/Modules/Catalog/Actions/Update*` returns exactly `UpdateCompositeSkuComposition`, `UpdateProductMasterIdentity`, `UpdateProductVariantEnrichment`. No `UpdateProductReference` exists to test.
+
+#### ADDED: Enrichment Data Update
+
+| Scenario | Covering test(s) |
+|---|---|
+| EnrichmentDataUpdated fires on a post-active enrichment change | `C/UpdateProductVariantEnrichmentTest::it('records EnrichmentDataUpdated and one audit row when an active Variant's …')` · `U/Events/EnrichmentDataUpdatedTest::it('exposes the verbatim EnrichmentDataUpdated contract facets as a final class')` · `it('snapshots exactly the PII-free Variant reference and nothing else')` |
+| Enrichment is distinct from the lifecycle triplet | `C/UpdateProductVariantEnrichmentTest::it('records EnrichmentDataUpdated only from the enrichment path, never from a lifecycle transition')` · `U/Events/EnrichmentDataUpdatedTest::it('is the single non-lifecycle member of a catalog event surface of twenty-two')` |
+| A no-change update is a no-op | `C/UpdateProductVariantEnrichmentTest::it('is a silent no-op when the incoming enrichment carries the stored value')` (mutation-proven — see Codebase Patterns) |
+| Enrichment never re-arms review | `C/UpdateProductVariantEnrichmentTest::it('does not re-arm review: a reviewed-then-enriched Variant still activates')` |
+| Enrichment updates are operator-floored and blocked on retired | `C/UpdateProductVariantEnrichmentTest::it('rejects an enrichment update on a retired Variant, ahead of its own no-op diff')` · `it('rejects an enrichment update under a system actor, writing nothing')` |
+
+#### MODIFIED: Approval Governance
+
+| Scenario | Covering test(s) |
+|---|---|
+| Self-approval is rejected | `C/ProductMasterLifecycleTest::it('rejects approval by the creator (separation of duties)')` · `it('rejects approval by the reviewer in the three-step flow (separation of duties)')` |
+| Distinct actors satisfy the floor at the configured depth | `C/ProductMasterLifecycleTest::it('enforces reviewer ≠ creator under role_count 3 but admits the two-actor path under role_count 2')` |
+| A non-operator context cannot perform a governance step | `C/ProductMasterLifecycleTest::it('rejects an approval step performed by a system actor')` |
+| Rejection keeps the entity in reviewed and preserves history | `C/ProductMasterLifecycleTest::it('records a review rejection with notes, keeps the Master in reviewed, and preserves prior audit rows')` |
+| A pending rejection blocks activation until re-submit | `C/ProductMasterLifecycleTest::it('blocks activation while a rejection is pending and admits it only after a re-submit')` · `C/CatalogReviewFreshnessUniformityTest::it('uniformly enforces reject → block → re-submit → activate across every catalog spine entity')` |
+| **An identity edit in reviewed re-arms review and blocks activation until re-submit** | `C/IdentityEditRearmsReviewTest::it('blocks a distinct approver on a reviewed Master edited after submit, until an explicit re-submit re-arms review')` · `C/ReviewFreshnessVerbFilterTest::it('blocks activation while an identity edit is the latest review-freshness action, and admits it after a re-submit')` |
+| Re-submit re-arms review and clears the review-stale condition | `C/ProductMasterLifecycleTest::it('re-submits a rejected Master, keeps it in reviewed, records one resubmitted row and no domain event')` · `C/ResubmitActionsTest::it('wires each of the six spine Resubmit actions thin …')` |
+| Two rejection rounds each block until re-submit and preserve full history | `C/ProductMasterLifecycleTest::it('runs two rejection rounds, blocking activation after each until the following re-submit and preserving the full history')` · `C/IdentityEditRearmsReviewTest::it('runs two rejection rounds with a real identity edit in each, blocking on both causes and preserving the full history')` |
+| **Non-governance audit rows never affect review-freshness** (both halves) | `C/ReviewFreshnessVerbFilterTest::it('does not clear a pending rejection when later enrichment and whitelist audit rows land on top of it')` · `C/UpdateProductVariantEnrichmentTest::it('does not clear a pending rejection: an enrichment row never unblocks activation')` · `it('does not re-arm review: a reviewed-then-enriched Variant still activates')` · `C/SetVariantCaseWhitelistTest::it('does not re-arm review: a reviewed-then-whitelisted Variant still activates')` |
+| Re-submit is operator-floored and from-state guarded | `C/ProductMasterLifecycleTest::it('rejects a re-submit on a non-reviewed Master, naming the state, and writes nothing')` · `it('rejects a re-submit performed by a system actor')` |
+
+Console/domain lock-step on the derivation: `C/ReviewFreshnessVerbFilterTest::it('keeps the console re-submit visibility in lock-step with the domain block-gate on every audit history')`.
+
+#### MODIFIED: Product Master
+
+| Scenario | Covering test(s) |
+|---|---|
+| Create a WINE Product Master | `C/ProductMasterTest::it('creates a WINE Product Master in draft with its neutral core and 1:1 wine attribute set')` |
+| Duplicate identity key is rejected | `C/ProductMasterTest::it('rejects a duplicate identity key; two distinct identity tuples both succeed (BR-Identity-1)')` · `it('ignores a retired Master when deduplicating …')` |
+| **A producer unknown to the projection is rejected at creation** (both halves) | `C/ProducerExistenceGuardTest::it('rejects a Product Master under a producer Catalog does not know, writing nothing (AC-0-XM-2)')` · `it('admits creation under a merely registered producer — existence is not activeness')` · `it('still blocks activation of a Master created under a registered producer (the creation/activation seam)')` · `it('names the unknown producer, not the identity collision, when both rejections could apply')` |
+
+#### MODIFIED: Producer Activation Gate
+
+| Scenario | Covering test(s) |
+|---|---|
+| Activation is blocked when the linked Producer is not active (three paths) | `C/ProductMasterLifecycleTest::it('blocks activation when the linked Producer is absent from the projection, holding it reviewed')` · `it('blocks activation when the linked Producer is only registered in the projection')` · `it('blocks activation when the linked Producer is retired in the projection')` |
+| Activation succeeds when the linked Producer is active | `C/ProductMasterLifecycleTest::it('activates a reviewed Master to active when its Producer is active, recording one ProductMasterActivated')` |
+| A Master with no bound active Producer is saveable but not activatable | `C/ProducerExistenceGuardTest::it('still blocks activation of a Master created under a registered producer (the creation/activation seam)')` |
+| Re-activation re-checks the gate | `C/ProductMasterLifecycleTest::it('blocks re-activation when the Producer has since retired (re-activation is not exempt from the gate)')` · `it('re-activates a reopened Master when its Producer is still active (re-activation re-checks the gate)')` |
+
+#### MODIFIED: Producer-State Projection and Event Consumption
+
+| Scenario | Covering test(s) |
+|---|---|
+| **ProducerCreated makes a producer known for Master creation** | `C/ProducerLifecycleProjectorTest::it('projects a producer registered on a delivered ProducerCreated and marks the delivery done')` · `C/ProducerExistenceGuardTest::it('admits creation under a merely registered producer — existence is not activeness')` · `C/ProducerStateProjectionTest::it('derives the status CHECK from all three enum cases on a fresh migrate')` · `U/Enums/EnumsTest::it('backs ProducerProjectionStatus with one state per consumed producer event')` |
+| ProducerActivated enables a previously-blocked Master | **`C/ProductMasterLifecycleTest::it('unblocks a reviewed Master when ProducerActivated lands, without touching the Master itself')` — added by this task** · `C/ProducerLifecycleProjectorTest::it('advances a registered producer to active on the ProducerActivated that follows')` · `it('projects a producer active on a delivered ProducerActivated and marks the delivery done')` · `C/CatalogLifecycleChainTest::it('drives the real cross-module lifecycle — ActivateProducer enables the gate …')` |
+| ProducerRetired blocks new activations and preserves existing actives | `C/ProductMasterLifecycleTest::it('blocks a new activation after the Producer retires while preserving an already-active Master')` · `C/CatalogLifecycleChainTest::it('blocks a new Master activation after a real ProducerRetired while preserving existing actives (AC-K-XM-2 block-new / preserve)')` · `C/ProducerLifecycleProjectorTest::it('projects retired on a later ProducerRetired, advances the watermark, and keeps exactly one row')` |
+| The consumer is idempotent and order-tolerant | `C/ProducerLifecycleProjectorTest::it('is idempotent: re-handling a delivered event leaves exactly one row and never re-advances')` · `it('is order-tolerant: a stale event below the watermark never regresses the projection')` · **`it('never downgrades an active producer when a stale ProducerCreated is redelivered after activation')`** (the delta's verbatim out-of-order clause) |
+| The gate reads only Catalog's projection | `tests/Architecture/ModuleBoundariesTest::it('keeps each module private to every other module except its public surface')` · `C/ProducerLifecycleProjectorTest::it('registers the projector for all three producer lifecycle events on the shared registry')` (+ its boundary docblock: the test never imports a Parties event class) |
+
+#### `specs/operator-console/spec.md` — ADDED: Operator edits catalog identity content through the console
+
+| Scenario | Covering test(s) |
+|---|---|
+| A Master's identity is edited through the console | `OC/ProductMasterIdentityEditConsoleTest::it('edits an active Master's …')` (version+1 rendered, `newco_ops` + operator id, no event, success notification) · `it('exposes an edit-identity action prefilled with the Master's …')` |
+| A dedup collision on edit is surfaced as a validation error | `OC/ProductMasterIdentityEditConsoleTest::it('surfaces a BR-Identity-1 dedup collision as a form validation error on the modal, changing nothing')` |
+| An invalid composition edit is surfaced without changing state | `OC/CompositeSkuCompositionEditConsoleTest::it('surfaces the N ≥ 2 distinct-constituent floor as a validation error on the modal, changing nothing')` · `it('surfaces the edit-time cascade re-assert when an active Composite is given a non-active constituent, changing nothing')` |
+
+Also: the `retired` state guard on both modals; EN+IT localization of both surfaces; `it('arms the re-submit button on a reviewed Composite once its composition is edited through the console')` (the console face of the re-arm).
+
+#### ADDED: Operator maintains Variant enrichment and the Layer-1 whitelist through the console
+
+| Scenario | Covering test(s) |
+|---|---|
+| Enrichment is updated on an active Variant through the console | `OC/ProductVariantMaintenanceConsoleTest::it('updates an active Variant's …')` · `it('treats an unchanged tasting-notes submission as a silent no-op that still reports success')` · `it('clears the tasting notes through the console when the textarea is emptied')` |
+| The whitelist is reduced on an active Variant through the console (+ the blocked SKU activation) | `OC/ProductVariantMaintenanceConsoleTest::it('replaces a pair's …')` · `it('surfaces the domain whitelist gate when a SKU on a de-admitted Case Configuration is activated through the console')` · `it('re-prefills the admitted set from the pair when the whitelist modal's …')` |
+
+#### MODIFIED: Operator creates a Product Master through the console
+
+| Scenario | Covering test(s) |
+|---|---|
+| Valid input creates a draft Master | `OC/ProductMasterCreateConsoleTest::it('creates a draft Master through the console, recording one ProductMasterCreated with the operator envelope')` |
+| Duplicate identity key is surfaced as a validation error | `OC/ProductMasterCreateConsoleTest::it('surfaces a duplicate identity key as a form validation error and records nothing new')` |
+| **An unknown producer is surfaced as a validation error** | `OC/ProductMasterIdentityEditConsoleTest::it('surfaces a producer unknown to the projection as a create-form validation error, creating nothing')` · `it('offers a merely registered producer on the create form — creatable is not activatable (D8)')` |
+
+#### MODIFIED: Operator advances a Product Master through the review-and-approval lifecycle
+
+| Scenario | Covering test(s) |
+|---|---|
+| Distinct actors complete the lifecycle | `OC/ProductMasterLifecycleConsoleTest::it('activates a reviewed Master through the console when a distinct approver acts and the producer is active')` · `OC/ProductMasterConsoleChainTest` (end-to-end demo) |
+| Self-approval is rejected and surfaced | `OC/ProductMasterLifecycleConsoleTest::it('surfaces a self-approval governance rejection as a danger notification, leaving the Master reviewed')` |
+| Rejection keeps the Master in reviewed with notes | `OC/ProductMasterLifecycleConsoleTest::it('records a console rejection with notes, keeping the Master in reviewed and emitting no event')` |
+| A rejected Master is re-submitted through the console and then activated | `OC/ProductMasterLifecycleConsoleTest::it('surfaces the block on a rejection-pending Master, then re-arms it via console re-submit so a distinct approver activates')` · `it('offers re-submit only when the Master is rejection-pending — hidden on a fresh reviewed Master, visible after a rejection')` |
+
+#### MODIFIED: Operator advances each catalog spine entity through the review-and-approval lifecycle
+
+| Scenario | Covering test(s) |
+|---|---|
+| Distinct actors complete submit then activate | `OC/SpineConsoleChainTest::it('drives the entire Module-0 spine to active through the consoles as an operator demo, asserting the emergent event set and the newco_ops envelope on every write')` + the six `OC/*LifecycleConsoleTest` activate cases |
+| Self-approval is rejected and surfaced | the six `OC/*LifecycleConsoleTest` self-approval cases (`ProductMaster`, `ProductVariant`, `ProductReference`, `Format`, `CaseConfiguration`, `SellableSku`, `CompositeSku`) |
+| Rejection keeps the entity in reviewed with notes | the six `OC/*LifecycleConsoleTest::it('records a console rejection with notes, keeping the <Entity> in reviewed and emitting no event')` |
+| A rejected spine entity is re-submitted through the console | `OC/{CaseConfiguration,CompositeSku,Format,ProductReference,ProductVariant,SellableSku}LifecycleConsoleTest::it('offers re-submit on the <Entity> console only when rejection-pending, re-arming review when driven')` |
+| An out-of-state transition is surfaced without changing state | `OC/ProductMasterLifecycleConsoleTest::it('surfaces an illegal from-state transition as a danger notification, changing nothing')` + the sibling `surfaces an out-of-state …` cases |
+
+### Deferred seams (named once, as the task requires)
+
+Each is stated in the delta and pinned in a docblock — none is a silent omission:
+
+1. **Module A Layer-2 upper-bound check at allocation creation** (Module 0 PRD § 7.2), and the rule that Layer-1 reductions never retroactively invalidate Layer-2 declarations on already-active allocations. Documented at `app/Modules/Catalog/Lifecycle/CaseConfigurationWhitelistGate.php:38-39`. Module A does not exist yet; PIM's enforcement stops at Sellable-SKU activation.
+2. **The Module S marketing consumer of `EnrichmentDataUpdated`** (§ 14.5; AC-0-EVT-15 explicitly defers it). Documented at `app/Modules/Catalog/Actions/UpdateProductVariantEnrichment.php:26`. The event ships with no consumer — deliberate, and the delivery ledger tolerates it.
+3. **Enrichment adapter columns** (critic scores, market data) join `storedEnrichment()` additively when the LWIN/Liv-ex adapter lands, leaving the diff, the no-op rule, the audit envelope and the event payload untouched. Documented at `UpdateProductVariantEnrichment.php:50-51`. Today the enrichment surface is `tasting_notes` alone, but its internal shape is a changed-fields map, not a single field.
+4. **`catalog_producer_states.producer_name`** stays null at runtime. The column exists and is nullable; the projector deliberately reads only `producer_id` from the event payload (though `ProducerCreated` *does* carry `name` — see the 7.1 entry). The console falls back to `#<id>` (`ProductMasterResource.php:358`). Populating it is a projection widening, not a migration.
+5. **The KYC conjunct on the Producer Activation Gate** is enforced transitively upstream: DEC-071 tightens Module K's `ActivateProducer`, and this gate inherits it with **no change** when it lands (delta *Producer Activation Gate*, ¶2).
+
+**Learnings for future iterations:**
+- A scenario's coverage is an **ordering** claim, not a set-of-facts claim — see the new Codebase Patterns bullet. This is what a traceability table is *for*: reading the GIVEN/WHEN/THEN back against the tests, one clause at a time, catches what a green suite and a per-fact grep both miss.
+- The residual-claim sweep in 7.1 scoped itself to `app/`. Test docblocks carry claims too, and they rot the same way (`draft-as-absent` here). A future sweep should grep `tests/` as well.
+
 ---
