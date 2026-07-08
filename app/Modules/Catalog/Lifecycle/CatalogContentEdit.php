@@ -79,6 +79,13 @@ use LogicException;
  * audit row IS the edit's record: `catalog.<segment>.<verb>`, before/after carrying only the CHANGED fields
  * plus the `version` on both sides (design R9 — minimal snapshots, mirroring the transition rows' shape, so
  * the PII/redaction posture is unchanged).
+ *
+ * A NO-OP is the closure's call, never the mechanism's: `$apply` may report `null` for *nothing to record*,
+ * and then this mechanism writes nothing at all — no `UPDATE`, no `version` increment, no audit row (the
+ * guards, the lock and the closure's own re-checks all ran; they simply found no change to record). Only the
+ * enrichment Action uses it, because only `EnrichmentDataUpdated`'s contract makes idempotence observable
+ * (design D11: an update that changes nothing records no event). An identity edit always records: an operator
+ * re-affirming reviewed content IS the audited fact, and the `version` increment is what re-arms its review.
  */
 class CatalogContentEdit
 {
@@ -122,7 +129,7 @@ class CatalogContentEdit
      * @param  TModel  $model  the spine entity to edit (carrying the `version` integer column every spine table has)
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) for the audit record + the rejections
      * @param  string  $verb  the audit action's verb segment (`identity_updated`) — governed by the D5 collision discipline
-     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics — see {@see perform()}
+     * @param  (Closure(TModel): (array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>}|null))  $apply  the Action's field semantics — see {@see perform()}
      * @return TModel
      *
      * @throws IllegalContentEdit when the locked row is `retired` (content is editable only in draft/reviewed/active)
@@ -150,14 +157,15 @@ class CatalogContentEdit
      *
      * `version` appears in neither the UPDATE nor the audit snapshots. When the `$apply` closure reports no own
      * changed columns — a whitelist lives entirely in its pivot table — the entity's row is not written at all
-     * (not even its `updated_at`): the audit row IS the record of the maintenance write.
+     * (not even its `updated_at`): the audit row IS the record of the maintenance write. When it reports `null`
+     * — nothing changed at all — not even that row is written (design D11's idempotent enrichment no-op).
      *
      * @template TModel of Model&HasLifecycleState
      *
      * @param  TModel  $model  the spine entity whose attached data is maintained
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductVariant`) for the audit record + the rejections
      * @param  string  $verb  the audit action's verb segment (`whitelist_updated`, `enrichment_updated`) — MUST NOT end with a review-freshness suffix (design D5)
-     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics — see {@see perform()}
+     * @param  (Closure(TModel): (array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>}|null))  $apply  the Action's field semantics — see {@see perform()}
      * @return TModel
      *
      * @throws IllegalContentEdit when the locked row is `retired`
@@ -180,7 +188,7 @@ class CatalogContentEdit
      * @template TModel of Model&HasLifecycleState
      *
      * @param  TModel  $model
-     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics, invoked inside this transaction AFTER both guards pass, against the LOCKED model — the place for its own re-checks (identity dedup, N ≥ 2, constituent state, reference existence) and for any related-row writes (per-type attribute sets, join tables, pivots). It returns the entity's OWN changed columns (`attributes`, merged with any `version` increment into a single UPDATE) plus the `before`/`after` snapshots of the changed fields for the audit row.
+     * @param  (Closure(TModel): (array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>}|null))  $apply  the Action's field semantics, invoked inside this transaction AFTER both guards pass, against the LOCKED model — the place for its own re-checks (identity dedup, N ≥ 2, constituent state, reference existence) and for any related-row writes (per-type attribute sets, join tables, pivots). It returns the entity's OWN changed columns (`attributes`, merged with any `version` increment into a single UPDATE) plus the `before`/`after` snapshots of the changed fields for the audit row — or `null` to report that there was nothing to record at all.
      * @param  bool  $reVersion  whether this write re-versions the entity's identity (design D1) or merely maintains attached data
      * @return TModel
      *
@@ -215,6 +223,14 @@ class CatalogContentEdit
             // The Action's field semantics, against the LOCKED row: its own re-checks may reject here (rolling
             // the transaction back, unchanged), and its related-row writes join this same transaction.
             $change = $apply($model);
+
+            // `null` = nothing to record: the closure found the incoming content identical to the stored content
+            // and wrote nothing. The write is a NO-OP — no UPDATE, no `version` increment, no audit row — and the
+            // caller receives the (locked, re-read) model exactly as it stands. Idempotence is a per-Action
+            // contract, declared by returning `null`; every other closure always records (design D11).
+            if ($change === null) {
+                return $model;
+            }
 
             $attributes = $change['attributes'];
             $before = $change['before'];

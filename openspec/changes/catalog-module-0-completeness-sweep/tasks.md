@@ -52,7 +52,7 @@
 
 ## 4. RM-13 — EnrichmentDataUpdated + enrichment edit (EVT-8)
 
-- [ ] 4.1 `EnrichmentDataUpdated` event class + `UpdateProductVariantEnrichment` action (D11, D2)
+- [x] 4.1 `EnrichmentDataUpdated` event class + `UpdateProductVariantEnrichment` action (D11, D2)
   - Event: `final class`, `NAME='EnrichmentDataUpdated'`, `ENTITY_TYPE='ProductVariant'`, payload `{product_variant_id}` (PII-free); action on the mechanic BUT with enrichment semantics: verb `enrichment_updated`, NO version change, fires the event in the same transaction ONLY when the stored `tasting_notes` actually changes; identical value ⇒ silent no-op (no event, no audit, no write); field-agnostic internal shape (a changed-fields map) so adapter columns join later
   - Tests: EVT-8 — change on an `active` Variant ⇒ exactly one `EnrichmentDataUpdated` (name/entity/payload asserted, PII-free) + one audit row with before/after, version unchanged, state unchanged; no-op on identical value (event+audit counts unchanged); enrichment edit on a `reviewed` never-rejected Variant does NOT block its activation (delta scenario "Enrichment never re-arms review", real-action path); retired/system rejected; the event class is glob-visible but NOT recorded by any lifecycle transition (event-log scan)
   - Typecheck passes; tests pass

@@ -867,3 +867,5 @@
 ## [2026-07-08 16:47] ralph | catalog-module-0-completeness-sweep 3.1 | green | 6 files | SetVariantCaseWhitelist + CatalogContentEdit::maintain() (non-versioning sibling) + UnknownCatalogReference; suite 2143/2143 SQLite, 69/69 PG17, PHPStan max 0
 
 ## [2026-07-08 17:05] ralph | catalog-module-0-completeness-sweep 3.2 | green | 7 files | CaseConfigurationWhitelistGate + CaseConfigurationNotWhitelisted; cascade gate now returns the proven parent; 2148/2148 SQLite, PG17 69/69, PHPStan 0
+
+## [2026-07-08 17:22] ralph | catalog-module-0-completeness-sweep 4.1 | green | 5 files | EnrichmentDataUpdated + UpdateProductVariantEnrichment; apply-contract gains null=no-op; 2162/2162 SQLite, 76/76 PG17, PHPStan 0
