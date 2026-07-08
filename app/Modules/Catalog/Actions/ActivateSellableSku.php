@@ -5,8 +5,10 @@ namespace App\Modules\Catalog\Actions;
 use App\Modules\Catalog\Events\SellableSKUActivated;
 use App\Modules\Catalog\Exceptions\ActivationCascadeViolation;
 use App\Modules\Catalog\Exceptions\ApprovalGovernanceViolation;
+use App\Modules\Catalog\Exceptions\CaseConfigurationNotWhitelisted;
 use App\Modules\Catalog\Exceptions\IllegalLifecycleTransition;
 use App\Modules\Catalog\Lifecycle\ActivationCascadeGate;
+use App\Modules\Catalog\Lifecycle\CaseConfigurationWhitelistGate;
 use App\Modules\Catalog\Lifecycle\LifecycleTransition;
 use App\Modules\Catalog\Lifecycle\LifecycleTransitionType;
 use App\Modules\Catalog\Models\CaseConfiguration;
@@ -20,7 +22,7 @@ use App\Modules\Catalog\Models\SellableSku;
  *
  * A Sellable SKU is a CHILD entity with TWO within-module parents — its Product Reference
  * (`product_reference_id`) and its Case Configuration (`case_configuration_id`) — so its activation carries a
- * parent gate that BOTH parents must satisfy (§3.7 / BR-Lifecycle-3). The mechanism runs three guards in
+ * parent gate that BOTH parents must satisfy (§3.7 / BR-Lifecycle-3). The mechanism runs four guards in
  * order before it writes, all in one transaction:
  *   1. the from-state guard against a transaction-locked re-read — activate is valid only from `reviewed`,
  *      else {@see IllegalLifecycleTransition} (so an out-of-state call is rejected before the gate is read);
@@ -31,7 +33,19 @@ use App\Modules\Catalog\Models\SellableSku;
  *      ONCE PER PARENT: the {@see ProductReference} AND the {@see CaseConfiguration} must each be `active`,
  *      else {@see ActivationCascadeViolation} naming the first non-`active` parent. Each parent is read WITHIN
  *      Module 0 (a sibling spine entity, not a projection — design D7); the reads are lock-free (a read-time
- *      gate), and re-activation (`retired → reviewed → active`) re-checks both because the same Action runs.
+ *      gate), and re-activation (`retired → reviewed → active`) re-checks both because the same Action runs;
+ *   4. the Layer-1 whitelist gate ({@see CaseConfigurationWhitelistGate}, the same closure's last conjunct) —
+ *      the SKU's Case Configuration must be admitted for the (Product Variant, Format) pair its Product
+ *      Reference resolves to, whenever that pair holds a non-empty whitelist, else
+ *      {@see CaseConfigurationNotWhitelisted} (catalog-module-0-completeness-sweep, design D6; § 7.1, AC-0-J-13).
+ *
+ * Guards 3 and 4 ask different questions of the SAME Case Configuration — is it READY (`active`), and is this
+ * packaging POSSIBLE for this product in this format — and 3 runs first: a doubly-invalid SKU is rejected for
+ * the state, the fact the operator must fix first. The whitelist read is the reason the Product Reference is
+ * loaded ONCE and reused: the cascade gate needs its `lifecycle_state` and RETURNS it proven-active, the
+ * whitelist gate then reads its `(product_variant_id, format_id)` pair off the very same model. Nothing
+ * consults the whitelist outside this activation (risk R10): reducing a pair's admitted set never reaches an
+ * already-`active` SKU.
  *
  * On success the SKU moves to `active` and the mechanism records ONE `audit_records` row
  * (`catalog.sellable_sku.activated`) AND the {@see SellableSKUActivated} domain event — the PII-free
@@ -45,12 +59,14 @@ class ActivateSellableSku
     public function __construct(
         private readonly LifecycleTransition $lifecycle,
         private readonly ActivationCascadeGate $cascadeGate,
+        private readonly CaseConfigurationWhitelistGate $whitelistGate,
     ) {}
 
     /**
      * @throws IllegalLifecycleTransition when the SKU is not in `reviewed`
      * @throws ApprovalGovernanceViolation when the approval governance is breached
      * @throws ActivationCascadeViolation when the parent Product Reference or Case Configuration is not `active`
+     * @throws CaseConfigurationNotWhitelisted when the pair's non-empty Layer-1 whitelist excludes the SKU's Case Configuration
      */
     public function handle(SellableSku $sellableSku): SellableSku
     {
@@ -59,7 +75,10 @@ class ActivateSellableSku
             LifecycleTransitionType::Activate,
             SellableSKUActivated::ENTITY_TYPE,
             gate: function (SellableSku $s): void {
-                $this->cascadeGate->assertParentActive(
+                // The cascade gate hands the PROVEN-active parent back, which is exactly what the whitelist gate
+                // needs next: the Layer-1 whitelist is keyed on the PR's (Variant, Format) pair, so the one read
+                // serves both conjuncts — no second query, and no null check the throw already made unreachable.
+                $reference = $this->cascadeGate->assertParentActive(
                     ProductReference::query()->whereKey($s->product_reference_id)->first(),
                     SellableSKUActivated::ENTITY_TYPE,
                     'ProductReference',
@@ -68,6 +87,13 @@ class ActivateSellableSku
                     CaseConfiguration::query()->whereKey($s->case_configuration_id)->first(),
                     SellableSKUActivated::ENTITY_TYPE,
                     'CaseConfiguration',
+                );
+
+                $this->whitelistGate->assertCaseConfigurationAdmitted(
+                    $reference->product_variant_id,
+                    $reference->format_id,
+                    $s->case_configuration_id,
+                    SellableSKUActivated::ENTITY_TYPE,
                 );
             },
             event: fn (SellableSku $s) => ['name' => SellableSKUActivated::NAME, 'payload' => SellableSKUActivated::payload($s)],

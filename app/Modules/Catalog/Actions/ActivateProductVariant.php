@@ -56,11 +56,17 @@ class ActivateProductVariant
             $variant,
             LifecycleTransitionType::Activate,
             ProductVariantActivated::ENTITY_TYPE,
-            gate: fn (ProductVariant $v) => $this->cascadeGate->assertParentActive(
-                ProductMaster::query()->whereKey($v->product_master_id)->first(),
-                ProductVariantActivated::ENTITY_TYPE,
-                'ProductMaster',
-            ),
+            // A block closure, not an arrow function: the `$gate` contract is `Closure(T): void`, and
+            // `assertParentActive()` hands the proven parent back (a value only `ActivateSellableSku` reads, for
+            // the Layer-1 whitelist gate's pair) — an arrow function would implicitly return it. Discarding it
+            // here is the point: a Variant has ONE parent and nothing downstream needs the loaded Master.
+            gate: function (ProductVariant $v): void {
+                $this->cascadeGate->assertParentActive(
+                    ProductMaster::query()->whereKey($v->product_master_id)->first(),
+                    ProductVariantActivated::ENTITY_TYPE,
+                    'ProductMaster',
+                );
+            },
             event: fn (ProductVariant $v) => ['name' => ProductVariantActivated::NAME, 'payload' => ProductVariantActivated::payload($v)],
         );
     }

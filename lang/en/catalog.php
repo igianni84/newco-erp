@@ -115,6 +115,18 @@ return [
         // :entity / :parent are entity-type names — NEITHER is PII. The copy deliberately avoids the word
         // `edited`, the discriminating token of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
         'parent_not_active_on_composition_edit' => 'Cannot change the composition of this :entity: it is active, and every constituent :parent of an active :entity must itself be active. An active :entity may never come to reference a non-active :parent.',
+        // The Layer-1 case-configuration whitelist gate (design D6, risk R10; Module 0 PRD § 7.1 + § 4.5,
+        // AC-0-J-13). A Sellable SKU may reach `active` only if its Case Configuration is admitted for its
+        // (Product Variant, Format) pair — resolved through its Product Reference — and only when that pair
+        // holds a NON-EMPTY whitelist: an empty pair is PERMISSIVE (absence admits, presence narrows), so this
+        // reason never names a whitelist that does not exist. Consulted ONLY at activation — reducing a pair's
+        // admitted set blocks the NEXT activation and never reaches an already-`active` SKU (§ 4.5's
+        // retirement-cascade semantics) — which is why the copy speaks of activating, not of the SKU being
+        // invalid. :entity is the child's entity-type name (SellableSku) — NOT PII; neither the Case
+        // Configuration nor the pair is named by id (the whitelist and the audit row carry those). The copy
+        // deliberately avoids `edited`, the discriminating token of the lifecycle group's
+        // activation_blocked_by_unreviewed_edit cause, and `not active`, that of parent_not_active.
+        'case_configuration_not_whitelisted' => 'Cannot activate this :entity: its Case Configuration is not admitted for its Product Variant in this Format. Add it to the pair\'s Layer-1 whitelist, or activate a :entity referencing an admitted Case Configuration.',
     ],
     'retirement' => [
         // The within-catalog reference-integrity guard on a SINGLE-entity retire (design D8; Module 0 PRD

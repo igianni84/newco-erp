@@ -45,7 +45,7 @@
   - Tests: replace writes the exact set (add + remove in one call); audit before/after sets asserted; version unchanged; event log untouched; a reviewed-then-whitelisted Variant still activates (no re-arm); retired/system rejected
   - Typecheck passes; tests pass
 
-- [ ] 3.2 Whitelist activation gate in `ActivateSellableSku` + the J-13 scenario (D6, R10)
+- [x] 3.2 Whitelist activation gate in `ActivateSellableSku` + the J-13 scenario (D6, R10)
   - Gate closure extension: resolve SKU → PR → (variant_id, format_id); if the pair has ≥1 whitelist row and the SKU's `case_configuration_id` is not among them → new localized exception (name it clearly, e.g. `CaseConfigurationNotWhitelisted`); zero rows ⇒ permissive; runs beside the existing PR+CC-active cascade conjuncts
   - Tests — the J-13 AUTO scenario verbatim: active Variant with whitelist {OWC6, CARTON12, loose}-style fixture; an `active` SKU on OWC6; remove OWC6 ⇒ existing SKU untouched (state/audit/events), NEW SKU on OWC6 for the same pair activates → rejected (stays `reviewed`, no `SellableSKUActivated`); empty-pair permissive; a whitelisted CC still activates; different-format pair unaffected (per-pair scoping proven)
   - Typecheck passes; tests pass

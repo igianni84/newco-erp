@@ -28,22 +28,40 @@ use App\Modules\Catalog\Exceptions\ActivationCascadeViolation;
  * — a missing/unresolved reference — is treated exactly like a non-`active` one and the gate rejects. The
  * read is intentionally lock-free (a read-time gate, design D7): the cascade blocks NEW activation; it never
  * cascade-retires an in-flight one.
+ *
+ * The proven parent is RETURNED, not merely asserted — so a caller that also needs to read it (a Sellable
+ * SKU's activation resolves its Product Reference's (Variant, Format) pair for the sibling
+ * {@see CaseConfigurationWhitelistGate}) reads it from a value the gate has already narrowed, rather than
+ * re-querying it or null-checking what the throw made unreachable.
  */
 class ActivationCascadeGate
 {
     /**
-     * Assert that a parent the activating child depends on is `active`, else reject the activation.
+     * Assert that a parent the activating child depends on is `active`, else reject the activation — and hand
+     * the proven parent back.
      *
-     * @param  HasLifecycleState|null  $parent  the loaded parent spine entity (null when the reference does not resolve — fail-closed)
+     * The return value carries the fail-closed contract into the type system: past this call the parent is
+     * non-null (the throw said so), so a caller that must READ the parent afterwards — `ActivateSellableSku`
+     * resolves its Product Reference's `(product_variant_id, format_id)` pair for the whitelist gate — needs no
+     * null check that the throw already made unreachable. Most callers pass a parent that is non-null by
+     * construction (a relation-loaded constituent) and simply ignore the return; the generic keeps the
+     * concrete parent type for those who don't.
+     *
+     * @template TParent of HasLifecycleState
+     *
+     * @param  TParent|null  $parent  the loaded parent spine entity (null when the reference does not resolve — fail-closed)
      * @param  string  $entity  the activating child's canonical entity-type label (e.g. `ProductVariant`) for the rejection copy
      * @param  string  $parentLabel  the parent's canonical entity-type label (e.g. `ProductMaster`) — the entity it is waiting on
+     * @return TParent the same parent, now proven `active`
      *
      * @throws ActivationCascadeViolation when the parent is absent or not `active`
      */
-    public function assertParentActive(?HasLifecycleState $parent, string $entity, string $parentLabel): void
+    public function assertParentActive(?HasLifecycleState $parent, string $entity, string $parentLabel): HasLifecycleState
     {
         if ($parent === null || $parent->lifecycleState() !== LifecycleState::Active) {
             throw ActivationCascadeViolation::parentNotActive($entity, $parentLabel);
         }
+
+        return $parent;
     }
 }
