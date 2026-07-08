@@ -24,7 +24,7 @@
 
 ## 2. RM-14 — identity edits (BR-Audit-1)
 
-- [ ] 2.1 `UpdateProductMasterIdentity` action (name, appellation, region, winery_story) on the mechanic (D1, D2)
+- [x] 2.1 `UpdateProductMasterIdentity` action (name, appellation, region, winery_story) on the mechanic (D1, D2)
   - Verb `identity_updated`; name/appellation change re-checks BR-Identity-1 dedup vs every OTHER non-retired Master (same join as `CreateProductMaster`, excluding self) → `DuplicateProductMasterIdentity`; region/winery_story-only edits skip the dedup query; wine-attribute writes go through the within-module relation
   - Tests: the BR-Audit-1 AUTO scenario — edit an `active` Master's name ⇒ version 1→2 (assert exact), stays `active`, audit row `catalog.product_master.identity_updated` with before+after carrying old/new name (old value retrievable from the audit row), NO domain event; dedup collision rejected with values+version unchanged; draft edit → submit → distinct-approver activate NOT blocked (D4 draft-clear case); retired/system rejected
   - Typecheck passes; tests pass
