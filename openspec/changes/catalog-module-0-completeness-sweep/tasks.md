@@ -29,7 +29,7 @@
   - Tests: the BR-Audit-1 AUTO scenario — edit an `active` Master's name ⇒ version 1→2 (assert exact), stays `active`, audit row `catalog.product_master.identity_updated` with before+after carrying old/new name (old value retrievable from the audit row), NO domain event; dedup collision rejected with values+version unchanged; draft edit → submit → distinct-approver activate NOT blocked (D4 draft-clear case); retired/system rejected
   - Typecheck passes; tests pass
 
-- [ ] 2.2 `UpdateCompositeSkuComposition` action (ordered replace) on the mechanic (D2, D7-adjacent cascade re-assert)
+- [x] 2.2 `UpdateCompositeSkuComposition` action (ordered replace) on the mechanic (D2, D7-adjacent cascade re-assert)
   - `array_unique` + N ≥ 2 floor (reuse `InsufficientCompositeConstituents`); when the Composite is `active`, every NEW constituent PR must be `active` (localized rejection otherwise); replace = sync the constituents join preserving `position` order; audit before/after = ordered PR-id lists; version++
   - Tests: the BR-Audit-1 AUTO Composite half — replace on `active` Composite with active PRs ⇒ version++, before/after lists audited, stays `active`, no event; <2 distinct rejected; non-active constituent on an `active` Composite rejected (composition/version/audit/event unchanged); same edit on a `reviewed` Composite passes without the constituent-state check
   - Typecheck passes; tests pass

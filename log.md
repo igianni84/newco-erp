@@ -859,3 +859,5 @@
 ## [2026-07-08 15:46] ralph | catalog-module-0-completeness-sweep 1.3 | green | 7 files | CatalogContentEdit mechanic + CatalogAuditEnvelope shared by both audit writers; 2106/2106 SQLite, 44/44 PG17, PHPStan 0
 
 ## [2026-07-08 15:57] ralph | catalog-module-0-completeness-sweep 2.1 | green | 3 files | UpdateProductMasterIdentity on the CatalogContentEdit mechanic — BR-Audit-1 Master half; suite 2115/2115, PG17 53/53, PHPStan 0
+
+## [2026-07-08 16:12] ralph | catalog-module-0-completeness-sweep 2.2 | green | 4 files | UpdateCompositeSkuComposition: ordered replace, N>=2 + cascade re-assert on active; suite 2124/2124, PG17 43/43, PHPStan 0

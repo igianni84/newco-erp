@@ -94,6 +94,14 @@ return [
         // NEITHER is PII. The within-catalog sibling of producer_not_active (which gates the one cross-module
         // parent, a Master's Producer).
         'parent_not_active' => 'Cannot activate this :entity: its :parent is not active. A child entity may activate only once every entity it depends on is active (the activation cascade).',
+        // The SAME cascade invariant re-asserted at EDIT time on an `active` Composite SKU (design D2;
+        // product-catalog — Requirement: In-Place Versioned Identity Edits). Activation is not the only way a
+        // child could come to reference a non-`active` parent: replacing an `active` Composite's constituent set
+        // could too, and the activation gate never runs again. Hence a second reason for the same violated rule,
+        // naming the EDIT the operator actually attempted rather than an activation they never asked for.
+        // :entity / :parent are entity-type names — NEITHER is PII. The copy deliberately avoids the word
+        // `edited`, the discriminating token of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
+        'parent_not_active_on_composition_edit' => 'Cannot change the composition of this :entity: it is active, and every constituent :parent of an active :entity must itself be active. An active :entity may never come to reference a non-active :parent.',
     ],
     'retirement' => [
         // The within-catalog reference-integrity guard on a SINGLE-entity retire (design D8; Module 0 PRD
