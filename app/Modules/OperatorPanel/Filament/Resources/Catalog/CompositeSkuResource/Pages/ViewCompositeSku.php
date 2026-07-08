@@ -8,12 +8,14 @@ use App\Modules\Catalog\Actions\ReopenCompositeSku;
 use App\Modules\Catalog\Actions\ResubmitCompositeSkuForReview;
 use App\Modules\Catalog\Actions\RetireCompositeSku;
 use App\Modules\Catalog\Actions\SubmitCompositeSkuForReview;
+use App\Modules\Catalog\Actions\UpdateCompositeSkuComposition;
 use App\Modules\Catalog\Models\CompositeSku;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleViewRecord;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\CompositeSkuResource;
 use Closure;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
  * ViewCompositeSku — the Composite SKU console view page (operator-console-catalog-spine, task 4.1; design
@@ -32,8 +34,16 @@ use Illuminate\Database\Eloquent\Model;
  * Creator → Reviewer → Approver separation-of-duties floor, and the activation-cascade gate (activating a SKU any
  * of whose constituent Product References is not `active` throws the domain's {@see ActivateCompositeSku}
  * `ActivationCascadeViolation`, surfaced via `catalog.gate.parent_not_active`) — the console re-checks NONE of
- * them (design L4). There is NO field-edit (the Catalog backend ships no update action — lifecycle TRANSITIONS
- * only, proposal slice-boundary). All copy is localized (invariant 12).
+ * them (design L4). All copy is localized (invariant 12).
+ *
+ * Since catalog-module-0-completeness-sweep (task 6.3) the page also carries the Composite's ONE field-edit
+ * surface — `editComposition`, a {@see contentEditAction()} modal. It is not an Edit PAGE (the read-projection
+ * discipline stands; the reason was never a missing backend); it routes through
+ * {@see UpdateCompositeSkuComposition}, which owns the state guard, the operator floor, the `N ≥ 2` floor, the
+ * edit-time cascade re-assert, the `version` increment and the audit envelope. Because a Composite is
+ * attribute-free beyond its ordered constituent set (§ 3.8), that set IS its identity: the edit RE-VERSIONS and
+ * re-arms review exactly as a Master's rename does (it shares the `identity_updated` verb, design D5), so a
+ * `reviewed` Composite edited here becomes review-stale and the re-submit button below appears.
  */
 class ViewCompositeSku extends OperatorConsoleViewRecord
 {
@@ -67,14 +77,72 @@ class ViewCompositeSku extends OperatorConsoleViewRecord
     }
 
     /**
+     * The `editComposition` header action (task 6.3; design D8) — a {@see contentEditAction()} modal over the
+     * Composite's ordered constituent set, prefilled from the current bundle
+     * ({@see CompositeSkuResource::compositionEditState()}) over the create form's own picker
+     * ({@see CompositeSkuResource::compositionEditSchema()}), routing the validated state into
+     * {@see UpdateCompositeSkuComposition}.
+     *
+     * ONE operand, so — unlike the Variant's whitelist modal — nothing selects what the picker replaces, and the
+     * schema needs neither a `live()` re-prefill nor a scoped read. REPLACEMENT semantics all the same: the whole
+     * ordered set travels on every call, and a pure REORDER of the same ids is a real edit.
+     *
+     * The Action owns every rejection this modal can provoke — the `retired` state guard, the operator floor, the
+     * `N ≥ 2 distinct` floor (BR-SKU-2, which the picker's `required()` rule cannot express: it refuses only an
+     * EMPTY selection, so a one-element edit reaches the domain), and the activation cascade re-asserted at edit
+     * time on an `active` Composite. Each is a localized `RuntimeException`, so the kit lands it uniformly as a
+     * validation error on the `constituents` field, leaving the bundle, `version`, audit log and event log
+     * untouched (design L4/L5).
+     */
+    protected function editCompositionAction(): Action
+    {
+        return $this->contentEditAction(
+            'editComposition',
+            'composition_updated',
+            'constituents',
+            CompositeSkuResource::compositionEditSchema(),
+            fn (Model $record): array => CompositeSkuResource::compositionEditState($this->recordOf(CompositeSku::class, $record)),
+            /** @param  array<string, mixed>  $data */
+            function (Model $record, array $data): void {
+                // Narrow the post-validation form state to the Catalog action's `list<int>` contract at the
+                // boundary — the same narrowing `CreateCompositeSku::createViaAction()` performs on the same
+                // picker. InvalidArgumentException is a LogicException, so it sails past the kit's
+                // RuntimeException catch: an impossible payload is a programming bug, not a form error.
+                $constituents = $data['constituents'] ?? [];
+
+                if (! is_array($constituents)) {
+                    throw new InvalidArgumentException('Unexpected Composite SKU composition payload.');
+                }
+
+                $productReferenceIds = [];
+                foreach ($constituents as $constituent) {
+                    if (! is_numeric($constituent)) {
+                        throw new InvalidArgumentException('Unexpected Composite SKU constituent.');
+                    }
+
+                    $productReferenceIds[] = (int) $constituent;
+                }
+
+                app(UpdateCompositeSkuComposition::class)->handle(
+                    $this->recordOf(CompositeSku::class, $record),
+                    $productReferenceIds,
+                );
+            },
+        );
+    }
+
+    /**
      * The kit's five uniform lifecycle actions PLUS the visibility-gated re-submit shared by all seven catalog
-     * consoles (RM-06 / canon MVP-DEC-019 and its edit leg; design D2/D5 + catalog-module-0-completeness-sweep
-     * D4/D9). Re-submit RE-ARMS the approval flow after a rejection OR an identity edit — a
-     * `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitCompositeSkuForReview} (never an
-     * Eloquent write). Its `->visible()` is gated to {@see isReviewStale()} (the derived, verb-filtered read):
-     * re-submit is OFFERED only while the entity is REVIEW-STALE — its latest review-freshness-relevant audit
-     * action is an un-remediated rejection or an un-re-reviewed identity edit — and HIDDEN otherwise. The
-     * block-gate itself needs no console code: an activation attempt on a review-stale Composite SKU throws
+     * consoles, and the Composite's one field-edit modal.
+     *
+     * Re-submit (RM-06 / canon MVP-DEC-019 and its edit leg; design D2/D5 + catalog-module-0-completeness-sweep
+     * D4/D9) RE-ARMS the approval flow after a rejection OR an identity edit — a `reviewed → reviewed` audit-only
+     * decision this page SURFACES via {@see ResubmitCompositeSkuForReview} (never an Eloquent write). Its
+     * `->visible()` is gated to {@see isReviewStale()} (the derived, verb-filtered read): re-submit is OFFERED only
+     * while the entity is REVIEW-STALE — its latest review-freshness-relevant audit action is an un-remediated
+     * rejection or an un-re-reviewed identity edit — and HIDDEN otherwise. A composition edit DOES arm it: the
+     * modal below records `identity_updated` (design D5), one of the four review-freshness suffixes. The block-gate
+     * itself needs no console code: an activation attempt on a review-stale Composite SKU throws
      * `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
      * danger notification for free.
      *
@@ -89,6 +157,7 @@ class ViewCompositeSku extends OperatorConsoleViewRecord
                 'resubmitted',
                 fn (Model $record, string $notes) => app(ResubmitCompositeSkuForReview::class)->handle($this->recordOf(CompositeSku::class, $record)),
             )->visible(fn (): bool => $this->isReviewStale()),
+            $this->editCompositionAction(),
         ];
     }
 }

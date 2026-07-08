@@ -83,7 +83,7 @@
   - Livewire tests: enrichment change ⇒ exactly one `EnrichmentDataUpdated` + notification; whitelist replace ⇒ audit row with before/after sets, no event; console SKU-activation attempt against a removed CC surfaces the whitelist rejection notification (delta scenario)
   - Typecheck passes; tests pass
 
-- [ ] 6.3 `ViewCompositeSku` edit-composition modal action (D8)
+- [x] 6.3 `ViewCompositeSku` edit-composition modal action (D8)
   - Ordered PR multi-select prefilled with current constituents, invoking `UpdateCompositeSkuComposition`; N≥2 / non-active-constituent rejections surfaced (validation error or notification — kit-consistent); keys EN+IT; comment rationale updated
   - Livewire tests: happy replace on `active` Composite (version+1, notification); non-active constituent surfaced with state unchanged
   - Typecheck passes; tests pass

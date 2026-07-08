@@ -352,6 +352,7 @@ return array_replace_recursive([
             'activate' => 'Attiva',
             'retire' => 'Ritira',
             'reopen' => 'Riapri',
+            'edit_composition' => 'Modifica composizione',
         ],
 
         'affordance' => [
@@ -366,6 +367,7 @@ return array_replace_recursive([
             'retired' => 'Composite SKU ritirato.',
             'reopened' => 'Composite SKU riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
+            'composition_updated' => 'Composizione salvata.',
         ],
     ],
 

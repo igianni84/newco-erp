@@ -520,11 +520,16 @@ return array_replace_recursive([
             'create' => 'New Composite SKU',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
-            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            // Re-submit RE-ARMS review after a rejection OR a composition edit (RM-06 + its edit leg); offered
+            // only while the Composite is review-stale.
             'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
+            // The composition-edit modal (catalog-module-0-completeness-sweep task 6.3). A Composite is
+            // attribute-free beyond its ordered constituent set (§3.8), so that set IS its identity: this is the
+            // entity's identity-edit surface, the twin of the Master's `edit_identity`.
+            'edit_composition' => 'Edit composition',
         ],
 
         // The "second actor required" affordance — rendered as the activate confirmation copy. The console
@@ -546,6 +551,9 @@ return array_replace_recursive([
             'retired' => 'Composite SKU retired.',
             'reopened' => 'Composite SKU reopened for review.',
             'action_failed' => 'The action could not be completed.',
+            // The composition edit re-versions the Composite (its constituent set is its identity) — the success
+            // title says the bundle was saved; the incremented `version` is visible on the view.
+            'composition_updated' => 'Composition saved.',
         ],
     ],
 

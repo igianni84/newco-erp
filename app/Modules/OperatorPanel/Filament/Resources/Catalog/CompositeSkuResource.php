@@ -11,6 +11,7 @@ use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -56,6 +57,11 @@ use Illuminate\Database\Eloquent\Model;
  * resource queries the model (and its WITHIN-Catalog `constituents()` ordered junction) for the list table + the
  * view infolist and NEVER writes it. Every mutation is a separate Filament Action routed through a Catalog domain
  * action (the kit's view + create pages); there is deliberately NO Edit page and NO Delete/Create default action.
+ * The reason is the read-projection discipline itself, not a missing backend: since
+ * catalog-module-0-completeness-sweep the Catalog backend DOES ship an update Action
+ * (`UpdateCompositeSkuComposition` — a Composite's constituent set IS its identity), and post-creation composition
+ * edits are surfaced — as a modal header action on the View page ({@see compositionEditSchema()}, design D8), never
+ * as a Filament Edit page whose default `$record->save()` would bypass the domain.
  * Enums are rendered through their cast instances (`->value`), never by importing `App\Modules\Catalog\Enums\*`,
  * so the console's cross-module surface stays exactly {Models, Actions} (the import-boundary carve-out). All
  * user-facing copy is localized through the `operator_console` group (invariant 12).
@@ -101,13 +107,66 @@ class CompositeSkuResource extends OperatorConsoleResource
     {
         return $schema
             ->components([
-                Select::make('constituents')
-                    ->label((string) __('operator_console.composite_sku.fields.constituents'))
-                    ->helperText((string) __('operator_console.composite_sku.fields.constituents_help'))
-                    ->options(self::productReferenceOptions(...))
-                    ->multiple()
-                    ->required(),
+                self::constituentsField(),
             ]);
+    }
+
+    /**
+     * The composition-edit modal's form (catalog-module-0-completeness-sweep task 6.3; design D8; spec — Operator
+     * edits catalog identity content through the console): the ONE operand `UpdateCompositeSkuComposition`
+     * replaces — the ordered constituent Product Reference set, which for this attribute-free entity (§3.8) IS its
+     * identity.
+     *
+     * It is the create form, verbatim: the same field builder, so the ordered picker, its option labels and its
+     * producer-agnostic breadth behave identically on both surfaces by construction rather than by copy (the same
+     * reason the Master's identity-edit modal is its create form minus the producer). The floors it does NOT
+     * enforce are the point: the `required()` rule only refuses an EMPTY selection, so a one-element edit reaches
+     * the domain's `N ≥ 2 distinct` floor, and no constituent-state rule is evaluated here at all — the
+     * active-Composite cascade re-assert is the Action's (design L4: surface, don't reimplement).
+     *
+     * @return array<int, Component>
+     */
+    public static function compositionEditSchema(): array
+    {
+        return [self::constituentsField()];
+    }
+
+    /**
+     * The composition-edit modal's PREFILL state — the record's CURRENT constituent ids in bundle `position`
+     * order, read off the within-Catalog `constituents()` junction (already `orderByPivot`).
+     *
+     * Order is content here (`UpdateCompositeSkuComposition` compares the ordered lists element-wise), so the
+     * prefill must never sort: it hands the multi-select the bundle exactly as stored, and an operator who
+     * submits untouched re-affirms the same order. The ids are hydrated and cast rather than `pluck()`ed —
+     * `pluck()` is `mixed` to static analysis, while the model's `@property int` earns the `list<int>` a Filament
+     * multi-select's state needs (the same read the Action performs).
+     *
+     * @return array<string, mixed>
+     */
+    public static function compositionEditState(CompositeSku $record): array
+    {
+        return [
+            'constituents' => array_values(
+                $record->constituents()
+                    ->get()
+                    ->map(fn (ProductReference $constituent): int => $constituent->id)
+                    ->all()
+            ),
+        ];
+    }
+
+    /**
+     * The ordered, N≥2 constituent Product-Reference picker — a Composite SKU's ONLY operand. Shared VERBATIM by
+     * the create form and the composition-edit modal ({@see compositionEditSchema()}).
+     */
+    private static function constituentsField(): Select
+    {
+        return Select::make('constituents')
+            ->label((string) __('operator_console.composite_sku.fields.constituents'))
+            ->helperText((string) __('operator_console.composite_sku.fields.constituents_help'))
+            ->options(self::productReferenceOptions(...))
+            ->multiple()
+            ->required();
     }
 
     public static function table(Table $table): Table
