@@ -683,7 +683,7 @@ it('surfaces an out-of-state cascade retire as a danger notification, changing n
 | The review-freshness re-arm on the console (RM-06 / canon MVP-DEC-019; design D2/D5). The console gains a
 | `re-submit` header action wired through the shared kit's lifecycleAction factory to
 | ResubmitProductMasterForReview (never an Eloquent write). Its ->visible() is gated to the DERIVED
-| rejection-pending read (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated
+| rejection-pending read (OperatorConsoleViewRecord::isReviewStale) — OFFERED only while an un-remediated
 | rejection blocks activation, HIDDEN otherwise. The block-gate itself needs no console code: an activation
 | attempt on a rejection-pending Master throws ApprovalGovernanceViolation, which the kit's
 | surfaceLifecycleOutcome renders as an action_failed danger notification for free (design D5). A hidden
@@ -699,7 +699,7 @@ it('offers re-submit only when the Master is rejection-pending — hidden on a f
     app(SubmitProductMasterForReview::class)->handle($master);
 
     // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit
-    // is NOT offered — the action is HIDDEN (design D5; isRejectionPending).
+    // is NOT offered — the action is HIDDEN (design D5; isReviewStale).
     Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
         ->assertActionHidden('resubmit');
 

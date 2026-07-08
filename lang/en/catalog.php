@@ -43,14 +43,18 @@ return [
         // state change) that re-arms review after a rejection, so it too is valid only from reviewed. An
         // out-of-state re-submit surfaces this through the same single parameterized IllegalLifecycleTransition.
         'cannot_resubmit' => 'Cannot re-submit this :entity for review from state :state. A :entity may be re-submitted for review only while in reviewed.',
-        // Review-freshness block-gate (RM-06 / canon MVP-DEC-019). activate (reviewed → active) is refused
-        // while the entity's latest governance decision is an un-remediated rejection — the entity must be
-        // re-submitted first. Thrown as ApprovalGovernanceViolation (enforced in the approval-governance
-        // guard, so it surfaces through the console kit's outcome path for free), but its reason lives in
-        // this lifecycle group because the rule it names is a lifecycle-flow / review-freshness rule, not a
-        // separation-of-duties one. Only :entity (the entity-type name — never PII); the offending state is
-        // always reviewed and the acting principal lives on the audit row.
+        // Review-freshness block-gate (RM-06 / canon MVP-DEC-019, plus its edit leg). activate
+        // (reviewed → active) is refused while the entity is REVIEW-STALE — its latest review-freshness-relevant
+        // audit action is an un-remediated rejection, OR an identity edit that has not been re-reviewed. The
+        // remedy is the same explicit re-submit; the two reasons name the two different FACTS. Thrown as
+        // ApprovalGovernanceViolation (enforced in the approval-governance guard, so it surfaces through the
+        // console kit's outcome path for free), but the reasons live in this lifecycle group because the rule
+        // they name is a lifecycle-flow / review-freshness rule, not a separation-of-duties one. Only :entity
+        // (the entity-type name — never PII); the offending state is always reviewed and the acting principal
+        // lives on the audit row. `un-remediated` is the discriminating token of the REJECTION cause (it
+        // appears in no other catalog reason), `edited` of the EDIT cause — tests pin the block on them.
         'activation_blocked_by_pending_rejection' => 'Cannot activate this :entity: its latest review decision is an un-remediated rejection. The :entity must be re-submitted for review before it can be activated (review freshness).',
+        'activation_blocked_by_unreviewed_edit' => 'Cannot activate this :entity: its review-governed identity content was edited after the last review decision. The :entity must be re-submitted for review before it can be activated (review freshness).',
     ],
     'approval' => [
         // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition

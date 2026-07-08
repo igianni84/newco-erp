@@ -8,6 +8,7 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -65,15 +66,39 @@ abstract class OperatorConsoleViewRecord extends ViewRecord
     }
 
     /**
-     * Is the page record REJECTION-PENDING — its latest catalog governance audit action an un-remediated
-     * rejection (RM-06 / canon MVP-DEC-019; catalog-review-freshness-resubmit design D3/D5)? This is the
-     * derived read that gates the re-submit header action's `->visible()` on every catalog console: re-submit is
-     * OFFERED only while a rejection is un-remediated and HIDDEN otherwise (a redundant re-submit on a fresh
-     * `reviewed` entity is a harmless no-op the operator is not shown). It MIRRORS the Catalog block-gate's read
-     * (the domain's `ApprovalGovernance::assertNotRejectionPending`: the entity's latest `audit_records.action`,
-     * newest by id, ending in `.rejected`), so the console offers re-submit exactly when the domain would block
-     * activation — but it never REIMPLEMENTS the gate (the Catalog backend is the sole enforcement, design L4);
-     * it only reads the platform substrate to decide what to surface.
+     * The REVIEW-FRESHNESS-RELEVANT catalog audit verbs — the ONLY rows the review-stale condition derives from
+     * (RM-06 / canon MVP-DEC-019 + its edit leg; catalog-module-0-completeness-sweep design D4/D9). This mirrors
+     * the domain's own verb set VALUE-FOR-VALUE; it is duplicated rather than imported because the console may
+     * not reach into `Catalog\Lifecycle` (see the boundary note on {@see isReviewStale()}), and a uniformity test
+     * pins the two derivations to agree on the same audit histories.
+     *
+     * @var list<string>
+     */
+    private const REVIEW_FRESHNESS_VERBS = ['submitted', 'resubmitted', 'rejected', 'identity_updated'];
+
+    /**
+     * The subset of the relevant verbs that leaves the entity REVIEW-STALE: an un-remediated rejection, or
+     * review-governed identity content edited since the last review decision.
+     *
+     * @var list<string>
+     */
+    private const REVIEW_STALE_VERBS = ['rejected', 'identity_updated'];
+
+    /**
+     * Is the page record REVIEW-STALE — is its latest REVIEW-FRESHNESS-RELEVANT catalog audit action either an
+     * un-remediated rejection or an un-re-reviewed identity edit (RM-06 / canon MVP-DEC-019 and its edit leg;
+     * design D4/D9)? This is the derived read that gates the re-submit header action's `->visible()` on every
+     * catalog console: re-submit is OFFERED exactly while the entity is review-stale and HIDDEN otherwise (a
+     * redundant re-submit on a fresh `reviewed` entity is a harmless no-op the operator is not shown).
+     *
+     * It MIRRORS the Catalog block-gate's derivation (the domain's `ApprovalGovernance` review-freshness
+     * assertion: among the entity's audit actions ending in `.submitted`/`.resubmitted`/`.rejected`/
+     * `.identity_updated` the newest by id wins, and it is stale iff it ends `.rejected` or `.identity_updated`),
+     * so the console offers re-submit exactly when the domain would block activation — but it never REIMPLEMENTS
+     * the gate (the Catalog backend is the sole enforcement, design L4); it only reads the platform substrate to
+     * decide what to surface. The verb FILTER is load-bearing: the catalog audit trail also carries enrichment
+     * and whitelist maintenance rows, and a raw latest-action read would hide the re-submit button the moment one
+     * of those landed on top of a rejection — while the domain went on blocking activation (design R3).
      *
      * Boundary: reads {@see AuditRecord} (platform, imported like Money/I18n), never a Catalog type — the
      * {Models, Actions} cross-module surface holds. The Catalog governance/mechanism classes are named in PROSE
@@ -83,10 +108,14 @@ abstract class OperatorConsoleViewRecord extends ViewRecord
      * row (a `ProductMaster` record → `ProductMaster`), and that label is globally unique to the catalog entity,
      * so no `module` predicate is needed (which also keeps `App\Modules\Module` off the console's imports). The
      * `is_int/is_string` key guard mirrors that mechanism (a spine entity always keys on a scalar); the
-     * `is_string` action guard is load-bearing — a never-audited record returns `null` from `->value()` and
+     * `is_string` action guard is load-bearing — an audit action column read returns `mixed`, and
      * `str_ends_with(null, …)` would TypeError under PHP 8.5.
+     *
+     * The `LIKE` prefilter is an over-approximation (`_` is a single-character wildcard on both engines), so the
+     * PHP suffix pass over the newest-first candidates is the authoritative, exact filter — same construction,
+     * and same rationale, as the domain read it mirrors.
      */
-    protected function isRejectionPending(): bool
+    protected function isReviewStale(): bool
     {
         $record = $this->getRecord();
         $key = $record->getKey();
@@ -95,12 +124,41 @@ abstract class OperatorConsoleViewRecord extends ViewRecord
             return false;
         }
 
-        $latest = AuditRecord::query()
+        $candidates = AuditRecord::query()
             ->where('entity_type', class_basename($record))
             ->where('entity_id', (string) $key)
+            ->where(function (Builder $relevant): void {
+                foreach (self::REVIEW_FRESHNESS_VERBS as $verb) {
+                    $relevant->orWhere('action', 'like', '%.'.$verb);
+                }
+            })
             ->orderByDesc('id')
-            ->value('action');
+            ->pluck('action');
 
-        return is_string($latest) && str_ends_with($latest, '.rejected');
+        foreach ($candidates as $action) {
+            if (! is_string($action) || ! self::endsWithVerb($action, self::REVIEW_FRESHNESS_VERBS)) {
+                continue;
+            }
+
+            return self::endsWithVerb($action, self::REVIEW_STALE_VERBS);
+        }
+
+        return false;
+    }
+
+    /**
+     * Does this audit action end in `.<verb>` for any of the given verbs (the exact, engine-free suffix test)?
+     *
+     * @param  list<string>  $verbs
+     */
+    private static function endsWithVerb(string $action, array $verbs): bool
+    {
+        foreach ($verbs as $verb) {
+            if (str_ends_with($action, '.'.$verb)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

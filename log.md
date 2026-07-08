@@ -853,3 +853,5 @@
 ## [2026-07-08 14:54] approve | catalog-module-0-completeness-sweep | APPROVED marker created by Giovanni (14:53, human-only); scaffolding+marker+tracker/hot/log in one approve: commit (local, no push); next ./ralph.sh --change catalog-module-0-completeness-sweep (15 tasks)
 
 ## [2026-07-08 15:04] ralph | catalog-module-0-completeness-sweep 1.1 | green | 4 files | catalog_variant_case_whitelists + VariantCaseWhitelistEntry + Variant relation; 2087/2087 SQLite, new test green on PG17; PHPStan 0
+
+## [2026-07-08 15:25] ralph | catalog-module-0-completeness-sweep 1.2 | green | 21 files | review-freshness now 4-suffix verb-filtered in domain + console mirror; S1 hole closed; 2098/2098 SQLite, 44/44 PG17, PHPStan 0

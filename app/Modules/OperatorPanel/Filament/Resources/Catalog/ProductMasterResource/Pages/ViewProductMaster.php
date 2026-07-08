@@ -63,13 +63,14 @@ class ViewProductMaster extends OperatorConsoleViewRecord
     /**
      * The kit's five uniform lifecycle actions PLUS re-submit and Master's operator-driven cascade retire.
      *
-     * Re-submit (RM-06 / canon MVP-DEC-019; design D2/D5) RE-ARMS the approval flow after a rejection — a
-     * `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitProductMasterForReview}
-     * (never an Eloquent write). Its `->visible()` is gated to {@see isRejectionPending()} (the derived read):
-     * re-submit is OFFERED only while an un-remediated rejection blocks activation, HIDDEN otherwise. The
-     * block-gate itself needs no console code — an activation attempt on a rejection-pending Master throws
-     * `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
-     * danger notification for free.
+     * Re-submit (RM-06 / canon MVP-DEC-019 and its edit leg; design D2/D5 + catalog-module-0-completeness-sweep
+     * D4/D9) RE-ARMS the approval flow after a rejection OR an identity edit — a `reviewed → reviewed` audit-only
+     * decision this page SURFACES via {@see ResubmitProductMasterForReview} (never an Eloquent write). Its
+     * `->visible()` is gated to {@see isReviewStale()} (the derived, verb-filtered read): re-submit is OFFERED
+     * only while the Master is REVIEW-STALE — its latest review-freshness-relevant audit action is an
+     * un-remediated rejection or an un-re-reviewed identity edit — and HIDDEN otherwise. The block-gate itself
+     * needs no console code: an activation attempt on a review-stale Master throws `ApprovalGovernanceViolation`,
+     * which the kit's `surfaceLifecycleOutcome` renders as an `action_failed` danger notification for free.
      *
      * Cascade retire (design L6; § 4.7) retires the Master AND its active descendants (Variants → Product
      * References → SKUs) parent-before-child in one atomic transaction; it carries a confirmation modal WARNING
@@ -86,7 +87,7 @@ class ViewProductMaster extends OperatorConsoleViewRecord
                 'resubmit',
                 'resubmitted',
                 fn (Model $record, string $notes) => app(ResubmitProductMasterForReview::class)->handle($this->recordOf(ProductMaster::class, $record)),
-            )->visible(fn (): bool => $this->isRejectionPending()),
+            )->visible(fn (): bool => $this->isReviewStale()),
             $this->lifecycleAction(
                 'retireCascade',
                 'cascade_retired',

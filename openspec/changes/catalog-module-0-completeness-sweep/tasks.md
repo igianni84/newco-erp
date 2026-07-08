@@ -10,7 +10,7 @@
   - Tests: schema (columns, unique triple rejects a duplicate on both engines, FK restrict on format/case-config delete), and the XM-11 absence half — assert no `is_breakable`/`breakable` column exists on the new table (grep-style schema assertion mirroring `CaseConfigurationTest`)
   - Typecheck passes; tests pass
 
-- [ ] 1.2 Refactor review-freshness to the 4-suffix filtered derivation (S1) in BOTH readers: `ApprovalGovernance::assertNotRejectionPending` (rename to reflect review-stale) and the console `OperatorConsoleViewRecord::isRejectionPending` → `isReviewStale` (D4, D9, R3)
+- [x] 1.2 Refactor review-freshness to the 4-suffix filtered derivation (S1) in BOTH readers: `ApprovalGovernance::assertNotRejectionPending` (rename to reflect review-stale) and the console `OperatorConsoleViewRecord::isRejectionPending` → `isReviewStale` (D4, D9, R3)
   - Domain predicate: among the entity's `audit_records` actions ending `.submitted`/`.resubmitted`/`.rejected`/`.identity_updated`, latest wins; blocked iff it ends `.rejected` or `.identity_updated`; exception message key extended for the edited-not-re-reviewed case (EN+IT)
   - Console mirror uses the same 4-suffix predicate over the platform `AuditRecord` (no `Lifecycle\*` import — R6); re-submit button visible on BOTH stale causes
   - Tests (simulate edit rows by writing audit records directly via `AuditRecorder` in a transaction — R4): post-rejection enrichment/whitelist row does NOT clear the block; identity_updated row blocks until resubmit; draft-edit row then submit → clear; uniformity test — console visibility agrees with the domain block on the same histories; existing RM-06 scenarios stay green (`CatalogReviewFreshnessUniformityTest`, `ResubmitActionsTest`)

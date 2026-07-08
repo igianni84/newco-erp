@@ -22,8 +22,10 @@ use RuntimeException;
  *     {@see creatorMayNotApprove()} / {@see reviewerMayNotApprove()} (self-approval by the creator or, in the
  *     three-step configuration, the reviewer) and {@see insufficientSeparation()} (three-step depth but the
  *     creator and reviewer were the same operator, so three distinct actors are unreachable).
- *   - {@see activationBlockedByPendingRejection()} — the review-freshness block-gate: `activate` is refused
- *     while the entity's latest governance decision is an un-remediated rejection (re-submit re-arms review).
+ *   - the review-freshness block-gate: `activate` is refused while the entity is REVIEW-STALE, with a distinct
+ *     reason per cause — {@see activationBlockedByPendingRejection()} (its latest review-freshness-relevant
+ *     action is an un-remediated rejection) and {@see activationBlockedByUnreviewedEdit()} (review-governed
+ *     identity content was edited after the last review decision). Both are remedied by an explicit re-submit.
  *
  * The copy names only the violated RULE and the `:entity` type label (never PII) — the acting principal lives
  * on the audit row (`actor_role`/`actor_id`), which is the system of record for who performed each step
@@ -54,18 +56,31 @@ class ApprovalGovernanceViolation extends RuntimeException
     }
 
     /**
-     * The review-freshness block-gate (RM-06 / canon MVP-DEC-019): `activate` (`reviewed → active`) is refused
-     * while the entity's latest governance decision is an un-remediated rejection — the Creator must re-submit
-     * for review first. Thrown from this class (not a dedicated exception) so it surfaces through the console
-     * kit's `surfaceLifecycleOutcome` path like the SoD floor, but its reason lives in the `lifecycle` group of
-     * `lang/en/catalog.php` (not `approval`), because the rule it names is a lifecycle-flow / review-freshness
-     * rule rather than a separation-of-duties one — hence it bypasses {@see build()}'s `approval` prefix. :entity
-     * is the entity-type name (never PII); the offending state is always `reviewed` and the acting principal
-     * lives on the audit row.
+     * The review-freshness block-gate, REJECTION cause (RM-06 / canon MVP-DEC-019): `activate`
+     * (`reviewed → active`) is refused while the entity's latest review-freshness-relevant action is an
+     * un-remediated rejection — the Creator must re-submit for review first. Thrown from this class (not a
+     * dedicated exception) so it surfaces through the console kit's `surfaceLifecycleOutcome` path like the SoD
+     * floor, but its reason lives in the `lifecycle` group of `lang/en/catalog.php` (not `approval`), because the
+     * rule it names is a lifecycle-flow / review-freshness rule rather than a separation-of-duties one — hence it
+     * bypasses {@see build()}'s `approval` prefix. :entity is the entity-type name (never PII); the offending
+     * state is always `reviewed` and the acting principal lives on the audit row.
      */
     public static function activationBlockedByPendingRejection(string $entity): self
     {
         return new self((string) __('catalog.lifecycle.activation_blocked_by_pending_rejection', ['entity' => $entity]));
+    }
+
+    /**
+     * The review-freshness block-gate, EDIT cause (the DEC-019 edit leg; catalog-module-0-completeness-sweep
+     * design D4): `activate` is refused while the entity's latest review-freshness-relevant action is an identity
+     * edit — review-governed content changed after the last review decision, so what an approver would be
+     * approving is not what was reviewed. The remedy is the same explicit re-submit as the rejection cause, but
+     * the FACT differs, so the operator is told which one they are looking at. Same `lifecycle`-group /
+     * `RuntimeException` posture as its twin above.
+     */
+    public static function activationBlockedByUnreviewedEdit(string $entity): self
+    {
+        return new self((string) __('catalog.lifecycle.activation_blocked_by_unreviewed_edit', ['entity' => $entity]));
     }
 
     private static function build(string $key, string $entity): self

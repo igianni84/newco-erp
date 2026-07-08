@@ -447,12 +447,18 @@ it('rejects a re-submit performed by a system actor', function () {
 | Canon MVP-DEC-019 (design D1/D3; product-catalog — Requirement: Approval Governance, "A pending rejection
 | blocks activation until re-submit"): while an entity's latest governance action is an un-remediated
 | rejection it is REJECTION-PENDING, and `activate` (`reviewed → active`) is BLOCKED — enforced in
-| ApprovalGovernance::guard() as a DERIVE-FROM-AUDIT read (the latest catalog governance action ends in
-| `.rejected`; no schema flag, design D3), thrown as ApprovalGovernanceViolation so it surfaces through the
-| console kit's outcome path (task 4.1). An explicit `re-submit` (or a `retired → reviewed` reopen) becomes the
-| freshest action and clears the block. These drive the REAL ActivateProductMaster against an active-projected
-| producer, so the blocked "no ProductMasterActivated event" assertion is meaningful and the block is proven to
-| precede the Producer gate. This INVERTS the pre-RM-06 "rejection is not terminal" behaviour.
+| ApprovalGovernance::guard() as a DERIVE-FROM-AUDIT read (no schema flag, design D3), thrown as
+| ApprovalGovernanceViolation so it surfaces through the console kit's outcome path (task 4.1). An explicit
+| `re-submit` becomes the freshest action and clears the block. These drive the REAL ActivateProductMaster
+| against an active-projected producer, so the blocked "no ProductMasterActivated event" assertion is meaningful
+| and the block is proven to precede the Producer gate. This INVERTS the pre-RM-06 "rejection is not terminal"
+| behaviour.
+|
+| Since catalog-module-0-completeness-sweep task 1.2 the derivation is VERB-FILTERED (design D4): only actions
+| ending `.submitted` / `.resubmitted` / `.rejected` / `.identity_updated` participate, and the last two are the
+| STALE ones. `.activated` / `.retired` / `.reopened` are therefore INVISIBLE to it — the reopen scenario below
+| still activates because the buried rejection was remediated by a `.resubmitted`, NOT because the `.reopened`
+| row cleared anything. ReviewFreshnessVerbFilterTest pins the filter (and the identity-edit stale cause) itself.
 */
 
 it('blocks activation while a rejection is pending and admits it only after a re-submit', function () {
@@ -539,8 +545,9 @@ it('does not treat a reopened Master as rejection-pending even with a rejection 
     app(RetireProductMaster::class)->handle($master);   // → retired
     app(ReopenProductMaster::class)->handle($master);    // → reviewed; latest action is now `.reopened`
 
-    // The `.rejected` row is still in history, but the LATEST governance action is `.reopened` — not
-    // rejection-pending: the block-gate reads only the latest action, so the buried rejection does not block.
+    // The `.rejected` row is still in history, but it was already remediated by the `.resubmitted` above — the
+    // latest review-freshness-RELEVANT action. (`.reopened` is the raw latest action, and the verb filter simply
+    // does not see it: it neither blocks nor clears.) So the buried rejection does not block.
     expect(latestGovernanceAction($master))->toBe('catalog.product_master.reopened')
         ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1);
 
