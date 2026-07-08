@@ -321,3 +321,71 @@
 - **Learnings for future iterations:**
   - **When the only unchecked tasks sit under a section header that self-declares *human-gated / NOT part of the ralph loop*, the loop's stop condition is already satisfied.** Re-run the final pass, persist, re-emit `CHANGE_COMPLETE`. Do NOT start 7.1: a loop-executed §2.7 close would forge the human's sign-off, and 7.1's PG17 leg + 7.3's `Remediation_Tracker.md` edits ARE the human's review evidence. RALPH's "pick the FIRST unchecked task" presumes every task is a loop task; an explicit out-of-loop section header overrides it.
 ---
+
+## [2026-07-08 10:46] — §7 human-gated close (§2.7): quality gate + semantic verify + traceability + tracker
+
+### 7.1 Full quality gate (both engines)
+- **Pre-fix baseline** (branch HEAD `e807e29`): SQLite **2079/2079** (10 852 asn, 80.5 s) · **PG17 2079/2079** (10 852 asn, 324 s; `pg` container :55432) · PHPStan max **0** · Pint **clean** · `openspec validate --strict` **valid**.
+- **Post-fix final** (after the semantic-verify fixes below): SQLite **2080/2080** (10 854 asn) · **PG17 2080/2080** (10 854 asn) · PHPStan max **0** · Pint **clean** · `openspec validate --strict` **valid**. (+1 test = the `REVIEW_GOVERNED_FIELDS` const pin; +2 asn.)
+
+### Semantic verification (§2.7 prompt — 5 independent subagents, one per requirement cluster, all 14 delta requirements)
+- **1 CRITICAL → fixed in-place:** `CONTEXT.md` "Agreement scope" glossary entry still asserted the pre-guard coexistence claim ("may both be `active` at once") — the exact R3 residual design D2 inverts (the change's inversion sweep was scoped `app/ tests/`; the glossary of record was missed). Rewrote the entry to clause 1 (same-scope supersession) + clause 2 (cross-shape reject, `ProducerAgreementScopeConflict`; two per-Club actives on different Clubs legal) + updated the `_Avoid_` gloss.
+- **6 WARNING → 4 fixed in-place, 2 accepted:**
+  - fixed: stale "free string at launch" comments asserting the pre-RM-22 rule (`CreateProducerAgreement` page L78 + `ProducerAgreementCreateConsoleTest` L67) → aligned to the closed-set/server-resolution reality.
+  - fixed: `Producer::REVIEW_GOVERNED_FIELDS` docblock claimed const↔test shared source but `ProducerContentLockTest` hardcoded the list → dataset now derives from the const (`array_diff(REVIEW_GOVERNED_FIELDS, ['description'])`) + a new pin test freezes the const at the canon four (claim now true both directions).
+  - fixed: the delta specs never stated the enforced+tested+ADR'd **null-DOB reject** (D7 "attestation mandatory") → added the clause + a scenario to *Registration Age Gate* (party-registry) and the "or missing DOB → date-of-birth field" clause + a scenario to *Operator creates a Customer through the console*; re-validated strict.
+  - fixed: the console *Operator creates a Profile* valid-input scenario's "`auto_renew` inherited" clause was only transitively covered → `ProfileCreateConsoleTest` now creates the Club with `auto_renew_default => false` and asserts the born Profile inherits `false` (distinguishes inheritance from the DB `true` floor).
+  - accepted: illegal-retire fixture has no Profile for the new "no per-Profile cancellation" clause (indirect-but-sound: club-stays-active proves whole-txn rollback; guard throws pre-write) · `ClubsRelationManager` picker composition has no content assertion (structural `OperatorConsoleUiPassTest` coverage — the 6.4 note's accepted posture; the model `saving` guard is the floor).
+- **~12 SUGGESTION logged, deferred** (best: `:cadence` group missing from the `BrGuardExceptionsTest` i18n datasets; `settlement_cadence_help` not in the agreement console kit-keys; a raw-string `open_registration` dataset row; an already-`sunset`-club row in the RM-19 negative matrix; `CancelProfile`/`SupplyLifecycleChainTest` stale-comment refreshes; `getDefaultState()` assertion on the auto-renew Toggle).
+- **Verdicts:** all 14 requirements PASS (5 with the warnings above, now largely fixed). No unimplemented SHALL, no untested scenario, no boundary/invariant violation found (invariant-10 greps clean; R5 structural sweep confirmed; EN/IT parity verified on every new key).
+
+### 7.2 Traceability matrix (delta requirement → scenario → test)
+Compact form: file::test (files under `tests/Feature/Modules/Parties/` unless prefixed; `OP/` = `tests/Feature/Modules/OperatorPanel/Parties/`, `U/` = `tests/Unit/Modules/Parties/`).
+
+| # | Requirement (delta) | Scenario | Covering test(s) |
+|---|---|---|---|
+| 1 | Club Registration Flow… (ADDED) | launch flows → mandatory approval | ClubRegistrationFlowTest::does not auto-approve a membership under any launch flow (×3) |
+| 1 | | open_registration not selectable | ClubRegistrationFlowTest::rejects a Club created with the latent open_registration flow · ::rejects setting open_registration on an existing Club via update · ::admits every launch-selectable registration flow (admit half) |
+| 1 | | no separate invite-only attribute | OP/ClubCreateConsoleTest::exposes the Club create fields and no status or invite-only field (+ `grep invite_only` clean sweep) |
+| 2 | Registration Age Gate (ADDED) | under-age rejected, nothing created | RegistrationAgeGateTest::rejects a registration … one day below the minimum, creating nothing · ::throws the localized age-gate reason |
+| 2 | | no-DOB rejected (scenario added at close) | RegistrationAgeGateTest::rejects a registration with no attested date_of_birth, creating nothing |
+| 2 | | at-or-over admitted | RegistrationAgeGateTest::admits … exactly the minimum age today (inclusive boundary) · ::admits … comfortably over |
+| 2 | | configurable constant (default 18) | RegistrationAgeGateTest::exposes the minimum age as a configurable platform constant defaulting to 18 |
+| 3 | Profile Auto-Renewal Preference (ADDED) | inherits Club default (true+false) | ProfileTest::inherits auto_renew from the target Club auto_renew_default at creation (both legs) |
+| 3 | | operator override (audit-only, no event) | ProfileAutoRenewTest::flips … via the operator Action …, recording no domain event · ::sets auto_renew idempotently · ::sets … regardless of the Profile FSM state · OP/ProfileAutoRenewConsoleTest::flips … through the ViewProfile toggle |
+| 3 | | self-toggle deferred seam | ProfileAutoRenewTest::confines every auto_renew writer to the two Module-K Actions · SupplyLifecycleChainTest (Action whitelist) |
+| 4 | Producer Review-Governed Content Lock (ADDED) | edit on active rejected | ProducerContentLockTest::locks a review-governed string field (const-derived dataset) · ::locks the review-governed description (translatable cast) (+ const pin test, added at close) |
+| 4 | | draft edits freely | ProducerContentLockTest::lets a draft Producer set its review-governed content freely |
+| 4 | | status-only transition passes | ProducerContentLockTest::passes a retirement · ::passes a KYC transition · ::passes activation of a draft Producer |
+| 5 | Producer Lifecycle (MOD — RM-19 leg) | retirement cascades per-Profile cancellation | ProducerLifecycleTest::cascades the Profile leg on retirement — cancels every Active/Lapsed Profile … Producer-initiated reason, audit-only |
+| 5 | | scoping/negative matrix | ProducerLifecycleTest::leaves Profiles in non-Active/Lapsed states, and Profiles under a non-sunsetting Club, untouched |
+| 5 | | illegal transitions (incl. no cascade) | ProducerLifecycleTest::rejects retiring a Producer not in active, rolls back, and cascades nothing (Profile leg indirect — accepted WARNING) |
+| 6 | Profile Cancellation and Deactivation (MOD) | offboarding cascade with producer reason | ProducerLifecycleTest::cascades the Profile leg on retirement … |
+| 6 | | cancel terminal + event-silent (pre-exist.) | ProfileCancellationTest::cancels an active Profile with a reason, records NO event, and frees the pair |
+| 6 | | illegal cancel/deactivate (pre-exist.) | ProfileCancellationTest::rejects cancelling a Profile not in active or lapsed |
+| 7 | ProducerAgreement Lifecycle (MOD — clause 2) | activate with no prior active | ProducerAgreementLifecycleTest::activates a lone draft agreement with no prior active in scope |
+| 7 | | same-scope supersession pairs old+new | ProducerAgreementLifecycleTest::activating a replacement Producer-wide agreement supersedes the prior active …, pairing old and new |
+| 7 | | cross-shape mutual exclusion (both directions) | ProducerAgreementLifecycleTest::rejects activating a per-Club agreement while … Producer-wide … active · ::rejects activating a Producer-wide agreement while any per-Club … active · boundary ::permits two per-Club agreements on different Clubs · OP/ProducerAgreementLifecycleConsoleTest::surfaces a cross-shape activation conflict |
+| 7 | | (Agreement-4 supersession exemption) | ProducerAgreementLifecycleTest::activates a same-scope renewal even after its Club has sunset |
+| 7 | | terminate without cascade · illegal transitions | ProducerAgreementLifecycleTest::terminates an active agreement without cascading · 6 illegal-transition rejects |
+| 8 | Club Lifecycle (MOD) | sunset · close | ClubLifecycleTest::sunsets an active Club … · ::closes a sunset Club … |
+| 8 | | sunset/closed blocks new membership | ProfileTest::rejects a CreateProfile against a non-active Club (×sunset, closed) · OP/ProfileCreateConsoleTest::surfaces ClubNotAcceptingMemberships on the club_id field |
+| 8 | | illegal transitions | ClubLifecycleTest — 4 illegal-transition rejects |
+| 9 | Profile — Multi-Profile Membership (MOD) | create (incl. auto_renew inherit) | ProfileTest::creates a Profile in applied … · ::inherits auto_renew … · ::records a PII-free ProfileCreated |
+| 9 | | one non-terminal per pair · many Clubs | ProfileTest::rejects a second non-terminal Profile … · ::enforces … partial unique index (both engines) · ::lets a Customer hold Profiles across three different Clubs |
+| 9 | | terminal doesn't block | ProfileCancellationTest — cancelled frees · inactive frees · suspended/lapsed still block |
+| 9 | | non-active Club rejects | ProfileTest::rejects a CreateProfile against a non-active Club (×2) |
+| 10 | ProducerAgreement (MOD) | create draft (wide + narrowed + event) | ProducerAgreementTest::creates a Producer-wide draft agreement · ::creates a draft agreement narrowed to a specific Club · ::records a ProducerAgreementCreated |
+| 10 | | requires a Producer | ProducerAgreementTest::rejects … names no existing Producer |
+| 10 | | per-Club requires active Club (reject+admit+exempt) | ProducerAgreementTest::rejects a per-Club agreement scoped to a non-active Club (×2) · ::admits a per-Club agreement scoped to an active Club · ::admits a Producer-wide agreement even when … non-active Club · exemption via LifecycleTest (renewal after sunset) |
+| 10 | | cadence closed set (server + DB CHECK) | ProducerAgreementTest::admits every in-set settlement cadence (×3) · ::rejects an out-of-set settlement cadence (×3) · ProducerAgreementSchemaTest::enforces … at the PostgreSQL CHECK while SQLite accepts the raw write · U/Enums/SettlementCadenceEnumsTest (×3) |
+| 11 | OP Club create (MOD) | valid input · fee→Money · picker 3 channels + default · missing Producer · field exposure | OP/ClubCreateConsoleTest::creates an active Club … · ::creates a Club with a null fee · ::offers the registration flow as a select over only the launch-selectable channels · ::defaults the registration flow to application_with_approval · ::surfaces MissingClubProducer · ::exposes the Club create fields and no status or invite-only field (+ OP/ClubConsoleChainTest end-to-end) |
+| 12 | OP ProducerAgreement create (MOD) | valid input · wide-blank Club · active-picker + cadence select + defaults · server floors · missing Producer · drafts free · no status | OP/ProducerAgreementCreateConsoleTest — ::creates a draft ProducerAgreement … · ::creates a Producer-wide agreement with a null club · ::offers only the selected Producer's active Clubs · ::offers the settlement cadence as a select over the closed set · ::defaults the settlement cadence to quarterly · ::rejects and surfaces a forced non-active Club · ::rejects and surfaces a forced out-of-set settlement cadence · ::surfaces MissingAgreementProducer · ::allows two draft agreements in the same Producer scope · ::exposes the agreement create fields and no status field |
+| 13 | OP Customer create (MOD) | valid + exact-min · under-age → DOB field · missing DOB → DOB field (scenario added at close) · dup email → email field · exposure | OP/CustomerCreateConsoleTest — ::creates a pending Customer …, co-provisioning one active Account · ::admits a registrant at exactly the minimum age · ::surfaces the age gate on the date_of_birth field · ::makes the date_of_birth field effectively required · ::surfaces DuplicateCustomerEmail on the email field · ::exposes the Customer create fields and no status field |
+| 14 | OP Profile create (MOD) | valid (incl. auto_renew inherit, asserted at close) · duplicate · sunset/closed · exposure + active picker | OP/ProfileCreateConsoleTest — ::creates an applied Profile … (now asserts inherited `auto_renew === false`) · ::surfaces DuplicateProfileForClub · ::surfaces ClubNotAcceptingMemberships (×2) · ::exposes the Customer and Club create selects and no state, tier or role field · ::offers only active Clubs in the create Club picker |
+
+i18n sweep: every new user-facing string routes through `lang/{en,it}` (suite i18n sink-scans green; EN/IT parity verified per key by the verify subagents; `registration_flow.open_registration` deliberately authored-but-latent). Mini-ADRs: 3 present (`status: active`, MVP-DEC-009/010/022) + 3 `decisions/INDEX.md` rows — consistent with code + delta specs.
+
+### 7.3
+Remediation_Tracker: RM-19/20/21/22 → ✅, RM-23 → ✅ with the J-15a→RM-05 carve-out + Producer-5-full / Profile-5-self-toggle deferrals noted; §6 session-log line appended; §7 F4 detail flipped ✅ (was already resolved 2026-07-06 per §1 — stale flag). `hot.md` rewritten + `log.md` appended via `scripts/memlog.sh` at close.
+---
