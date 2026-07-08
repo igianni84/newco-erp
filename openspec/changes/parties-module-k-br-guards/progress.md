@@ -308,3 +308,16 @@
   - **When the delta spec annotates a value "(default)" in an operand-enum Select's offered set, set `->default(Enum::Case->value)`** — the 6.1 sibling precedent; reference the case `->value` directly if the enum has no `::default()` factory (keeps a console task from editing the domain enum). Test it with a "defaults to X when the operator leaves it untouched" case (fill only the OTHER required fields → assert the born entity carries the default) — the 6.1 idiom.
   - **§1–§6 COMPLETE (20/23). §7 (7.1 full quality gate incl. PG17 + 7.2 traceability/i18n sweep + 7.3 Remediation_Tracker/hot/log) is the HUMAN-GATED close (§2.7 — NOT a loop task).** 6.4 was the last loop task → the loop emits `<promise>CHANGE_COMPLETE</promise>`. A human runs §7 + review/merge/archive.
 ---
+
+## [2026-07-08 09:38] — loop re-verification pass (no task picked; §1–§6 already complete)
+- The loop re-entered after 6.4 had already emitted `CHANGE_COMPLETE`. The first unchecked task is 7.1, and §7's header self-declares *human-gated; NOT part of the ralph loop* → NO task picked, NO production code written.
+- Re-ran the final pass to confirm the branch is still green at HEAD (`cd8ce88`), working tree clean before the run:
+  - `php -d memory_limit=-1 vendor/bin/pest` (SQLite) → **2079/2079 passed**, 10 852 assertions, 80.1 s
+  - `vendor/bin/phpstan analyse` (max) → **0 errors**
+  - `vendor/bin/pint --test` → **passed**
+  - `openspec validate parties-module-k-br-guards --strict` → **valid**
+- Files changed: `progress.md` + `log.md` only (memory). `hot.md` left as-is — it already describes this exact state accurately.
+- Quality loop: green.
+- **Learnings for future iterations:**
+  - **When the only unchecked tasks sit under a section header that self-declares *human-gated / NOT part of the ralph loop*, the loop's stop condition is already satisfied.** Re-run the final pass, persist, re-emit `CHANGE_COMPLETE`. Do NOT start 7.1: a loop-executed §2.7 close would forge the human's sign-off, and 7.1's PG17 leg + 7.3's `Remediation_Tracker.md` edits ARE the human's review evidence. RALPH's "pick the FIRST unchecked task" presumes every task is a loop task; an explicit out-of-loop section header overrides it.
+---
