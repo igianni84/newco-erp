@@ -64,8 +64,8 @@ it('creates a draft ProducerAgreement through the console, recording one Produce
         ->assertHasNoFormErrors();
 
     // The write routed through the action: an agreement born `draft`, scoped to the Producer + Club, carrying the
-    // term dates parsed from the DatePicker strings + the free-string settlement cadence (ids/dates/string only —
-    // NO operand enum, design D7).
+    // term dates parsed from the DatePicker strings + the closed-set settlement-cadence token (the PAGE passes the
+    // selected backing string; the action resolves it against SettlementCadence — the RM-22 / MVP-DEC-010 floor).
     $agreement = ProducerAgreement::query()->sole();
 
     expect($agreement->status)->toBe(ProducerAgreementStatus::Draft)

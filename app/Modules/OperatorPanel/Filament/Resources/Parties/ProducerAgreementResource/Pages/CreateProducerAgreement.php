@@ -75,7 +75,8 @@ class CreateProducerAgreement extends OperatorConsoleCreateRecord
 
         // Optional inputs collapse blank → null. Club narrowing is null for a Producer-wide agreement (§ 4.6);
         // the term DatePicker values dehydrate as 'Y-m-d' strings, parsed into the action's ?CarbonInterface;
-        // the settlement cadence is a free string at launch (the D19 seam).
+        // the settlement cadence passes through as the Select's closed-set backing string — the action resolves
+        // it against `SettlementCadence` server-side (the RM-22 / MVP-DEC-010 floor; see the class docblock).
         $clubIdValue = is_numeric($clubId) ? (int) $clubId : null;
         $termStartDate = (is_string($termStart) && $termStart !== '') ? CarbonImmutable::parse($termStart) : null;
         $termEndDate = (is_string($termEnd) && $termEnd !== '') ? CarbonImmutable::parse($termEnd) : null;

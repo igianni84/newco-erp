@@ -46,7 +46,14 @@ it('locks a review-governed string field on an active Producer, leaving content 
     $fresh = Producer::findOrFail($producer->id);
     expect($fresh->getAttribute($field))->toBe('Original value')
         ->and($fresh->status)->toBe(ProducerStatus::Active);
-})->with(['name', 'region', 'website']);
+})->with(array_values(array_diff(Producer::REVIEW_GOVERNED_FIELDS, ['description'])));
+
+it('names exactly the four canon review-governed fields in the shared REVIEW_GOVERNED_FIELDS source', function () {
+    // The guard and this suite share ONE source (the docblock's no-magic-list-drift claim): the string-field
+    // dataset above derives from the const (a field added there is auto-covered), and this pin makes editing
+    // the const itself a conscious act — the four fields are the canon AC-K-BR-Producer-5 set.
+    expect(Producer::REVIEW_GOVERNED_FIELDS)->toBe(['name', 'description', 'region', 'website']);
+});
 
 it('locks the review-governed description (a translatable cast) on an active Producer', function () {
     $producer = Producer::factory()->create([

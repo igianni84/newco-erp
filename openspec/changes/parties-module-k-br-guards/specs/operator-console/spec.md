@@ -68,7 +68,7 @@ _Source: openspec/specs/party-registry/spec.md (ProducerAgreement; Spine Creatio
 
 ### Requirement: Operator creates a Customer through the console
 
-The console SHALL let an operator create a **Customer** — Module K's natural-person registry entry — through a manual create surface that collects the Customer's **email**, **name**, a **preferred currency** (an ISO 4217 code assembled into the platform `Currency` value object) and a **preferred locale** (a supported-locale value), plus an optional **phone** and a **date of birth**, invoking `CreateCustomer` and returning the created model (never `$model->save()`). A created Customer SHALL be born **`pending`** and SHALL **co-provision exactly one Account** (born `Personal` / `active`) in the same transaction; the Account is event-silent. The create SHALL record exactly one `CustomerCreated` domain event, tagged module `parties`, carrying the `actor_role: newco_ops` audit envelope. The **age gate** SHALL apply: a `date_of_birth` implying an age **below the configured platform minimum** (default 18) SHALL be rejected (`BelowMinimumRegistrationAge`) and surfaced on the form, with **no Customer, Account or event created** (per *Registration Age Gate*). The email is **unique**: a create whose email already exists SHALL be rejected (`DuplicateCustomerEmail`) and surfaced. The create SHALL **not** create any Profile. The create surface SHALL expose **no** status field.
+The console SHALL let an operator create a **Customer** — Module K's natural-person registry entry — through a manual create surface that collects the Customer's **email**, **name**, a **preferred currency** (an ISO 4217 code assembled into the platform `Currency` value object) and a **preferred locale** (a supported-locale value), plus an optional **phone** and a **date of birth**, invoking `CreateCustomer` and returning the created model (never `$model->save()`). A created Customer SHALL be born **`pending`** and SHALL **co-provision exactly one Account** (born `Personal` / `active`) in the same transaction; the Account is event-silent. The create SHALL record exactly one `CustomerCreated` domain event, tagged module `parties`, carrying the `actor_role: newco_ops` audit envelope. The **age gate** SHALL apply: a `date_of_birth` implying an age **below the configured platform minimum** (default 18) — or a **missing** `date_of_birth` (attestation is mandatory, per *Registration Age Gate*, so the field is **effectively required**) — SHALL be rejected (`BelowMinimumRegistrationAge`) and surfaced on the **date-of-birth field**, with **no Customer, Account or event created**. The email is **unique**: a create whose email already exists SHALL be rejected (`DuplicateCustomerEmail`) and surfaced. The create SHALL **not** create any Profile. The create surface SHALL expose **no** status field.
 
 #### Scenario: Valid input creates a pending Customer with a co-provisioned Account and records CustomerCreated
 
@@ -80,6 +80,11 @@ The console SHALL let an operator create a **Customer** — Module K's natural-p
 
 - **WHEN** an operator submits a Customer whose `date_of_birth` implies an age below the configured minimum
 - **THEN** the domain raises a `BelowMinimumRegistrationAge`, the console surfaces it on the date-of-birth field, and no Customer, no Account and no `CustomerCreated` event are created
+
+#### Scenario: A missing date of birth is rejected and surfaced
+
+- **WHEN** an operator submits a Customer with no date of birth
+- **THEN** the domain raises a `BelowMinimumRegistrationAge` (attestation is mandatory — the field is effectively required), the console surfaces it on the date-of-birth field, and no Customer, no Account and no `CustomerCreated` event are created
 
 #### Scenario: A duplicate email is rejected and surfaced
 

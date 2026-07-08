@@ -46,7 +46,9 @@ it('creates an applied Profile for the Customer+Club pair through the console, r
     actingAs($operator, 'operator');
 
     $customer = Customer::factory()->create();
-    $club = Club::factory()->create();
+    // A non-default `auto_renew_default` so the inheritance assertion below distinguishes the Profile-5
+    // inherit-at-creation from the additive column's DB floor (`true`).
+    $club = Club::factory()->create(['auto_renew_default' => false]);
 
     Livewire::test(CreateProfile::class)
         ->fillForm([
@@ -56,13 +58,15 @@ it('creates an applied Profile for the Customer+Club pair through the console, r
         ->call('create')
         ->assertHasNoFormErrors();
 
-    // The write routed through the action: a Profile born `applied` for exactly that (customer, club) pair.
+    // The write routed through the action: a Profile born `applied` for exactly that (customer, club) pair,
+    // its `auto_renew` inherited from the Club's `auto_renew_default` (Profile-5 — the delta scenario clause).
     $profile = Profile::query()
         ->where('customer_id', $customer->id)
         ->where('club_id', $club->id)
         ->sole();
 
-    expect($profile->state)->toBe(ProfileState::Applied);
+    expect($profile->state)->toBe(ProfileState::Applied)
+        ->and($profile->auto_renew)->toBeFalse();
 
     // Exactly one ProfileCreated, carrying the operator audit envelope (newco_ops + the operator id) resolved by
     // the action from the `operator` guard — the console constructs no envelope itself. A factory-built
