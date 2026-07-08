@@ -15,21 +15,25 @@ return new class extends Migration
      * net-new schema addition of this change: every spine `lifecycle_state` column + its CHECK already ships
      * from `catalog-product-spine`, so this is the only migration here.
      *
-     * The *Producer Activation Gate* needs the answer to "is producer X `active`?", but invariant 10 forbids
-     * querying Module K. The spec-clean mechanism is this Catalog-LOCAL read model, fed solely by the
-     * `ProducerLifecycleProjector` consumer (task 1.2) as it consumes `ProducerActivated`/
-     * `ProducerRetired` (the only Catalog ↔ Parties coupling is the event payload, never a Module K query).
-     * The gate reads this table; the consumer is its sole writer (design D3).
+     * The *Producer Activation Gate* needs the answer to "is producer X `active`?" and (since
+     * catalog-module-0-completeness-sweep, design D7) `CreateProductMaster` needs "does producer X exist?" —
+     * but invariant 10 forbids querying Module K. The spec-clean mechanism is this Catalog-LOCAL read model,
+     * Catalog's SINGLE source of producer knowledge, fed solely by the `ProducerLifecycleProjector` consumer
+     * (task 1.2) as it consumes `ProducerCreated`/`ProducerActivated`/`ProducerRetired` (the only Catalog ↔
+     * Parties coupling is the event payload, never a Module K query). Both rules read this table; the consumer
+     * is its sole writer (design D3).
      *
      * Columns:
      *   - `producer_id` — the projected Producer BY ID (a PLAIN id into Module K, NO database foreign key and
      *     NO Eloquent relation — the boundary law, invariant 10; mirrors `catalog_product_masters.producer_id`).
      *     UNIQUE: exactly one projection row per producer (the consumer upserts on it).
-     *   - `status` — the projected gate-relevant state ({@see ProducerProjectionStatus}: `active`/`retired`).
-     *     String + the enum cast on BOTH engines, PLUS a PG-only CHECK derived from `cases()` — the same
-     *     layered idiom as `domain_events.actor_role` and the spine's `lifecycle_state`, so the constraint can
-     *     never drift from the enum. No default: a row is only ever written by the consumer with an explicit
-     *     status (a producer is never `draft`/`reviewed` in this read model — design D3).
+     *   - `status` — the projected producer state ({@see ProducerProjectionStatus}: `registered`/`active`/
+     *     `retired`; `registered` appended by catalog-module-0-completeness-sweep task 5.1, so a fresh migrate
+     *     emits THREE CHECK tokens with no ALTER). String + the enum cast on BOTH engines, PLUS a PG-only CHECK
+     *     derived from `cases()` — the same layered idiom as `domain_events.actor_role` and the spine's
+     *     `lifecycle_state`, so the constraint can never drift from the enum. No default: a row is only ever
+     *     written by the consumer with an explicit status (a producer is never `draft`/`reviewed` in this read
+     *     model — its `draft` phase projects as `registered`, which grants existence but never opens the gate).
      *   - `last_event_id` — the per-producer WATERMARK = the persisted `domain_events.id` of the last applied
      *     event. The consumer applies an event only when its `id` strictly advances this watermark
      *     (latest-wins), so at-least-once + out-of-order delivery converge (design D4). A plain unsigned bigint,
@@ -39,8 +43,8 @@ return new class extends Migration
      * Postgres-truthful, SQLite-compatible (ADR decisions/2026-06-12-production-db-engine.md): the SQLite
      * dev/test lane uses `timestampsTz()` and skips the PG-only CHECK, relying on the cast for the value-set
      * floor (the CHECK is verified on PG17 per knowledge/testing/rules.md). No data backfill — the projection
-     * starts empty and converges as `ProducerActivated`/`ProducerRetired` are consumed; the gate correctly
-     * blocks Masters under producers with no row until their next event (design Migration Plan).
+     * starts empty and converges as `ProducerCreated`/`ProducerActivated`/`ProducerRetired` are consumed; the
+     * gate correctly blocks Masters under producers with no row until their next event (design Migration Plan).
      */
     public function up(): void
     {
@@ -82,8 +86,8 @@ return new class extends Migration
 
     /**
      * Dev-only rollback (additive-only policy; no production data exists). Dropping the projection is
-     * non-destructive to the spine — it re-converges from `ProducerActivated`/`ProducerRetired` on next
-     * delivery (design Migration Plan). The projection carries no immutability triggers.
+     * non-destructive to the spine — it re-converges from `ProducerCreated`/`ProducerActivated`/`ProducerRetired`
+     * on next delivery (design Migration Plan). The projection carries no immutability triggers.
      */
     public function down(): void
     {

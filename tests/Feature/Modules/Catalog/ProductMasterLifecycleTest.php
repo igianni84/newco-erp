@@ -415,7 +415,8 @@ it('re-submits a rejected Master, keeps it in reviewed, records one resubmitted 
         ->and($after['decision'] ?? null)->toBe('resubmitted')
         ->and($resubmit->authorization_basis)->toBe('catalog-lifecycle');
 
-    // No `notes` on a re-submit (unlike reject) — the "what changed" history is RM-14's concern (design D2).
+    // No `notes` on a re-submit (unlike reject) — the "what changed" history lives on the edit's OWN audit row
+    // (`identity_updated`, changed fields before/after — CatalogContentEdit), not in a free-text note here.
     expect($after)->not->toHaveKey('notes');
 
     // The earlier rejection row is intact (append-only) and the re-submit records NO domain event.

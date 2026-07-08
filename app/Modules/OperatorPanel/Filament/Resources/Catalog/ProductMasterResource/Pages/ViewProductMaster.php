@@ -122,6 +122,9 @@ class ViewProductMaster extends OperatorConsoleViewRecord
                     name: $name,
                     appellation: $appellation,
                     region: $region,
+                    // A cleared Textarea dehydrates to `null`, never `''` — the `=== ''` arm is UNREACHABLE
+                    // defence-in-depth against a future field swap, and no test claims to exercise it. Both
+                    // arms mean the same thing to the domain: "the operator cleared the winery story."
                     wineryStory: ($wineryStory === null || $wineryStory === '')
                         ? null
                         : TranslatableText::of(['en' => $wineryStory]),

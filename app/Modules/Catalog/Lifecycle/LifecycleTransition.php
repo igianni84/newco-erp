@@ -218,14 +218,17 @@ class LifecycleTransition
      * Record a review RE-SUBMIT (§ 4.3; RM-06 / canon MVP-DEC-019): a `reviewed → reviewed` governance
      * DECISION that changes no state — the twin of {@see reject()} that RE-ARMS the approval flow after a
      * rejection. The entity stays in `reviewed`, one `audit_records` row captures the actor and the
-     * `decision: resubmitted`, and NO domain event is recorded. Because "rejection-pending" is DERIVED from
-     * the entity's latest governance audit action (design D3/D5 — no schema flag), the re-submit is the
-     * freshest action and so clears the review-freshness activation block-gate (task 2.2) without any revert
-     * to `draft`; the append-only trail preserves the full reject → re-submit history. From-state guarded
-     * (only a `reviewed` entity may be re-submitted, else {@see IllegalLifecycleTransition::cannotResubmit()})
-     * and operator-floored (a `system`/null actor cannot re-submit — a Creator's re-submission is inherently
-     * human). No `$notes` argument: the "what changed" history is RM-14's re-versioning concern (design D2),
-     * not a free-text note here.
+     * `decision: resubmitted`, and NO domain event is recorded. Because REVIEW-STALENESS is DERIVED from the
+     * entity's latest REVIEW-FRESHNESS-RELEVANT audit verb (`submitted` / `resubmitted` / `rejected` /
+     * `identity_updated` — the verb-filtered derivation in {@see ApprovalGovernance}, never a schema flag), the
+     * re-submit is the freshest such verb and so clears the activation block-gate for BOTH
+     * stale causes — an un-remediated rejection and an un-re-reviewed `identity_updated` edit — without any
+     * revert to `draft`; the append-only trail preserves the full reject → edit → re-submit history. From-state
+     * guarded (only a `reviewed` entity may be re-submitted, else
+     * {@see IllegalLifecycleTransition::cannotResubmit()}) and operator-floored (a `system`/null actor cannot
+     * re-submit — a Creator's re-submission is inherently human). No `$notes` argument: the "what changed"
+     * history is carried by the edit's OWN audit row (the changed fields' before/after, written by
+     * {@see CatalogContentEdit}), not by a free-text note here.
      *
      * @template TModel of Model&HasLifecycleState
      *

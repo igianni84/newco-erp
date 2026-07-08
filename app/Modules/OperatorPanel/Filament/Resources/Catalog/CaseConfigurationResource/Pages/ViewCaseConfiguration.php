@@ -29,9 +29,12 @@ use Illuminate\Database\Eloquent\Model;
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard, the
  * Creator → Reviewer → Approver separation-of-duties floor, AND the retire reference-integrity block (a Case
  * Configuration referenced by an `active` Sellable SKU cannot be retired out from under it — the wrapper
- * renders the domain's {@see RetireCaseConfiguration} rejection as a danger notification) — it reimplements none
- * of them (design L4). There is NO field-edit (the Catalog backend ships no update action — lifecycle
- * TRANSITIONS only, proposal slice-boundary). All copy is localized (invariant 12).
+ * renders the domain's {@see RetireCaseConfiguration} rejection as a danger notification) — it reimplements
+ * none of them (design L4). There is NO field-edit: lifecycle TRANSITIONS only, because the Catalog backend
+ * ships no update Action for this entity (catalog-module-0-completeness-sweep added edit Actions only for a
+ * Master's identity, a Composite's composition and a Variant's enrichment + whitelist — design D2); the pages
+ * that DO carry a field-edit surface it as a modal header action, never as an Edit page (design D8). All copy
+ * is localized (invariant 12).
  */
 class ViewCaseConfiguration extends OperatorConsoleViewRecord
 {

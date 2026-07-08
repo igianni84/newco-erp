@@ -28,8 +28,11 @@ use Illuminate\Database\Eloquent\Model;
  * Every action routes to a Catalog domain action and NEVER writes `lifecycle_state` itself (the
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard and the
  * Creator → Reviewer → Approver separation-of-duties floor — it reimplements none of them (design L4). There
- * is NO field-edit (the Catalog backend ships no update action — lifecycle TRANSITIONS only, proposal
- * slice-boundary). All copy is localized (invariant 12).
+ * is NO field-edit: lifecycle TRANSITIONS only, because the Catalog backend ships no update Action for this
+ * entity (catalog-module-0-completeness-sweep added edit Actions only for a Master's identity, a Composite's
+ * composition and a Variant's enrichment + whitelist — design D2); the pages that DO carry a field-edit
+ * surface it as a modal header action, never as an Edit page (design D8). All copy is localized (invariant
+ * 12).
  */
 class ViewFormat extends OperatorConsoleViewRecord
 {

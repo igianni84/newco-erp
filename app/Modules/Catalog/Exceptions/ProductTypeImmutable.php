@@ -13,9 +13,10 @@ use RuntimeException;
  * live Master would orphan its attribute set and invalidate its identity — the canon remedy is retire +
  * re-register under the required type, never an in-place edit.
  *
- * Enforced at the model's `updating` chokepoint ({@see ProductMaster::booted()}):
- * the sole guard that catches EVERY mutation path — there is no update Action and the Filament resource is
- * read-only, but `product_type` is a real mutable column with `$guarded = []`. Contrast Module K's
+ * Enforced at the model's `updating` chokepoint ({@see ProductMaster::booted()}): the sole guard that catches
+ * EVERY mutation path — `product_type` is a real mutable column with `$guarded = []`, and since
+ * catalog-module-0-completeness-sweep the Master DOES have an update Action (`UpdateProductMasterIdentity`),
+ * which this guard covers along with every lifecycle transition and any future writer. Contrast Module K's
  * `party_type`, immutable BY CONSTRUCTION (distinct per-subtype tables, ADR 2026-06-15-party-type-marker-on-subtype).
  *
  * The reason is localized through Laravel's translator (CLAUDE.md invariant 12); the English baseline lives

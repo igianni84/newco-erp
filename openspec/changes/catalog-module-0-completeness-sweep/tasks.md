@@ -90,7 +90,7 @@
 
 ## 7. Docs + full verify
 
-- [ ] 7.1 CONTEXT.md + residual-claim sweep (R12, D5)
+- [x] 7.1 CONTEXT.md + residual-claim sweep (R12, D5)
   - CONTEXT.md: rewrite *Producer-state projection* (three statuses incl. `registered`, fed by `ProducerCreated`/`Activated`/`Retired`; creation-existence read) and *Approval governance* (review-stale = rejection OR identity edit; the 4-suffix verb-filtered derivation; verb-collision discipline D5) entries; ADD entries *Layer-1 whitelist*, *Enrichment data*, *Identity edit (re-versioning)* with `_Avoid_` glosses
   - Sweep the inverted claims repo-wide (grep, not memory): "sole catalog audit writer" (`ApprovalGovernance`/`LifecycleTransition` docblocks), "re-versioning … deferred (RM-14)" (`LifecycleTransition.php` ~L229), "ships no update Action" (any resource comment missed by 6.x), "rejection-pending" phrasing left implying rejection-only, projection "two-status/two-event" claims (migration + consumer docblocks, `decisions/` prose if any)
   - Acceptance: each grep hit either updated or justified in progress.md; no code-behavior change in this task

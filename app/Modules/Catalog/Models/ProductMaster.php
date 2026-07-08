@@ -81,12 +81,14 @@ class ProductMaster extends Model implements HasLifecycleState
      * invalidate its identity. The canon remedy is retire + re-register, never a type-edit.
      *
      * Enforced at the `updating` chokepoint because `product_type` is a real mutable column with `$guarded = []`
-     * and there is no update Action to guard (the Filament resource is read-only) — the model event is the only
-     * place that catches EVERY mutation path (update / save / mass-assign). It fires on UPDATE only, so the
-     * creation insert (which runs through `creating`) sets the type freely; and it keys on
-     * `isDirty('product_type')`, so a lifecycle transition — which dirties only `lifecycle_state` via the shared
-     * {@see LifecycleTransition} mechanism — passes untouched. Contrast Module K's
-     * `party_type`, immutable BY CONSTRUCTION (distinct per-subtype tables). ADR
+     * — the model event is the only place that catches EVERY mutation path (update / save / mass-assign),
+     * whichever writer runs. It fires on UPDATE only, so the creation insert (which runs through `creating`) sets
+     * the type freely; and it keys on `isDirty('product_type')`, so both of Catalog's writers pass untouched: a
+     * lifecycle transition dirties only `lifecycle_state` via the shared {@see LifecycleTransition} mechanism,
+     * and the identity edit `UpdateProductMasterIdentity` (the update Action added by
+     * catalog-module-0-completeness-sweep — the guard covers it too, which is exactly why it is a model event and
+     * not an Action-level check) dirties only name/appellation/region/winery-story and `version`. Contrast
+     * Module K's `party_type`, immutable BY CONSTRUCTION (distinct per-subtype tables). ADR
      * decisions/2026-07-02-adopt-dec-023-product-type-immutable.md.
      */
     protected static function booted(): void

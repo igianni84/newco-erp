@@ -31,11 +31,14 @@ use Illuminate\Database\Eloquent\Model;
  * Creator → Reviewer → Approver separation-of-duties floor, the activation-cascade gate (activating a PR whose
  * parent Variant OR Format is not `active` throws the domain's {@see ActivateProductReference}
  * `ActivationCascadeViolation`, surfaced via `catalog.gate.parent_not_active`), AND the retire
- * reference-integrity block: retiring a PR still referenced by an `active` Sellable or Composite SKU throws the
- * domain's {@see RetireProductReference} `RetirementReferenceIntegrityViolation`, which the wrapper renders as a
- * danger notification (`catalog.retirement.blocked_by_active_references`) — the console re-checks NONE of them
- * (design L4). There is NO field-edit (the Catalog backend ships no update action — lifecycle TRANSITIONS only,
- * proposal slice-boundary). All copy is localized (invariant 12).
+ * reference-integrity block: retiring a PR still referenced by an `active` Sellable or Composite SKU throws
+ * the domain's {@see RetireProductReference} `RetirementReferenceIntegrityViolation`, which the wrapper
+ * renders as a danger notification (`catalog.retirement.blocked_by_active_references`) — the console re-checks
+ * NONE of them (design L4). There is NO field-edit: lifecycle TRANSITIONS only, because the Catalog backend
+ * ships no update Action for this entity (catalog-module-0-completeness-sweep added edit Actions only for a
+ * Master's identity, a Composite's composition and a Variant's enrichment + whitelist — design D2); the pages
+ * that DO carry a field-edit surface it as a modal header action, never as an Edit page (design D8). All copy
+ * is localized (invariant 12).
  */
 class ViewProductReference extends OperatorConsoleViewRecord
 {

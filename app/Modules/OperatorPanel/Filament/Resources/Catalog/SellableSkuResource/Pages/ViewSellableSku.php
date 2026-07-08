@@ -28,11 +28,18 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Every action routes to a Catalog domain action and NEVER writes `lifecycle_state` itself (the
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard, the
- * Creator → Reviewer → Approver separation-of-duties floor, and the activation-cascade gate (activating a SKU
- * whose parent Product Reference OR Case Configuration is not `active` throws the domain's
- * {@see ActivateSellableSku} `ActivationCascadeViolation`, surfaced via `catalog.gate.parent_not_active`) — the
- * console re-checks NONE of them (design L4). There is NO field-edit (the Catalog backend ships no update action —
- * lifecycle TRANSITIONS only, proposal slice-boundary). All copy is localized (invariant 12).
+ * Creator → Reviewer → Approver separation-of-duties floor, and BOTH of the activation gates
+ * {@see ActivateSellableSku} closes over — the activation cascade (a SKU whose parent Product Reference OR
+ * Case Configuration is not `active` throws `ActivationCascadeViolation`, surfaced via
+ * `catalog.gate.parent_not_active`) and the Layer-1 case-configuration whitelist (a SKU whose Case
+ * Configuration is not admitted by its (Variant, Format) pair's non-empty whitelist throws
+ * `CaseConfigurationNotWhitelisted`, surfaced via `catalog.gate.case_configuration_not_whitelisted` —
+ * catalog-module-0-completeness-sweep task 3.2) — the console re-checks NONE of them (design L4). There is NO
+ * field-edit: lifecycle TRANSITIONS only, because the Catalog backend ships no update Action for this entity
+ * (catalog-module-0-completeness-sweep added edit Actions only for a Master's identity, a Composite's
+ * composition and a Variant's enrichment + whitelist — design D2); the pages that DO carry a field-edit
+ * surface it as a modal header action, never as an Edit page (design D8). All copy is localized (invariant
+ * 12).
  */
 class ViewSellableSku extends OperatorConsoleViewRecord
 {
