@@ -4,7 +4,7 @@
 
 ## 1. Substrate — whitelist schema + review-freshness filter + edit mechanic
 
-- [ ] 1.1 Create the Layer-1 whitelist pivot: migration `catalog_variant_case_whitelists` + `VariantCaseWhitelistEntry` model + within-module relations (D6)
+- [x] 1.1 Create the Layer-1 whitelist pivot: migration `catalog_variant_case_whitelists` + `VariantCaseWhitelistEntry` model + within-module relations (D6)
   - Columns: `id`, `product_variant_id` FK cascade, `format_id` FK restrict, `case_configuration_id` FK restrict, `timestampsTz`; unique on the triple; every FK/index/unique explicitly named with a `catalog_vcw_*` prefix (<63 bytes)
   - Model casts the three ids to integer; Variant exposes a within-module relation to its whitelist entries (architecture rule — no boundary amendment needed)
   - Tests: schema (columns, unique triple rejects a duplicate on both engines, FK restrict on format/case-config delete), and the XM-11 absence half — assert no `is_breakable`/`breakable` column exists on the new table (grep-style schema assertion mirroring `CaseConfigurationTest`)

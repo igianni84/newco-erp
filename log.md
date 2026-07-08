@@ -851,3 +851,5 @@
 ## [2026-07-08 12:47] spec-to-change | catalog-module-0-completeness-sweep | P3 sweep authored prep-only: 12 delta reqs (5 ADDED/7 MODIFIED) + design D1-D11 + 15 tasks; S1 4-suffix filter on both readers; RM-15 via widened projection (registered); validate --strict green; no build, no APPROVED - awaits Giovanni review
 
 ## [2026-07-08 14:54] approve | catalog-module-0-completeness-sweep | APPROVED marker created by Giovanni (14:53, human-only); scaffolding+marker+tracker/hot/log in one approve: commit (local, no push); next ./ralph.sh --change catalog-module-0-completeness-sweep (15 tasks)
+
+## [2026-07-08 15:04] ralph | catalog-module-0-completeness-sweep 1.1 | green | 4 files | catalog_variant_case_whitelists + VariantCaseWhitelistEntry + Variant relation; 2087/2087 SQLite, new test green on PG17; PHPStan 0

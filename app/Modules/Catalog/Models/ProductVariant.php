@@ -8,9 +8,11 @@ use App\Modules\Catalog\Events\ProductVariantCreated;
 use App\Modules\Catalog\Lifecycle\HasLifecycleState;
 use Carbon\CarbonInterface;
 use Database\Factories\Catalog\ProductVariantFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -45,6 +47,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface $updated_at
  * @property-read ProductMaster|null $master
  * @property-read ProductVariantWineAttributes|null $wineAttributes
+ * @property-read Collection<int, VariantCaseWhitelistEntry> $caseWhitelistEntries
  */
 class ProductVariant extends Model implements HasLifecycleState
 {
@@ -92,6 +95,24 @@ class ProductVariant extends Model implements HasLifecycleState
     public function wineAttributes(): HasOne
     {
         return $this->hasOne(ProductVariantWineAttributes::class);
+    }
+
+    /**
+     * The Layer-1 possible-case-configurations whitelist owned by this Variant — one row per admitted
+     * (Format, Case Configuration) pairing (design D6; Module 0 PRD § 3.3 + § 7.1). A WITHIN-module relation
+     * (the whitelist is this entity's own Layer-1 statement, not another module's table). Default key
+     * convention applies: FK `product_variant_id`, local `id`.
+     *
+     * The admitted set is scoped per (Variant, FORMAT) pair, so callers narrow by `format_id`; a pair with NO
+     * rows is PERMISSIVE (every Case Configuration is admissible for it). These rows carry no breakability
+     * flag and are never read as one — Layer 1 catalogs possibility, the effective rule is computed
+     * downstream in Module A / Module S (BR-RefData-2 / AC-0-XM-11).
+     *
+     * @return HasMany<VariantCaseWhitelistEntry, $this>
+     */
+    public function caseWhitelistEntries(): HasMany
+    {
+        return $this->hasMany(VariantCaseWhitelistEntry::class);
     }
 
     /**
