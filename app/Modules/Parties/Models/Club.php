@@ -6,6 +6,7 @@ use App\Modules\Parties\Actions\CreateClub;
 use App\Modules\Parties\Enums\ClubRegistrationFlowType;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Events\ClubCreated;
+use App\Modules\Parties\Exceptions\ClubRegistrationFlowNotSelectable;
 use App\Platform\Money\Money;
 use App\Platform\Money\MoneyCast;
 use Carbon\CarbonInterface;
@@ -25,9 +26,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `active`) and records {@see ClubCreated} in one transaction — so `$guarded = []` carries no
  * mass-assignment-from-request risk. The per-Club `fee` is held as {@see Money} via {@see MoneyCast} (integer
  * minor units + ISO 4217 code across `fee_minor`/`fee_currency`, never a float — invariant 6); it is nullable
- * (a Club MAY carry no fee). `registration_flow_type` is a fixed per-Club classifier; `generates_credit` /
- * `invite_only` are the single-tier-at-launch flags (DEC-062). This change defines no transition out of
- * `active` (design D2).
+ * (a Club MAY carry no fee). `registration_flow_type` is a fixed per-Club classifier; `generates_credit` is
+ * the single-tier-at-launch flag (DEC-062). `auto_renew_default` is the Club-level
+ * auto-renewal default a new Profile inherits at creation (Profile-5, parties-module-k-br-guards task 2.2) —
+ * the standalone `auto_renew` element of the deferred `renewal_policy` blob (MVP-DEC-013), born `true`. This
+ * change defines no transition out of `active` (design D2). The one model-level guard it DOES carry is the
+ * Club-6 latent-value reject ({@see booted()}): `open_registration` is a non-selectable-at-launch flow, rejected
+ * on every write path — a value invariant, not a state transition.
  *
  * @property int $id
  * @property string $display_name
@@ -36,7 +41,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Money|null $fee
  * @property ClubRegistrationFlowType $registration_flow_type
  * @property bool $generates_credit
- * @property bool $invite_only
+ * @property bool $auto_renew_default
  * @property int $version
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
@@ -81,6 +86,27 @@ class Club extends Model
     }
 
     /**
+     * Club-6 (canon MVP-DEC-022 / AC-K-BR-Club-6; change parties-module-k-br-guards, design D6): the
+     * `open_registration` value (auto-join without approval) is CARRIED LATENT in {@see ClubRegistrationFlowType}
+     * but SHALL NOT be selectable at launch — it would contradict the mandatory producer-approval write
+     * (DEC-069: approval = charge = activation is mandatory for every flow; no value auto-approves). This
+     * `saving` guard rejects persisting it on EVERY write path — create OR update (the spec's literal scope) —
+     * so the value invariant holds beneath the {@see CreateClub} action, the factory, the seeder, and any future
+     * update writer, ahead of any NOT-NULL/enum backstop, with the localized {@see ClubRegistrationFlowNotSelectable}
+     * reason. The read goes through the enum cast, so a value set as either the enum or its backing string is caught.
+     * The three launch-selectable channels are `application_with_approval` (the default), `invitation_only`, and
+     * `link_onboarding`.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Club $club): void {
+            if ($club->registration_flow_type === ClubRegistrationFlowType::OpenRegistration) {
+                throw ClubRegistrationFlowNotSelectable::forFlow($club->registration_flow_type->value);
+            }
+        });
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -90,7 +116,9 @@ class Club extends Model
             'fee' => MoneyCast::class,
             'registration_flow_type' => ClubRegistrationFlowType::class,
             'generates_credit' => 'boolean',
-            'invite_only' => 'boolean',
+            // the Club-level auto-renew default a new Profile inherits at creation (Profile-5;
+            // parties-module-k-br-guards task 2.2) — additive NOT-NULL boolean, DB-defaulted `true`.
+            'auto_renew_default' => 'boolean',
             'version' => 'integer',
         ];
     }

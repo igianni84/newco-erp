@@ -53,6 +53,7 @@ use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use App\Platform\I18n\SupportedLocale;
 use App\Platform\Money\Currency;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -121,6 +122,7 @@ function runMembershipSuspensionChain(): array
         name: 'Ada Lovelace',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
 
     // 2. The three onboarding-acceptance moments — set by the deferred registration surface or an operator (no

@@ -79,6 +79,7 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.fields.cancellation_reason',
         'operator_console.profile.fields.customer',
         'operator_console.profile.fields.club',
+        'operator_console.profile.fields.auto_renew',
         'operator_console.profile.tabs.pending',
         'operator_console.profile.tabs.all',
         'operator_console.profile.actions.create',
@@ -90,6 +91,7 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.actions.renew',
         'operator_console.profile.actions.cancel',
         'operator_console.profile.actions.deactivate',
+        'operator_console.profile.actions.set_auto_renew',
         'operator_console.profile.notifications.approved',
         'operator_console.profile.notifications.declined',
         'operator_console.profile.notifications.suspended',
@@ -98,6 +100,7 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.notifications.renewed',
         'operator_console.profile.notifications.cancelled',
         'operator_console.profile.notifications.deactivated',
+        'operator_console.profile.notifications.auto_renew_set',
         'operator_console.profile.notifications.action_failed',
         // --- customer.* Account verbs (group 6, on ViewCustomer; absent from customerConsoleKitKeys()) ---
         'operator_console.customer.actions.suspend_account',

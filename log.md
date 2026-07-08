@@ -799,3 +799,45 @@
 ## [2026-07-07 11:00] plan | RM-08 close-out + batch cadence | Tracker: RM-08 → DONE (merged/archived/pushed); §1+§6 record batch decision (RM-19/20/21/22/23 → one /spec-to-change) + cadence rule in lessons.md; hot.md next-task = batch, prep-only in fresh window
 
 ## [2026-07-07 11:51] spec-to-change | parties-module-k-br-guards | Authored prep-only (batch RM-19/20/21/22/23-partial, Module K party-registry): proposal+design+2 delta specs (party-registry 4A/6M, operator-console 4M)+tasks; validate --strict green; no APPROVED/no code; awaiting review
+
+## [2026-07-07 15:06] ralph | parties-module-k-br-guards 1.1 | green | 4 files — mini-ADR MVP-DEC-009 (Agreement-4) recovered from session-limit crash: ADR verified vs LIVE canon 360df0b + committed, INDEX row added, openspec --strict valid
+
+## [2026-07-07 15:15] ralph | parties-module-k-br-guards 1.2 | green | 4 files | mini-ADR MVP-DEC-010 settlement-cadence closed set {quarterly,monthly,semi-annual} + INDEX row; DemoSeeder annual->semi-annual recorded; openspec valid; 2/23
+
+## [2026-07-07 15:25] ralph | parties-module-k-br-guards 1.3 | green | 4 files (ADR MVP-DEC-022 Club-6/Identity-6/Profile-5/Producer-5 + INDEX row) | 3/23, mini-ADRs done
+
+## [2026-07-07 15:50] ralph | parties-module-k-br-guards 2.1 | green | SettlementCadence enum+cast+PG-CHECK; suite 1980/1980, phpstan 0, pint clean; 11 files
+
+## [2026-07-07 16:08] ralph | parties-module-k-br-guards 2.2 | green | auto_renew + auto_renew_default cols (bool not-null, default true) + casts; SQLite 1984/1984, focused 4/4 on PG17; up/down clean both engines; 5 files
+
+## [2026-07-07 16:33] ralph | parties-module-k-br-guards 2.3 | green | drop parties_clubs.invite_only (Club-6), 14-file atomic sweep, create-table edited in-place; SQLite 1984/1984 + PG17 col-gone; PHPStan 0, Pint clean
+
+## [2026-07-07 17:34] ralph | parties-module-k-br-guards 2.4 | green | 9 files: 5 exceptions + EN/IT copy + BrGuardExceptionsTest; suite 2004/2004, phpstan 0, pint clean, openspec valid
+
+## [2026-07-07 17:49] ralph | parties-module-k-br-guards 3.1 | green | 6 files — RM-22 cadence closed-set reject (InvalidSettlementCadence) in CreateProducerAgreement; suite 2008/2008, phpstan 0, pint clean
+
+## [2026-07-07 18:01] ralph | parties-module-k-br-guards 3.2 | green | 3 files | Agreement-4 Club-active guard in CreateProducerAgreement (2012/2012, phpstan 0, pint clean)
+
+## [2026-07-07 18:13] ralph | parties-module-k-br-guards 3.3 | green | 4 files: RM-20 cross-shape mutual-exclusion guard in ActivateProducerAgreement (clause 2), inverted 2 coexistence tests, +3 new tests; 2015/2015 · phpstan 0 · pint clean
+
+## [2026-07-07 18:25] ralph | parties-module-k-br-guards 4.1 | green | 3 files | RM-21 Club-active guard in CreateProfile (sunset/closed reject, unconditional); suite 2017/2017, PHPStan 0, Pint clean
+
+## [2026-07-07 18:47] ralph | parties-module-k-br-guards 4.2 | green | 6 files | Profile-5 auto_renew inherit + SetProfileAutoRenew audit-only writer; suite 2029/2029, phpstan 0
+
+## [2026-07-07 19:16] ralph | parties-module-k-br-guards 4.3 | green | Club-6: open_registration non-selectable via Club saving-guard + no-auto-approve characterization + invite_only lang sweep grep-empty | 13 files | suite 2035/2035, phpstan 0, pint clean
+
+## [2026-07-07 19:31] ralph | parties-module-k-br-guards 4.4 | green | 3 files (RetireProducer Profile-leg cascade, audit-only; suite 2037)
+
+## [2026-07-07 19:55] ralph | parties-module-k-br-guards 5.1 | green | 8 files | Identity-6 age gate in CreateCustomer (before-txn), public const MINIMUM_REGISTRATION_AGE=18, callers migrated; suite 2043
+
+## [2026-07-07 20:12] ralph | parties-module-k-br-guards 5.2 | green | 3 files: Producer updating content-lock (Producer-5, RM-24 shape) + ProducerContentLockTest 8/8; suite 2051/2051; all 5 BR-guard exceptions now wired (16/23)
+
+## [2026-07-07 20:45] ralph | parties-module-k-br-guards 6.1 | green | 7 files — ProducerAgreement console: cadence Select over SettlementCadence + reactive active-Club picker on both create surfaces; suite 2056/2056
+
+## [2026-07-07 21:05] ralph | parties-module-k-br-guards 6.2 | green | 7 files | ProfileResource active-only club picker + ViewProfile auto-renew toggle; 2074/2074 phpstan0 pint-clean; 18/23
+
+## [2026-07-07 21:22] ralph | parties-module-k-br-guards 6.3 | green | 2 files | CustomerResource age gate routes to date_of_birth field; suite 2077/2077
+
+## [2026-07-07 21:37] ralph | parties-module-k-br-guards 6.4 | green | 3 files — Club registration-flow picker narrowed to 3 launch values (latent open_registration excluded) + application_with_approval default; §1-6 complete, loop done (20/23); §7 human-gated
+
+## [2026-07-08 09:39] ralph | parties-module-k-br-guards re-verify | green | loop complete (20/20 loop tasks); pest 2079/2079, phpstan 0, pint clean, openspec valid; §7 human-gated | 2 files

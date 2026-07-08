@@ -19,12 +19,14 @@
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ClubResource\Pages\CreateClub;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Enums\ClubRegistrationFlowType;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use App\Platform\Money\Currency;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -48,14 +50,13 @@ it('creates an active Club through the console, recording one ClubCreated with t
             'amount' => '50000',
             'currency' => 'EUR',
             'generates_credit' => true,
-            'invite_only' => true,
         ])
         ->call('create')
         ->assertHasNoFormErrors();
 
     // The write routed through the action: a Club born `active`, linked to the operating Producer, carrying the
-    // assembled Money fee (50000 EUR minor units) and the two flags — the operand enum constructed from the form
-    // value, the fee assembled from amount + currency.
+    // assembled Money fee (50000 EUR minor units) and the generates_credit flag — the operand enum constructed
+    // from the form value, the fee assembled from amount + currency.
     $club = Club::query()->where('display_name', 'Premier Cercle Console')->sole();
 
     expect($club->status)->toBe(ClubStatus::Active)
@@ -64,8 +65,7 @@ it('creates an active Club through the console, recording one ClubCreated with t
         ->and($club->fee)->not->toBeNull()
         ->and($club->fee?->minorUnits)->toBe(50000)
         ->and($club->fee?->currency)->toBe(Currency::EUR)
-        ->and($club->generates_credit)->toBeTrue()
-        ->and($club->invite_only)->toBeTrue();
+        ->and($club->generates_credit)->toBeTrue();
 
     // Exactly one ClubCreated, carrying the operator audit envelope (newco_ops + the operator id) resolved by the
     // action from the `operator` guard — the console constructs no envelope itself.
@@ -86,7 +86,7 @@ it('creates a Club with a null fee when the amount and currency are left blank',
         ->fillForm([
             'display_name' => 'Cercle Sans Frais',
             'producer_id' => $producer->id,
-            'registration_flow_type' => 'open_registration',
+            'registration_flow_type' => 'application_with_approval',
             // amount + currency left blank → the page assembles no Money, passing the action's `?Money $fee = null`
             // default (D11).
         ])
@@ -109,7 +109,7 @@ it('surfaces MissingClubProducer on the producer_id field for a non-existent Pro
         ->fillForm([
             'display_name' => 'Cercle Orphelin',
             'producer_id' => 999999,
-            'registration_flow_type' => 'open_registration',
+            'registration_flow_type' => 'application_with_approval',
         ])
         ->call('create')
         ->assertHasFormErrors(['producer_id']);
@@ -118,7 +118,7 @@ it('surfaces MissingClubProducer on the producer_id field for a non-existent Pro
         ->and(DomainEvent::query()->where('name', 'ClubCreated')->exists())->toBeFalse();
 });
 
-it('exposes the Club create fields and no status field', function () {
+it('exposes the Club create fields and no status or invite-only field', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     Livewire::test(CreateClub::class)
@@ -128,8 +128,42 @@ it('exposes the Club create fields and no status field', function () {
         ->assertFormFieldExists('amount')
         ->assertFormFieldExists('currency')
         ->assertFormFieldExists('generates_credit')
-        ->assertFormFieldExists('invite_only')
         // A Club is born `active` by CreateClub (no activate verb — design D9), so the create form never sets
         // `status`; it advances only through the ViewClub lifecycle actions (task 4.1).
-        ->assertFormFieldDoesNotExist('status');
+        ->assertFormFieldDoesNotExist('status')
+        // BR-K-Club-6 / MVP-DEC-022: the invite-only channel is the `invitation_only` registration flow, so the
+        // former `invite_only` boolean is removed/subsumed — there is no separate invite-only field.
+        ->assertFormFieldDoesNotExist('invite_only');
+});
+
+it('offers the registration flow as a select over only the launch-selectable channels, excluding the latent open_registration (BR-K-Club-6/MVP-DEC-022)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // The `Select $field` type-hint IS the "it is a Select" assertion. getOptions() pins the THREE launch channels
+    // (keyed by the enum backing values), and the latent `open_registration` is filtered out of the picker — the
+    // `Club` model's `saving` guard is the server floor, this narrows the console to match (design D7).
+    Livewire::test(CreateClub::class)
+        ->assertFormFieldExists(
+            'registration_flow_type',
+            fn (Select $field): bool => array_keys($field->getOptions())
+                === ['application_with_approval', 'invitation_only', 'link_onboarding'],
+        );
+});
+
+it('defaults the registration flow to application_with_approval when the operator leaves it untouched', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+    $producer = Producer::factory()->create();
+
+    // The Select pre-fills `application_with_approval` (the launch default, BR-K-Club-6) — fill only the required
+    // display name and Producer, leaving the registration flow at its mounted default.
+    Livewire::test(CreateClub::class)
+        ->fillForm([
+            'display_name' => 'Cercle Par Défaut',
+            'producer_id' => $producer->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Club::query()->where('display_name', 'Cercle Par Défaut')->sole()->registration_flow_type)
+        ->toBe(ClubRegistrationFlowType::ApplicationWithApproval);
 });

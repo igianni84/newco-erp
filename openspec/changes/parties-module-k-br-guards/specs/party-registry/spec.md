@@ -24,12 +24,17 @@ _Source: canon **MVP-DEC-022** (CML-89 sub-2) / **AC-K-BR-Club-6** (LIVE `cmless
 
 ### Requirement: Registration Age Gate
 
-Customer registration SHALL be **blocked** when the prospect's self-attested `date_of_birth` implies an age **below the configured platform minimum at the registration date**, and **no Customer record and no co-provisioned Account SHALL be created**, rejected with a localized `BelowMinimumRegistrationAge` exception. The minimum age SHALL be an **admin-configurable platform constant** (default **18** — the EU alcohol-purchase baseline across the launch markets), **not hard-coded**; its representation is the dev team's call (DEC-073), mirroring the enhanced-KYC threshold constants (RM-02 / MVP-DEC-014). At launch the check SHALL be **self-attestation** plus the payment-method-bound minimum-age signal — **no physical-document verification** (BMD § 2.8). The gate SHALL apply to **every onboarding entry channel** (§ 7.1 / § 7.2 / § 7.3). A `date_of_birth` at or above the minimum SHALL be admitted; per-shipping-jurisdiction higher floors (e.g. 21 for US destinations) are a post-launch refinement out of this change.
+Customer registration SHALL be **blocked** when the prospect's self-attested `date_of_birth` implies an age **below the configured platform minimum at the registration date**, and **no Customer record and no co-provisioned Account SHALL be created**, rejected with a localized `BelowMinimumRegistrationAge` exception. A registration attesting **no** `date_of_birth` at all SHALL likewise be rejected with the same localized exception — age attestation is **mandatory at launch** (design D7; BMD § 2.8; the null→block interpretation recorded in the MVP-DEC-022 mini-ADR) — creating nothing. The minimum age SHALL be an **admin-configurable platform constant** (default **18** — the EU alcohol-purchase baseline across the launch markets), **not hard-coded**; its representation is the dev team's call (DEC-073), mirroring the enhanced-KYC threshold constants (RM-02 / MVP-DEC-014). At launch the check SHALL be **self-attestation** plus the payment-method-bound minimum-age signal — **no physical-document verification** (BMD § 2.8). The gate SHALL apply to **every onboarding entry channel** (§ 7.1 / § 7.2 / § 7.3). A `date_of_birth` at or above the minimum SHALL be admitted; per-shipping-jurisdiction higher floors (e.g. 21 for US destinations) are a post-launch refinement out of this change.
 
 #### Scenario: An under-age registration is rejected and creates nothing
 
 - **WHEN** a Customer registration is submitted with a self-attested `date_of_birth` whose implied age at the registration date is below the configured minimum
 - **THEN** a `BelowMinimumRegistrationAge` is raised, and no Customer, no Account and no `CustomerCreated` event are created
+
+#### Scenario: A registration without a date of birth is rejected
+
+- **WHEN** a Customer registration is submitted with no self-attested `date_of_birth`
+- **THEN** a `BelowMinimumRegistrationAge` is raised (age attestation is mandatory at launch), and no Customer, no Account and no `CustomerCreated` event are created
 
 #### Scenario: An at-or-over-minimum registration is admitted
 

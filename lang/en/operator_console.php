@@ -628,8 +628,8 @@ return array_replace_recursive([
         // Create-form input labels + the view-infolist labels for the attributes the list omits. The form uses
         // `fields.*` for every input (mirroring the Producer console): display_name/producer/registration_flow_type
         // re-label the create inputs; amount/currency are the OPTIONAL fee inputs (assembled into a Money only when
-        // both are present — D11); generates_credit/invite_only are the two single-tier flags (also view-infolist
-        // labels). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
+        // both are present — D11); generates_credit is the single-tier-at-launch flag (also a view-infolist
+        // label). The per-Club `fee` (Money) is view-only. The create form exposes NO `status` — a Club is born
         // `active` (design D9).
         'fields' => [
             'display_name' => 'Name',
@@ -639,7 +639,6 @@ return array_replace_recursive([
             'currency' => 'Fee currency',
             'fee' => 'Fee',
             'generates_credit' => 'Generates credit',
-            'invite_only' => 'Invite only',
         ],
 
         // Create-page header link + the write-through lifecycle action labels: the two STATUS verbs sunset
@@ -923,13 +922,15 @@ return array_replace_recursive([
         // View-infolist labels for the demand-side lifecycle attributes the list omits + the create-form select
         // labels. `tier` is the single-tier-at-launch attribute (DEC-062); `lapsed_at` is the grace-window anchor
         // `LapseProfile` stamps; `cancellation_reason` is the optional Producer-initiated cancellation reason.
-        // `customer` / `club` label the create-form selects (the membership's Customer and its Club).
+        // `customer` / `club` label the create-form selects (the membership's Customer and its Club). `auto_renew`
+        // labels the ViewProfile auto-renew preference toggle (Profile-5, canon MVP-DEC-022).
         'fields' => [
             'tier' => 'Tier',
             'lapsed_at' => 'Lapsed at',
             'cancellation_reason' => 'Cancellation reason',
             'customer' => 'Customer',
             'club' => 'Club',
+            'auto_renew' => 'Auto-renew',
         ],
 
         // The approval-queue tabs on the Profile list: "Pending" (the default — `applied` Profiles awaiting an
@@ -947,6 +948,8 @@ return array_replace_recursive([
         // (`lapsed → active` within grace), `cancel` (`active|lapsed → cancelled`, audit-only terminal) and
         // `deactivate` (`active → inactive`) — all form-less ViewProfile header verbs visibility-gated to their
         // from-state (design D4). The former `activate` verb is gone — approval reaches `active` in one transaction.
+        // `set_auto_renew` is the one NON-lifecycle affordance: the auto-renew preference toggle (Profile-5), ungated
+        // (settable in any state).
         'actions' => [
             'create' => 'New Profile',
             'approve' => 'Approve',
@@ -957,6 +960,7 @@ return array_replace_recursive([
             'renew' => 'Renew',
             'cancel' => 'Cancel',
             'deactivate' => 'Deactivate',
+            'set_auto_renew' => 'Set auto-renew',
         ],
 
         // Outcome notifications for the write-through membership verbs. The success titles confirm the domain
@@ -977,6 +981,7 @@ return array_replace_recursive([
             'renewed' => 'Membership renewed.',
             'cancelled' => 'Membership cancelled.',
             'deactivated' => 'Membership deactivated.',
+            'auto_renew_set' => 'Auto-renew preference updated.',
             'action_failed' => 'The action could not be completed.',
         ],
     ],
@@ -1154,7 +1159,7 @@ return array_replace_recursive([
         ],
         'fields' => [
             'club_help' => 'Leave blank for a Producer-wide agreement; select a Club to narrow it.',
-            'settlement_cadence_help' => 'Optional. Free text — the settlement cadence Module E reads (e.g. monthly, quarterly).',
+            'settlement_cadence_help' => 'Optional. The settlement cadence Module E reads, from the closed set (default quarterly).',
         ],
         'not_set' => 'Not set',
     ],

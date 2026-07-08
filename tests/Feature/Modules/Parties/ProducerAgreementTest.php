@@ -1,9 +1,13 @@
 <?php
 
 use App\Modules\Parties\Actions\CreateProducerAgreement;
+use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Events\ProducerAgreementCreated;
+use App\Modules\Parties\Exceptions\InvalidSettlementCadence;
 use App\Modules\Parties\Exceptions\MissingAgreementProducer;
+use App\Modules\Parties\Exceptions\ProducerAgreementClubNotActive;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
@@ -47,7 +51,7 @@ it('creates a Producer-wide draft agreement with term dates and settlement caden
         ->and($read->status)->toBe(ProducerAgreementStatus::Draft)          // born draft (design D2)
         ->and($read->term_start?->toDateString())->toBe('2026-01-01')       // term dates round-trip via the cast
         ->and($read->term_end?->toDateString())->toBe('2026-12-31')
-        ->and($read->settlement_cadence)->toBe('quarterly')                 // the D19 seam
+        ->and($read->settlement_cadence)->toBe(SettlementCadence::Quarterly) // the D19 seam (closed enum, read through the cast)
         ->and($read->version)->toBe(1);                                     // version floor, born at 1
 
     // The required Producer resolves through the within-module belongsTo (relations are allowed within Module K).
@@ -99,6 +103,44 @@ it('rejects a ProducerAgreement creation that names no existing Producer (§ 4.6
     expect(ProducerAgreement::query()->count())->toBe(0)
         ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
 });
+
+it('admits every in-set settlement cadence and round-trips it through the cast (RM-22 / MVP-DEC-010)', function () {
+    // The closed set of three (canon MVP-DEC-010) is admitted server-side and each token round-trips through the
+    // SettlementCadence cast on re-hydration. `quarterly`/`monthly` are also exercised by the create/event tests
+    // above; iterating cases() pins the WHOLE set — notably `semi_annual`, the underscore-backed third member
+    // (label "semi-annual") — end-to-end through the action.
+    $producer = Producer::factory()->create();
+
+    foreach (SettlementCadence::cases() as $cadence) {
+        $agreement = app(CreateProducerAgreement::class)->handle(
+            producerId: $producer->id,
+            settlementCadence: $cadence->value,
+        );
+
+        // Re-fetch so the assertion exercises the read cast, not the in-memory create() value.
+        expect(ProducerAgreement::findOrFail($agreement->id)->settlement_cadence)->toBe($cadence);
+    }
+
+    // Three in-set creates → three agreements and three events (nothing rejected).
+    expect(ProducerAgreement::query()->where('producer_id', $producer->id)->count())->toBe(3)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(3);
+});
+
+it('rejects an out-of-set settlement cadence server-side with no row and no event (RM-22 / MVP-DEC-010)', function (string $cadence) {
+    // canon MVP-DEC-010: `annual` (the migrated-away DemoSeeder value), `weekly` (a sub-monthly cadence) and a
+    // free-text typo are OUT of the closed set. The action rejects the out-of-set token with a clean localized
+    // InvalidSettlementCadence at the boundary — ahead of the raw ValueError the enum cast would throw — persisting
+    // no agreement and no event (server-side enforcement, not UI-only).
+    $producer = Producer::factory()->create();
+
+    expect(fn () => app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        settlementCadence: $cadence,
+    ))->toThrow(InvalidSettlementCadence::class);
+
+    expect(ProducerAgreement::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
+})->with(['annual', 'weekly', 'quaterly']);   // out-of-set value · sub-monthly cadence · a free-text misspelling
 
 it('records a ProducerAgreementCreated domain event in the same transaction, tagged parties and PII-free', function () {
     $producer = Producer::factory()->create();
@@ -172,4 +214,52 @@ it('produces a draft agreement via the factory without recording an event', func
         ->and($agreement->club_id)->toBeNull()                                              // Producer-wide default
         ->and(Producer::query()->whereKey($agreement->producer_id)->exists())->toBeTrue()   // parent Producer built
         ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects a per-Club agreement scoped to a non-active Club with no row and no event (Agreement-4 / MVP-DEC-009)', function (string $state) {
+    // BR-K-Agreement-4 (canon MVP-DEC-009): a per-Club-narrowed agreement's Club MUST be `active` at scoping. A
+    // Club in `sunset` or `closed` is rejected with a localized ProducerAgreementClubNotActive BEFORE the write —
+    // no agreement row and no ProducerAgreementCreated event. (The supersession-inherits-scope exemption is a
+    // task-3.3 activation-path concern, never this creation Action.)
+    $producer = Producer::factory()->create();
+    $club = Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::from($state)]);
+
+    expect(fn () => app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: $club->id,
+    ))->toThrow(ProducerAgreementClubNotActive::class);
+
+    expect(ProducerAgreement::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(0);
+})->with(['sunset', 'closed']);   // the two non-active Club states — both reject a fresh per-Club narrowing
+
+it('admits a per-Club agreement scoped to an active Club (Agreement-4 admit path)', function () {
+    // The admit half of Agreement-4: an `active` Club is a valid narrowing scope — the agreement persists in
+    // `draft` and records its event.
+    $producer = Producer::factory()->create();
+    $club = Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::Active]);
+
+    $agreement = app(CreateProducerAgreement::class)->handle(
+        producerId: $producer->id,
+        clubId: $club->id,
+    );
+
+    $read = ProducerAgreement::findOrFail($agreement->id);
+    expect($read->club_id)->toBe($club->id)
+        ->and($read->status)->toBe(ProducerAgreementStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(1);
+});
+
+it('admits a Producer-wide agreement even when the Producer has a non-active Club (Producer-wide is ungated)', function () {
+    // Producer-wide scope (club_id NULL) is UNGATED by Agreement-4 — even a Producer whose Club is `sunset` may
+    // take a fresh Producer-wide agreement; the guard fires only on a per-Club narrowing, never on Producer-wide.
+    $producer = Producer::factory()->create();
+    Club::factory()->for($producer, 'producer')->create(['status' => ClubStatus::Sunset]);
+
+    $agreement = app(CreateProducerAgreement::class)->handle(producerId: $producer->id);
+
+    $read = ProducerAgreement::findOrFail($agreement->id);
+    expect($read->club_id)->toBeNull()
+        ->and($read->status)->toBe(ProducerAgreementStatus::Draft)
+        ->and(DomainEvent::query()->where('name', ProducerAgreementCreated::NAME)->count())->toBe(1);
 });

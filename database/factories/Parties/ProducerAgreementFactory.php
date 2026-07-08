@@ -3,6 +3,7 @@
 namespace Database\Factories\Parties;
 
 use App\Modules\Parties\Enums\ProducerAgreementStatus;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -40,8 +41,8 @@ class ProducerAgreementFactory extends Factory
             // fixed agreement-term literals — the `immutable_date` cast parses them to CarbonImmutable.
             'term_start' => '2026-01-01',
             'term_end' => '2026-12-31',
-            // the D19 settlement-cadence seam (a free string at launch; a neutral fixture value).
-            'settlement_cadence' => 'monthly',
+            // the D19 settlement-cadence seam — a neutral in-set SettlementCadence fixture (MVP-DEC-010 closed set).
+            'settlement_cadence' => SettlementCadence::Monthly,
             'version' => 1,
         ];
     }

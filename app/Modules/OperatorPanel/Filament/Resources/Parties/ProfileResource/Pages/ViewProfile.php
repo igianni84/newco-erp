@@ -11,9 +11,11 @@ use App\Modules\Parties\Actions\DeclineProfile;
 use App\Modules\Parties\Actions\LapseProfile;
 use App\Modules\Parties\Actions\ReactivateProfile;
 use App\Modules\Parties\Actions\RenewProfile;
+use App\Modules\Parties\Actions\SetProfileAutoRenew;
 use App\Modules\Parties\Actions\SuspendProfile;
 use App\Modules\Parties\Models\Profile;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -73,7 +75,9 @@ class ViewProfile extends ViewRecord
      * `ProfileRenewed`) — the SOLE verb whose reject is UI-reachable: the predicate can only see `state == lapsed`, so a
      * past-grace renew is visible and the domain rejects it on the grace sub-gate, surfacing `action_failed` (design D5),
      * cancel (`active|lapsed → cancelled`; AUDIT-ONLY — no event, the `state` write IS the record) and deactivate
-     * (`active → inactive`; records `ProfileInactive`).
+     * (`active → inactive`; records `ProfileInactive`). Finally, appended after the lifecycle verbs, the
+     * {@see autoRenewAction()} auto-renew PREFERENCE affordance (Profile-5) — the one header action that is NOT a
+     * lifecycle verb and carries no from-state gate.
      *
      * @return array<int, Action>
      */
@@ -96,7 +100,44 @@ class ViewProfile extends ViewRecord
                 ->visible(fn (): bool => $this->stateIs('active') || $this->stateIs('lapsed')),
             $this->lifecycleAction('deactivate', 'deactivated', fn (Model $record, string $notes) => app(DeactivateProfile::class)->handle($this->recordOf(Profile::class, $record)->id))
                 ->visible(fn (): bool => $this->stateIs('active')),
+            $this->autoRenewAction(),
         ];
+    }
+
+    /**
+     * The auto-renew PREFERENCE affordance (Profile-5, canon MVP-DEC-022; party-registry — *Profile Auto-Renewal
+     * Preference*; parties-module-k-br-guards task 6.2). Unlike the lifecycle verbs above, `auto_renew` is a
+     * last-writer-wins preference, NOT an FSM edge — an operator MAY set it in ANY state (§ Profile-5 imposes no
+     * from-state restriction), so this affordance carries NO {@see stateIs()} visibility gate. It opens a
+     * {@see Toggle} defaulted to the record's current `auto_renew` (read through the model, no `Parties\Enums` import)
+     * and, on submit, drives the audit-only {@see SetProfileAutoRenew} action by the Profile `int $id` through
+     * {@see SurfacesDomainActions::surfaceLifecycleOutcome()} — never an Eloquent write (the no-Eloquent-write rule).
+     * That action records NO domain event (§ 15.2 names none for `auto_renew` — the audit-only contract, design D8);
+     * the console surfaces only the success outcome. All copy localized (invariant 12).
+     */
+    private function autoRenewAction(): Action
+    {
+        return Action::make('setAutoRenew')
+            ->label((string) __('operator_console.profile.actions.set_auto_renew'))
+            ->form([
+                Toggle::make('auto_renew')
+                    ->label((string) __('operator_console.profile.fields.auto_renew'))
+                    ->default(fn (): bool => $this->recordOf(Profile::class, $this->getRecord())->auto_renew),
+            ])
+            ->action(
+                /** @param  array<string, mixed>  $data */
+                function (Model $record, array $data): void {
+                    $autoRenew = (bool) ($data['auto_renew'] ?? false);
+
+                    $this->surfaceLifecycleOutcome(
+                        fn () => app(SetProfileAutoRenew::class)->handle(
+                            profileId: $this->recordOf(Profile::class, $record)->id,
+                            autoRenew: $autoRenew,
+                        ),
+                        (string) __('operator_console.profile.notifications.auto_renew_set'),
+                    );
+                }
+            );
     }
 
     /**

@@ -41,9 +41,10 @@ class ClubFactory extends Factory
             'status' => ClubStatus::Active,
             // the per-Club fee as Money (integer minor units + ISO 4217), never a float (invariant 6).
             'fee' => Money::of(25000, Currency::EUR),
-            'registration_flow_type' => ClubRegistrationFlowType::OpenRegistration,
+            // the default launch-selectable onboarding channel (Club-6 / MVP-DEC-022: `open_registration` is
+            // carried latent and non-selectable at launch, so the fixture default is the spec's default flow).
+            'registration_flow_type' => ClubRegistrationFlowType::ApplicationWithApproval,
             'generates_credit' => true,
-            'invite_only' => false,
             'version' => 1,
         ];
     }

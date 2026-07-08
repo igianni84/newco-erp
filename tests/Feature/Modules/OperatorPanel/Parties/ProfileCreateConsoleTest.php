@@ -15,17 +15,25 @@
 // enums/models/pages are imported freely here: the {Models, Actions, Enums} import-boundary carve-out governs
 // OperatorPanel PRODUCTION code, not tests. A factory-built Profile bypasses CreateProfile and records no event —
 // so the only recorded ProfileCreated is the console's.
+//
+// Task 6.2 (parties-module-k-br-guards; RM-21 / canon MVP-DEC-022) appends the Club-active create guard's console
+// leg: the Club picker offers only `active` Clubs (a sunset/closed Club is not selectable), and a FORCED non-active
+// club_id is rejected by CreateProfile's ClubNotAcceptingMemberships guard, surfaced on the `club_id` field by the
+// kit base catch — no Profile, no event (the 6.1 forced-out-of-option pattern: Filament passes an out-of-option
+// Select value straight to the action, so the server guard is the floor beneath the picker).
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages\CreateProfile;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages\ListProfiles;
 use App\Modules\OperatorPanel\Models\Operator;
+use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Profile;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
 
@@ -38,7 +46,9 @@ it('creates an applied Profile for the Customer+Club pair through the console, r
     actingAs($operator, 'operator');
 
     $customer = Customer::factory()->create();
-    $club = Club::factory()->create();
+    // A non-default `auto_renew_default` so the inheritance assertion below distinguishes the Profile-5
+    // inherit-at-creation from the additive column's DB floor (`true`).
+    $club = Club::factory()->create(['auto_renew_default' => false]);
 
     Livewire::test(CreateProfile::class)
         ->fillForm([
@@ -48,13 +58,15 @@ it('creates an applied Profile for the Customer+Club pair through the console, r
         ->call('create')
         ->assertHasNoFormErrors();
 
-    // The write routed through the action: a Profile born `applied` for exactly that (customer, club) pair.
+    // The write routed through the action: a Profile born `applied` for exactly that (customer, club) pair,
+    // its `auto_renew` inherited from the Club's `auto_renew_default` (Profile-5 — the delta scenario clause).
     $profile = Profile::query()
         ->where('customer_id', $customer->id)
         ->where('club_id', $club->id)
         ->sole();
 
-    expect($profile->state)->toBe(ProfileState::Applied);
+    expect($profile->state)->toBe(ProfileState::Applied)
+        ->and($profile->auto_renew)->toBeFalse();
 
     // Exactly one ProfileCreated, carrying the operator audit envelope (newco_ops + the operator id) resolved by
     // the action from the `operator` guard — the console constructs no envelope itself. A factory-built
@@ -119,4 +131,52 @@ it('reaches the create page through a header navigation link, never an inline Cr
     Livewire::test(ListProfiles::class)
         ->assertActionExists('create')
         ->assertActionHasUrl('create', ProfileResource::getUrl('create'));
+});
+
+it('surfaces ClubNotAcceptingMemberships on the club_id field for a sunset or closed Club, persisting no Profile or event', function (ClubStatus $status) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // The picker offers only active Clubs, but Filament passes a FORCED (out-of-option) club_id straight to the
+    // action — so a sunset/closed Club id reaches CreateProfile's RM-21 Club-active guard, which throws
+    // ClubNotAcceptingMemberships (a RuntimeException) mapped by the kit base catch to a `club_id` form error (the
+    // createRejectionField). The transaction rolls back: no Profile, no ProfileCreated event.
+    $customer = Customer::factory()->create();
+    $club = Club::factory()->create(['status' => $status]);
+
+    $profilesBefore = Profile::query()->count();
+
+    Livewire::test(CreateProfile::class)
+        ->fillForm([
+            'customer_id' => $customer->id,
+            'club_id' => $club->id,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['club_id']);
+
+    expect(Profile::query()->count())->toBe($profilesBefore)
+        ->and(DomainEvent::query()->where('name', 'ProfileCreated')->count())->toBe(0);
+})->with([
+    'sunset' => [ClubStatus::Sunset],
+    'closed' => [ClubStatus::Closed],
+]);
+
+it('offers only active Clubs in the create Club picker (a sunset or closed Club is not selectable)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $active = Club::factory()->create(['status' => ClubStatus::Active]);
+    $sunset = Club::factory()->create(['status' => ClubStatus::Sunset]);
+    $closed = Club::factory()->create(['status' => ClubStatus::Closed]);
+
+    // The `club_id` field is a Select (the `Select $field` type-hint TypeErrors on a non-Select, doubling as the
+    // "it's a select, not free text" proof), and its option keys include the active Club but NEVER the sunset/closed
+    // ones (RM-21: only accepting Clubs are selectable; the server guard, covered above, is the floor for a forced
+    // value).
+    Livewire::test(CreateProfile::class)
+        ->assertFormFieldExists('club_id', function (Select $field) use ($active, $sunset, $closed): bool {
+            $keys = array_keys($field->getOptions());
+
+            return in_array($active->id, $keys, true)
+                && ! in_array($sunset->id, $keys, true)
+                && ! in_array($closed->id, $keys, true);
+        });
 });

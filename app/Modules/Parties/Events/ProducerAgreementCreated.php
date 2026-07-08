@@ -31,8 +31,8 @@ final class ProducerAgreementCreated
      * The creation payload: a snapshot of the agreement's structural identity. Both parties are referenced BY
      * ID (`producer_id` required, `club_id` nullable — the substrate's "parties by id only" discipline) and the
      * agreement carries no personal data (it is a commercial agreement, not a Party). The term dates are
-     * serialised as ISO `Y-m-d` strings (or null) and `settlement_cadence` is the D19 seam string — business
-     * attributes, never PII.
+     * serialised as ISO `Y-m-d` strings (or null) and `settlement_cadence` is the D19 seam token (the closed
+     * `SettlementCadence` backing value, or null) — business attributes, never PII.
      *
      * @return array<string, mixed>
      */
@@ -45,7 +45,7 @@ final class ProducerAgreementCreated
             'status' => $agreement->status->value,
             'term_start' => $agreement->term_start?->toDateString(),
             'term_end' => $agreement->term_end?->toDateString(),
-            'settlement_cadence' => $agreement->settlement_cadence,
+            'settlement_cadence' => $agreement->settlement_cadence?->value,
         ];
     }
 }

@@ -61,7 +61,6 @@ it('drives the entire Club console slice end-to-end as an operator demo, asserti
             'amount' => '50000',
             'currency' => 'EUR',
             'generates_credit' => true,
-            'invite_only' => true,
         ])
         ->call('create')
         ->assertHasNoFormErrors();

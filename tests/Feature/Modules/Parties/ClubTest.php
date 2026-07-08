@@ -49,7 +49,6 @@ it('creates a Club in active for an existing Producer, with the fee stored as mi
         ->and($read->status)->toBe(ClubStatus::Active)                                  // born active (design D2)
         ->and($read->registration_flow_type)->toBe(ClubRegistrationFlowType::ApplicationWithApproval)
         ->and($read->generates_credit)->toBeTrue()                                      // default flag (DEC-062)
-        ->and($read->invite_only)->toBeFalse()
         ->and($read->version)->toBe(1)                                                  // version floor, born at 1
         ->and($read->fee)->toBeInstanceOf(Money::class)
         ->and($read->fee?->equals(Money::of(25000, Currency::of('EUR'))))->toBeTrue();  // Money round-trips by value
@@ -69,7 +68,7 @@ it('rejects a Club creation that names no existing operating Producer (BR-K-Club
     expect(fn () => app(CreateClub::class)->handle(
         displayName: 'Orphan Club',
         producerId: 999_999,
-        registrationFlowType: ClubRegistrationFlowType::OpenRegistration,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
         fee: Money::of(10000, Currency::of('EUR')),
     ))->toThrow(MissingClubProducer::class);
 
@@ -86,7 +85,6 @@ it('records a ClubCreated domain event in the same transaction, tagged parties a
         producerId: $producer->id,
         registrationFlowType: ClubRegistrationFlowType::InvitationOnly,
         fee: Money::of(25000, Currency::of('EUR')),
-        inviteOnly: true,
     );
 
     // sole() asserts EXACTLY one ClubCreated row exists — the one-event contract.
@@ -104,8 +102,7 @@ it('records a ClubCreated domain event in the same transaction, tagged parties a
         ->and($event->payload['producer_id'])->toBe($producer->id)
         ->and($event->payload['status'])->toBe('active')
         ->and($event->payload['registration_flow_type'])->toBe('invitation_only')
-        ->and($event->payload['generates_credit'])->toBeTrue()
-        ->and($event->payload['invite_only'])->toBeTrue();
+        ->and($event->payload['generates_credit'])->toBeTrue();
 
     // Fee asserted via the 'fee' key against the canonical Money payload shape, with toEqual (order-insensitive)
     // so PG jsonb key reordering inside the nested money object cannot break it (trap 3 — never a byte-compare).
@@ -151,7 +148,7 @@ it('records no lifecycle-transition event — the Club stays active (scope guard
     $club = app(CreateClub::class)->handle(
         displayName: 'Steady Club',
         producerId: $producer->id,
-        registrationFlowType: ClubRegistrationFlowType::OpenRegistration,
+        registrationFlowType: ClubRegistrationFlowType::ApplicationWithApproval,
         fee: Money::of(5000, Currency::of('EUR')),
     );
 

@@ -45,7 +45,6 @@ final class ClubCreated
             'fee' => $club->fee?->toPayload(),
             'registration_flow_type' => $club->registration_flow_type->value,
             'generates_credit' => $club->generates_credit,
-            'invite_only' => $club->invite_only,
         ];
     }
 }

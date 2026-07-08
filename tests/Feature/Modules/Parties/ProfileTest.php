@@ -1,8 +1,10 @@
 <?php
 
 use App\Modules\Parties\Actions\CreateProfile;
+use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Events\ProfileCreated;
+use App\Modules\Parties\Exceptions\ClubNotAcceptingMemberships;
 use App\Modules\Parties\Exceptions\DuplicateProfileForClub;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Customer;
@@ -130,6 +132,40 @@ it('enforces the non-terminal uniqueness at the database via the partial unique 
     // The duplicate did not land — still exactly one live Profile for the pair.
     expect(Profile::query()->where('customer_id', $customer->id)->where('club_id', $club->id)->count())->toBe(1);
 });
+
+it('rejects a CreateProfile against a non-active Club with no Profile and no event (RM-21 / BR-K-Club-3)', function (string $state) {
+    // BR-K-Club-3 / AC-K-FSM-6 (RM-21): a `sunset` Club blocks new memberships (§ 4.3) and `closed` is terminal —
+    // the target Club MUST be `active`. A CreateProfile against a non-active Club is rejected with a localized
+    // ClubNotAcceptingMemberships BEFORE the write, so no Profile row and no ProfileCreated event are created (the
+    // throw rolls back the transaction). The active-Club ADMIT path is covered by every other test in this file —
+    // all create against the default-`active` ClubFactory.
+    $customer = Customer::factory()->create();
+    $club = Club::factory()->create(['status' => ClubStatus::from($state)]);
+
+    expect(fn () => app(CreateProfile::class)->handle(
+        customerId: $customer->id,
+        clubId: $club->id,
+    ))->toThrow(ClubNotAcceptingMemberships::class);
+
+    expect(Profile::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', ProfileCreated::NAME)->count())->toBe(0);
+})->with(['sunset', 'closed']);   // the two non-active Club states — both block a new membership
+
+it('inherits auto_renew from the target Club auto_renew_default at creation (Profile-5)', function (bool $clubDefault) {
+    // Profile-5 (canon MVP-DEC-022): a new Profile's `auto_renew` DEFAULT-INHERITS the owning Club's
+    // `auto_renew_default` at creation — the `auto_renew` element of the (otherwise deferred) `renewal_policy`
+    // config, shipped standalone here. CreateProfile reads it from the SAME Club the Club-active guard fetches.
+    $customer = Customer::factory()->create();
+    $club = Club::factory()->create(['auto_renew_default' => $clubDefault]);
+
+    $profile = app(CreateProfile::class)->handle(customerId: $customer->id, clubId: $club->id);
+
+    // Re-fetch so the assertion exercises the read/hydration boolean cast, not the in-memory create() value.
+    expect(Profile::findOrFail($profile->id)->auto_renew)->toBe($clubDefault);
+})->with([
+    'Club default true → Profile auto_renew true' => [true],
+    'Club default false → Profile auto_renew false' => [false],
+]);
 
 it('records a PII-free ProfileCreated domain event in the same transaction, tagged parties', function () {
     $customer = Customer::factory()->create();

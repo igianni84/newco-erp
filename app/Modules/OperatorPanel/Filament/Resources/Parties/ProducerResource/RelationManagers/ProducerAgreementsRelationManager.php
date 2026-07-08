@@ -4,13 +4,13 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerResource\
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResource;
 use App\Modules\Parties\Actions\CreateProducerAgreement as CreateProducerAgreementAction;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Models\Producer;
 use Carbon\CarbonImmutable;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -21,13 +21,15 @@ use InvalidArgumentException;
  * on the Producer's view page (operator-console UI pass, 2026-06-24). It replaces the standalone Producer
  * Agreement sidebar console (now hidden from navigation): an operator sees AND creates a Producer's agreements
  * in the Producer's own context, the Producer implied (no Producer picker), and the OPTIONAL narrowing Club
- * scoped to the Producer's OWN Clubs.
+ * scoped to the Producer's `active` Clubs (BR-K-Agreement-4 / canon MVP-DEC-009).
  *
  * Read columns are reused verbatim from {@see ProducerAgreementResource::table()}; the row View action links to
  * the still-registered agreement view page. Create routes through the Parties {@see CreateProducerAgreementAction}
  * with the owner Producer id injected — NEVER an Eloquent write (the no-Eloquent-write rule; ADR 2026-06-19) —
- * mirroring the standalone CreateProducerAgreement page (ids/dates/free string only, a blank Club narrowed to a
- * Producer-wide agreement — § 4.6). All copy is localized (invariant 12).
+ * mirroring the standalone CreateProducerAgreement page: it collects ids/dates, the `active`-Club narrowing (blank
+ * = a Producer-wide agreement, § 4.6) and the settlement cadence as a Select over the closed {@see SettlementCadence}
+ * operand enum (canon MVP-DEC-010/RM-22), both pickers sharing the resource's option helpers. All copy is localized
+ * (invariant 12).
  */
 class ProducerAgreementsRelationManager extends RelationManager
 {
@@ -76,9 +78,10 @@ class ProducerAgreementsRelationManager extends RelationManager
                             ->label((string) __('operator_console.producer_agreement.fields.term_start')),
                         DatePicker::make('term_end')
                             ->label((string) __('operator_console.producer_agreement.fields.term_end')),
-                        TextInput::make('settlement_cadence')
+                        Select::make('settlement_cadence')
                             ->label((string) __('operator_console.producer_agreement.fields.settlement_cadence'))
-                            ->maxLength(255),
+                            ->options(ProducerAgreementResource::settlementCadenceOptions())
+                            ->default(SettlementCadence::default()->value),
                     ])
                     ->using($this->createAgreement(...)),
             ])
@@ -89,8 +92,11 @@ class ProducerAgreementsRelationManager extends RelationManager
     }
 
     /**
-     * The narrowing-Club options scoped to the owner Producer's OWN Clubs (a within-Parties read off the owner
-     * relation). A blank selection is a Producer-wide agreement (§ 4.6).
+     * The narrowing-Club options scoped to the owner Producer's `active` Clubs (BR-K-Agreement-4 / canon
+     * MVP-DEC-009: a per-Club agreement's Club MUST be `active`, so a `sunset`/`closed` Club is not selectable).
+     * Delegates to the shared {@see ProducerAgreementResource::activeClubOptions()} with the owner id — the same
+     * active-only filter the standalone create form applies, here with the Producer implied by the owner context.
+     * A blank selection is a Producer-wide agreement (§ 4.6).
      *
      * @return array<int, string>
      */
@@ -99,12 +105,7 @@ class ProducerAgreementsRelationManager extends RelationManager
         $owner = $this->getOwnerRecord();
         assert($owner instanceof Producer);
 
-        $options = [];
-        foreach ($owner->clubs as $club) {
-            $options[$club->id] = $club->display_name;
-        }
-
-        return $options;
+        return ProducerAgreementResource::activeClubOptions($owner->id);
     }
 
     /**

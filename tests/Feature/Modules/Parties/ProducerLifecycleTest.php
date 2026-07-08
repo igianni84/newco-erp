@@ -6,6 +6,7 @@ use App\Modules\Parties\Actions\RetireProducer;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\KycStatus;
 use App\Modules\Parties\Enums\ProducerStatus;
+use App\Modules\Parties\Enums\ProfileState;
 use App\Modules\Parties\Events\ClubSunset;
 use App\Modules\Parties\Events\ProducerActivated;
 use App\Modules\Parties\Events\ProducerRetired;
@@ -13,6 +14,7 @@ use App\Modules\Parties\Exceptions\IllegalProducerTransition;
 use App\Modules\Parties\Exceptions\SeparationOfDutiesViolation;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
+use App\Modules\Parties\Models\Profile;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
@@ -32,7 +34,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * (design L5/L6). The KYC-cleared gate on activation (Module K PRD § 4.4 / BR-K-Producer-2) is enforced here
  * (parties-compliance, design L5): activation requires `kyc_status` cleared — `verified`, `not_required`, or
  * NULL (treated as cleared for additivity) — and is rejected for `pending`/`rejected`, leaving the Producer
- * `draft`. The Profile leg of the § 10.2 retirement cascade is deferred (demand-side).
+ * `draft`. The Profile leg of the § 10.2 retirement cascade — cancelling every `Active`/`Lapsed` Profile under
+ * each sunsetting Club with a Producer-initiated reason, AUDIT-ONLY (no `ProfileCancelled` event) — is now
+ * performed by {@see RetireProducer} and pinned here (parties-module-k-br-guards RM-19).
  *
  * RefreshDatabase per the task hint; the transition opens its OWN DB::transaction, so the recorder's
  * `transactionLevel() === 0` guard is satisfied by the savepoint under the wrapper (the event being recorded at
@@ -373,4 +377,86 @@ it('retires an active Producer that operates no active Clubs, recording only the
     expect(DomainEvent::query()->count())->toBe(1)
         ->and(DomainEvent::query()->where('name', ProducerRetired::NAME)->count())->toBe(1)
         ->and(DomainEvent::query()->where('name', ClubSunset::NAME)->count())->toBe(0);
+});
+
+it('cascades the Profile leg on retirement — cancels every Active/Lapsed Profile under a sunsetting Club with a Producer-initiated reason, audit-only', function () {
+    // The § 10.2 offboarding Profile leg (RM-19 / AC-K-J-19 / AC-K-EVT-20): GIVEN an active Producer operating two
+    // active Clubs, each holding memberships in the two cancellable from-states (`Active` and `Lapsed`). The
+    // Profiles are pure factory fixtures (they bypass CreateProfile, so no ProfileCreated event — the only events
+    // in play are the retirement's own).
+    $producer = Producer::factory()->create(['status' => ProducerStatus::Active]);
+    $clubA = Club::factory()->create(['producer_id' => $producer->id]);   // born active
+    $clubB = Club::factory()->create(['producer_id' => $producer->id]);   // born active
+
+    $activeUnderA = Profile::factory()->create(['club_id' => $clubA->id, 'state' => ProfileState::Active]);
+    $lapsedUnderA = Profile::factory()->create(['club_id' => $clubA->id, 'state' => ProfileState::Lapsed]);
+    $activeUnderB = Profile::factory()->create(['club_id' => $clubB->id, 'state' => ProfileState::Active]);
+
+    app(RetireProducer::class)->handle($producer->id);
+
+    // Both operated Clubs sunset (the parents); every Active/Lapsed Profile under them is Cancelled (the children)
+    // carrying the Producer-initiated offboarding reason — the leg ran after the ClubSunset in the one atomic
+    // transaction (parent-before-child).
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Retired)
+        ->and(Club::findOrFail($clubA->id)->status)->toBe(ClubStatus::Sunset)
+        ->and(Club::findOrFail($clubB->id)->status)->toBe(ClubStatus::Sunset);
+
+    foreach ([$activeUnderA, $lapsedUnderA, $activeUnderB] as $profile) {
+        $persisted = Profile::findOrFail($profile->id);
+        expect($persisted->state)->toBe(ProfileState::Cancelled)
+            ->and($persisted->cancellation_reason)->toBe(RetireProducer::OFFBOARDING_CANCELLATION_REASON);
+    }
+
+    // AUDIT-ONLY (design D1): the three per-Profile cancellations record NO domain event — the § 15.2 family names
+    // no `ProfileCancelled`. Exactly three events: the ProducerRetired root + the two cascade ClubSunset, and
+    // nothing for the cancellations (nor any event carrying a Profile entity_type).
+    expect(DomainEvent::query()->where('name', 'ProfileCancelled')->count())->toBe(0)
+        ->and(DomainEvent::query()->count())->toBe(3)
+        ->and(DomainEvent::query()->where('name', ProducerRetired::NAME)->count())->toBe(1)
+        ->and(DomainEvent::query()->where('name', ClubSunset::NAME)->count())->toBe(2)
+        ->and(DomainEvent::query()->where('entity_type', 'Profile')->count())->toBe(0);
+});
+
+it('leaves Profiles in non-Active/Lapsed states, and Profiles under a non-sunsetting Club, untouched by the offboarding cascade', function () {
+    // The leg is precisely scoped: it touches ONLY Active/Lapsed Profiles under a Club that SUNSETS in this
+    // cascade. Everything else is left to its own lifecycle.
+    $producer = Producer::factory()->create(['status' => ProducerStatus::Active]);
+    $sunsetting = Club::factory()->create(['producer_id' => $producer->id]);                                       // born active → sunset
+    $alreadyClosed = Club::factory()->create(['producer_id' => $producer->id, 'status' => ClubStatus::Closed]);    // NOT sunsetting now
+
+    // Under the sunsetting Club: two non-cancellable-from-state Profiles + one already-terminal Profile — all must
+    // survive unchanged. The from-state filter excludes them; had the walk instead handed a terminal Profile to
+    // CancelProfile its own guard would throw and roll the whole retirement back, so their survival also proves
+    // the filter is applied at the query, not merely tolerated downstream.
+    $applied = Profile::factory()->create(['club_id' => $sunsetting->id, 'state' => ProfileState::Applied]);
+    $suspended = Profile::factory()->create(['club_id' => $sunsetting->id, 'state' => ProfileState::Suspended]);
+    $alreadyCancelled = Profile::factory()->create([
+        'club_id' => $sunsetting->id, 'state' => ProfileState::Cancelled, 'cancellation_reason' => 'voluntary',
+    ]);
+
+    // Under the already-closed Club (out of the sunsetting set): an Active Profile the cascade must NOT reach.
+    $activeUnderClosed = Profile::factory()->create(['club_id' => $alreadyClosed->id, 'state' => ProfileState::Active]);
+
+    app(RetireProducer::class)->handle($producer->id);
+
+    // The cascade genuinely ran (non-vacuous): the Producer is retired and the operated Club sunset.
+    expect(Producer::findOrFail($producer->id)->status)->toBe(ProducerStatus::Retired)
+        ->and(Club::findOrFail($sunsetting->id)->status)->toBe(ClubStatus::Sunset)
+        ->and(Club::findOrFail($alreadyClosed->id)->status)->toBe(ClubStatus::Closed);   // idempotent over already-transitioned Clubs
+
+    // Non-Active/Lapsed Profiles under the sunsetting Club are untouched; the already-Cancelled one keeps its
+    // ORIGINAL reason (not re-stamped with the offboarding token — it was never re-cancelled).
+    expect(Profile::findOrFail($applied->id)->state)->toBe(ProfileState::Applied)
+        ->and(Profile::findOrFail($suspended->id)->state)->toBe(ProfileState::Suspended)
+        ->and(Profile::findOrFail($alreadyCancelled->id)->state)->toBe(ProfileState::Cancelled)
+        ->and(Profile::findOrFail($alreadyCancelled->id)->cancellation_reason)->toBe('voluntary');
+
+    // The Active Profile under the already-closed Club is out of scope (its Club is not sunsetting) — still Active.
+    expect(Profile::findOrFail($activeUnderClosed->id)->state)->toBe(ProfileState::Active)
+        ->and(Profile::findOrFail($activeUnderClosed->id)->cancellation_reason)->toBeNull();
+
+    // Still audit-only: no `ProfileCancelled` slipped in, and only the retirement + its single cascade sunset were
+    // recorded (the non-cancellable Profiles produced no cancellation call at all).
+    expect(DomainEvent::query()->where('name', 'ProfileCancelled')->count())->toBe(0)
+        ->and(DomainEvent::query()->count())->toBe(2);
 });

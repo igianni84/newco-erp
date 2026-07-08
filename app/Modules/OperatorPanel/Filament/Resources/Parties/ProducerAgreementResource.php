@@ -5,16 +5,17 @@ namespace App\Modules\OperatorPanel\Filament\Resources\Parties;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProducerAgreementResource\Pages;
+use App\Modules\Parties\Enums\SettlementCadence;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Producer;
 use App\Modules\Parties\Models\ProducerAgreement;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -45,10 +46,13 @@ use Illuminate\Database\Eloquent\Model;
  * mutation is a separate Filament Action routed through a Parties domain action (the kit's create page + the
  * bespoke view page); there is deliberately NO Edit page and NO Delete/Create default action — the Parties
  * backend ships no agreement update Action, and create lands on a write-through {@see Pages\CreateProducerAgreement}
- * page that takes ids/dates/a free string only (NO operand enum — design D7). The {@see form()} reads Parties' own
- * {@see Producer} and {@see Club} models for its two pickers (a pure within-Parties read — the {Models} carve-out).
- * The no-Eloquent-write PHPStan rule guards the discipline. All user-facing copy is localized through the
- * `operator_console` group (invariant 12).
+ * page. The {@see form()} reads Parties' own {@see Producer} and {@see Club} models for its two pickers (a pure
+ * within-Parties read — the {Models} carve-out) and drives the settlement-cadence Select off the
+ * {@see SettlementCadence} OPERAND enum (the carve-out this change widens for OperatorPanel — ADR 2026-06-21; canon
+ * MVP-DEC-010/RM-22, the closed cadence set). The Club picker offers only the selected Producer's `active` Clubs
+ * (BR-K-Agreement-4 / canon MVP-DEC-009); the server-side guards in the `CreateProducerAgreement` action are the
+ * floor beneath both pickers. The no-Eloquent-write PHPStan rule guards the discipline. All user-facing copy is
+ * localized through the `operator_console` group (invariant 12).
  */
 class ProducerAgreementResource extends OperatorConsoleResource
 {
@@ -78,16 +82,24 @@ class ProducerAgreementResource extends OperatorConsoleResource
     }
 
     /**
-     * The create form (design D6/D7). Collects the inputs the Parties `CreateProducerAgreement` action consumes —
-     * the required Producer (a WITHIN-Parties picker; an agreement references EXACTLY ONE Producer, § 4.6), the
-     * OPTIONAL narrowing Club (a blank selection is a Producer-wide agreement, § 4.6), the two OPTIONAL term dates
-     * and the OPTIONAL free-string settlement cadence (the D19 seam). Unlike the Club create (design D7) it
-     * constructs NO operand enum and assembles NO Money: the action takes ids/dates/a string only, so the form
-     * stays inside the {Models} read surface (the two pickers query Parties' own models) and the write routes
-     * through the action in {@see Pages\CreateProducerAgreement::createViaAction()}, which narrows a blank Club /
-     * dates / cadence to null. It deliberately exposes NO `status`: an agreement is born `draft` by the action
-     * (design D2), so state never enters as a create input. There is no Edit page — the Parties backend ships no
-     * agreement update Action. All labels localized (invariant 12).
+     * The create form (design D6/D7; canon MVP-DEC-009/MVP-DEC-010, parties-module-k-br-guards task 6.1). Collects
+     * the inputs the Parties `CreateProducerAgreement` action consumes — the required Producer (a WITHIN-Parties
+     * picker; an agreement references EXACTLY ONE Producer, § 4.6), the OPTIONAL narrowing Club (a blank selection
+     * is a Producer-wide agreement, § 4.6), the two OPTIONAL term dates and the OPTIONAL settlement cadence.
+     *
+     * Two guards are surfaced up-front so the operator can't compose an invalid agreement:
+     *   - the settlement cadence is a Select over the closed {@see SettlementCadence} OPERAND enum (default
+     *     `quarterly`), not free text (canon MVP-DEC-010/RM-22) — the enum drives the option set (the carve-out
+     *     ADR 2026-06-21 widened to `SettlementCadence`); the selected backing string routes to the action, which
+     *     server-validates it against the same set and SURFACES an out-of-set token as a form error;
+     *   - the Club picker is REACTIVE on the chosen Producer (`producer_id` is `->live()`) and offers only that
+     *     Producer's `active` Clubs (BR-K-Agreement-4 / canon MVP-DEC-009) — a `sunset`/`closed` Club is not
+     *     selectable; the action's `ProducerAgreementClubNotActive` guard is the server floor for a forced value.
+     *
+     * The write routes through the action in {@see Pages\CreateProducerAgreement::createViaAction()}, which narrows
+     * a blank Club / dates / cadence to null. It deliberately exposes NO `status`: an agreement is born `draft` by
+     * the action (design D2), so state never enters as a create input. There is no Edit page — the Parties backend
+     * ships no agreement update Action. All labels localized (invariant 12).
      */
     public static function form(Schema $schema): Schema
     {
@@ -97,20 +109,22 @@ class ProducerAgreementResource extends OperatorConsoleResource
                     ->label((string) __('operator_console.producer_agreement.fields.producer'))
                     ->options(self::producerOptions(...))
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    ->live(),
                 Select::make('club_id')
                     ->label((string) __('operator_console.producer_agreement.fields.club'))
                     ->helperText((string) __('operator_console.producer_agreement.fields.club_help'))
-                    ->options(self::clubOptions(...))
+                    ->options(fn (Get $get): array => self::activeClubOptions(self::intOrNull($get('producer_id'))))
                     ->searchable(),
                 DatePicker::make('term_start')
                     ->label((string) __('operator_console.producer_agreement.fields.term_start')),
                 DatePicker::make('term_end')
                     ->label((string) __('operator_console.producer_agreement.fields.term_end')),
-                TextInput::make('settlement_cadence')
+                Select::make('settlement_cadence')
                     ->label((string) __('operator_console.producer_agreement.fields.settlement_cadence'))
                     ->helperText((string) __('operator_console.producer_agreement.fields.settlement_cadence_help'))
-                    ->maxLength(255),
+                    ->options(self::settlementCadenceOptions(...))
+                    ->default(SettlementCadence::default()->value),
             ]);
     }
 
@@ -299,21 +313,61 @@ class ProducerAgreementResource extends OperatorConsoleResource
     }
 
     /**
-     * Create-form narrowing-Club options, keyed by `club_id` → the Club's human `display_name`, read from
-     * Parties' OWN {@see Club} model (a WITHIN-Parties reference). The Club is OPTIONAL — a blank selection is a
-     * Producer-wide agreement (§ 4.6), so this Select is not `required`; {@see Pages\CreateProducerAgreement}
-     * narrows a blank value to a null `club_id`. A pure read within the {Models} carve-out.
+     * Create-form narrowing-Club options — the chosen Producer's `active` Clubs ONLY (BR-K-Agreement-4 / canon
+     * MVP-DEC-009: a per-Club agreement's Club MUST be `active` at scoping, so a `sunset`/`closed` Club is not
+     * selectable). A null `$producerId` (no Producer chosen yet — the reactive form's initial state) yields no
+     * options; the Club stays OPTIONAL (a blank selection is a Producer-wide agreement, § 4.6), so the Select is
+     * not `required` and {@see Pages\CreateProducerAgreement} narrows a blank value to a null `club_id`. Reads
+     * Parties' OWN {@see Club} model (a WITHIN-Parties reference), filtering on the `status` cast's `->value` token
+     * so NO `ClubStatus` STATE enum is imported — the read-path discipline: the console compares/renders state
+     * through the model cast, never the enum (only OPERAND enums cross the carve-out). Shared with the
+     * ProducerAgreementsRelationManager (which scopes it to the owner Producer). A pure read within the {Models}
+     * carve-out; the server-side `ProducerAgreementClubNotActive` guard is the floor beneath this picker.
      *
      * @return array<int, string>
      */
-    private static function clubOptions(): array
+    public static function activeClubOptions(?int $producerId): array
     {
+        if ($producerId === null) {
+            return [];
+        }
+
         return Club::query()
+            ->where('producer_id', $producerId)
             ->orderBy('display_name')
             ->get()
+            ->filter(static fn (Club $club): bool => $club->status->value === 'active')
             ->mapWithKeys(static fn (Club $club): array => [
                 $club->id => $club->display_name,
             ])
             ->all();
+    }
+
+    /**
+     * Create-form settlement-cadence options, keyed by the {@see SettlementCadence} backing value → the same token
+     * as its label (the closed cadence set — canon MVP-DEC-010/RM-22). Driven off the OPERAND enum (design D7 — the
+     * import the {Models, Actions, Enums} carve-out admits for OperatorPanel, ADR 2026-06-21, widened by
+     * parties-module-k-br-guards to `SettlementCadence`); the selected backing string routes to the
+     * `CreateProducerAgreement` action, which resolves + server-validates it against the SAME set (the RM-22 floor
+     * that surfaces an out-of-set token). The token is domain data (like the read column), not UI chrome, so no
+     * per-value i18n key is introduced — only the Select's own `label` is localized. Shared with the
+     * ProducerAgreementsRelationManager.
+     *
+     * @return array<string, string>
+     */
+    public static function settlementCadenceOptions(): array
+    {
+        return collect(SettlementCadence::cases())
+            ->mapWithKeys(static fn (SettlementCadence $cadence): array => [$cadence->value => $cadence->value])
+            ->all();
+    }
+
+    /**
+     * Narrow a reactive Select's mixed `$get()` value to an `?int` producer id — the {@see form()} Club picker
+     * reads `$get('producer_id')` (Filament types form state as `mixed`) to scope {@see activeClubOptions()}.
+     */
+    private static function intOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
     }
 }

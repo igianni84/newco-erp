@@ -7,6 +7,7 @@ use App\Modules\Parties\Enums\ProducerAgreementStatus;
 use App\Modules\Parties\Events\ProducerAgreementActivated;
 use App\Modules\Parties\Events\ProducerAgreementSuperseded;
 use App\Modules\Parties\Exceptions\IllegalProducerAgreementTransition;
+use App\Modules\Parties\Exceptions\ProducerAgreementScopeConflict;
 use App\Modules\Parties\Models\ProducerAgreement;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\DomainEventRecorder;
@@ -14,9 +15,11 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Transitions a ProducerAgreement `draft → active`, records its {@see ProducerAgreementActivated} event, and
- * ENFORCES BR-K-Agreement-1 (at most one active agreement per scope) by superseding any prior active in the
- * same scope — all atomically in one transaction (parties-producer-lifecycle, design L1/L2/L4/L5/L7;
- * party-registry — Requirements: ProducerAgreement Lifecycle, Supply-Side Lifecycle Events).
+ * ENFORCES BR-K-Agreement-1 at both its clauses — clause 1 (at most one active agreement per scope: supersede any
+ * prior active in the SAME scope) and clause 2 (the Producer-wide and per-Club shapes are mutually exclusive on a
+ * Producer: REJECT a cross-shape activation) — all atomically in one transaction (parties-producer-lifecycle,
+ * change parties-module-k-br-guards design D2/R1; party-registry — Requirements: ProducerAgreement Lifecycle,
+ * Supply-Side Lifecycle Events).
  *
  * This action is the SOLE writer of `ProducerAgreement.status` for both the activation and the supersession
  * transitions and the SINGLE writer of both the {@see ProducerAgreementActivated} and
@@ -27,9 +30,20 @@ use Illuminate\Support\Facades\DB;
  * the recorded activation rather than receiving it (the signature rule it shares with
  * `ActivateProducer`/`RetireProducer`/`CloseClub`).
  *
+ * CROSS-SHAPE MUTUAL EXCLUSION (BR-K-Agreement-1 clause 2 — change design D2): the Producer-wide (`club_id` NULL)
+ * and per-Club (`club_id` set) shapes are mutually exclusive on the same Producer at the same time. BEFORE any
+ * write, it rejects activating a Producer-wide agreement while ANY per-Club agreement of that Producer is `active`
+ * ({@see ProducerAgreementScopeConflict::producerWideBlockedByClubScope()}), and rejects activating a per-Club
+ * agreement while that Producer's Producer-wide agreement is `active`
+ * ({@see ProducerAgreementScopeConflict::clubScopeBlockedByProducerWide()}). The throw rolls the transaction back,
+ * leaving all state and the event log unchanged — the operator SHALL first terminate/supersede the existing-shape
+ * agreement. This is distinct from clause 1 below: a SAME-shape (same-scope) prior is SUPERSEDED, an OPPOSITE-shape
+ * active is REJECTED. Two active per-Club agreements on DIFFERENT Clubs are permitted (same shape, distinct scopes);
+ * only mixing the two shapes is forbidden. Activation applies NO Club-active check (that lives on the creation path,
+ * BR-K-Agreement-4), so a same-scope renewal/supersession whose Club has since `sunset` still activates.
+ *
  * SUPERSESSION (design L5/L7 — BR-K-Agreement-1/3): the scope is the `(producer_id, club_id)` tuple, where a
- * NULL `club_id` denotes the DISTINCT Producer-wide scope (a Producer-wide agreement and a Club-narrowed
- * agreement MAY both be active — they occupy different scopes). Before activating, it looks up the prior active
+ * NULL `club_id` denotes the DISTINCT Producer-wide scope. Before activating, it looks up the prior active
  * in the SAME scope with a NULL-SAFE `club_id` predicate — `whereNull('club_id')` when activating a
  * Producer-wide agreement, `where('club_id', …)` otherwise — because `where('club_id', null)` would emit
  * `club_id = NULL` and never match (the PostgreSQL NULL-distinctness trap, design L7). If a prior active is
@@ -69,7 +83,27 @@ class ActivateProducerAgreement
                 throw IllegalProducerAgreementTransition::cannotActivate($agreement->status);
             }
 
-            // BR-K-Agreement-1: at most one active agreement per (producer_id, club_id) scope. Find (and lock)
+            // BR-K-Agreement-1 clause 2 (cross-shape mutual exclusion): the Producer-wide (`club_id` NULL) and
+            // per-Club (`club_id` set) shapes are mutually exclusive on the same Producer. Reject BEFORE any write
+            // when an agreement of the OPPOSITE shape is already active for the Producer — the throw rolls the
+            // transaction back, leaving all state and the event log unchanged (the operator terminates/supersedes
+            // the existing-shape agreement first). A same-shape prior is handled by clause 1's supersession below,
+            // never here; two per-Club agreements on different Clubs are the same shape, so they do NOT collide.
+            $oppositeShapeActive = ProducerAgreement::query()
+                ->where('producer_id', $agreement->producer_id)
+                ->where('status', ProducerAgreementStatus::Active->value);
+
+            if ($agreement->club_id === null) {
+                // Activating Producer-wide: blocked by ANY active per-Club agreement of the Producer.
+                if ($oppositeShapeActive->whereNotNull('club_id')->exists()) {
+                    throw ProducerAgreementScopeConflict::producerWideBlockedByClubScope($agreement->producer_id);
+                }
+            } elseif ($oppositeShapeActive->whereNull('club_id')->exists()) {
+                // Activating per-Club: blocked by the Producer's active Producer-wide agreement.
+                throw ProducerAgreementScopeConflict::clubScopeBlockedByProducerWide($agreement->producer_id);
+            }
+
+            // BR-K-Agreement-1 clause 1: at most one active agreement per (producer_id, club_id) scope. Find (and lock)
             // the prior active in the SAME scope with a NULL-SAFE club_id predicate — `where('club_id', null)`
             // would emit `club_id = NULL` and never match (design L7). A NULL club_id is the distinct
             // Producer-wide scope, so a Producer-wide activation supersedes only other Producer-wide actives,

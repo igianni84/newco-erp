@@ -78,6 +78,7 @@ class ClubsRelationManager extends RelationManager
                         Select::make('registration_flow_type')
                             ->label((string) __('operator_console.club.fields.registration_flow_type'))
                             ->options(self::registrationFlowTypeOptions())
+                            ->default(ClubRegistrationFlowType::ApplicationWithApproval->value)
                             ->required(),
                         TextInput::make('amount')
                             ->label((string) __('operator_console.club.fields.amount'))
@@ -91,9 +92,6 @@ class ClubsRelationManager extends RelationManager
                         Toggle::make('generates_credit')
                             ->label((string) __('operator_console.club.fields.generates_credit'))
                             ->default(true),
-                        Toggle::make('invite_only')
-                            ->label((string) __('operator_console.club.fields.invite_only'))
-                            ->default(false),
                     ])
                     ->using($this->createClub(...)),
             ])
@@ -116,7 +114,6 @@ class ClubsRelationManager extends RelationManager
         $amount = $data['amount'] ?? null;
         $currency = $data['currency'] ?? null;
         $generatesCredit = $data['generates_credit'] ?? true;
-        $inviteOnly = $data['invite_only'] ?? false;
 
         if (
             ! is_string($displayName)
@@ -124,7 +121,6 @@ class ClubsRelationManager extends RelationManager
             || ! (is_null($amount) || $amount === '' || is_numeric($amount))
             || ! (is_null($currency) || is_string($currency))
             || ! is_bool($generatesCredit)
-            || ! is_bool($inviteOnly)
         ) {
             throw new InvalidArgumentException('Unexpected Club create payload.');
         }
@@ -139,21 +135,24 @@ class ClubsRelationManager extends RelationManager
             registrationFlowType: ClubRegistrationFlowType::from($registrationFlowType),
             fee: $fee,
             generatesCredit: $generatesCredit,
-            inviteOnly: $inviteOnly,
         );
     }
 
     /**
-     * The registration-flow select options: each enum case keyed by its raw `->value` (the operand the
-     * {@see CreateClubAction} reconstructs) → a localized human label off `operator_console.club.registration_flow.*`,
-     * so the operator picks "Invitation only" rather than the raw `invitation_only` token. The per-case label key
-     * is the enum `->value` (no `Parties\Enums` symbol leaks into the copy).
+     * The registration-flow select options: each launch-selectable enum case keyed by its raw `->value` (the
+     * operand the {@see CreateClubAction} reconstructs) → a localized human label off
+     * `operator_console.club.registration_flow.*`, so the operator picks "Invitation only" rather than the raw
+     * `invitation_only` token. Only the THREE launch channels are offered — the latent `OpenRegistration` is
+     * filtered out (canon MVP-DEC-022 / BR-K-Club-6: `open_registration` is carried latent, never selectable at
+     * launch; the `Club` model's `saving` guard is the server floor). The per-case label key is the enum `->value`
+     * (no `Parties\Enums` symbol leaks into the copy).
      *
      * @return array<string, string>
      */
     private static function registrationFlowTypeOptions(): array
     {
         return collect(ClubRegistrationFlowType::cases())
+            ->reject(static fn (ClubRegistrationFlowType $flow): bool => $flow === ClubRegistrationFlowType::OpenRegistration)
             ->mapWithKeys(static fn (ClubRegistrationFlowType $flow): array => [
                 $flow->value => (string) __('operator_console.club.registration_flow.'.$flow->value),
             ])

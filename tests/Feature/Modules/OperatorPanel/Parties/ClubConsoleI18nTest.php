@@ -45,7 +45,7 @@ use Illuminate\Support\Facades\Lang;
  *   - OperatorConsoleResource: label, plural_label, columns.version (concatenated off i18nKey());
  *   - ClubResource: columns.{display_name,producer,registration_flow_type,status} (the read columns + the own
  *     `status` badge, design D2 — not the kit's `lifecycle_state`) and fields.{display_name,producer,
- *     registration_flow_type,amount,currency,fee,generates_credit,invite_only} (the create-form inputs plus the
+ *     registration_flow_type,amount,currency,fee,generates_credit} (the create-form inputs plus the
  *     view-only Money `fee`);
  *   - ListClubs: actions.create (the header create-LINK label);
  *   - SurfacesDomainActions: actions.{sunset,close} + notifications.{sunset,closed} (the two verbs) +
@@ -59,7 +59,7 @@ function clubConsoleKitKeys(): array
     return [
         'label', 'plural_label',
         'columns.display_name', 'columns.producer', 'columns.registration_flow_type', 'columns.status', 'columns.version',
-        'fields.display_name', 'fields.producer', 'fields.registration_flow_type', 'fields.amount', 'fields.currency', 'fields.fee', 'fields.generates_credit', 'fields.invite_only',
+        'fields.display_name', 'fields.producer', 'fields.registration_flow_type', 'fields.amount', 'fields.currency', 'fields.fee', 'fields.generates_credit',
         'actions.create', 'actions.sunset', 'actions.close',
         'notifications.sunset', 'notifications.closed', 'notifications.action_failed',
     ];

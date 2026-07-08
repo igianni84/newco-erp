@@ -57,16 +57,15 @@ it('renders the read-only attributes including the fee on the view page', functi
     $club = Club::factory()->create([
         'display_name' => 'Grand Cercle',
         'producer_id' => $producer->id,
-        'registration_flow_type' => ClubRegistrationFlowType::OpenRegistration,
+        'registration_flow_type' => ClubRegistrationFlowType::ApplicationWithApproval,
         'fee' => Money::of(50000, Currency::EUR),
         'generates_credit' => true,
-        'invite_only' => false,
     ]);
 
     Livewire::test(ViewClub::class, ['record' => $club->getKey()])
         ->assertSee('Grand Cercle')
-        ->assertSee('Château Infolist')      // the operating Producer
-        ->assertSee('Open Registration')     // registration_flow_type humanized via Str::headline (premium label, no raw token)
+        ->assertSee('Château Infolist')          // the operating Producer
+        ->assertSee('Application With Approval')  // registration_flow_type humanized via Str::headline (premium label, no raw token)
         ->assertSee('500.00');               // the Money fee rendered as human major units + ISO code ("500.00 EUR"), not raw minor units
 });
 

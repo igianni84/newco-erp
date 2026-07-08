@@ -46,7 +46,6 @@ class CreateClub
         ClubRegistrationFlowType $registrationFlowType,
         ?Money $fee = null,
         bool $generatesCredit = true,
-        bool $inviteOnly = false,
     ): Club {
         return DB::transaction(function () use (
             $displayName,
@@ -54,7 +53,6 @@ class CreateClub
             $registrationFlowType,
             $fee,
             $generatesCredit,
-            $inviteOnly,
         ): Club {
             // BR-K-Club-1: a Club requires an EXISTING operating Producer. Reject a missing/non-existent
             // reference with a clean localized reason (the FK is the structural backstop).
@@ -69,7 +67,6 @@ class CreateClub
                 'fee' => $fee,
                 'registration_flow_type' => $registrationFlowType,
                 'generates_credit' => $generatesCredit,
-                'invite_only' => $inviteOnly,
             ]);
 
             $this->recorder->record(

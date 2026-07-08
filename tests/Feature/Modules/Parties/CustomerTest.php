@@ -64,6 +64,7 @@ it('co-provisions exactly one active personal Account in the same transaction', 
         name: 'Grace Hopper',
         preferredCurrency: Currency::GBP,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
 
     // Exactly one Account exists for the Customer (the 1:1 co-provision — § 4.7, § 7.1 step 3).
@@ -87,6 +88,7 @@ it('rejects a Customer creation whose email collides with an existing Customer (
         name: 'First Holder',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // adult DOB — clear the age gate so the dup path is exercised
     );
 
     // A second creation with the SAME email is rejected by the localized pre-check ahead of the unique index.
@@ -95,6 +97,7 @@ it('rejects a Customer creation whose email collides with an existing Customer (
         name: 'Second Holder',
         preferredCurrency: Currency::USD,
         preferredLocale: SupportedLocale::It,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // adult DOB — so the reject is DuplicateCustomerEmail, not the age gate
     ))->toThrow(DuplicateCustomerEmail::class);
 
     // The rejected second creation persisted nothing: still one Customer, one Account, one CustomerCreated.
@@ -109,12 +112,14 @@ it('creates two Customers with distinct emails, each with its own Account and ev
         name: 'Holder A',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
     $second = app(CreateCustomer::class)->handle(
         email: 'b@example.com',
         name: 'Holder B',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::Fr,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
 
     expect($first->id)->not->toBe($second->id)
@@ -167,6 +172,7 @@ it('records no AccountCreated (or any Account) event — the Account is event-si
         name: 'Silent Holder',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
 
     // Exactly one CustomerCreated, and ZERO Account events — neither by name nor by entity_type (design D7;
@@ -192,6 +198,7 @@ it('exposes no operation that sets the Originating Club, and records no lifecycl
         name: 'Steady Holder',
         preferredCurrency: Currency::EUR,
         preferredLocale: SupportedLocale::En,
+        dateOfBirth: CarbonImmutable::parse('1990-01-01'),   // an adult DOB — the age gate (task 5.1) requires one
     );
 
     // Design D2/D6 scope guard: only CustomerCreated exists — never a *Activated/*Suspended/OriginatingClubLocked

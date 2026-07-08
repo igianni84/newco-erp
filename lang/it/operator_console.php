@@ -427,7 +427,6 @@ return array_replace_recursive([
             'currency' => 'Valuta quota',
             'fee' => 'Quota',
             'generates_credit' => 'Genera credito',
-            'invite_only' => 'Solo su invito',
         ],
 
         'actions' => [
@@ -608,6 +607,7 @@ return array_replace_recursive([
             'cancellation_reason' => 'Motivo di cancellazione',
             'customer' => 'Cliente',
             'club' => 'Club',
+            'auto_renew' => 'Rinnovo automatico',
         ],
 
         'tabs' => [
@@ -632,6 +632,7 @@ return array_replace_recursive([
             'renew' => 'Rinnova',
             'cancel' => 'Annulla',
             'deactivate' => 'Disattiva',
+            'set_auto_renew' => 'Imposta rinnovo automatico',
         ],
 
         // Notifiche di esito per i verbi di membership. «membership» → «adesione» (parola italiana naturale, come
@@ -650,6 +651,7 @@ return array_replace_recursive([
             'renewed' => 'Adesione rinnovata.',
             'cancelled' => 'Adesione annullata.',
             'deactivated' => 'Adesione disattivata.',
+            'auto_renew_set' => 'Preferenza di rinnovo automatico aggiornata.',
             'action_failed' => 'Impossibile completare l’azione.',
         ],
     ],
@@ -819,7 +821,7 @@ return array_replace_recursive([
         ],
         'fields' => [
             'club_help' => 'Lascia vuoto per un accordo valido per tutto il Producer; seleziona un Club per restringerlo.',
-            'settlement_cadence_help' => 'Facoltativo. Testo libero — la cadenza di liquidazione letta dal Modulo E (es. mensile, trimestrale).',
+            'settlement_cadence_help' => 'Facoltativo. La cadenza di liquidazione letta dal Modulo E, dall\'insieme chiuso (predefinito trimestrale).',
         ],
         'not_set' => 'Non impostato',
     ],
