@@ -841,3 +841,5 @@
 ## [2026-07-07 21:37] ralph | parties-module-k-br-guards 6.4 | green | 3 files — Club registration-flow picker narrowed to 3 launch values (latent open_registration excluded) + application_with_approval default; §1-6 complete, loop done (20/23); §7 human-gated
 
 ## [2026-07-08 09:39] ralph | parties-module-k-br-guards re-verify | green | loop complete (20/20 loop tasks); pest 2079/2079, phpstan 0, pint clean, openspec valid; §7 human-gated | 2 files
+
+## [2026-07-08 10:57] close-ritual | parties-module-k-br-guards | §2.7 full: SQLite+PG17 2080/2080; semantic-verify 5 agents×14 req → 1 CRITICAL + 4 WARN fixed in-place; merge 40f6c0a; archive 2026-07-08; tracker RM-19..23 ✅; push pending gate

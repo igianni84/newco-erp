@@ -1,27 +1,28 @@
 ---
 type: meta
 description: Hot cache — repo-state digest (~500 words), overwritten on every significant operation. Not a journal (chronology lives in log.md).
-updated: 2026-07-07
+updated: 2026-07-08
 ---
 
 # Hot Cache
 
 ## Last Updated
-**2026-07-07 — `parties-module-k-br-guards`: task 6.4 DONE + committed. ALL LOOP TASKS COMPLETE (§1–§6 = 20/23). Loop emitted `<promise>CHANGE_COMPLETE</promise>`.** 6.4 (the LAST loop task) narrowed both Club create surfaces' registration-flow `Select` to the THREE launch channels, excluding the latent `open_registration`: a `->reject(fn = OpenRegistration)` on each surface's OWN `registrationFlowTypeOptions()` helper (`ClubResource` L309 raw-token labels + `ClubsRelationManager` L148 localized `registration_flow.*` labels — two duplicated copies, each label style preserved). The enum case STAYS (DB/domain-valid; 4.3's `Club::booted()` `saving` guard is the server floor — the console reject is defense-in-depth). Added `->default(ClubRegistrationFlowType::ApplicationWithApproval->value)` to both Selects (delta spec annotates `application_with_approval` "(default)"; the 6.1 operand-enum-default precedent; referenced the case `->value` directly — no Parties-enum edit). ZERO i18n change (invite_only + i18n legs were pre-done by 2.3/4.3; `registration_flow.open_registration` stays authored-but-latent). Tests: `ClubCreateConsoleTest` +2 (`Select $field` options === 3 launch values; default-when-untouched) + the field test gained `assertFormFieldDoesNotExist('invite_only')`.
+**2026-07-08 — `parties-module-k-br-guards` CLOSED via the full §2.7 ritual: merged to main (`40f6c0a`, `--no-ff`) + archived (`2026-07-08-parties-module-k-br-guards`, commit `2671dde`). RM-19/20/21/22/23 → ✅ in the tracker.** The §7 human-gated close ran in-session: 7.1 full gate on BOTH engines; **semantic verify = 5 independent subagents × all 14 delta requirements → 1 CRITICAL fixed in-place** (`CONTEXT.md` "Agreement scope" still asserted the pre-guard "may both be active" — the design-R3 residual; → new lessons.md rule: inversion sweeps must include CONTEXT.md) **+ 4/6 WARNINGs fixed** (stale free-string cadence comments ×2; `REVIEW_GOVERNED_FIELDS` const↔test coupling + pin test; delta-spec null-DOB clause + 2 scenarios; console `auto_renew`-inheritance assertion), 2 accepted + ~12 SUGGESTIONs logged (archived `progress.md` §7); 7.2 traceability matrix (14 req → every scenario ≥1 test) in the archived `progress.md`; 7.3 tracker (§1/§3/§4/§6 + stale F4 flag flipped ✅). Truth specs post-archive: party-registry **+4 ADDED / ~6 MODIFIED**, operator-console **~4 MODIFIED**; `openspec validate --all --strict` **10/10**.
 
 ## Build & Quality Status
-- Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint. Task 6.4 full loop **green**: focused `ClubCreateConsoleTest` 6/6 (49 assertions) → SQLite full suite **2079/2079** (2077 +2) · PHPStan max **0** · Pint clean · `openspec validate --strict` valid.
-- **No PG17 run for 6.4** — console/form only, NO schema/SQL. **PG17 recipe (for §7.1):** `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=-1 vendor/bin/pest` (`pg` container on :55432). Full suite via `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs at 128 MB).
+- Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint. Full suite **2080/2080 on SQLite AND PG17** (10 854 assertions each) · PHPStan max **0** · Pint **clean**.
+- Run the suite via `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs at 128 MB). **PG17 recipe:** `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=-1 vendor/bin/pest` (`pg` container on :55432, running).
 
 ## Active Change & Next Task
-- **`parties-module-k-br-guards` — 20/23. §1–§6 COMPLETE. The ralph LOOP IS DONE (6.4 was the last loop task).** Branch `ralph/parties-module-k-br-guards`, all §1–§6 commits local.
-- **REMAINING = §7 HUMAN-GATED close (§2.7 — NOT a loop task):** 7.1 full quality gate incl. the **PG17** engine + phpstan/pint/openspec; 7.2 traceability (every delta req → ≥1 test) + i18n sweep + 3 mini-ADRs consistent; 7.3 update `docs/validation/Remediation_Tracker.md` (RM-19/20/21/22/23 → ✅ w/ evidence; note J-15a / Producer-5-full / Profile-5-self-toggle deferrals), `hot.md`, `log.md`. A human runs these + review/merge/`openspec archive`.
+- **No change in flight** — `openspec/changes/` holds only `archive/`. Branch `ralph/parties-module-k-br-guards` merged (deletable after push).
+- **PUSH PENDING (classifier-gated — ASK Giovanni before `git push`):** local `main` is ahead of `origin/main` by the whole batch — pre-batch memory/approve commits (`fe31c4d`, `dc15eeb`), the 24 branch commits (incl. the two §7-close ones), merge `40f6c0a`, archive `2671dde`, + the close memory-sync commit.
+- **Next candidates** (tracker §1): **RM-15** (Module 0 Producer-existence at creation — kept separate, S, maybe-ADR) · P3 Module-0 completeness (RM-12/13/14) · **RM-05** stays ⏸️ (Module A `qty`). F2 (prod operator-management) is pre-go-live. Or advance the Build Workplan (F2 → Module A/D slices via `/spec-to-change`).
 
 ## Blockers & Decisions Needed
-- None. Change APPROVED; all §1–§6 green + committed. Awaiting the human §7 close (incl. the classifier-gated push to origin/main — ASK before pushing).
-- **Append memory files via the Edit tool** (git-guardrails hook false-positives on spec-path strings in `cat >>` heredocs); a full hot.md rewrite via the Write tool is fine. progress.md Edits need a prior Read of the edit region (SessionStart injection does NOT satisfy it).
+- None technical. Only the push gate (ask first), then `git branch -d ralph/parties-module-k-br-guards`.
 
 ## Open Patterns
-(full form in progress.md `## Codebase Patterns`)
-- **Narrow an operand-enum console Select to exclude a LATENT case (6.4):** `->reject(fn = LatentCase)` in the options helper; KEEP the enum case + its authored i18n label (the model `saving` guard is the real floor; console reject is picker-only). Two duplicated create-surface helpers → apply to BOTH (parent `OperatorConsoleUiPassTest` covers the RM copy). When the delta spec annotates a value "(default)", set `->default(Enum::Case->value)` + a "defaults-when-untouched" test (the 6.1 idiom).
-- Earlier §6: two-field create-rejection routing w/o importing the exception (6.3) · ZERO-page-code guard-surfacing + non-lifecycle preference affordance (6.2) · operand-enum Select + reactive active-picker w/ the ACTION as server floor (6.1). §2–5 (in progress.md): model `updating`/`saving`/`booted` guards (5.2/4.3), fail-fast boundary input-gate (5.1), cascade reusing audit-only Action (4.4), audit-only preference writer (4.2), required-reference-guard UNCONDITIONAL (4.1), value-domain-reject vs business-rule-guard (3.1).
+(full forms in the archived change's `progress.md` `## Codebase Patterns`)
+- **Inversion sweeps include CONTEXT.md** — the glossary of record is a first-class claim-holder archive-sync never rewrites (2026-07-08 lesson; caught as the close's one CRITICAL).
+- Module-K guard family shipped this batch: model `saving` value-domain reject (Club-6) · conditional `updating` content lock on persisted status (Producer-5) · pre-txn fail-fast input gates (Identity-6 age, RM-22 cadence) · in-txn reference guards (RM-21, Agreement-4) · activation-time cross-shape exclusion (RM-20) · batch-walk cascade reusing an audit-only Action with a load-bearing from-state filter (RM-19).
+- Console: operand-enum Selects with server floors · two-field create-rejection routing via condition re-derivation (no exception import) · zero-page-code guard surfacing · ungated preference affordances.
