@@ -12,8 +12,6 @@ use App\Platform\Events\DomainEventRecorder;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use LogicException;
 
 /**
  * The shared lifecycle-transition mechanism — ONE place that drives the uniform spine FSM
@@ -278,20 +276,18 @@ class LifecycleTransition
 
     /**
      * Record ONE audit row for a lifecycle step in the current transaction (invariant 8). The action is
-     * `catalog.<entity>.<verb>` — the entity segment derived from the model's own table
-     * (`catalog_product_masters` → `product_master`), the canonical snake-case identifier, so it never drifts
-     * and reads cleanly even for the SKU acronyms (`catalog_sellable_skus` → `sellable_sku`). The actor is
-     * the {@see ActorContext} principal; the basis is the catalog-lifecycle authority.
+     * `catalog.<segment>.<verb>`, derived through the shared {@see CatalogAuditEnvelope} — the SAME derivation
+     * the sibling content-edit writer ({@see CatalogContentEdit}) uses, so the two catalog audit writers can
+     * never spell the segment differently and blind {@see ApprovalGovernance}'s suffix-matched review-freshness
+     * reader. The actor is the {@see ActorContext} principal; the basis is the catalog-lifecycle authority.
      *
      * @param  array<string, mixed>  $before  the pre-step snapshot
      * @param  array<string, mixed>  $after  the post-step snapshot (a rejection adds `decision` + `notes`)
      */
     private function recordAudit(Model $model, string $entityId, string $verb, string $entity, array $before, array $after): void
     {
-        $segment = Str::singular(Str::after($model->getTable(), 'catalog_'));
-
         $this->auditRecorder->record(
-            action: "catalog.{$segment}.{$verb}",
+            action: CatalogAuditEnvelope::action($model, $verb),
             module: Module::Catalog->value,
             actorRole: $this->actor->role(),
             actorId: $this->actor->actorId(),
@@ -303,16 +299,9 @@ class LifecycleTransition
         );
     }
 
-    /** The model's primary key as the audit envelope's string `entity_id`. */
+    /** The model's primary key as the audit envelope's string `entity_id` (the shared derivation). */
     private function entityId(Model $model): string
     {
-        $key = $model->getKey();
-
-        // Every lifecycle spine entity keys on an auto-increment integer; a non-scalar key is a structural bug.
-        if (! is_int($key) && ! is_string($key)) {
-            throw new LogicException('A lifecycle entity must have a scalar primary key.');
-        }
-
-        return (string) $key;
+        return CatalogAuditEnvelope::entityId($model);
     }
 }

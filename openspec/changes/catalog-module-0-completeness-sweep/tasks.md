@@ -17,7 +17,7 @@
   - `grep -rn "orderByDesc('id')->value('action')"` shows no remaining raw latest-action read over catalog audit rows
   - Typecheck passes; tests pass
 
-- [ ] 1.3 Build the shared `CatalogContentEdit` mechanic in `app/Modules/Catalog/Lifecycle/` (D3)
+- [x] 1.3 Build the shared `CatalogContentEdit` mechanic in `app/Modules/Catalog/Lifecycle/` (D3)
   - One entry point: transaction + `lockForUpdate` re-read, allowed-state guard (`draft|reviewed|active`; `retired` → localized exception), operator floor via `ApprovalGovernance::requireOperator`, applies field writes + `version` increment in the same UPDATE, records `catalog.<segment>.<verb>` audit with changed-fields before/after + version before/after (R9), records NO domain event
   - Unit/feature tests over a spine model: version 1→2, audit action string shape, retired rejected, `system` actor rejected, lock + no-write-on-reject invariants (state/audit/event untouched)
   - Typecheck passes; tests pass

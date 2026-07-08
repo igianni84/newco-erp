@@ -56,6 +56,18 @@ return [
         'activation_blocked_by_pending_rejection' => 'Cannot activate this :entity: its latest review decision is an un-remediated rejection. The :entity must be re-submitted for review before it can be activated (review freshness).',
         'activation_blocked_by_unreviewed_edit' => 'Cannot activate this :entity: its review-governed identity content was edited after the last review decision. The :entity must be re-submitted for review before it can be activated (review freshness).',
     ],
+    'edit' => [
+        // The content-edit state guard (design D2/D3; product-catalog — Requirement: In-Place Versioned
+        // Identity Edits). An edit is NOT a lifecycle transition, so it carries its own guard: content is
+        // editable in draft / reviewed / active, and rejected on a `retired` entity — whose remedy is the
+        // `retired → reviewed` reopen. Asserted against the transaction-locked re-read, so a rejected edit
+        // writes nothing. One parameterized IllegalContentEdit serves every edit surface (identity,
+        // composition, enrichment, whitelist): :entity is the entity-type name (e.g. ProductMaster) and
+        // :state the offending from-state token (a business enum value) — NEITHER is PII. The reason
+        // deliberately avoids the word `edited`, the discriminating token of the lifecycle group's
+        // activation_blocked_by_unreviewed_edit cause.
+        'cannot_edit' => 'Cannot edit this :entity from state :state. A retired :entity must be reopened for review before its content can be changed.',
+    ],
     'approval' => [
         // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition
         // (design D5; Module 0 PRD § 4.2). The audit trail is the system of record for which actor performed
