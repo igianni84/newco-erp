@@ -7,7 +7,7 @@ updated: 2026-07-08
 # Hot Cache
 
 ## Last Updated
-**2026-07-08 (late) — `catalog-module-0-completeness-sweep` MERGED, semantic-verified, ARCHIVED.** Full §2.7 ritual: review → PG17 verify → `--no-ff` merge → 3-pass semantic verify → remediation (tasks 8.1–8.4) → `openspec archive`. `openspec list` = no active changes. **Nothing is pushed** — `main` is 22 commits ahead of `origin/main`.
+**2026-07-08 (late) — `catalog-module-0-completeness-sweep` MERGED, semantic-verified, ARCHIVED, PUSHED.** Full §2.7 ritual: review → PG17 verify → `--no-ff` merge → 3-pass semantic verify → remediation (tasks 8.1–8.4) → `openspec archive` → `git push` + branch deleted. `main` == `origin/main`; `openspec list` = no active changes. Clean slate.
 
 ## Build & Quality Status
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
@@ -20,7 +20,7 @@ updated: 2026-07-08
 - Landmines: console keys EN+IT (catalog **domain** reasons EN-only); a `{@see FQCN}` on a `Catalog\Events`/`Lifecycle` type — Pint auto-imports it, redding `ModuleBoundariesTest`.
 
 ## Blockers & Decisions Needed
-- **Push to `origin/main` is pending and needs Giovanni's go-ahead** (22 commits: the change, the merge, the remediation, the archive).
+- None. A stray local branch `parties-anonymisation` predates this session — untouched.
 
 ## Open Patterns
 - **`==` / `!=` on two arrays is NOT structural equality** (`lessons.md` 2026-07-08). It recurses into loose VALUE comparison: on PHP 8 two *numeric strings* compare numerically (`'1e2' == '100'`). A docblock justifying a loose operator by what it permits ("ignores key order") must also say what else it admits. A comparison that decides whether a domain event fires is domain logic — name it on the value object (`TranslatableText::sameContent()`).
