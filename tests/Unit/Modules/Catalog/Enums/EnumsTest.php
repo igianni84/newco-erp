@@ -12,9 +12,11 @@ use App\Modules\Catalog\Enums\ProductType;
 // EnumsTest: any drift in a case or its persisted token must fail here first.
 //
 // ProducerProjectionStatus is added by catalog-lifecycle-approval (task 1.1;
-// design D3/D4): the two gate-relevant states of the Catalog-owned producer-state
-// read model. Pinned here because the projection's PG CHECK derives from its
-// cases() — a silent case drift would silently widen the DB constraint.
+// design D3/D4) and widened to THREE cases by catalog-module-0-completeness-sweep
+// (task 5.1; design D7): the states of the Catalog-owned producer-state read model,
+// one per consumed Module K event. Pinned here because the projection's PG CHECK
+// derives from its cases() — a silent case drift would silently widen the DB
+// constraint.
 
 it('backs ProductType with WINE as the only launch type', function () {
     $values = [];
@@ -49,21 +51,25 @@ it('backs LifecycleState with the four spec lifecycle states', function () {
     expect(LifecycleState::cases())->toHaveCount(4);
 });
 
-it('backs ProducerProjectionStatus with the two gate-relevant producer states', function () {
+it('backs ProducerProjectionStatus with one state per consumed producer event', function () {
     $values = [];
 
     foreach (ProducerProjectionStatus::cases() as $status) {
         $values[$status->name] = $status->value;
     }
 
-    // Exactly the two states the consumer is fed (`ProducerActivated`/`ProducerRetired`); `draft`/`reviewed`
-    // never reach this read model (design D3). The projection's PG CHECK derives from this set.
+    // Exactly the three states the consumer is fed — `ProducerCreated` → `registered` (KNOWN to Catalog:
+    // Master creation admitted, activation still gate-closed), `ProducerActivated` → `active`,
+    // `ProducerRetired` → `retired`. `reviewed` still never reaches this read model: no Module K event
+    // carries a producer here under that name (design D3 + sweep design D7). Order is the producer-lifecycle
+    // progression, mirroring LifecycleState. The projection's PG CHECK derives from this set.
     expect($values)->toBe([
+        'Registered' => 'registered',
         'Active' => 'active',
         'Retired' => 'retired',
     ]);
 
-    expect(ProducerProjectionStatus::cases())->toHaveCount(2);
+    expect(ProducerProjectionStatus::cases())->toHaveCount(3);
 });
 
 it('rejects a product type outside the launch set', function () {

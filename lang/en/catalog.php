@@ -43,14 +43,46 @@ return [
         // state change) that re-arms review after a rejection, so it too is valid only from reviewed. An
         // out-of-state re-submit surfaces this through the same single parameterized IllegalLifecycleTransition.
         'cannot_resubmit' => 'Cannot re-submit this :entity for review from state :state. A :entity may be re-submitted for review only while in reviewed.',
-        // Review-freshness block-gate (RM-06 / canon MVP-DEC-019). activate (reviewed → active) is refused
-        // while the entity's latest governance decision is an un-remediated rejection — the entity must be
-        // re-submitted first. Thrown as ApprovalGovernanceViolation (enforced in the approval-governance
-        // guard, so it surfaces through the console kit's outcome path for free), but its reason lives in
-        // this lifecycle group because the rule it names is a lifecycle-flow / review-freshness rule, not a
-        // separation-of-duties one. Only :entity (the entity-type name — never PII); the offending state is
-        // always reviewed and the acting principal lives on the audit row.
+        // Review-freshness block-gate (RM-06 / canon MVP-DEC-019, plus its edit leg). activate
+        // (reviewed → active) is refused while the entity is REVIEW-STALE — its latest review-freshness-relevant
+        // audit action is an un-remediated rejection, OR an identity edit that has not been re-reviewed. The
+        // remedy is the same explicit re-submit; the two reasons name the two different FACTS. Thrown as
+        // ApprovalGovernanceViolation (enforced in the approval-governance guard, so it surfaces through the
+        // console kit's outcome path for free), but the reasons live in this lifecycle group because the rule
+        // they name is a lifecycle-flow / review-freshness rule, not a separation-of-duties one. Only :entity
+        // (the entity-type name — never PII); the offending state is always reviewed and the acting principal
+        // lives on the audit row. `un-remediated` is the discriminating token of the REJECTION cause (it
+        // appears in no other catalog reason), `edited` of the EDIT cause — tests pin the block on them.
         'activation_blocked_by_pending_rejection' => 'Cannot activate this :entity: its latest review decision is an un-remediated rejection. The :entity must be re-submitted for review before it can be activated (review freshness).',
+        'activation_blocked_by_unreviewed_edit' => 'Cannot activate this :entity: its review-governed identity content was edited after the last review decision. The :entity must be re-submitted for review before it can be activated (review freshness).',
+    ],
+    'edit' => [
+        // The content-edit state guard (design D2/D3; product-catalog — Requirement: In-Place Versioned
+        // Identity Edits). An edit is NOT a lifecycle transition, so it carries its own guard: content is
+        // editable in draft / reviewed / active, and rejected on a `retired` entity — whose remedy is the
+        // `retired → reviewed` reopen. Asserted against the transaction-locked re-read, so a rejected edit
+        // writes nothing. One parameterized IllegalContentEdit serves every edit surface (identity,
+        // composition, enrichment, whitelist): :entity is the entity-type name (e.g. ProductMaster) and
+        // :state the offending from-state token (a business enum value) — NEITHER is PII. The reason
+        // deliberately avoids the word `edited`, the discriminating token of the lifecycle group's
+        // activation_blocked_by_unreviewed_edit cause.
+        'cannot_edit' => 'Cannot edit this :entity from state :state. A retired :entity must be reopened for review before its content can be changed.',
+    ],
+    'reference' => [
+        // A catalog write named an entity by id and that entity does not exist (design D6/D7; product-catalog —
+        // Requirements: Layer-1 Case-Configuration Whitelist, Product Master). For the WITHIN-MODULE references
+        // (Format, CaseConfiguration) the ids are FK-backed, so the DATABASE would refuse the write anyway — as a
+        // driver error carrying a constraint name and no operator-facing meaning; this reason is the DOMAIN
+        // rejection that replaces it, raised inside the write's transaction before any row is touched (the FK
+        // stays as the structural backstop). For the CROSS-MODULE Producer reference (CreateProductMaster,
+        // AC-0-XM-2) there is no FK to fall back on — invariant 10 forbids one — and this reason IS the whole
+        // protection, read off the Catalog-owned ProducerState projection.
+        // One parameterized UnknownCatalogReference serves every reference kind (Format, CaseConfiguration,
+        // Producer, …): :entity is the entity-type name and :ids the OFFENDING subset — the ids that resolved to
+        // nothing, never the whole input — so a single stale id in a set names itself. NEITHER is PII (an
+        // entity-type label and surrogate keys). The reason deliberately avoids the word `edited`, the
+        // discriminating token of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
+        'unknown_reference' => 'Cannot complete this catalog write: it references :entity ids that do not exist (:ids). Only existing entities may be referenced.',
     ],
     'approval' => [
         // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition
@@ -78,6 +110,26 @@ return [
         // NEITHER is PII. The within-catalog sibling of producer_not_active (which gates the one cross-module
         // parent, a Master's Producer).
         'parent_not_active' => 'Cannot activate this :entity: its :parent is not active. A child entity may activate only once every entity it depends on is active (the activation cascade).',
+        // The SAME cascade invariant re-asserted at EDIT time on an `active` Composite SKU (design D2;
+        // product-catalog — Requirement: In-Place Versioned Identity Edits). Activation is not the only way a
+        // child could come to reference a non-`active` parent: replacing an `active` Composite's constituent set
+        // could too, and the activation gate never runs again. Hence a second reason for the same violated rule,
+        // naming the EDIT the operator actually attempted rather than an activation they never asked for.
+        // :entity / :parent are entity-type names — NEITHER is PII. The copy deliberately avoids the word
+        // `edited`, the discriminating token of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
+        'parent_not_active_on_composition_edit' => 'Cannot change the composition of this :entity: it is active, and every constituent :parent of an active :entity must itself be active. An active :entity may never come to reference a non-active :parent.',
+        // The Layer-1 case-configuration whitelist gate (design D6, risk R10; Module 0 PRD § 7.1 + § 4.5,
+        // AC-0-J-13). A Sellable SKU may reach `active` only if its Case Configuration is admitted for its
+        // (Product Variant, Format) pair — resolved through its Product Reference — and only when that pair
+        // holds a NON-EMPTY whitelist: an empty pair is PERMISSIVE (absence admits, presence narrows), so this
+        // reason never names a whitelist that does not exist. Consulted ONLY at activation — reducing a pair's
+        // admitted set blocks the NEXT activation and never reaches an already-`active` SKU (§ 4.5's
+        // retirement-cascade semantics) — which is why the copy speaks of activating, not of the SKU being
+        // invalid. :entity is the child's entity-type name (SellableSku) — NOT PII; neither the Case
+        // Configuration nor the pair is named by id (the whitelist and the audit row carry those). The copy
+        // deliberately avoids `edited`, the discriminating token of the lifecycle group's
+        // activation_blocked_by_unreviewed_edit cause, and `not active`, that of parent_not_active.
+        'case_configuration_not_whitelisted' => 'Cannot activate this :entity: its Case Configuration is not admitted for its Product Variant in this Format. Add it to the pair\'s Layer-1 whitelist, or activate a :entity referencing an admitted Case Configuration.',
     ],
     'retirement' => [
         // The within-catalog reference-integrity guard on a SINGLE-entity retire (design D8; Module 0 PRD

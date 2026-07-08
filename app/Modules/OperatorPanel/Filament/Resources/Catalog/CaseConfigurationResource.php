@@ -28,16 +28,20 @@ use Filament\Tables\Table;
  * attribute (BR-RefData-2): whether a case may be split is decided downstream in Module A/S, never captured
  * here — so the create form exposes none, exactly mirroring the {@see CaseConfiguration} table.
  *
- * It read-binds to {@see CaseConfiguration} — the ADR-sanctioned exception, OperatorPanel-only and display-only:
- * the resource queries the model for the list table + the view infolist and NEVER writes it. Every mutation is
- * a separate Filament Action routed through a Catalog domain action (the kit's view + create pages); there is
- * deliberately NO Edit page and NO Delete/Create default action — the Catalog backend ships no update Action
- * (post-creation field edits are out of scope, proposal slice-boundary), and create lands on a write-through
- * `CaseConfigurationResource\Pages\CreateCaseConfiguration` page. The no-Eloquent-write PHPStan rule (task 1.2)
- * guards the discipline. The `lifecycle_state` enum is rendered through its cast instance (`->value`), never by
- * importing `App\Modules\Catalog\Enums\*`, so the console's cross-module surface stays exactly {Models, Actions}
- * (the import-boundary carve-out). All user-facing copy is localized through the `operator_console` group
- * (invariant 12).
+ * It read-binds to {@see CaseConfiguration} — the ADR-sanctioned exception, OperatorPanel-only and
+ * display-only: the resource queries the model for the list table + the view infolist and NEVER writes it.
+ * Every mutation is a separate Filament Action routed through a Catalog domain action (the kit's view + create
+ * pages); there is deliberately NO Edit page and NO Delete/Create default action. The reason is twofold, and
+ * only half of it is about the backend: the Catalog backend ships no update Action FOR THIS ENTITY
+ * (catalog-module-0-completeness-sweep added edit Actions only for a Master's identity, a Composite's
+ * composition and a Variant's enrichment + whitelist — design D2), and even where an edit DOES exist the
+ * console surfaces it as a modal header action on the View page, never as an Edit page whose default
+ * `$record->save()` would bypass the domain (design D8). Create lands on a write-through
+ * `CaseConfigurationResource\Pages\CreateCaseConfiguration` page. The no-Eloquent-write PHPStan rule (task
+ * 1.2) guards the discipline. The `lifecycle_state` enum is rendered through its cast instance (`->value`),
+ * never by importing `App\Modules\Catalog\Enums\*`, so the console's cross-module surface stays exactly
+ * {Models, Actions} (the import-boundary carve-out). All user-facing copy is localized through the
+ * `operator_console` group (invariant 12).
  */
 class CaseConfigurationResource extends OperatorConsoleResource
 {
@@ -75,8 +79,9 @@ class CaseConfigurationResource extends OperatorConsoleResource
      * The create form (design L3/L8). Collects the scalar inputs the Catalog `CreateCaseConfiguration` action
      * consumes — a name, the units per case, and a packaging type. The form only COLLECTS; the write routes
      * through the action in `Pages\CreateCaseConfiguration::createViaAction()` (there is no Edit page — the
-     * Catalog backend ships no update Action). There is deliberately NO breakability input (BR-RefData-2). All
-     * labels localized (invariant 12).
+     * Catalog backend ships no update Action for this entity, and the edits that DO exist elsewhere in Module
+     * 0 are modal header actions on their View page, never Edit pages). There is deliberately NO breakability
+     * input (BR-RefData-2). All labels localized (invariant 12).
      */
     public static function form(Schema $schema): Schema
     {

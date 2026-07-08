@@ -8,11 +8,13 @@ use App\Modules\Catalog\Actions\ResubmitProductMasterForReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
+use App\Modules\Catalog\Enums\ProducerProjectionStatus;
 use App\Modules\Catalog\Exceptions\ApprovalGovernanceViolation;
 use App\Modules\Catalog\Exceptions\IllegalLifecycleTransition;
 use App\Modules\Catalog\Exceptions\ProducerActivationGateViolation;
 use App\Modules\Catalog\Lifecycle\LifecycleTransition;
 use App\Modules\Catalog\Lifecycle\LifecycleTransitionType;
+use App\Modules\Catalog\Models\ProducerState;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Module;
 use App\Modules\OperatorPanel\Models\Operator;
@@ -22,6 +24,7 @@ use App\Platform\Events\DomainEvent;
 use App\Platform\Events\DomainEventRecorder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 use function Pest\Laravel\actingAs;
 
@@ -49,7 +52,7 @@ it('submits a draft Master to reviewed, recording one audit row and no domain ev
     // The real creation Action (per the task hint) — records ProductMasterCreated, but NO audit row.
     $master = app(CreateProductMaster::class)->handle(
         name: 'Château Margaux',
-        producerId: 42,
+        producerId: ProducerProjectionFixture::known(42),
         appellation: 'Margaux',
         region: 'Bordeaux',
     );
@@ -186,6 +189,12 @@ it('round-trips draft → reviewed → (retired) → reviewed, recording an audi
  * Leaves $creator as the acting principal (the caller switches before the next governance step). The
  * name/appellation default to a single identity; a caller standing up two Masters under one producer passes
  * a DISTINCT identity for the second, else the create-time BR-Identity-1 dedup rejects it.
+ *
+ * The producer is made KNOWN to Catalog first (AC-0-XM-2, task 5.2 — creation refuses an unprojected id).
+ * `registered` is the weakest status that admits creation, so nothing here accidentally opens the ACTIVATION
+ * gate the tests below are pinning; a caller wanting an activatable producer calls lifecycleProjectProducer
+ * with `ProducerActivated` (in either order — the fixture is idempotent and the projector's watermark, seeded
+ * at 0, is strictly advanced by any real producer event).
  */
 function lifecycleCreateDraftMaster(Operator $creator, int $producerId = 7, string $name = 'Château Margaux', string $appellation = 'Margaux'): ProductMaster
 {
@@ -193,7 +202,7 @@ function lifecycleCreateDraftMaster(Operator $creator, int $producerId = 7, stri
 
     return app(CreateProductMaster::class)->handle(
         name: $name,
-        producerId: $producerId,
+        producerId: ProducerProjectionFixture::known($producerId),
         appellation: $appellation,
         region: 'Bordeaux',
     );
@@ -406,7 +415,8 @@ it('re-submits a rejected Master, keeps it in reviewed, records one resubmitted 
         ->and($after['decision'] ?? null)->toBe('resubmitted')
         ->and($resubmit->authorization_basis)->toBe('catalog-lifecycle');
 
-    // No `notes` on a re-submit (unlike reject) — the "what changed" history is RM-14's concern (design D2).
+    // No `notes` on a re-submit (unlike reject) — the "what changed" history lives on the edit's OWN audit row
+    // (`identity_updated`, changed fields before/after — CatalogContentEdit), not in a free-text note here.
     expect($after)->not->toHaveKey('notes');
 
     // The earlier rejection row is intact (append-only) and the re-submit records NO domain event.
@@ -447,12 +457,18 @@ it('rejects a re-submit performed by a system actor', function () {
 | Canon MVP-DEC-019 (design D1/D3; product-catalog — Requirement: Approval Governance, "A pending rejection
 | blocks activation until re-submit"): while an entity's latest governance action is an un-remediated
 | rejection it is REJECTION-PENDING, and `activate` (`reviewed → active`) is BLOCKED — enforced in
-| ApprovalGovernance::guard() as a DERIVE-FROM-AUDIT read (the latest catalog governance action ends in
-| `.rejected`; no schema flag, design D3), thrown as ApprovalGovernanceViolation so it surfaces through the
-| console kit's outcome path (task 4.1). An explicit `re-submit` (or a `retired → reviewed` reopen) becomes the
-| freshest action and clears the block. These drive the REAL ActivateProductMaster against an active-projected
-| producer, so the blocked "no ProductMasterActivated event" assertion is meaningful and the block is proven to
-| precede the Producer gate. This INVERTS the pre-RM-06 "rejection is not terminal" behaviour.
+| ApprovalGovernance::guard() as a DERIVE-FROM-AUDIT read (no schema flag, design D3), thrown as
+| ApprovalGovernanceViolation so it surfaces through the console kit's outcome path (task 4.1). An explicit
+| `re-submit` becomes the freshest action and clears the block. These drive the REAL ActivateProductMaster
+| against an active-projected producer, so the blocked "no ProductMasterActivated event" assertion is meaningful
+| and the block is proven to precede the Producer gate. This INVERTS the pre-RM-06 "rejection is not terminal"
+| behaviour.
+|
+| Since catalog-module-0-completeness-sweep task 1.2 the derivation is VERB-FILTERED (design D4): only actions
+| ending `.submitted` / `.resubmitted` / `.rejected` / `.identity_updated` participate, and the last two are the
+| STALE ones. `.activated` / `.retired` / `.reopened` are therefore INVISIBLE to it — the reopen scenario below
+| still activates because the buried rejection was remediated by a `.resubmitted`, NOT because the `.reopened`
+| row cleared anything. ReviewFreshnessVerbFilterTest pins the filter (and the identity-edit stale cause) itself.
 */
 
 it('blocks activation while a rejection is pending and admits it only after a re-submit', function () {
@@ -539,8 +555,9 @@ it('does not treat a reopened Master as rejection-pending even with a rejection 
     app(RetireProductMaster::class)->handle($master);   // → retired
     app(ReopenProductMaster::class)->handle($master);    // → reviewed; latest action is now `.reopened`
 
-    // The `.rejected` row is still in history, but the LATEST governance action is `.reopened` — not
-    // rejection-pending: the block-gate reads only the latest action, so the buried rejection does not block.
+    // The `.rejected` row is still in history, but it was already remediated by the `.resubmitted` above — the
+    // latest review-freshness-RELEVANT action. (`.reopened` is the raw latest action, and the verb filter simply
+    // does not see it: it neither blocks nor clears.) So the buried rejection does not block.
     expect(latestGovernanceAction($master))->toBe('catalog.product_master.reopened')
         ->and(AuditRecord::query()->where('action', 'catalog.product_master.rejected')->count())->toBe(1);
 
@@ -657,10 +674,12 @@ it('runs two rejection rounds, blocking activation after each until the followin
 | `ProductMasterRetired` (product-catalog — Requirements: Producer Activation Gate, Product Lifecycle State
 | Machine, Product Lifecycle Events). These tests drive the real Actions (distinct operators) against the
 | producer-state projection the inline ProducerLifecycleProjector maintains, proving: the gate's three
-| negative paths (absent / draft-as-absent / retired — AC-0-FSM-12) and its positive path (AC-0-EVT-20);
-| block-new while preserving actives after a real `ProducerRetired` (AC-0-EVT-21 / AC-0-FSM-13);
-| re-activation re-checks the gate (AC-0-J-10); a held-but-unactivatable Master (AC-0-J-2); and the
-| transactional, PII-free `*Activated`/`*Retired` events (AC-0-EVT-1).
+| negative paths (absent / registered / retired — AC-0-FSM-12) and its positive path (AC-0-EVT-20), including
+| a real `ProducerActivated` landing ON a gate-blocked `reviewed` Master — enabling it for an operator without
+| auto-activating it (no auto-replay, AC-0-BR-BulkImport-4); block-new while preserving actives after a real
+| `ProducerRetired` (AC-0-EVT-21 / AC-0-FSM-13); re-activation re-checks the gate (AC-0-J-10); a
+| held-but-unactivatable Master (AC-0-J-2); and the transactional, PII-free `*Activated`/`*Retired` events
+| (AC-0-EVT-1).
 */
 
 it('activates a reviewed Master to active when its Producer is active, recording one ProductMasterActivated', function () {
@@ -697,14 +716,48 @@ it('activates a reviewed Master to active when its Producer is active, recording
         ->and($event->payload)->not->toHaveKey('name');             // PII-free (no descriptive core)
 });
 
-it('blocks activation when the linked Producer is absent from the projection (draft/unknown), holding it reviewed', function () {
+it('blocks activation when the linked Producer is absent from the projection, holding it reviewed', function () {
     $creator = Operator::factory()->create();
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    // Producer 9 is never projected — a draft/unknown producer presents as NO projection row (the read model
-    // only carries active/retired), and the gate treats "no row" as not-gated-open. The Master is still
-    // saveable and held in reviewed (AC-0-J-2), but not activatable.
+    // The gate's ABSENT-row branch: no row ⇒ not-gated-open (fail-closed). Reaching it takes a deliberate
+    // detour now, and the detour is the point. Since AC-0-XM-2 (task 5.2) creation itself demands a projection
+    // row, so a Master can no longer be BORN under an unknown producer — the branch survives for the states
+    // creation cannot police: a Master predating the guard, or a read model purged/not yet rebuilt beneath a
+    // live Master. We construct exactly that: create through the real lineage (the SoD triple below reads the
+    // creator off `ProductMasterCreated`, so a factory Master would not do), then remove the row.
+    $master = lifecycleCreateDraftMaster($creator, 9);
+    ProducerState::query()->where('producer_id', 9)->delete();
+
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    actingAs($approver, 'operator');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ProducerActivationGateViolation::class);
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.activated')->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+});
+
+it('blocks activation when the linked Producer is only registered in the projection', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // The `registered` half of the gate matrix (catalog-module-0-completeness-sweep, task 5.1; the delta's
+    // "Producer Activation Gate" scenario lists `registered` beside `retired` and absent). The widened
+    // projection now gives a merely-CREATED producer a row — proving that EXISTENCE (which admits Master
+    // creation, task 5.2) is not activeness: the gate is unchanged and still demands `status === active`.
+    lifecycleProjectProducer('ProducerCreated', 9, 'draft');
+
+    // Non-vacuity: the row really is there and really is `registered` — the gate is rejecting a PRESENT row,
+    // not silently taking the no-row branch that the sibling test above already covers.
+    expect(ProducerState::query()->where('producer_id', 9)->sole()->status)
+        ->toBe(ProducerProjectionStatus::Registered);
+
     $master = lifecycleCreateDraftMaster($creator, 9);
     actingAs($reviewer, 'operator');
     app(SubmitProductMasterForReview::class)->handle($master);
@@ -736,6 +789,68 @@ it('blocks activation when the linked Producer is retired in the projection', fu
 
     expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
         ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+});
+
+it('unblocks a reviewed Master when ProducerActivated lands, without touching the Master itself', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // AC-0-EVT-20 in its full scenario shape: the event arrives ON TOP OF a Master that is already `reviewed`
+    // and already gate-blocked. Its sibling (`ProducerRetired` → block-new / preserve-actives, below) has
+    // always been tested this way round; the enable leg was only ever tested with the producer activated
+    // FIRST, which cannot observe the "no Master state changed as a side effect of consuming the event"
+    // clause — with no Master in flight there is no state to leave alone. Found by the task-7.2 delta→test
+    // traceability sweep.
+    //
+    // GIVEN a `reviewed` Master whose producer is merely `registered` (existence admits creation, task 5.2;
+    // activeness is what the gate wants), its activation is currently blocked.
+    $master = lifecycleCreateDraftMaster($creator, 9); // ProducerProjectionFixture::known(9) ⇒ `registered`
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    actingAs($approver, 'operator');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ProducerActivationGateViolation::class);
+
+    // Pin the Master's audit trail BEFORE the disturbance as its ordered ACTION list: it catches a spurious
+    // row APPENDED by the consumer (the side effect this scenario forbids) while staying non-vacuous — an
+    // empty or wrong trail reds here rather than sailing through an ids-match-ids comparison. `create` writes
+    // no audit row, so the submit is the whole trail.
+    $auditTrail = fn (): array => array_values(AuditRecord::query()
+        ->where('entity_type', 'ProductMaster')
+        ->where('entity_id', (string) $master->id)
+        ->orderBy('id')
+        ->get()
+        ->map(fn (AuditRecord $r): string => $r->action)
+        ->all());
+
+    expect($auditTrail())->toBe(['catalog.product_master.submitted']);
+    $versionBefore = ProductMaster::findOrFail($master->id)->version;
+
+    // WHEN the real ProducerActivated is delivered to the inline consumer (the fixture seeded last_event_id 0,
+    // so this event's id strictly advances the watermark and the projection flips registered → active).
+    lifecycleProjectProducer('ProducerActivated', 9, 'active');
+
+    // THEN the projection records `active` …
+    expect(ProducerState::query()->where('producer_id', 9)->sole()->status)
+        ->toBe(ProducerProjectionStatus::Active);
+
+    // … and NOTHING about the Master moved as a side effect of consuming the event: no auto-activation (the
+    // `reviewed → active` step stays operator-initiated — no auto-replay, AC-0-BR-BulkImport-4), no version
+    // bump, not one appended audit row, no event.
+    $master->refresh();
+    expect($master->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and($master->version)->toBe($versionBefore)
+        ->and($auditTrail())->toBe(['catalog.product_master.submitted'])
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+
+    // … but the Master is now activatable BY AN OPERATOR — the same distinct approver the gate turned away.
+    actingAs($approver, 'operator');
+    app(ActivateProductMaster::class)->handle($master);
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(1);
 });
 
 it('rejects activation on a non-reviewed Master via the from-state guard, before the gate', function () {

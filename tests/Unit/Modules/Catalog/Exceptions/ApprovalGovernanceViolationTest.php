@@ -64,6 +64,30 @@ it('blocks activation while a rejection is pending (RM-06 review-freshness block
         ->and($exception->getMessage())->toContain('ProductMaster');
 });
 
+it('blocks activation while an identity edit awaits re-review (the block-gate EDIT cause), naming the entity', function () {
+    // The second cause of the same review-freshness block-gate (catalog-module-0-completeness-sweep design D4):
+    // review-governed content changed after the last review decision. Same remedy (re-submit), different FACT.
+    $exception = ApprovalGovernanceViolation::activationBlockedByUnreviewedEdit('ProductMaster');
+
+    expect($exception)->toBeInstanceOf(ApprovalGovernanceViolation::class)
+        ->and($exception->getMessage())->not->toBe('')
+        ->and($exception->getMessage())->toContain('ProductMaster');
+});
+
+it('gives the two review-freshness block causes distinct, discriminating copy', function () {
+    // `un-remediated` and `edited` are the tokens the domain + console tests pin the two causes on. Each must
+    // appear in exactly ONE reason, or a test asserting "the rejection block fired" would silently pass on the
+    // edit block (and vice versa) — the assertion would stop discriminating.
+    $rejection = ApprovalGovernanceViolation::activationBlockedByPendingRejection('ProductMaster')->getMessage();
+    $edit = ApprovalGovernanceViolation::activationBlockedByUnreviewedEdit('ProductMaster')->getMessage();
+
+    expect($rejection)->not->toBe($edit)
+        ->and($rejection)->toContain('un-remediated')
+        ->and($rejection)->not->toContain('edited')
+        ->and($edit)->toContain('edited')
+        ->and($edit)->not->toContain('un-remediated');
+});
+
 it('resolves every approval-governance lang key with the :entity placeholder wired', function (string $key) {
     // 'SomeEntity' appears in no template, so its presence in the resolved string proves :entity was
     // interpolated; a missing key would make Laravel echo the key back unchanged.
@@ -76,6 +100,7 @@ it('resolves every approval-governance lang key with the :entity placeholder wir
     'catalog.approval.self_approval_creator',
     'catalog.approval.self_approval_reviewer',
     'catalog.approval.insufficient_separation',
-    // The RM-06 block-gate — copy lives in the `lifecycle` group, not `approval` (see the factory docblock).
+    // The RM-06 block-gate, both causes — copy lives in the `lifecycle` group, not `approval` (factory docblock).
     'catalog.lifecycle.activation_blocked_by_pending_rejection',
+    'catalog.lifecycle.activation_blocked_by_unreviewed_edit',
 ]);

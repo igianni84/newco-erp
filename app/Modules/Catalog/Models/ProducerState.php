@@ -11,11 +11,13 @@ use Illuminate\Database\Eloquent\Model;
  * D3/D4; product-catalog — Requirement: Producer-State Projection and Event Consumption). One row per
  * producer, the codebase's first cross-module read model.
  *
- * The gate needs "is producer X `active`?" but invariant 10 forbids querying Module K. This model is the
- * Catalog-LOCAL read surface fed by the `ProducerLifecycleProjector` consumer
- * (task 1.2, the sole writer) as it consumes `ProducerActivated`/`ProducerRetired`; the *Producer Activation Gate*
- * reads `status` off it. The consumer upserts on `producer_id`, applying an event only when its `id`
- * advances `last_event_id` (the watermark — latest-wins, design D4).
+ * Catalog needs "is producer X `active`?" (the *Producer Activation Gate*) and "does producer X exist?"
+ * (`CreateProductMaster`'s existence guard), but invariant 10 forbids querying Module K. This model is the
+ * Catalog-LOCAL read surface fed by the `ProducerLifecycleProjector` consumer (the sole writer) as it
+ * consumes `ProducerCreated`/`ProducerActivated`/`ProducerRetired`; both rules read it — the gate demands
+ * `status === active`, the existence guard is satisfied by ANY row (catalog-module-0-completeness-sweep,
+ * design D7). The consumer upserts on `producer_id`, applying an event only when its `id` advances
+ * `last_event_id` (the watermark — latest-wins, design D4).
  *
  * The `producer_id` is a PLAIN id into Module K — never an Eloquent relation (the boundary law, invariant
  * 10; mirrors {@see ProductMaster::$producer_id}). `last_event_id` is the applied `domain_events.id`, a

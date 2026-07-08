@@ -851,3 +851,35 @@
 ## [2026-07-08 12:47] spec-to-change | catalog-module-0-completeness-sweep | P3 sweep authored prep-only: 12 delta reqs (5 ADDED/7 MODIFIED) + design D1-D11 + 15 tasks; S1 4-suffix filter on both readers; RM-15 via widened projection (registered); validate --strict green; no build, no APPROVED - awaits Giovanni review
 
 ## [2026-07-08 14:54] approve | catalog-module-0-completeness-sweep | APPROVED marker created by Giovanni (14:53, human-only); scaffolding+marker+tracker/hot/log in one approve: commit (local, no push); next ./ralph.sh --change catalog-module-0-completeness-sweep (15 tasks)
+
+## [2026-07-08 15:04] ralph | catalog-module-0-completeness-sweep 1.1 | green | 4 files | catalog_variant_case_whitelists + VariantCaseWhitelistEntry + Variant relation; 2087/2087 SQLite, new test green on PG17; PHPStan 0
+
+## [2026-07-08 15:25] ralph | catalog-module-0-completeness-sweep 1.2 | green | 21 files | review-freshness now 4-suffix verb-filtered in domain + console mirror; S1 hole closed; 2098/2098 SQLite, 44/44 PG17, PHPStan 0
+
+## [2026-07-08 15:46] ralph | catalog-module-0-completeness-sweep 1.3 | green | 7 files | CatalogContentEdit mechanic + CatalogAuditEnvelope shared by both audit writers; 2106/2106 SQLite, 44/44 PG17, PHPStan 0
+
+## [2026-07-08 15:57] ralph | catalog-module-0-completeness-sweep 2.1 | green | 3 files | UpdateProductMasterIdentity on the CatalogContentEdit mechanic — BR-Audit-1 Master half; suite 2115/2115, PG17 53/53, PHPStan 0
+
+## [2026-07-08 16:12] ralph | catalog-module-0-completeness-sweep 2.2 | green | 4 files | UpdateCompositeSkuComposition: ordered replace, N>=2 + cascade re-assert on active; suite 2124/2124, PG17 43/43, PHPStan 0
+
+## [2026-07-08 16:27] ralph | catalog-module-0-completeness-sweep 2.3 | green | 3 files | DEC-019 re-arm leg proven e2e: edit-blocks-activation + J-7 with real edits, 2126/2126, PG17 55/55
+
+## [2026-07-08 16:47] ralph | catalog-module-0-completeness-sweep 3.1 | green | 6 files | SetVariantCaseWhitelist + CatalogContentEdit::maintain() (non-versioning sibling) + UnknownCatalogReference; suite 2143/2143 SQLite, 69/69 PG17, PHPStan max 0
+
+## [2026-07-08 17:05] ralph | catalog-module-0-completeness-sweep 3.2 | green | 7 files | CaseConfigurationWhitelistGate + CaseConfigurationNotWhitelisted; cascade gate now returns the proven parent; 2148/2148 SQLite, PG17 69/69, PHPStan 0
+
+## [2026-07-08 17:22] ralph | catalog-module-0-completeness-sweep 4.1 | green | 5 files | EnrichmentDataUpdated + UpdateProductVariantEnrichment; apply-contract gains null=no-op; 2162/2162 SQLite, 76/76 PG17, PHPStan 0
+
+## [2026-07-08 17:43] ralph | catalog-module-0-completeness-sweep 5.1 | green | 8 files | ProducerCreated→registered; enum 2→3, no ALTER (CHECK derives from cases()); gate untouched+proven; 2167/2167 SQLite, PG17 60/60; 3 mutations reverted
+
+## [2026-07-08 18:08] ralph | catalog-module-0-completeness-sweep 5.2 | green | 11 files | CreateProductMaster producer-existence guard (AC-0-XM-2); UnknownCatalogReference reused + FK-claim corrected; ProducerProjectionFixture; 5 fixture files migrated; 2172/2172 SQLite, PG17 90/90, PHPStan 0
+
+## [2026-07-08 18:42] ralph | catalog-module-0-completeness-sweep 6.1 | green | 6 files | editIdentity modal + contentEditAction kit primitive; 2180 SQLite, 862 PG17
+
+## [2026-07-08 19:11] ralph | catalog-module-0-completeness-sweep 6.2 | green | 4 files | ViewProductVariant enrichment + whitelist modals; 17 tests; suite 2197 SQLite / 1139 PG17
+
+## [2026-07-08 19:42] ralph | catalog-module-0-completeness-sweep 6.3 | green | 5 files | ViewCompositeSku editComposition modal; 8 tests; 2205/2205 SQLite, 228/228 PG17 console; 2 Filament test traps -> knowledge
+
+## [2026-07-08 20:05] ralph | catalog-module-0-completeness-sweep 7.1 | green | 31 files comment-only | CONTEXT.md rewritten (+3 entries), 5 stale-claim families swept, suite 2205/2205 unchanged
+
+## [2026-07-08 20:26] ralph | catalog-module-0-completeness-sweep 7.2 | green | 4 files | full verify: SQLite 2206/2206, PG17 2206/2206, PHPStan 0, Pint, validate strict; traceability 12 reqs/52 scenarios; 1 uncovered scenario found+closed (ProducerActivated side-effect clause)

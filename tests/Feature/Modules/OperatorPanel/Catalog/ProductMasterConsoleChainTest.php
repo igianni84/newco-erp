@@ -62,6 +62,7 @@ use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Livewire\Livewire;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 use function Pest\Laravel\actingAs;
 
@@ -71,8 +72,9 @@ uses(DatabaseMigrations::class);
  * Open the Producer-activation gate for one producer EVENT-FREE: write the Catalog-owned producer-state
  * projection row directly (status `active`), the exact read model ProducerActivationGate::assertProducerActive
  * consults. No ProducerActivated event, no projector — so the domain_events table this test asserts over holds
- * ONLY console-driven catalog writes. (A producer with NO row is fail-closed — the gate rejects — which is how
- * this test's gate-blocked path is set up: simply never call this for that producer.) Distinctly prefixed —
+ * ONLY console-driven catalog writes. (The gate-blocked path in phase 8 instead projects its producer merely
+ * `registered`, via the event-free ProducerProjectionFixture: since AC-0-XM-2 an ABSENT producer cannot carry a
+ * Master at all, so `registered` is the weakest producer a reviewed Master can have.) Distinctly prefixed —
  * Pest declares every top-level test `function` in one global namespace.
  */
 function chainConsoleProjectActiveProducer(int $producerId): void
@@ -309,14 +311,20 @@ it('drives the entire Product Master console slice end-to-end as an operator dem
     expect(ProductMaster::findOrFail($m1->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
         ->and(DomainEvent::query()->count())->toBe($eventsBeforeReopen);
 
-    // ── Phase 8 — PRODUCER-GATE-blocked activation (producer 9 never projected active) ─────────────────────
+    // ── Phase 8 — PRODUCER-GATE-blocked activation (producer 9 registered, never activated) ────────────────
     // M3 reaches `reviewed` through the real actions (three distinct actors → the SoD floor passes), then a
-    // distinct approver activates THROUGH THE CONSOLE — producer 9 has no projection row, so the gate fails
-    // closed and is the SOLE rejection. The console surfaces the gate reason; the Master stays `reviewed`.
+    // distinct approver activates THROUGH THE CONSOLE — producer 9 is merely `registered`, so the gate (which
+    // demands `active`) fails closed and is the SOLE rejection. The console surfaces the gate reason; the
+    // Master stays `reviewed`.
+    //
+    // Producer 9 used to be projection-ABSENT here. Since the creation-existence guard (AC-0-XM-2, task 5.2)
+    // an absent producer cannot carry a Master at all, so the gate's absent branch is no longer reachable
+    // through the real creation lineage — `registered` is now the weakest producer a reviewed Master can have,
+    // and therefore the sharpest setup for this phase.
     actingAs($creator, 'operator');
     $m3 = app(CreateProductMasterAction::class)->handle(
         name: 'Château Chain M3',
-        producerId: 9,
+        producerId: ProducerProjectionFixture::known(9),
         appellation: 'Saint-Julien',
         region: 'Bordeaux',
     );

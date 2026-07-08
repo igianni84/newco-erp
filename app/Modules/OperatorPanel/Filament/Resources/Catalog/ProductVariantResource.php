@@ -2,18 +2,23 @@
 
 namespace App\Modules\OperatorPanel\Filament\Resources\Catalog;
 
+use App\Modules\Catalog\Models\CaseConfiguration;
+use App\Modules\Catalog\Models\Format;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleNavigationGroup;
 use App\Modules\OperatorPanel\Filament\Console\OperatorConsoleResource;
 use App\Modules\OperatorPanel\Filament\Resources\Catalog\ProductVariantResource\Pages;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -34,16 +39,19 @@ use Filament\Tables\Table;
  * wrapper (design L4), never re-checked here.
  *
  * It read-binds to {@see ProductVariant} — the ADR-sanctioned exception, OperatorPanel-only and display-only:
- * the resource queries the model (and its WITHIN-Catalog `master()` / `wineAttributes()` relations) for the
- * list table + the view infolist and NEVER writes it. Every mutation is a separate Filament Action routed
- * through a Catalog domain action (the kit's view + create pages); there is deliberately NO Edit page and NO
- * Delete/Create default action — the Catalog backend ships no update Action (post-creation field edits are out
- * of scope, proposal slice-boundary), and create lands on a write-through
- * `ProductVariantResource\Pages\CreateProductVariant` page. The no-Eloquent-write PHPStan rule (task 1.2)
- * guards the discipline. Enums are rendered through their cast instances (`->value`), never by importing
- * `App\Modules\Catalog\Enums\*`, so the console's cross-module surface stays exactly {Models, Actions} (the
- * import-boundary carve-out). All user-facing copy is localized through the `operator_console` group
- * (invariant 12).
+ * the resource queries the model (and its WITHIN-Catalog `master()` / `wineAttributes()` /
+ * `caseWhitelistEntries()` relations) for the list table + the view infolist and NEVER writes it. Every mutation
+ * is a separate Filament Action routed through a Catalog domain action (the kit's view + create pages); there is
+ * deliberately NO Edit page and NO Delete/Create default action. The reason is the read-projection discipline
+ * itself, not a missing backend: since catalog-module-0-completeness-sweep the Catalog backend DOES ship update
+ * Actions for a Variant (`UpdateProductVariantEnrichment`, `SetVariantCaseWhitelist`), and both are surfaced — as
+ * modal header actions on the View page ({@see enrichmentEditSchema()}, {@see whitelistEditSchema()}, task 6.2 /
+ * design D8), never as a Filament Edit page whose default `$record->save()` would bypass the domain. Create
+ * likewise lands on a write-through `ProductVariantResource\Pages\CreateProductVariant` page. The
+ * no-Eloquent-write PHPStan rule (task 1.2) guards the discipline. Enums are rendered through their cast
+ * instances (`->value`), never by importing `App\Modules\Catalog\Enums\*`, so the console's cross-module surface
+ * stays exactly {Models, Actions} (the import-boundary carve-out). All user-facing copy is localized through the
+ * `operator_console` group (invariant 12).
  */
 class ProductVariantResource extends OperatorConsoleResource
 {
@@ -79,9 +87,14 @@ class ProductVariantResource extends OperatorConsoleResource
      * the PARENT Product Master (a within-catalog select; a Variant belongs to exactly one Master,
      * BR-Identity-2), the type-neutral variant identifier, and the WINE vintage attribute set (a vintage year,
      * the non-vintage marker, and optional translatable tasting notes). The form only COLLECTS; the write routes
-     * through the action in `Pages\CreateProductVariant::createViaAction()` (there is no Edit page — the Catalog
-     * backend ships no update Action). The Master select is sourced from Catalog's OWN model, read-only and
-     * within-module — never a producer picker (design L6). All labels localized (invariant 12).
+     * through the action in `Pages\CreateProductVariant::createViaAction()` (there is no Edit page; the
+     * post-creation edits are the View page's modal actions). The Master select is sourced from Catalog's OWN
+     * model, read-only and within-module — never a producer picker (design L6). All labels localized
+     * (invariant 12).
+     *
+     * The tasting-notes input is the ONE field the create form shares with the enrichment-edit modal
+     * ({@see enrichmentEditSchema()}) — a Variant's parent, identifier and vintage axis are all fixed at creation,
+     * and the notes are the only enrichment the launch field set carries.
      */
     public static function form(Schema $schema): Schema
     {
@@ -101,10 +114,93 @@ class ProductVariantResource extends OperatorConsoleResource
                 Toggle::make('non_vintage')
                     ->label((string) __('operator_console.product_variant.fields.non_vintage'))
                     ->default(false),
-                Textarea::make('tasting_notes')
-                    ->label((string) __('operator_console.product_variant.fields.description'))
-                    ->helperText((string) __('operator_console.product_variant.fields.tasting_notes_help')),
+                self::tastingNotesField(),
             ]);
+    }
+
+    /**
+     * The enrichment-edit modal's form (catalog-module-0-completeness-sweep task 6.2; design D8/R8; spec —
+     * Operator maintains Variant enrichment and the Layer-1 whitelist through the console): the observational
+     * enrichment `UpdateProductVariantEnrichment` replaces, which at launch is exactly the tasting-notes prose.
+     *
+     * It reuses the create form's own field builder, so the translatable-prose input (design R8) behaves
+     * identically on both surfaces by construction rather than by copy — the same reason the Master's
+     * identity-edit modal is its create form minus the producer.
+     *
+     * @return array<int, Component>
+     */
+    public static function enrichmentEditSchema(): array
+    {
+        return [self::tastingNotesField()];
+    }
+
+    /**
+     * The enrichment-edit modal's PREFILL state, read off the Variant's 1:1 WINE attribute set.
+     *
+     * The notes are prefilled from — and, on submit, written back as — the ENGLISH baseline, the sole locale the
+     * create form authors (`fields.tasting_notes_help`). A multi-locale prose surface is a deferred seam; until it
+     * exists no other locale can be present, so replacing the value cannot lose one. (The view INFOLIST resolves
+     * the active locale instead: it displays, it does not round-trip.)
+     *
+     * @return array<string, mixed>
+     */
+    public static function enrichmentEditState(ProductVariant $record): array
+    {
+        return ['tasting_notes' => $record->wineAttributes?->tasting_notes?->resolve('en')];
+    }
+
+    /**
+     * The manage-whitelist modal's form (task 6.2; design D6/D8; spec — the J-13 reduction case): a (Variant,
+     * Format) pair selector and the REPLACEMENT set of admitted Case Configurations that `SetVariantCaseWhitelist`
+     * writes for it.
+     *
+     * The pair — not the Variant — is the unit of the Layer-1 whitelist, so the Format select is a live operand:
+     * choosing one REPLACES the admitted-set field with that pair's currently admitted ids, via `$admittedIds`
+     * (the page reads them off the record's within-Catalog `caseWhitelistEntries()` relation). Without that
+     * re-prefill an operator who switched Format would submit the previous pair's set and silently rewrite the new
+     * one — the Action takes a whole set per pair, never a patch.
+     *
+     * The admitted set is deliberately NOT `->required()`: an empty set is a legitimate call that CLEARS the pair,
+     * restoring § 7.1's permissive default (absence admits, presence narrows).
+     *
+     * Both selects contribute Filament's implicit `Rule::in(<their options>)` over the same Catalog tables
+     * `SetVariantCaseWhitelist` re-checks, so its `UnknownCatalogReference` rejection is a BACKSTOP this surface
+     * cannot reach — proven at the domain, not here (the same layering as the Master create form's producer).
+     *
+     * @param  Closure(int): list<int>  $admittedIds  the pair's currently admitted Case-Configuration ids, by Format id
+     * @return array<int, Component>
+     */
+    public static function whitelistEditSchema(Closure $admittedIds): array
+    {
+        return [
+            Select::make('format_id')
+                ->label((string) __('operator_console.product_variant.fields.whitelist_format'))
+                ->options(self::formatOptions())
+                ->required()
+                ->live()
+                ->afterStateUpdated(function (mixed $state, Set $set) use ($admittedIds): void {
+                    // Re-prefill the admitted set for the newly chosen pair (an unset Format admits nothing to
+                    // show). `is_numeric` narrows the Livewire-round-tripped option key to the Format id.
+                    $set('case_configuration_ids', is_numeric($state) ? $admittedIds((int) $state) : []);
+                }),
+            Select::make('case_configuration_ids')
+                ->label((string) __('operator_console.product_variant.fields.whitelist_case_configurations'))
+                ->helperText((string) __('operator_console.product_variant.fields.whitelist_case_configurations_help'))
+                ->options(self::caseConfigurationOptions())
+                ->multiple(),
+        ];
+    }
+
+    /**
+     * The Variant's optional translatable tasting-notes prose — the WINE attribute set's one enrichment field
+     * (§ 9.1). Shared VERBATIM by the create form and the enrichment-edit modal. Captured in English, the baseline
+     * locale (design R8; the help text says so).
+     */
+    private static function tastingNotesField(): Textarea
+    {
+        return Textarea::make('tasting_notes')
+            ->label((string) __('operator_console.product_variant.fields.description'))
+            ->helperText((string) __('operator_console.product_variant.fields.tasting_notes_help'));
     }
 
     public static function table(Table $table): Table
@@ -242,6 +338,42 @@ class ProductVariantResource extends OperatorConsoleResource
             ->get()
             ->mapWithKeys(static fn (ProductMaster $master): array => [
                 $master->id => $master->name.' · '.$master->lifecycle_state->value,
+            ])
+            ->all();
+    }
+
+    /**
+     * Manage-whitelist modal Format options, keyed by `format_id` → the same `name (size) · state` label the
+     * Product Reference picker renders. Every Format is listed, whatever its lifecycle state: a whitelist catalogs
+     * PACKAGING POSSIBILITY ahead of readiness (design D6), and it is the Sellable-SKU activation gate — not this
+     * surface — that requires an `active` Case Configuration.
+     *
+     * @return array<int, string>
+     */
+    private static function formatOptions(): array
+    {
+        return Format::query()
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(static fn (Format $format): array => [
+                $format->id => $format->name.' ('.$format->size_label.') · '.$format->lifecycle_state->value,
+            ])
+            ->all();
+    }
+
+    /**
+     * Manage-whitelist modal Case-Configuration options, keyed by `case_configuration_id` → the configuration's
+     * name (the Sellable SKU picker's convention). Unfiltered by lifecycle state, for the reason above.
+     *
+     * @return array<int, string>
+     */
+    private static function caseConfigurationOptions(): array
+    {
+        return CaseConfiguration::query()
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(static fn (CaseConfiguration $caseConfiguration): array => [
+                $caseConfiguration->id => $caseConfiguration->name,
             ])
             ->all();
     }

@@ -8,6 +8,7 @@ use App\Platform\Audit\AuditRecord;
 use App\Platform\Events\ActorContext;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The Creator → Reviewer → Approver approval-governance guard layered onto the shared
@@ -26,13 +27,27 @@ use App\Platform\Events\DomainEvent;
  * reviewer SHALL themselves be distinct (three distinct operators). Retire and reopen carry only the
  * operator-principal floor (their distinctness is not part of the activation lineage).
  *
- * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; § 4.3): at the approval step the guard also
- * refuses activation while the entity is REJECTION-PENDING — its latest catalog governance action is an
- * un-remediated rejection ({@see assertNotRejectionPending}). Like the creator/reviewer lineage this is DERIVED
- * from the audit trail (no schema flag; design D3), and it is checked BEFORE the distinctness floor: a rejected
- * entity is not activatable by ANY operator until it is re-submitted. An explicit `re-submit` (or a
- * `retired → reviewed` reopen) becomes the freshest action and clears the block; retire/reopen themselves are
- * not activation and so are never blocked by it.
+ * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; § 4.3, and its edit leg from
+ * catalog-module-0-completeness-sweep design D4): at the approval step the guard also refuses activation while
+ * the entity is REVIEW-STALE ({@see assertReviewIsFresh}) — its content has changed, or been refused, since the
+ * last review decision. Like the creator/reviewer lineage this is DERIVED from the audit trail (no schema flag;
+ * design D3), and it is checked BEFORE the distinctness floor: a review-stale entity is not activatable by ANY
+ * operator until it is re-submitted. Retire and reopen are not activation and so are never blocked by it.
+ *
+ * The derivation is VERB-FILTERED, not a raw latest-action read: the catalog audit trail now carries
+ * non-governance rows too (identity edits, enrichment updates, whitelist maintenance — this class is no longer
+ * reading a trail written solely by {@see LifecycleTransition}). Only the four REVIEW-FRESHNESS-RELEVANT verbs
+ * participate ({@see REVIEW_FRESHNESS_VERBS}: `submitted`, `resubmitted`, `rejected`, `identity_updated`); among
+ * those the LATEST wins, and it leaves the entity review-stale iff it is a `rejected` (an un-remediated
+ * rejection) or an `identity_updated` (review-governed content edited but not re-reviewed). Every other catalog
+ * audit row neither sets nor clears the condition — a post-rejection enrichment or whitelist row can never
+ * unblock activation without a re-submit. `submitted` MUST stay in the relevant set: it is what clears a
+ * `draft`-stage identity edit, which would otherwise block the entity forever.
+ *
+ * Verb-collision discipline (design D5): no future catalog audit verb may END with one of the four relevant
+ * suffixes unless it is meant to participate in review-freshness. (`resubmitted` deliberately does not end with
+ * `.submitted` — the `.` in the suffix separates the segment, so {@see reviewerOf}'s `LIKE '%.submitted'` and
+ * this filter both discriminate the two.)
  *
  * The audit trail is the SYSTEM OF RECORD for which actor performed each step (design D5 — no per-entity
  * governance columns): the **creator** is read from the entity's first `domain_events` row (its `*Created`
@@ -57,6 +72,32 @@ class ApprovalGovernance
     /** The three-step Creator → Reviewer → Approver default when the config knob is absent or non-numeric. */
     private const DEFAULT_ROLE_COUNT = 3;
 
+    /** The submit verb — clears a `draft`-stage edit; the freshness set's only never-stale entry besides `resubmitted`. */
+    private const VERB_SUBMITTED = 'submitted';
+
+    /** The explicit re-submit verb — the Creator re-arming review after a rejection or an edit. */
+    private const VERB_RESUBMITTED = 'resubmitted';
+
+    /** The rejection verb — leaves the entity review-stale until re-submitted. */
+    private const VERB_REJECTED = 'rejected';
+
+    /** The identity-edit verb — review-governed content changed, so it too leaves the entity review-stale. */
+    private const VERB_IDENTITY_UPDATED = 'identity_updated';
+
+    /**
+     * The REVIEW-FRESHNESS-RELEVANT audit verbs (design D4/D5): the only `catalog.<segment>.<verb>` rows the
+     * review-freshness condition is derived from. Any other catalog audit row (`activated`, `retired`,
+     * `reopened`, `enrichment_updated`, `whitelist_updated`, …) neither sets nor clears the condition.
+     *
+     * @var list<string>
+     */
+    private const REVIEW_FRESHNESS_VERBS = [
+        self::VERB_SUBMITTED,
+        self::VERB_RESUBMITTED,
+        self::VERB_REJECTED,
+        self::VERB_IDENTITY_UPDATED,
+    ];
+
     public function __construct(private readonly ActorContext $actor) {}
 
     /**
@@ -67,7 +108,7 @@ class ApprovalGovernance
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) — matches the audit / event `entity_type`
      * @param  string  $entityId  the entity's stringified primary key (the audit / event `entity_id`)
      *
-     * @throws ApprovalGovernanceViolation when the operator-principal floor is breached, a pending rejection blocks activation, or the distinctness floor is breached
+     * @throws ApprovalGovernanceViolation when the operator-principal floor is breached, a review-stale entity blocks activation, or the distinctness floor is breached
      */
     public function guard(LifecycleTransitionType $type, string $entity, string $entityId): void
     {
@@ -75,12 +116,13 @@ class ApprovalGovernance
 
         // The review-freshness block-gate and the separation-of-duties distinctness are BOTH the APPROVAL
         // step's floors (the Creator → Reviewer → Approver lineage culminates in `reviewed → active`);
-        // retire/reopen carry only the operator floor. The block-gate runs FIRST: an un-remediated rejection
-        // means the entity is not in an activatable review-state at all — NO operator may approve it until it
-        // is re-submitted — so it precedes the who-may-approve distinctness check (and, in the mechanism, the
-        // per-entity activation gate).
+        // retire/reopen carry only the operator floor. The block-gate runs FIRST: a review-stale entity (an
+        // un-remediated rejection, or review-governed content edited since the last review) is not in an
+        // activatable review-state at all — NO operator may approve it until it is re-submitted — so it
+        // precedes the who-may-approve distinctness check (and, in the mechanism, the per-entity activation
+        // gate).
         if ($type === LifecycleTransitionType::Activate) {
-            $this->assertNotRejectionPending($entity, $entityId);
+            $this->assertReviewIsFresh($entity, $entityId);
             $this->assertSeparationOfDuties($entity, $entityId, $approver);
         }
     }
@@ -148,29 +190,82 @@ class ApprovalGovernance
     }
 
     /**
-     * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; design D1/D3; product-catalog — Requirement:
-     * Approval Governance): refuse activation while the entity is REJECTION-PENDING — its latest catalog
-     * governance action is an un-remediated rejection. The condition is DERIVED from the audit trail (the same
-     * `orderByDesc('id')` latest-action read as {@see reviewerOf}, scoped to catalog), NEVER a persisted schema
-     * flag (design D3, reaffirming catalog-lifecycle-approval D5). It blocks iff the latest action ends in
-     * `.rejected`; a `re-submit` (`.resubmitted`) or a `retired → reviewed` reopen (`.reopened`) becomes the
-     * freshest action and so clears the block, and a never-rejected entity (no governance action at all, or a
-     * plain `.submitted`) is vacuously fresh — only an un-remediated rejection blocks.
+     * The review-freshness block-gate (RM-06 / canon MVP-DEC-019; design D1/D3; the edit leg from
+     * catalog-module-0-completeness-sweep design D4; product-catalog — Requirement: Approval Governance):
+     * refuse activation while the entity is REVIEW-STALE. The condition is DERIVED from the audit trail
+     * (never a persisted schema flag; design D3, reaffirming catalog-lifecycle-approval D5): among the
+     * entity's REVIEW-FRESHNESS-RELEVANT catalog audit rows the LATEST wins, and it blocks iff it is a
+     * `.rejected` (an un-remediated rejection) or a `.identity_updated` (review-governed content edited since
+     * the last review decision). The two causes carry DISTINCT localized reasons — the operator's remedy is the
+     * same re-submit, but "you were rejected" and "you edited it" are different facts.
      *
-     * @throws ApprovalGovernanceViolation when the latest governance action is an un-remediated rejection
+     * A `.resubmitted` becomes the freshest relevant action and so clears BOTH causes; a `.submitted` clears a
+     * `draft`-stage edit; an entity with no relevant action at all (a factory/seed-built entity) is vacuously
+     * fresh. Rows outside the relevant set — `.activated`, `.retired`, `.reopened`, `.enrichment_updated`,
+     * `.whitelist_updated` — are INVISIBLE here, so they can neither block nor unblock.
+     *
+     * @throws ApprovalGovernanceViolation when the entity is review-stale (un-remediated rejection, or an un-re-reviewed identity edit)
      */
-    private function assertNotRejectionPending(string $entity, string $entityId): void
+    private function assertReviewIsFresh(string $entity, string $entityId): void
     {
-        $latest = AuditRecord::query()
+        $latest = $this->latestReviewFreshnessAction($entity, $entityId);
+
+        if ($latest === null) {
+            return;
+        }
+
+        if (str_ends_with($latest, '.'.self::VERB_REJECTED)) {
+            throw ApprovalGovernanceViolation::activationBlockedByPendingRejection($entity);
+        }
+
+        if (str_ends_with($latest, '.'.self::VERB_IDENTITY_UPDATED)) {
+            throw ApprovalGovernanceViolation::activationBlockedByUnreviewedEdit($entity);
+        }
+    }
+
+    /**
+     * The entity's LATEST review-freshness-relevant catalog audit action, or null when it has none.
+     *
+     * The SQL `LIKE` prefilter narrows the scan to the four relevant suffixes, but it is only an
+     * OVER-approximation: `_` is a single-character wildcard in `LIKE` on both engines, so `%.identity_updated`
+     * would also match a hypothetical `.identityXupdated`. The PHP {@see endsWithReviewFreshnessVerb()} pass over
+     * the (newest-first) candidates is therefore the AUTHORITATIVE filter — it returns the first EXACT match, so
+     * the predicate is exact regardless of what verbs the trail grows. Escaping the underscore instead was
+     * rejected: `ESCAPE` semantics differ between SQLite and PostgreSQL, and this predicate must be engine-neutral.
+     */
+    private function latestReviewFreshnessAction(string $entity, string $entityId): ?string
+    {
+        $candidates = AuditRecord::query()
             ->where('module', Module::Catalog->value)
             ->where('entity_type', $entity)
             ->where('entity_id', $entityId)
+            ->where(function (Builder $relevant): void {
+                foreach (self::REVIEW_FRESHNESS_VERBS as $verb) {
+                    $relevant->orWhere('action', 'like', '%.'.$verb);
+                }
+            })
             ->orderByDesc('id')
-            ->value('action');
+            ->pluck('action');
 
-        if (is_string($latest) && str_ends_with($latest, '.rejected')) {
-            throw ApprovalGovernanceViolation::activationBlockedByPendingRejection($entity);
+        foreach ($candidates as $action) {
+            if (is_string($action) && self::endsWithReviewFreshnessVerb($action)) {
+                return $action;
+            }
         }
+
+        return null;
+    }
+
+    /** Does this audit action end in one of the four review-freshness-relevant verbs (the exact, engine-free test)? */
+    private static function endsWithReviewFreshnessVerb(string $action): bool
+    {
+        foreach (self::REVIEW_FRESHNESS_VERBS as $verb) {
+            if (str_ends_with($action, '.'.$verb)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The configured number of distinct approval roles (∈ {2, 3}); a non-numeric value is the three-step default. */

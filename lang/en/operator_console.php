@@ -76,6 +76,9 @@ return array_replace_recursive([
             'retire' => 'Retire',
             'retire_cascade' => 'Retire (cascade)',
             'reopen' => 'Reopen',
+            // The one field-edit surface (catalog-module-0-completeness-sweep, task 6.1): a modal over the four
+            // review-governed identity fields, routed through UpdateProductMasterIdentity — never an Edit page.
+            'edit_identity' => 'Edit identity',
         ],
 
         // The "second actor required" affordance (design L5/L6) — rendered as the activate confirmation copy.
@@ -101,6 +104,9 @@ return array_replace_recursive([
             'cascade_retired' => 'Product Master and its active descendants retired.',
             'reopened' => 'Product Master reopened for review.',
             'action_failed' => 'The action could not be completed.',
+            // The identity-edit success title. A domain rejection on that path is NOT `action_failed`: it
+            // surfaces as a validation error on the modal's own field, carrying the action's localized message.
+            'identity_updated' => 'Product Master identity updated; a new version was recorded.',
         ],
 
         // Shown for a producer that has no row in Catalog's producer-state projection yet
@@ -256,7 +262,10 @@ return array_replace_recursive([
         // Create-form input labels + view-infolist labels for the WINE attribute set, plus the reject action's
         // notes field (recorded on the audit row, never reverting state — § 4.3). `product_master` is the parent
         // picker; vintage_year/non_vintage/tasting_notes are the wine attribute set (shared by the create form
-        // and the view infolist).
+        // and the view infolist). The `whitelist_*` trio is the manage-whitelist modal's two operands
+        // (catalog-module-0-completeness-sweep, task 6.2): the Format that names the pair, and the admitted
+        // Case-Configuration set replaced for it — whose EMPTINESS is meaningful (§ 7.1's permissive default:
+        // absence admits, presence narrows), hence the help text.
         'fields' => [
             'product_master' => 'Product Master',
             'variant_identifier' => 'Variant identifier',
@@ -265,6 +274,9 @@ return array_replace_recursive([
             'tasting_notes' => 'Tasting notes',
             'tasting_notes_help' => 'Optional. Captured in English, the baseline locale.',
             'rejection_notes' => 'Rejection notes',
+            'whitelist_format' => 'Format',
+            'whitelist_case_configurations' => 'Admitted Case Configurations',
+            'whitelist_case_configurations_help' => 'Replaces the admitted set for the chosen Format. Leave it empty to admit every Case Configuration again.',
         ],
 
         // Rendered enum-like display values. `non_vintage` is the marker shown in the combined `vintage` column;
@@ -287,6 +299,11 @@ return array_replace_recursive([
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
+            // The Variant's two MAINTENANCE surfaces (task 6.2): modal write-throughs over
+            // UpdateProductVariantEnrichment / SetVariantCaseWhitelist — never an Edit page. Neither moves
+            // `version` nor re-arms review, which is what distinguishes them from a Master's identity edit.
+            'edit_enrichment' => 'Edit tasting notes',
+            'manage_whitelist' => 'Manage case whitelist',
         ],
 
         // The "second actor required" affordance — rendered as the activate confirmation copy. The console
@@ -308,6 +325,11 @@ return array_replace_recursive([
             'retired' => 'Product Variant retired.',
             'reopened' => 'Product Variant reopened for review.',
             'action_failed' => 'The action could not be completed.',
+            // The two maintenance modals (task 6.2). Neither claims a version bump or a review re-arm — an
+            // enrichment edit carrying the value already stored is a silent domain no-op, and the operator's
+            // request still succeeded, so this title is honest for both outcomes.
+            'enrichment_updated' => 'Tasting notes saved.',
+            'whitelist_updated' => 'Case whitelist saved for this Format.',
         ],
     ],
 
@@ -498,11 +520,16 @@ return array_replace_recursive([
             'create' => 'New Composite SKU',
             'submit' => 'Submit for review',
             'reject' => 'Reject',
-            // Re-submit RE-ARMS review after a rejection (RM-06); offered only while rejection-pending.
+            // Re-submit RE-ARMS review after a rejection OR a composition edit (RM-06 + its edit leg); offered
+            // only while the Composite is review-stale.
             'resubmit' => 'Re-submit for review',
             'activate' => 'Activate',
             'retire' => 'Retire',
             'reopen' => 'Reopen',
+            // The composition-edit modal (catalog-module-0-completeness-sweep task 6.3). A Composite is
+            // attribute-free beyond its ordered constituent set (§3.8), so that set IS its identity: this is the
+            // entity's identity-edit surface, the twin of the Master's `edit_identity`.
+            'edit_composition' => 'Edit composition',
         ],
 
         // The "second actor required" affordance — rendered as the activate confirmation copy. The console
@@ -524,6 +551,9 @@ return array_replace_recursive([
             'retired' => 'Composite SKU retired.',
             'reopened' => 'Composite SKU reopened for review.',
             'action_failed' => 'The action could not be completed.',
+            // The composition edit re-versions the Composite (its constituent set is its identity) — the success
+            // title says the bundle was saved; the incremented `version` is visible on the view.
+            'composition_updated' => 'Composition saved.',
         ],
     ],
 

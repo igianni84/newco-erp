@@ -12,14 +12,17 @@ use App\Modules\Catalog\Models\ProductVariant;
  * {@see LifecycleTransition} mechanism (design D2; product-catalog — Requirement: Approval Governance) —
  * the twin of {@see RejectProductVariantReview} that RE-ARMS the approval flow.
  *
- * After a reviewer/approver rejects a Variant (it stays in `reviewed`, "rejection-pending" DERIVED from the
- * latest governance audit action — no schema flag), the Creator edits in place and re-submits: the Variant
- * STAYS in `reviewed`, one `audit_records` row captures the actor and the `decision: resubmitted`, and NO
- * domain event is recorded. The re-submit is then the freshest governance action, so it clears the
- * review-freshness activation block-gate — a distinct approver can subsequently activate. Operator-floored
- * (a `system`/null actor cannot re-submit) and from-state guarded (a re-submit on a non-`reviewed` Variant
- * throws {@see IllegalLifecycleTransition} and writes nothing). A thin per-entity wrapper — the entity label
- * `ProductVariant` matches the domain-event `entity_type`; the model stays persistence-only.
+ * After a reviewer/approver rejects a Variant (it stays in `reviewed`, left REVIEW-STALE — a condition DERIVED
+ * from the latest review-freshness-relevant audit verb, never a schema flag), the Creator edits in place and
+ * re-submits: the Variant STAYS in `reviewed`, one `audit_records` row captures the actor and the `decision:
+ * resubmitted`, and NO domain event is recorded. The re-submit is then the freshest review-freshness-relevant
+ * verb, so it clears the activation block-gate — an un-remediated rejection being the Variant's ONLY stale
+ * cause, since its enrichment and whitelist edits are MAINTENANCE (`enrichment_updated` / `whitelist_updated`,
+ * invisible to the review-freshness filter) — and a distinct approver can subsequently activate.
+ * Operator-floored (a `system`/null actor cannot re-submit) and from-state guarded (a re-submit on a
+ * non-`reviewed` Variant throws {@see IllegalLifecycleTransition} and writes nothing). A thin per-entity
+ * wrapper — the entity label `ProductVariant` matches the domain-event `entity_type`; the model stays
+ * persistence-only.
  */
 class ResubmitProductVariantForReview
 {

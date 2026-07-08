@@ -35,18 +35,22 @@ use Illuminate\Database\Eloquent\Model;
  * within-catalog Variant and Format, and the activation-cascade gate (PR ← Variant AND Format active) is
  * surfaced FOR FREE by the view page's wrapper (design L4), never re-checked here.
  *
- * It read-binds to {@see ProductReference} — the ADR-sanctioned exception, OperatorPanel-only and display-only:
- * the resource queries the model (and its WITHIN-Catalog `variant()` / `format()` relations) for the list table
- * + the view infolist and NEVER writes it. Every mutation is a separate Filament Action routed through a Catalog
- * domain action (the kit's view + create pages); there is deliberately NO Edit page and NO Delete/Create default
- * action — the Catalog backend ships no update Action (post-creation field edits are out of scope, proposal
- * slice-boundary), and create lands on a write-through `ProductReferenceResource\Pages\CreateProductReference`
- * page. The PR's `(variant, format)` uniqueness is a DB-structural rule the create page surfaces as a form
- * error (design L5 — the duplicate carries no domain message, so the console owns the localized copy). The
- * no-Eloquent-write PHPStan rule (task 1.2) guards the discipline. Enums are rendered through their cast
- * instances (`->value`), never by importing `App\Modules\Catalog\Enums\*`, so the console's cross-module surface
- * stays exactly {Models, Actions} (the import-boundary carve-out). All user-facing copy is localized through the
- * `operator_console` group (invariant 12).
+ * It read-binds to {@see ProductReference} — the ADR-sanctioned exception, OperatorPanel-only and
+ * display-only: the resource queries the model (and its WITHIN-Catalog `variant()` / `format()` relations) for
+ * the list table + the view infolist and NEVER writes it. Every mutation is a separate Filament Action routed
+ * through a Catalog domain action (the kit's view + create pages); there is deliberately NO Edit page and NO
+ * Delete/Create default action. The reason is twofold, and only half of it is about the backend: the Catalog
+ * backend ships no update Action FOR THIS ENTITY (catalog-module-0-completeness-sweep added edit Actions only
+ * for a Master's identity, a Composite's composition and a Variant's enrichment + whitelist — design D2), and
+ * even where an edit DOES exist the console surfaces it as a modal header action on the View page, never as an
+ * Edit page whose default `$record->save()` would bypass the domain (design D8). Create lands on a
+ * write-through `ProductReferenceResource\Pages\CreateProductReference` page. The PR's `(variant, format)`
+ * uniqueness is a DB-structural rule the create page surfaces as a form error (design L5 — the duplicate
+ * carries no domain message, so the console owns the localized copy). The no-Eloquent-write PHPStan rule (task
+ * 1.2) guards the discipline. Enums are rendered through their cast instances (`->value`), never by importing
+ * `App\Modules\Catalog\Enums\*`, so the console's cross-module surface stays exactly {Models, Actions} (the
+ * import-boundary carve-out). All user-facing copy is localized through the `operator_console` group
+ * (invariant 12).
  */
 class ProductReferenceResource extends OperatorConsoleResource
 {
@@ -101,10 +105,11 @@ class ProductReferenceResource extends OperatorConsoleResource
      * The create form (design L3/L5/L8). Collects the two inputs the Catalog `CreateProductReference` action
      * consumes — the PARENT Product Variant and the PARENT Format (both within-catalog selects; a Product
      * Reference is exactly one Variant + one Format, BR-Identity-3). The form only COLLECTS; the write routes
-     * through the action in `Pages\CreateProductReference::createViaAction()` (there is no Edit page — the Catalog
-     * backend ships no update Action). Neither select is a producer picker (design L6); the duplicate `(variant,
-     * format)` pair is surfaced as a form error by the Create page, not pre-checked here. All labels localized
-     * (invariant 12).
+     * through the action in `Pages\CreateProductReference::createViaAction()` (there is no Edit page — the
+     * Catalog backend ships no update Action for this entity, and the edits that DO exist elsewhere in Module
+     * 0 are modal header actions on their View page, never Edit pages). Neither select is a producer picker
+     * (design L6); the duplicate `(variant, format)` pair is surfaced as a form error by the Create page, not
+     * pre-checked here. All labels localized (invariant 12).
      */
     public static function form(Schema $schema): Schema
     {

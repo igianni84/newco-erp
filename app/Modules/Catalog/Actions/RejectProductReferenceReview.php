@@ -14,11 +14,13 @@ use App\Modules\Catalog\Models\ProductReference;
  * A reviewer or approver rejects a PR in `reviewed`: the PR STAYS in `reviewed` (there is no revert to
  * `draft`), one `audit_records` row captures the actor, the `decision: rejected` and the `$notes`, and NO
  * domain event is recorded. The PR is then edited in place and the approval flow continues — the append-only
- * audit trail preserves the full rejection history, and "rejection-pending" is DERIVED from the latest
- * governance audit action (no schema flag) so a later approval clears it. Operator-floored (a `system`/null
- * actor cannot reject) and from-state guarded (a reject on a non-`reviewed` PR throws
- * {@see IllegalLifecycleTransition} and writes nothing). A thin per-entity wrapper — the entity label
- * `ProductReference` matches the domain-event `entity_type`; the model stays persistence-only.
+ * audit trail preserves the full rejection history, and the un-remediated rejection leaves the entity
+ * REVIEW-STALE — a condition DERIVED from the latest review-freshness-relevant audit verb, never a schema flag
+ * (`ApprovalGovernance`). Only an explicit re-submit clears it; a later approval cannot, because a
+ * review-stale entity is not activatable by ANY operator. Operator-floored (a `system`/null actor cannot
+ * reject) and from-state guarded (a reject on a non-`reviewed` PR throws {@see IllegalLifecycleTransition} and
+ * writes nothing). A thin per-entity wrapper — the entity label `ProductReference` matches the domain-event
+ * `entity_type`; the model stays persistence-only.
  */
 class RejectProductReferenceReview
 {

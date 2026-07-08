@@ -7,21 +7,30 @@ updated: 2026-07-08
 # Hot Cache
 
 ## Last Updated
-**2026-07-08 (pm) — P3 sweep AUTHORED + APPROVED ✅: [`catalog-module-0-completeness-sweep`](openspec/changes/catalog-module-0-completeness-sweep/) is ready to build.** `/spec-to-change` on RM-12+13+14+15 (Module 0 completeness) + the mandatory RM-06 S1 fold-in + the console-resubmit truth-spec sync (F4 precedent); `openspec validate --strict` green. Giovanni reviewed and created the `APPROVED` marker (14:53, human-only protected file); scaffolding + marker committed as one `approve:` commit (anti-exit-5). Details: tracker §1/§6 + the change's proposal/design.
+**2026-07-08 (eve) — `catalog-module-0-completeness-sweep` is CODE-COMPLETE, 16/16 tasks.** Awaiting human review → merge → semantic-verify → archive.
 
 ## Build & Quality Status
-- Stack: PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint. Full suite **2080/2080 on SQLite AND PG17** (10 854 assertions each) · PHPStan max **0** · Pint **clean** (unchanged — this session wrote change artifacts + docs only, zero code).
-- Run the suite via `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs at 128 MB). **PG17 recipe:** `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco php -d memory_limit=-1 vendor/bin/pest`.
+- PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
+- **Full verify (task 7.2), both engines:** SQLite **2206/2206** (11 682 assertions) · PG17 **2206/2206** (11 685 — the surplus is the PG-only CHECK lane). PHPStan **0** · Pint clean · `validate --strict` valid.
+- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). **PG17:** prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco`.
 
 ## Active Change & Next Task
-- **In flight (authored + APPROVED ✅, not yet built): `catalog-module-0-completeness-sweep`** — 12 delta reqs (5 ADDED / 7 MODIFIED on `product-catalog` + `operator-console`) · design D1–D11 · **15 tasks / 7 groups**. Key decisions (interview 2026-07-08, 3 rounds, 11 decisions): re-versioning = in-place + `version`++ (audit = old-version retrievability) · edit scope AC-minimum (Master identity ×4 fields, Composite composition, Variant enrichment `tasting_notes`, whitelist) · whitelist = pivot per-(Variant, Format), empty ⇒ permissive, gate at SKU activation, maintenance audit-only even on `active` · reviewed-state identity edit **re-arms review** (blocked until explicit resubmit) · **S1 = 4-suffix filter** (`.submitted/.resubmitted/.rejected/.identity_updated`) on BOTH readers — `ApprovalGovernance` AND console `isRejectionPending` (same raw-read hole, found at authoring) · RM-15 = projection widened (`ProducerCreated` → `registered`, enum 2→3, existence guard in `CreateProductMaster`; no mini-ADR, design D7 records it).
-- **NEXT: launch the loop — `./ralph.sh --change catalog-module-0-completeness-sweep`** (APPROVED + scaffolding already committed as `approve:` — the integrity baseline contains the marker, exit-5 cannot fire). 15 tasks, one per iteration, group 1 first (whitelist schema → S1 filter → edit mechanic). Loop landmines pre-mapped: design R1 (RM-15 blast radius — grep `CreateProductMaster` callers), R2 (`EnumsTest` 2→3), R3 (console/domain freshness uniformity), R5 (i18n EN+IT scanners).
-- **Then: RM-05** (capacity seat-set + WaitingList, last P1) via **K-side seam, ADR-first (grill-with-docs)** — dedicated session, do not fold into the sweep.
+- Branch `ralph/catalog-module-0-completeness-sweep` — 12 delta reqs · 52 scenarios · design D1–D11 · 16 tasks, **all `[x]`**. Interview decisions: `design.md`.
+- `progress.md` carries the **delta→test traceability table** (every scenario → its named tests) and names the 5 deferred seams once (Module A Layer-2 · the Module S `EnrichmentDataUpdated` consumer · enrichment adapter columns · `producer_name` · the DEC-071 KYC tightening).
+- Every reusable mechanic: `progress.md` → `## Codebase Patterns` (132 bullets). **Read it first.**
+- **NEXT: RM-05** (capacity seat-set + WaitingList, the last P1) via the **K-side seam, ADR-first** — its own session.
+- Landmines: R5 (console keys EN+IT; catalog **domain** reasons EN-only), R6 (a `{@see FQCN}` on a `Catalog\Events`/`Lifecycle` type — Pint auto-imports it, redding `ModuleBoundariesTest`).
 
 ## Blockers & Decisions Needed
-- None — the sweep is APPROVED and committed; only the ralph launch (Giovanni's call: loop vs interactive) remains.
+- None. Humans push, merge and archive.
 
 ## Open Patterns
-- **Batched changes amortize the §2.7 ceremony without diluting rigor** — per-item grounding + per-item delta tracing held for a 4-item M-batch (lessons 2026-07-07 + 2026-07-08 amendment).
-- **Derive-from-audit predicates must name their verb set** — any second audit writer breaks a raw latest-read (S1); the 4-suffix filter + verb-collision discipline (design D5) is the durable form. Watch it recur on future audit-adjacent gates (candidate for `knowledge/architecture/` after the build confirms).
-- Console kit duplicates domain derivations (visibility gates) — sweep both sides when the domain predicate changes (design D9/R3).
+- **A scenario's coverage is an ORDERING claim, not a set-of-facts claim** (new, `knowledge/testing/hypotheses.md`). Where a GIVEN establishes state and the WHEN is an event *landing on* it, a test that builds the state AFTER the trigger asserts every fact and drops the "…left unchanged as a side effect" clause. 7.2 found exactly this: ten tests delivered `ProducerActivated`, all ten before any Master existed — while the sibling `ProducerRetired` scenario was always tested the right way round. **Sibling scenarios diverge silently in test SHAPE.**
+- **An "untouched" ids-snapshot passes for free on an EMPTY trail** (`[] === []`). Pin the literal ordered ACTION list so the assertion proves its own non-vacuity.
+- **A residual-claim sweep must include `tests/`.** 7.1 swept `app/`; a stale `draft-as-absent` gate description survived in a test docblock. Test prose rots and nothing catches it.
+- **Uniformity of the OLD claim is no evidence of uniformity of the NEW one** (`lessons.md` 2026-07-08). Enumerate from the code which files a replacement is TRUE for.
+- **Three Filament test helpers lie**, failing as if the SUT were broken (`knowledge/filament/hypotheses.md`): `callAction()` cannot SHRINK a prefilled list; `assertHasActionErrors()` truncates the message at the first `:`; `assertNotified()` asserts the TITLE and PULLS the session.
+- **A rejection's landing place is set by the console action's SHAPE.** Verb-shaped ⇒ danger notification; form-shaped ⇒ validation error on ONE designated field (design L4).
+- **`ApprovalGovernance::creatorOf` reads the EARLIEST `domain_events` row, unfiltered.** A factory-built entity has no creation event, so an SoD-subject test must build through the real `Create*` lineage.
+- **`version` is the IDENTITY version.** *No `version`* / *no re-arm* / *no event* are ONE fact.
+- **The grep is the candidate set; only the FULL suite is the blast radius.**

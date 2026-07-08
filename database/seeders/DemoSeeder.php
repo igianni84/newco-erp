@@ -170,6 +170,11 @@ class DemoSeeder extends Seeder
                 'catalog_composite_skus',
                 'catalog_sellable_skus',
                 'catalog_product_references',
+                // Layer-1 whitelist pivot. Swept even though the demo seeds no rows into it yet (task 6.2's
+                // console modal will): a truncate list that lags the schema is a silent re-run bug in waiting,
+                // and the whitelist's FKs into variants/formats/case-configurations are exactly the rows this
+                // sweep is about to remove.
+                'catalog_variant_case_whitelists',
                 'catalog_product_variant_wine_attributes',
                 'catalog_product_variants',
                 'catalog_product_master_wine_attributes',

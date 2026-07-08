@@ -57,6 +57,7 @@ use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 use function Pest\Laravel\actingAs;
 
@@ -64,14 +65,17 @@ uses(DatabaseMigrations::class);
 
 /**
  * A draft Master created through the real Catalog action as the currently-acting operator (records
- * ProductMasterCreated, no audit row). Submit/reject do not consult the producer gate (only activate does),
- * so no producer-state projection is needed for these checkpoints.
+ * ProductMasterCreated, no audit row). Submit/reject do not consult the producer GATE (only activate does), but
+ * creation itself now demands the producer EXIST (AC-0-XM-2, task 5.2) — so the projection row is seeded here,
+ * `registered`: the weakest status that admits creation and still leaves the gate closed. A caller that needs an
+ * ACTIVATABLE producer projects `active` first (see lifecycleConsoleActiveMaster); the fixture is idempotent, so
+ * the richer status survives.
  */
 function lifecycleConsoleDraftMaster(int $producerId = 55, string $name = 'Château Console', string $appellation = 'Pauillac'): ProductMaster
 {
     return app(CreateProductMaster::class)->handle(
         name: $name,
-        producerId: $producerId,
+        producerId: ProducerProjectionFixture::known($producerId),
         appellation: $appellation,
         region: 'Bordeaux',
     );
@@ -298,8 +302,9 @@ it('surfaces the Producer-activation gate block as a danger notification, leavin
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    // Producer 9 is NEVER projected active (no row) — the gate rejects. The three actors are distinct, so the
-    // approval governance passes and the GATE is the sole rejection (proving the console surfaces the gate).
+    // Producer 9 is only `registered` — it EXISTS (so creation is admitted, AC-0-XM-2) but is not `active`, so
+    // the gate rejects. The three actors are distinct, so approval governance passes and the GATE is the sole
+    // rejection (proving the console surfaces the gate).
     actingAs($creator, 'operator');
     $master = lifecycleConsoleDraftMaster(producerId: 9);
 
@@ -683,7 +688,7 @@ it('surfaces an out-of-state cascade retire as a danger notification, changing n
 | The review-freshness re-arm on the console (RM-06 / canon MVP-DEC-019; design D2/D5). The console gains a
 | `re-submit` header action wired through the shared kit's lifecycleAction factory to
 | ResubmitProductMasterForReview (never an Eloquent write). Its ->visible() is gated to the DERIVED
-| rejection-pending read (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated
+| rejection-pending read (OperatorConsoleViewRecord::isReviewStale) — OFFERED only while an un-remediated
 | rejection blocks activation, HIDDEN otherwise. The block-gate itself needs no console code: an activation
 | attempt on a rejection-pending Master throws ApprovalGovernanceViolation, which the kit's
 | surfaceLifecycleOutcome renders as an action_failed danger notification for free (design D5). A hidden
@@ -699,7 +704,7 @@ it('offers re-submit only when the Master is rejection-pending — hidden on a f
     app(SubmitProductMasterForReview::class)->handle($master);
 
     // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit
-    // is NOT offered — the action is HIDDEN (design D5; isRejectionPending).
+    // is NOT offered — the action is HIDDEN (design D5; isReviewStale).
     Livewire::test(ViewProductMaster::class, ['record' => $master->getKey()])
         ->assertActionHidden('resubmit');
 

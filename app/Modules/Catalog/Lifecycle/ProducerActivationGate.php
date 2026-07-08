@@ -19,12 +19,16 @@ use App\Modules\Catalog\Models\ProducerState;
  * BOUNDARY LAW (invariant 10): the gate answers "is producer X `active`?" WITHOUT querying Module K — it
  * reads ONLY the Catalog-owned producer-state projection ({@see ProducerState}), the read model the
  * {@see ProducerLifecycleProjector} maintains from the consumed
- * `ProducerActivated`/`ProducerRetired` events. No `App\Modules\Parties\*` type is imported or queried.
+ * `ProducerCreated`/`ProducerActivated`/`ProducerRetired` events. No `App\Modules\Parties\*` type is imported
+ * or queried.
  *
- * Fail-closed (the spec's "not gated open"): a producer with NO projection row — never activated, or a
- * `draft` producer that has emitted no `ProducerActivated` (so it never reached this read model) — is
- * treated exactly like a `retired` producer: the gate rejects. Only a row whose `status` is precisely
- * `active` opens the gate. The read is intentionally lock-free (a read-time gate, design D3 risk note): an
+ * Fail-closed (the spec's "not gated open"): ONLY a row whose `status` is precisely `active` opens the gate.
+ * A `registered` producer (it exists — `CreateProductMaster`'s existence guard admits a Master under it — but
+ * has never been activated) and a `retired` one both reject, and so does a producer with NO projection row at
+ * all (unknown to Catalog; unreachable through the real creation lineage since
+ * catalog-module-0-completeness-sweep, but the gate never gates open on absence). **Existence ≠ activeness**
+ * is the whole distinction: the same projection answers both questions, at different granularities.
+ * The read is intentionally lock-free (a read-time gate, design D3 risk note): an
  * activation decided while the producer was `active` is valid even if a `ProducerRetired` commits a moment
  * later (block-NEW, never cascade-retire an in-flight activation).
  */

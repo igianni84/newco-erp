@@ -16,10 +16,12 @@ return new class extends Migration
      *
      * Nullable by design — it is a pure display field, irrelevant to the gate. It is populated wherever a
      * projection row is written with the name in hand (the DemoSeeder; a console/test fixture). The
-     * event-driven runtime projector currently leaves it null — the producer lifecycle events
-     * (`ProducerActivated`/`ProducerRetired`) do not carry the name in their payload yet — and the console
-     * falls back to the bare id, so the column is additive and safe. Carrying the name on those events (a
-     * one-line Module K payload enrichment) is the deferred follow-up that lights up the runtime path.
+     * event-driven runtime projector still leaves it null and the console falls back to the bare id, so the
+     * column is additive and safe. The REASON changed with catalog-module-0-completeness-sweep task 5.1:
+     * `ProducerActivated`/`ProducerRetired` still carry no name, but the newly-consumed `ProducerCreated` DOES
+     * — and the projector deliberately reads only `producer_id` off it, because widening that read would make
+     * this display column event-shaped. Lighting up the runtime path stays a separate, deliberate follow-up
+     * (project the name off `ProducerCreated`, or enrich the two lifecycle payloads).
      *
      * Postgres-truthful, SQLite-compatible: a plain nullable string on both engines, no CHECK, no backfill.
      */

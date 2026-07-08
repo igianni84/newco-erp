@@ -386,7 +386,7 @@ it('retires the Case Configuration once no active Sellable SKU references it (a 
 | visibility-gated re-submit the Product Master console gained in task 4.1, now on every spine console. Re-submit
 | routes through the shared kit's lifecycleAction factory to ResubmitCaseConfigurationForReview (never an Eloquent
 | write); its ->visible() is gated to the DERIVED rejection-pending read
-| (OperatorConsoleViewRecord::isRejectionPending) — OFFERED only while an un-remediated rejection blocks
+| (OperatorConsoleViewRecord::isReviewStale) — OFFERED only while an un-remediated rejection blocks
 | activation, HIDDEN otherwise. A ->visible()-false action is undrivable via test helpers, so the gating is proven
 | with assertActionHidden/assertActionVisible and the re-arm is driven while re-submit IS visible (lessons.md
 | 2026-06-23/24).
@@ -400,7 +400,7 @@ it('offers re-submit on the Case Configuration console only when rejection-pendi
     app(SubmitCaseConfigurationForReview::class)->handle($caseConfiguration);
 
     // Fresh `reviewed` (never rejected): the derived rejection-pending read is false, so a redundant re-submit is
-    // NOT offered — the action is HIDDEN (design D5; OperatorConsoleViewRecord::isRejectionPending).
+    // NOT offered — the action is HIDDEN (design D5; OperatorConsoleViewRecord::isReviewStale).
     Livewire::test(ViewCaseConfiguration::class, ['record' => $caseConfiguration->getKey()])
         ->assertActionHidden('resubmit');
 

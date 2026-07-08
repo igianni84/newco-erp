@@ -12,8 +12,6 @@ use App\Platform\Events\DomainEventRecorder;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use LogicException;
 
 /**
  * The shared lifecycle-transition mechanism — ONE place that drives the uniform spine FSM
@@ -220,14 +218,17 @@ class LifecycleTransition
      * Record a review RE-SUBMIT (§ 4.3; RM-06 / canon MVP-DEC-019): a `reviewed → reviewed` governance
      * DECISION that changes no state — the twin of {@see reject()} that RE-ARMS the approval flow after a
      * rejection. The entity stays in `reviewed`, one `audit_records` row captures the actor and the
-     * `decision: resubmitted`, and NO domain event is recorded. Because "rejection-pending" is DERIVED from
-     * the entity's latest governance audit action (design D3/D5 — no schema flag), the re-submit is the
-     * freshest action and so clears the review-freshness activation block-gate (task 2.2) without any revert
-     * to `draft`; the append-only trail preserves the full reject → re-submit history. From-state guarded
-     * (only a `reviewed` entity may be re-submitted, else {@see IllegalLifecycleTransition::cannotResubmit()})
-     * and operator-floored (a `system`/null actor cannot re-submit — a Creator's re-submission is inherently
-     * human). No `$notes` argument: the "what changed" history is RM-14's re-versioning concern (design D2),
-     * not a free-text note here.
+     * `decision: resubmitted`, and NO domain event is recorded. Because REVIEW-STALENESS is DERIVED from the
+     * entity's latest REVIEW-FRESHNESS-RELEVANT audit verb (`submitted` / `resubmitted` / `rejected` /
+     * `identity_updated` — the verb-filtered derivation in {@see ApprovalGovernance}, never a schema flag), the
+     * re-submit is the freshest such verb and so clears the activation block-gate for BOTH
+     * stale causes — an un-remediated rejection and an un-re-reviewed `identity_updated` edit — without any
+     * revert to `draft`; the append-only trail preserves the full reject → edit → re-submit history. From-state
+     * guarded (only a `reviewed` entity may be re-submitted, else
+     * {@see IllegalLifecycleTransition::cannotResubmit()}) and operator-floored (a `system`/null actor cannot
+     * re-submit — a Creator's re-submission is inherently human). No `$notes` argument: the "what changed"
+     * history is carried by the edit's OWN audit row (the changed fields' before/after, written by
+     * {@see CatalogContentEdit}), not by a free-text note here.
      *
      * @template TModel of Model&HasLifecycleState
      *
@@ -278,20 +279,18 @@ class LifecycleTransition
 
     /**
      * Record ONE audit row for a lifecycle step in the current transaction (invariant 8). The action is
-     * `catalog.<entity>.<verb>` — the entity segment derived from the model's own table
-     * (`catalog_product_masters` → `product_master`), the canonical snake-case identifier, so it never drifts
-     * and reads cleanly even for the SKU acronyms (`catalog_sellable_skus` → `sellable_sku`). The actor is
-     * the {@see ActorContext} principal; the basis is the catalog-lifecycle authority.
+     * `catalog.<segment>.<verb>`, derived through the shared {@see CatalogAuditEnvelope} — the SAME derivation
+     * the sibling content-edit writer ({@see CatalogContentEdit}) uses, so the two catalog audit writers can
+     * never spell the segment differently and blind {@see ApprovalGovernance}'s suffix-matched review-freshness
+     * reader. The actor is the {@see ActorContext} principal; the basis is the catalog-lifecycle authority.
      *
      * @param  array<string, mixed>  $before  the pre-step snapshot
      * @param  array<string, mixed>  $after  the post-step snapshot (a rejection adds `decision` + `notes`)
      */
     private function recordAudit(Model $model, string $entityId, string $verb, string $entity, array $before, array $after): void
     {
-        $segment = Str::singular(Str::after($model->getTable(), 'catalog_'));
-
         $this->auditRecorder->record(
-            action: "catalog.{$segment}.{$verb}",
+            action: CatalogAuditEnvelope::action($model, $verb),
             module: Module::Catalog->value,
             actorRole: $this->actor->role(),
             actorId: $this->actor->actorId(),
@@ -303,16 +302,9 @@ class LifecycleTransition
         );
     }
 
-    /** The model's primary key as the audit envelope's string `entity_id`. */
+    /** The model's primary key as the audit envelope's string `entity_id` (the shared derivation). */
     private function entityId(Model $model): string
     {
-        $key = $model->getKey();
-
-        // Every lifecycle spine entity keys on an auto-increment integer; a non-scalar key is a structural bug.
-        if (! is_int($key) && ! is_string($key)) {
-            throw new LogicException('A lifecycle entity must have a scalar primary key.');
-        }
-
-        return (string) $key;
+        return CatalogAuditEnvelope::entityId($model);
     }
 }

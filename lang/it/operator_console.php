@@ -66,6 +66,7 @@ return array_replace_recursive([
             'retire' => 'Ritira',
             'retire_cascade' => 'Ritira (a cascata)',
             'reopen' => 'Riapri',
+            'edit_identity' => 'Modifica identità',
         ],
 
         'affordance' => [
@@ -82,6 +83,7 @@ return array_replace_recursive([
             'cascade_retired' => 'Product Master e i suoi discendenti attivi ritirati.',
             'reopened' => 'Product Master riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
+            'identity_updated' => 'Identità del Product Master aggiornata; registrata una nuova versione.',
         ],
 
         'producer_unprojected' => 'Non proiettato',
@@ -195,6 +197,10 @@ return array_replace_recursive([
             'tasting_notes' => 'Note di degustazione',
             'tasting_notes_help' => 'Facoltativo. Inserito in inglese, la lingua di base.',
             'rejection_notes' => 'Note di rifiuto',
+            // "Case Configuration" resta invariato: è un termine strutturale di dominio (CONTEXT.md).
+            'whitelist_format' => 'Formato',
+            'whitelist_case_configurations' => 'Case Configuration ammesse',
+            'whitelist_case_configurations_help' => 'Sostituisce l’insieme ammesso per il Formato scelto. Lascialo vuoto per riammettere ogni Case Configuration.',
         ],
 
         'values' => [
@@ -211,6 +217,8 @@ return array_replace_recursive([
             'activate' => 'Attiva',
             'retire' => 'Ritira',
             'reopen' => 'Riapri',
+            'edit_enrichment' => 'Modifica note di degustazione',
+            'manage_whitelist' => 'Gestisci whitelist dei case',
         ],
 
         'affordance' => [
@@ -225,6 +233,8 @@ return array_replace_recursive([
             'retired' => 'Product Variant ritirato.',
             'reopened' => 'Product Variant riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
+            'enrichment_updated' => 'Note di degustazione salvate.',
+            'whitelist_updated' => 'Whitelist dei case salvata per questo Formato.',
         ],
     ],
 
@@ -342,6 +352,7 @@ return array_replace_recursive([
             'activate' => 'Attiva',
             'retire' => 'Ritira',
             'reopen' => 'Riapri',
+            'edit_composition' => 'Modifica composizione',
         ],
 
         'affordance' => [
@@ -356,6 +367,7 @@ return array_replace_recursive([
             'retired' => 'Composite SKU ritirato.',
             'reopened' => 'Composite SKU riaperto per la revisione.',
             'action_failed' => 'Impossibile completare l’azione.',
+            'composition_updated' => 'Composizione salvata.',
         ],
     ],
 

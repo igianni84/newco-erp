@@ -27,6 +27,7 @@ use App\Modules\Module;
 use App\Platform\Events\DomainEvent;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Catalog\ProducerProjectionFixture;
 
 /**
  * The full-chain integration test — the substrate-wiring proof for the whole product-catalog spine, driven
@@ -76,7 +77,7 @@ function createCatalogSpineChain(): array
 
     $master = app(CreateProductMaster::class)->handle(
         name: 'Château Margaux',
-        producerId: 1001,
+        producerId: ProducerProjectionFixture::known(1001),
         appellation: 'Margaux',
         region: 'Bordeaux',
     );
@@ -199,11 +200,11 @@ it('holds the identity dedup in the integrated flow — a duplicate Master is re
     // The first Master persists; a second with the SAME non-retired identity tuple (producer + name +
     // appellation) is rejected — BR-Identity-1 holds when the action is exercised through the live flow, not
     // only in the unit-level ProductMasterTest (AC-0-J-4 creation half includes the dedup gate).
-    app(CreateProductMaster::class)->handle(name: 'Château Latour', producerId: 1001, appellation: 'Pauillac', region: 'Bordeaux');
+    app(CreateProductMaster::class)->handle(name: 'Château Latour', producerId: ProducerProjectionFixture::known(1001), appellation: 'Pauillac', region: 'Bordeaux');
 
     expect(fn () => app(CreateProductMaster::class)->handle(
         name: 'Château Latour',
-        producerId: 1001,
+        producerId: ProducerProjectionFixture::known(1001),
         appellation: 'Pauillac',
         region: 'Bordeaux',
     ))->toThrow(DuplicateProductMasterIdentity::class);
@@ -220,11 +221,11 @@ it('accepts a multi-producer Composite in the integrated flow — PIM is produce
     // differ), so the constituent set is genuinely multi-producer.
     $format = app(CreateFormat::class)->handle(name: 'Bordeaux 750ml', sizeLabel: '750ml', volumeMl: 750);
 
-    $masterA = app(CreateProductMaster::class)->handle(name: 'Château A', producerId: 1001, appellation: 'Margaux', region: 'Bordeaux');
+    $masterA = app(CreateProductMaster::class)->handle(name: 'Château A', producerId: ProducerProjectionFixture::known(1001), appellation: 'Margaux', region: 'Bordeaux');
     $variantA = app(CreateProductVariant::class)->handle(productMasterId: $masterA->id, variantIdentifier: '2015', vintageYear: 2015);
     $referenceA = app(CreateProductReference::class)->handle(productVariantId: $variantA->id, formatId: $format->id);
 
-    $masterB = app(CreateProductMaster::class)->handle(name: 'Château B', producerId: 2002, appellation: 'Pomerol', region: 'Bordeaux');
+    $masterB = app(CreateProductMaster::class)->handle(name: 'Château B', producerId: ProducerProjectionFixture::known(2002), appellation: 'Pomerol', region: 'Bordeaux');
     $variantB = app(CreateProductVariant::class)->handle(productMasterId: $masterB->id, variantIdentifier: '2016', vintageYear: 2016);
     $referenceB = app(CreateProductReference::class)->handle(productVariantId: $variantB->id, formatId: $format->id);
 

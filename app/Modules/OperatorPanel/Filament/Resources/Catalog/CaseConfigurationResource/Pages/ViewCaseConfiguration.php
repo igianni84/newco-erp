@@ -29,9 +29,12 @@ use Illuminate\Database\Eloquent\Model;
  * no-Eloquent-write rule, task 1.2); the console SURFACES the domain's decision — the from-state guard, the
  * Creator → Reviewer → Approver separation-of-duties floor, AND the retire reference-integrity block (a Case
  * Configuration referenced by an `active` Sellable SKU cannot be retired out from under it — the wrapper
- * renders the domain's {@see RetireCaseConfiguration} rejection as a danger notification) — it reimplements none
- * of them (design L4). There is NO field-edit (the Catalog backend ships no update action — lifecycle
- * TRANSITIONS only, proposal slice-boundary). All copy is localized (invariant 12).
+ * renders the domain's {@see RetireCaseConfiguration} rejection as a danger notification) — it reimplements
+ * none of them (design L4). There is NO field-edit: lifecycle TRANSITIONS only, because the Catalog backend
+ * ships no update Action for this entity (catalog-module-0-completeness-sweep added edit Actions only for a
+ * Master's identity, a Composite's composition and a Variant's enrichment + whitelist — design D2); the pages
+ * that DO carry a field-edit surface it as a modal header action, never as an Edit page (design D8). All copy
+ * is localized (invariant 12).
  */
 class ViewCaseConfiguration extends OperatorConsoleViewRecord
 {
@@ -63,12 +66,14 @@ class ViewCaseConfiguration extends OperatorConsoleViewRecord
 
     /**
      * The kit's five uniform lifecycle actions PLUS the visibility-gated re-submit shared by all seven catalog
-     * consoles (RM-06 / canon MVP-DEC-019; design D2/D5). Re-submit RE-ARMS the approval flow after a rejection —
-     * a `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitCaseConfigurationForReview}
-     * (never an Eloquent write). Its `->visible()` is gated to {@see isRejectionPending()} (the derived read):
-     * re-submit is OFFERED only while an un-remediated rejection blocks activation, HIDDEN otherwise. The
-     * block-gate itself needs no console code — an activation attempt on a rejection-pending Case Configuration
-     * throws `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
+     * consoles (RM-06 / canon MVP-DEC-019 and its edit leg; design D2/D5 + catalog-module-0-completeness-sweep
+     * D4/D9). Re-submit RE-ARMS the approval flow after a rejection OR an identity edit — a
+     * `reviewed → reviewed` audit-only decision this page SURFACES via {@see ResubmitCaseConfigurationForReview} (never an
+     * Eloquent write). Its `->visible()` is gated to {@see isReviewStale()} (the derived, verb-filtered read):
+     * re-submit is OFFERED only while the entity is REVIEW-STALE — its latest review-freshness-relevant audit
+     * action is an un-remediated rejection or an un-re-reviewed identity edit — and HIDDEN otherwise. The
+     * block-gate itself needs no console code: an activation attempt on a review-stale Case Configuration throws
+     * `ApprovalGovernanceViolation`, which the kit's `surfaceLifecycleOutcome` renders as an `action_failed`
      * danger notification for free.
      *
      * @return array<int, Action>
@@ -81,7 +86,7 @@ class ViewCaseConfiguration extends OperatorConsoleViewRecord
                 'resubmit',
                 'resubmitted',
                 fn (Model $record, string $notes) => app(ResubmitCaseConfigurationForReview::class)->handle($this->recordOf(CaseConfiguration::class, $record)),
-            )->visible(fn (): bool => $this->isRejectionPending()),
+            )->visible(fn (): bool => $this->isReviewStale()),
         ];
     }
 }
