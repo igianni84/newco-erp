@@ -68,6 +68,19 @@ return [
         // activation_blocked_by_unreviewed_edit cause.
         'cannot_edit' => 'Cannot edit this :entity from state :state. A retired :entity must be reopened for review before its content can be changed.',
     ],
+    'reference' => [
+        // A catalog write named a within-module entity by id and that entity does not exist (design D6;
+        // product-catalog — Requirement: Layer-1 Case-Configuration Whitelist). The referenced ids are
+        // FK-backed, so the DATABASE would refuse the write anyway — as a driver error carrying a constraint
+        // name and no operator-facing meaning. This reason is the DOMAIN rejection that replaces it, raised
+        // inside the write's transaction before any row is touched (the FK stays as the structural backstop).
+        // One parameterized UnknownCatalogReference serves every reference kind (Format, CaseConfiguration, …):
+        // :entity is the entity-type name and :ids the OFFENDING subset — the ids that resolved to nothing,
+        // never the whole input — so a single stale id in a set names itself. NEITHER is PII (an entity-type
+        // label and surrogate keys). The reason deliberately avoids the word `edited`, the discriminating token
+        // of the lifecycle group's activation_blocked_by_unreviewed_edit cause.
+        'unknown_reference' => 'Cannot complete this catalog write: it references :entity ids that do not exist (:ids). Only existing entities may be referenced.',
+    ],
     'approval' => [
         // The Creator → Reviewer → Approver separation-of-duties floor on every commercial-impact transition
         // (design D5; Module 0 PRD § 4.2). The audit trail is the system of record for which actor performed

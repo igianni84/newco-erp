@@ -14,17 +14,35 @@ use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
- * The shared CONTENT-EDIT mechanism — ONE place that performs an in-place, re-versioning edit of a Module 0
- * spine entity's content (catalog-module-0-completeness-sweep, design D1/D2/D3; product-catalog — Requirement:
- * In-Place Versioned Identity Edits; Module 0 PRD BR-Audit-1, DEC-073).
+ * The shared CONTENT-EDIT mechanism — ONE place that performs an in-place write to a Module 0 spine entity's
+ * content (catalog-module-0-completeness-sweep, design D1/D2/D3/D6/D11; product-catalog — Requirements: In-Place
+ * Versioned Identity Edits, Layer-1 Case-Configuration Whitelist, Enrichment Data Update; Module 0 PRD
+ * BR-Audit-1, DEC-073).
  *
  * An edit is NOT a lifecycle transition — it changes content, not `lifecycle_state` — so it lives BESIDE
  * {@see LifecycleTransition} rather than inside it (design D3): folding an edit into a transition FSM would
  * muddy a state machine with non-transitions. The two mechanisms are deliberate mirrors: the same
  * transaction + locked re-read, the same operator floor, the same audit envelope (shared verbatim through
  * {@see CatalogAuditEnvelope}). Per-entity thin Actions (`UpdateProductMasterIdentity`,
- * `UpdateCompositeSkuComposition`, …) call {@see edit()} with the model, the canonical entity label, their
- * audit VERB and an `$apply` closure carrying their field semantics; the mechanism owns everything else.
+ * `UpdateCompositeSkuComposition`, `SetVariantCaseWhitelist`, …) call one of the two entry points with the
+ * model, the canonical entity label, their audit VERB and an `$apply` closure carrying their field semantics;
+ * the mechanism owns everything else.
+ *
+ * TWO entry points, over ONE set of guards — the difference is `version`, and `version` means *identity*:
+ *
+ *   {@see edit()} — a RE-VERSIONING edit of review-governed identity content (`identity_updated`). The entity's
+ *   `version` increments by exactly one; the audit row carries it on both sides. What the reviewer approved has
+ *   changed, so the entity becomes review-stale (see below).
+ *
+ *   {@see maintain()} — an audit-only MAINTENANCE write of data that is NOT the entity's identity: the Layer-1
+ *   case-configuration whitelist (a statement about how this product *could* be packaged — design D6) and the
+ *   observational enrichment prose (design D11). `version` is untouched: nothing an approver signed off on has
+ *   moved, so re-stamping the identity version would be a lie to every downstream reader that watches it. The
+ *   state guard, the operator floor, the lock and the audit row are IDENTICAL — a maintenance write is no less
+ *   an operator decision, and no less auditable, than an identity edit.
+ *
+ * The split is therefore semantic, not a convenience flag: a caller that must ask "should this bump `version`?"
+ * is really asking "is this the entity's identity?", and the two verbs answer it at the call site.
  *
  * This class makes Module 0 a TWO-writer audit trail (it ends the era in which `LifecycleTransition` was the
  * sole catalog audit writer) — which is exactly why {@see ApprovalGovernance}'s review-freshness condition is
@@ -34,6 +52,9 @@ use LogicException;
  * the four review-freshness suffixes (`submitted` / `resubmitted` / `rejected` / `identity_updated`) unless it
  * is MEANT to participate in review freshness. `identity_updated` participates deliberately: review-governed
  * content changed, so the entity is review-stale until it is explicitly re-submitted (the DEC-019 re-arm leg).
+ * A {@see maintain()} verb never may — which is the same statement as "it does not touch `version`", read from
+ * the governance side: the whitelist and the enrichment prose are not what the reviewer approved, so a
+ * reviewed-then-maintained entity still activates without a re-submit.
  *
  * Re-versioning is IN-PLACE (design D1): the same row keeps its primary key and every downstream reference,
  * `version` increments by exactly one in the SAME `UPDATE` as the field writes, and the append-only,
@@ -90,15 +111,18 @@ class CatalogContentEdit
     ) {}
 
     /**
-     * Apply an in-place, re-versioning content edit to $model under $verb, recording ONE audit row; returns
+     * Apply an in-place, RE-VERSIONING content edit to $model under $verb, recording ONE audit row; returns
      * the edited model (re-read under the row lock, reflecting the new content and `version`).
+     *
+     * For review-governed IDENTITY content only: `version` increments by exactly one and the audit row carries
+     * it on both sides. Data that is not the entity's identity goes through {@see maintain()} instead.
      *
      * @template TModel of Model&HasLifecycleState
      *
      * @param  TModel  $model  the spine entity to edit (carrying the `version` integer column every spine table has)
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductMaster`) for the audit record + the rejections
-     * @param  string  $verb  the audit action's verb segment (`identity_updated`, `enrichment_updated`, `whitelist_updated`) — governed by the D5 collision discipline
-     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics, invoked inside this transaction AFTER both guards pass, against the LOCKED model — the place for its own re-checks (identity dedup, N ≥ 2, constituent state) and for any related-row writes (per-type attribute sets, join tables). It returns the entity's OWN changed columns (`attributes`, merged with the `version` increment into a single UPDATE) plus the `before`/`after` snapshots of the changed fields for the audit row.
+     * @param  string  $verb  the audit action's verb segment (`identity_updated`) — governed by the D5 collision discipline
+     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics — see {@see perform()}
      * @return TModel
      *
      * @throws IllegalContentEdit when the locked row is `retired` (content is editable only in draft/reviewed/active)
@@ -110,7 +134,67 @@ class CatalogContentEdit
         string $verb,
         Closure $apply,
     ): Model&HasLifecycleState {
-        return DB::transaction(function () use ($model, $entity, $verb, $apply) {
+        return $this->perform($model, $entity, $verb, $apply, reVersion: true);
+    }
+
+    /**
+     * Apply an in-place, audit-only MAINTENANCE write to $model under $verb, recording ONE audit row; returns
+     * the maintained model (re-read under the row lock).
+     *
+     * The non-versioning sibling of {@see edit()}, under the same transaction, the same `lockForUpdate` re-read,
+     * the same `draft`/`reviewed`/`active` state guard and the same operator-principal floor. It exists for the
+     * writes that are NOT the entity's identity — the Layer-1 whitelist (design D6) and the enrichment prose
+     * (design D11) — where an identity `version` bump would misinform every downstream reader that watches it,
+     * and where the D5 verb discipline correspondingly forbids a review-freshness-relevant suffix (a
+     * reviewed-then-maintained entity still activates without a re-submit).
+     *
+     * `version` appears in neither the UPDATE nor the audit snapshots. When the `$apply` closure reports no own
+     * changed columns — a whitelist lives entirely in its pivot table — the entity's row is not written at all
+     * (not even its `updated_at`): the audit row IS the record of the maintenance write.
+     *
+     * @template TModel of Model&HasLifecycleState
+     *
+     * @param  TModel  $model  the spine entity whose attached data is maintained
+     * @param  string  $entity  the canonical entity-type label (e.g. `ProductVariant`) for the audit record + the rejections
+     * @param  string  $verb  the audit action's verb segment (`whitelist_updated`, `enrichment_updated`) — MUST NOT end with a review-freshness suffix (design D5)
+     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics — see {@see perform()}
+     * @return TModel
+     *
+     * @throws IllegalContentEdit when the locked row is `retired`
+     * @throws ApprovalGovernanceViolation when there is no authenticated operator principal
+     */
+    public function maintain(
+        Model&HasLifecycleState $model,
+        string $entity,
+        string $verb,
+        Closure $apply,
+    ): Model&HasLifecycleState {
+        return $this->perform($model, $entity, $verb, $apply, reVersion: false);
+    }
+
+    /**
+     * The guards, the lock, the write and the audit row — shared verbatim by both entry points, which differ
+     * only in $reVersion (private, so the boolean is never a caller's concern: {@see edit()} and
+     * {@see maintain()} name the semantic choice at the call site).
+     *
+     * @template TModel of Model&HasLifecycleState
+     *
+     * @param  TModel  $model
+     * @param  (Closure(TModel): array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>})  $apply  the Action's field semantics, invoked inside this transaction AFTER both guards pass, against the LOCKED model — the place for its own re-checks (identity dedup, N ≥ 2, constituent state, reference existence) and for any related-row writes (per-type attribute sets, join tables, pivots). It returns the entity's OWN changed columns (`attributes`, merged with any `version` increment into a single UPDATE) plus the `before`/`after` snapshots of the changed fields for the audit row.
+     * @param  bool  $reVersion  whether this write re-versions the entity's identity (design D1) or merely maintains attached data
+     * @return TModel
+     *
+     * @throws IllegalContentEdit
+     * @throws ApprovalGovernanceViolation
+     */
+    private function perform(
+        Model&HasLifecycleState $model,
+        string $entity,
+        string $verb,
+        Closure $apply,
+        bool $reVersion,
+    ): Model&HasLifecycleState {
+        return DB::transaction(function () use ($model, $entity, $verb, $apply, $reVersion) {
             $this->lockAndRefresh($model);
 
             $state = $model->lifecycleState();
@@ -120,20 +204,34 @@ class CatalogContentEdit
             }
 
             // The operator-principal floor (design D2, reusing the governance guard's floor): a catalog content
-            // edit is an inherently human operator decision — a `system`/null actor cannot perform one. Checked
+            // write is an inherently human operator decision — a `system`/null actor cannot perform one. Checked
             // BEFORE $apply, so a floor breach records nothing and runs none of the Action's re-checks.
             $this->governance->requireOperator($entity);
 
-            $versionBefore = $this->versionOf($model, $entity);
-            $versionAfter = $versionBefore + 1;
+            // Also before $apply: a model handed to `edit()` without an integer `version` is a structural bug,
+            // and a structural bug must not first run the Action's semantics. A maintenance write never reads it.
+            $versionBefore = $reVersion ? $this->versionOf($model, $entity) : null;
 
             // The Action's field semantics, against the LOCKED row: its own re-checks may reject here (rolling
             // the transaction back, unchanged), and its related-row writes join this same transaction.
             $change = $apply($model);
 
-            // The entity's own changed columns AND the version increment in ONE UPDATE (design D1) — the row
-            // can never be observed carrying new content at the old version.
-            $model->update([...$change['attributes'], 'version' => $versionAfter]);
+            $attributes = $change['attributes'];
+            $before = $change['before'];
+            $after = $change['after'];
+
+            if ($versionBefore !== null) {
+                $attributes['version'] = $versionBefore + 1;
+                $before['version'] = $versionBefore;
+                $after['version'] = $versionBefore + 1;
+            }
+
+            // The entity's own changed columns AND the version increment in ONE UPDATE (design D1) — the row can
+            // never be observed carrying new content at the old version. A maintenance write whose content lives
+            // wholly outside the row (a pivot) changes no column, and then the row is left entirely alone.
+            if ($attributes !== []) {
+                $model->update($attributes);
+            }
 
             $this->auditRecorder->record(
                 action: CatalogAuditEnvelope::action($model, $verb),
@@ -142,8 +240,8 @@ class CatalogContentEdit
                 actorId: $this->actor->actorId(),
                 entityType: $entity,
                 entityId: CatalogAuditEnvelope::entityId($model),
-                before: [...$change['before'], 'version' => $versionBefore],
-                after: [...$change['after'], 'version' => $versionAfter],
+                before: $before,
+                after: $after,
                 authorizationBasis: self::AUTHORIZATION_BASIS,
             );
 

@@ -863,3 +863,5 @@
 ## [2026-07-08 16:12] ralph | catalog-module-0-completeness-sweep 2.2 | green | 4 files | UpdateCompositeSkuComposition: ordered replace, N>=2 + cascade re-assert on active; suite 2124/2124, PG17 43/43, PHPStan 0
 
 ## [2026-07-08 16:27] ralph | catalog-module-0-completeness-sweep 2.3 | green | 3 files | DEC-019 re-arm leg proven e2e: edit-blocks-activation + J-7 with real edits, 2126/2126, PG17 55/55
+
+## [2026-07-08 16:47] ralph | catalog-module-0-completeness-sweep 3.1 | green | 6 files | SetVariantCaseWhitelist + CatalogContentEdit::maintain() (non-versioning sibling) + UnknownCatalogReference; suite 2143/2143 SQLite, 69/69 PG17, PHPStan max 0

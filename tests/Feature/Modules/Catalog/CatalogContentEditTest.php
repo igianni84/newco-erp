@@ -210,6 +210,113 @@ it('guards the state against the transaction-locked re-read, not the caller\'s s
         ->and(AuditRecord::query()->count())->toBe(0);
 });
 
+it('maintains attached data without touching the row, the version or the event log', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    $master = ProductMaster::factory()->create(['name' => 'Château Ancien']);
+    $untouched = $master->updated_at;
+
+    // The `maintain()` shape of an Action whose content lives wholly outside the row (a pivot — task 3.1's
+    // whitelist): no own changed columns at all, so the mechanism issues NO `UPDATE` and the audit row IS the
+    // whole record of the write.
+    $maintained = app(CatalogContentEdit::class)->maintain(
+        $master,
+        'ProductMaster',
+        'whitelist_updated',
+        fn (Model $model): array => [
+            'attributes' => [],
+            'before' => ['case_configurations' => [1, 2]],
+            'after' => ['case_configurations' => [2, 3]],
+        ],
+    );
+
+    $persisted = ProductMaster::findOrFail($master->id);
+
+    // `version` is the entity's IDENTITY version: a maintenance write is not an identity change, so it stands —
+    // and with no column to write, the row is left entirely alone (not even its `updated_at` moves).
+    expect($maintained->version)->toBe(1)
+        ->and($persisted->version)->toBe(1)
+        ->and($persisted->name)->toBe('Château Ancien')
+        ->and($persisted->updated_at->equalTo($untouched))->toBeTrue();
+
+    // One audit row, the same envelope as an edit — and `version` on NEITHER side (there is nothing to report).
+    $audit = AuditRecord::query()->sole();
+
+    expect($audit->action)->toBe('catalog.product_master.whitelist_updated')
+        ->and($audit->entity_type)->toBe('ProductMaster')
+        ->and($audit->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($audit->actor_id)->toEqual($operator->id)
+        ->and($audit->authorization_basis)->toBe('catalog-content-edit')
+        ->and($audit->before)->toEqual(['case_configurations' => [1, 2]])    // toEqual: jsonb reorders keys
+        ->and($audit->after)->toEqual(['case_configurations' => [2, 3]])
+        ->and($audit->before)->not->toHaveKey('version')
+        ->and($audit->after)->not->toHaveKey('version')
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('maintains own columns without a version bump', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = ProductMaster::factory()->create(['name' => 'Château Ancien', 'lifecycle_state' => LifecycleState::Active]);
+
+    // The `maintain()` shape of an Action that DOES write a column (task 4.1's enrichment prose): the column
+    // travels, the identity version does not — the discriminating difference from `edit()`, on the same fixture.
+    app(CatalogContentEdit::class)->maintain(
+        $master,
+        'ProductMaster',
+        'enrichment_updated',
+        contentEditRename('Château Ancien', 'Château Nouveau'),
+    );
+
+    $persisted = ProductMaster::findOrFail($master->id);
+
+    expect($persisted->name)->toBe('Château Nouveau')
+        ->and($persisted->version)->toBe(1)
+        ->and($persisted->lifecycle_state)->toBe(LifecycleState::Active)
+        ->and(AuditRecord::query()->sole()->action)->toBe('catalog.product_master.enrichment_updated')
+        ->and(AuditRecord::query()->sole()->after)->toEqual(['name' => 'Château Nouveau'])
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects a maintenance write on a retired entity, never invoking the change closure', function () {
+    // The guards live in the ONE private `perform()` both entry points delegate to: a `retired` entity is refused
+    // a maintenance write exactly as it is refused an edit, and the Action's semantics never run.
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Retired]);
+    $applied = false;
+
+    expect(fn () => app(CatalogContentEdit::class)->maintain(
+        $master,
+        'ProductMaster',
+        'whitelist_updated',
+        function (Model $model) use (&$applied): array {
+            $applied = true;
+
+            return ['attributes' => [], 'before' => [], 'after' => []];
+        },
+    ))->toThrow(IllegalContentEdit::class, 'reopened');
+
+    expect($applied)->toBeFalse()
+        ->and(AuditRecord::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
+it('rejects a maintenance write under a system actor', function () {
+    // No actingAs(): the operator-principal floor is shared too — maintaining a whitelist is no less a human
+    // operator decision than editing an identity.
+    expect(fn () => app(CatalogContentEdit::class)->maintain(
+        ProductMaster::factory()->create(),
+        'ProductMaster',
+        'whitelist_updated',
+        fn (Model $model): array => ['attributes' => [], 'before' => [], 'after' => []],
+    ))->toThrow(ApprovalGovernanceViolation::class);
+
+    expect(AuditRecord::query()->count())->toBe(0)
+        ->and(DomainEvent::query()->count())->toBe(0);
+});
+
 it('derives the audit action segment from the edited model\'s own table', function () {
     actingAs(Operator::factory()->create(), 'operator');
 

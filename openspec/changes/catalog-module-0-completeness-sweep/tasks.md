@@ -40,7 +40,7 @@
 
 ## 3. RM-12 — Layer-1 whitelist behavior (J-13, XM-11)
 
-- [ ] 3.1 `SetVariantCaseWhitelist` action — replace the (Variant, Format) pair's admitted set (D6)
+- [x] 3.1 `SetVariantCaseWhitelist` action — replace the (Variant, Format) pair's admitted set (D6)
   - Validates the Format and every CC id exist (FK-backed; surface a clean localized rejection for an unknown id rather than a raw constraint violation), states `draft|reviewed|active` allowed / `retired` rejected, operator floor; audit `catalog.product_variant.whitelist_updated` with pair + before/after CC-id sets; NO version change, NO domain event, NO review-freshness effect
   - Tests: replace writes the exact set (add + remove in one call); audit before/after sets asserted; version unchanged; event log untouched; a reviewed-then-whitelisted Variant still activates (no re-arm); retired/system rejected
   - Typecheck passes; tests pass
