@@ -845,3 +845,5 @@
 ## [2026-07-08 10:57] close-ritual | parties-module-k-br-guards | §2.7 full: SQLite+PG17 2080/2080; semantic-verify 5 agents×14 req → 1 CRITICAL + 4 WARN fixed in-place; merge 40f6c0a; archive 2026-07-08; tracker RM-19..23 ✅; push pending gate
 
 ## [2026-07-08 11:22] push | parties-module-k-br-guards | git push by Giovanni: main→origin 36ee05b..50f834e in sync; §2.7 ritual fully closed; memory push-pending flags cleared
+
+## [2026-07-08 11:34] scope-decision | Remediation P3 + RM-05 | P3 sweep mega-batch decided (RM-12+13+14+15, one change, S1 fold-in) + RM-05 K-side seam after (ADR-first); lessons amendment; prep prompt handed to Giovanni
