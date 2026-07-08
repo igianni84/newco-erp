@@ -22,6 +22,9 @@
 - **PHPStan max: `Collection::map()->all()` is `array<int,int>`, never `list<int>`** — Eloquent collection keys are not provably contiguous. Wrap in `array_values(...)`; do NOT relax the `@return list<int>`, because a `list` is exactly what an ORDERED, index-compared audit snapshot (constituent order, CC-id sets) needs. Bit the Action and its test helper alike (2.2); will bite 3.1's CC-id sets and 6.3's multi-select the same way.
 - **`sync()` on a relation carrying `orderByPivot` is safe** (`newPivotQuery()` does not inherit the relation's ORDER BY): it detaches, attaches and rewrites the pivot column on survivors in ONE call. Follow it with `unsetRelation(...)` so the returned model does not serve the stale cache the `before` read materialised. And a pure REORDER is a real content change — `!==` on two `list<int>` compares element-wise by index, the correct diff for an ordered set.
 - **PHPStan max rejects a `void` call as a `match` arm** ("Result of function … is used"). Bind the arms to `function (): void {}` closures and invoke the result (`$applyHistory();`) — also keeps `actingAs()` re-binding inside the arm where it belongs.
+- **Assert an append-only trail as ONE ordered list of action strings, not as N per-verb counts.** `expect(auditActions($entity))->toBe(['…submitted', '…rejected', '…identity_updated', …])` pins order, per-verb counts AND the absence of any unexpected extra row in a single expectation — the count-per-verb style silently tolerates a spurious row of a verb nobody counted. Order is the point on an append-only trail: it is what makes "latest wins" observable. Precedent: `IdentityEditRearmsReviewTest::rearmAuditActions()` (2.3).
+- **Under PHPStan max, hydrate models rather than `pluck()` a scalar column you will type.** `pluck('action')` yields `mixed`, and `(string) $mixed` is `cast.string` — forbidden, and a cast added only to silence the analyser is the wrong fix. `->get()->map(fn (AuditRecord $r): string => $r->action)->all()` reads the column through its `@property string` declaration, so the `list<string>` return type is *earned*. `pluck()` stays right where the value is immediately narrowed (`is_string(…)` / `is_numeric(…)`, as `ApprovalGovernance` does) or compared loosely (`->toEqual()` on an uncast bigint `actor_id`). Still wrap in `array_values()` per the `list` pattern above.
+- **A derived "latest wins" predicate needs a test where TWO arming causes coexist.** A trail holding a `.rejected` *and* a later `.identity_updated` is the only shape that discriminates latest-wins from any-cause-pending: both implementations block, both pass every count assertion, and they differ ONLY in the localized reason the operator reads. Assert the discriminating token (`edited` vs `un-remediated`), never merely that *an* exception was thrown. Generalises to any audit-derived condition with more than one arming verb (2.3).
 
 ---
 
@@ -185,5 +188,58 @@
   - **PHPStan max: `Collection::map()->all()` is `array<int,int>`, never `list<int>`.** Eloquent collection keys are not provably contiguous. Wrap in `array_values(...)` — do NOT relax the `@return list<int>`, because a `list` is exactly what an ordered, index-compared audit snapshot needs. Bit both the Action and the test helper; it will bite 3.1's CC-id sets and 6.3's multi-select the same way.
   - **`sync()` on a relation carrying `orderByPivot` is safe** — `newPivotQuery()` does not inherit the relation's ORDER BY. It detaches, attaches and rewrites `position` on survivors in one call. After it, `unsetRelation('constituents')` so the returned model (and the console's success re-render) does not serve the `before` read's stale cache.
   - **Seam confirmed, not opened:** BR-SKU-3 (atomicity at sale) and BR-SKU-4 (immutability after an active Offer) stay deferred — this Action is the seam a Module S change extends. § 3.8's producer-agnosticism holds on the edit path exactly as at creation (design D9): no producer-uniformity check was added.
+
+---
+
+## [2026-07-08 16:25] — 2.3 Re-arm end-to-end proof (the deferred DEC-019 leg)
+
+- **What was implemented:** no production code — this task is the JOIN. Task 1.2 built the verb-filtered
+  review-freshness derivation and pinned it against hand-written audit rows; task 2.1 built the Action that emits
+  the `identity_updated` verb and pinned its `draft`-stage leg. Neither drove the two against *each other* through
+  a `reviewed` Master. `IdentityEditRearmsReviewTest` does, entirely through the real Actions
+  (`CreateProductMaster` → `SubmitProductMasterForReview` → `UpdateProductMasterIdentity` →
+  `RejectProductMasterReview` → `ResubmitProductMasterForReview` → `ActivateProductMaster`). Two tests:
+  - **(a) the edit-only re-arm** — submit → identity edit → a *distinct* approver is blocked (`edited` token, never
+    `un-remediated`: there has never been a rejection) → explicit re-submit → the same approver activates, exactly
+    one `ProductMasterActivated`, `version` still 2 (activation is not a content edit).
+  - **(b) AC-0-J-7 with a real edit inside each round** — reject → *blocked (rejection)* → edit → *blocked (edit)* →
+    re-submit, twice, then a distinct approver activates. `version` 1→3; the full 8-row trail asserted in order.
+- **Files changed:** `tests/Feature/Modules/Catalog/IdentityEditRearmsReviewTest.php` (new),
+  `openspec/changes/catalog-module-0-completeness-sweep/{tasks.md,progress.md}`.
+- **Quality loop:** green. Pint clean · new file 2/2 (40 assertions), first run · full suite **2126/2126**
+  (11 146 assertions; +2 tests / +40 assertions over 2.2) · PHPStan max **0** after one real fix · Pint `--test`
+  clean · `openspec validate --strict` valid. PG17 blast radius (this file + `ProductMasterLifecycleTest` +
+  `UpdateProductMasterIdentityTest` + `ReviewFreshnessVerbFilterTest` + `CatalogReviewFreshnessUniformityTest` +
+  `ResubmitActionsTest`) **55/55**.
+
+**Learnings for future iterations:**
+
+- **The round-2 shape is the load-bearing one, and it is not what the task text literally asks for.** The task says
+  "reject → edit → resubmit". Written that way the test never distinguishes *latest-wins* from
+  *any-un-remediated-rejection-pending*: after the edit, a trail holding BOTH a `.rejected` and a later
+  `.identity_updated` blocks under either implementation, with identical audit counts. What separates them is the
+  **reason** — `activationBlockedByUnreviewedEdit` (token `edited`) must fire, not
+  `activationBlockedByPendingRejection` (token `un-remediated`). So each round asserts the block **twice**: once
+  before the edit, once after, on the discriminating token. An `->toThrow(ApprovalGovernanceViolation::class)` with
+  no message needle would have passed against a wrong derivation. This is now a Codebase Pattern.
+- **The separation-of-duties lineage survives the edit for a *structural* reason worth not disturbing.**
+  `reviewerOf` reads the latest `%.submitted` row. `.identity_updated` does not match it, and neither does
+  `.resubmitted` (the char before `submitted` is `e`, not `.`) — so R stays the reviewer across both rounds and
+  A ∉ {C, R} still holds at the final activation, with four intervening non-lineage rows. The verb-collision
+  discipline (design D5) is what keeps this true; task 7.1's CONTEXT.md entry should say so.
+- **`CreateProductMaster` records NO audit row** (its history is the `ProductMasterCreated` domain event, which is
+  what `creatorOf` reads). So an entity's audit trail opens at its `.submitted`. Relevant to 6.1: the console's
+  create-page has no audit row to assert against — assert the event.
+- **Lifecycle transitions never touch `version`.** Only `CatalogContentEdit` increments it. `version` after (b) is
+  exactly 1 + (number of identity edits) = 3, across two submits, two rejects, two re-submits and an activation.
+  Worth remembering when 6.1 asserts "the `version` visible on the View reflects the increment".
+- **Fixtures must come from the real `CreateProductMaster` here, not the factory.** `creatorOf` reads the entity's
+  first `domain_events` row; a factory-built Master has none, making the creator *vacuous* and the SoD floor
+  unreachable-by-construction — the test would pass without proving distinctness. `UpdateProductMasterIdentityTest`
+  can use the factory precisely because SoD is not its subject.
+- **Suggestion, out of scope (7.1):** `ResubmitProductMasterForReview` / `RejectProductMasterReview` docblocks still
+  say "rejection-pending … DERIVED from the latest governance audit action", phrasing that predates the two-cause
+  derivation and the verb filter. Both are on 7.1's grep list ("rejection-pending" phrasing left implying
+  rejection-only); this iteration confirms they are stale prose, not stale behavior.
 
 ---

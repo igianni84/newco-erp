@@ -34,7 +34,7 @@
   - Tests: the BR-Audit-1 AUTO Composite half — replace on `active` Composite with active PRs ⇒ version++, before/after lists audited, stays `active`, no event; <2 distinct rejected; non-active constituent on an `active` Composite rejected (composition/version/audit/event unchanged); same edit on a `reviewed` Composite passes without the constituent-state check
   - Typecheck passes; tests pass
 
-- [ ] 2.3 Re-arm end-to-end proof (the deferred DEC-019 leg, delta *Approval Governance*)
+- [x] 2.3 Re-arm end-to-end proof (the deferred DEC-019 leg, delta *Approval Governance*)
   - Feature test(s) on the Master through the REAL actions: (a) submit → identity edit → distinct-approver activate BLOCKED → explicit resubmit → activate succeeds with exactly one `ProductMasterActivated`; (b) the 2-round J-7 flow now with a real edit inside each round (reject → edit → resubmit → reject → edit → resubmit → distinct approver activates), full history preserved (both rejections, both edits, both resubmits in audit)
   - Typecheck passes; tests pass
 
