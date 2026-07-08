@@ -78,7 +78,7 @@
   - Livewire tests: happy edit (version+1 rendered, audit envelope `newco_ops`+operator id), dedup validation error (unchanged), create-page unknown-producer validation error (no Master, no event), retired Master → action hidden or rejection surfaced (pick the kit-consistent shape and assert it)
   - Typecheck passes; tests pass
 
-- [ ] 6.2 `ViewProductVariant` edit-enrichment + manage-whitelist modal actions (D8, delta *Operator maintains Variant enrichment and the Layer-1 whitelist…*)
+- [x] 6.2 `ViewProductVariant` edit-enrichment + manage-whitelist modal actions (D8, delta *Operator maintains Variant enrichment and the Layer-1 whitelist…*)
   - Enrichment modal → `UpdateProductVariantEnrichment` (works on `active`; success notification; version untouched); whitelist modal → choose Format + replace admitted CC set → `SetVariantCaseWhitelist` (works on `active`); both surface domain rejections via the kit; keys EN+IT; comment rationale updated
   - Livewire tests: enrichment change ⇒ exactly one `EnrichmentDataUpdated` + notification; whitelist replace ⇒ audit row with before/after sets, no event; console SKU-activation attempt against a removed CC surfaces the whitelist rejection notification (delta scenario)
   - Typecheck passes; tests pass
