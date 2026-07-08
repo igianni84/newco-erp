@@ -54,7 +54,9 @@ use LogicException;
  * content changed, so the entity is review-stale until it is explicitly re-submitted (the DEC-019 re-arm leg).
  * A {@see maintain()} verb never may — which is the same statement as "it does not touch `version`", read from
  * the governance side: the whitelist and the enrichment prose are not what the reviewer approved, so a
- * reviewed-then-maintained entity still activates without a re-submit.
+ * reviewed-then-maintained entity still activates without a re-submit. That discipline is a GUARD, not a
+ * comment: {@see assertVerbIsNotReviewGoverned()} refuses such a verb at the call, reading the one list
+ * {@see ApprovalGovernance::REVIEW_FRESHNESS_VERBS} the derivation itself reads.
  *
  * Re-versioning is IN-PLACE (design D1): the same row keeps its primary key and every downstream reference,
  * `version` increments by exactly one in the SAME `UPDATE` as the field writes, and the append-only,
@@ -164,10 +166,11 @@ class CatalogContentEdit
      *
      * @param  TModel  $model  the spine entity whose attached data is maintained
      * @param  string  $entity  the canonical entity-type label (e.g. `ProductVariant`) for the audit record + the rejections
-     * @param  string  $verb  the audit action's verb segment (`whitelist_updated`, `enrichment_updated`) — MUST NOT end with a review-freshness suffix (design D5)
+     * @param  string  $verb  the audit action's verb segment (`whitelist_updated`, `enrichment_updated`) — MUST NOT end with a review-freshness suffix; enforced by {@see assertVerbIsNotReviewGoverned()} (design D5)
      * @param  (Closure(TModel): (array{attributes: array<string, mixed>, before: array<string, mixed>, after: array<string, mixed>}|null))  $apply  the Action's field semantics — see {@see perform()}
      * @return TModel
      *
+     * @throws LogicException when $verb is a review-freshness-governed verb (a call-site bug, not a domain rejection)
      * @throws IllegalContentEdit when the locked row is `retired`
      * @throws ApprovalGovernanceViolation when there is no authenticated operator principal
      */
@@ -177,7 +180,38 @@ class CatalogContentEdit
         string $verb,
         Closure $apply,
     ): Model&HasLifecycleState {
+        self::assertVerbIsNotReviewGoverned($verb);
+
         return $this->perform($model, $entity, $verb, $apply, reVersion: false);
+    }
+
+    /**
+     * The D5 collision discipline, ENFORCED rather than merely documented: a maintenance write must not be
+     * recorded under a verb the review-freshness derivation reads.
+     *
+     * {@see ApprovalGovernance} derives review-freshness from the audit actions ending `.submitted`,
+     * `.resubmitted`, `.rejected` or `.identity_updated`. An action is `catalog.<segment>.<verb>`, so it ends
+     * with `.<governed verb>` exactly when the VERB is that governed verb (verbs are single dotless segments;
+     * the `str_ends_with` leg below keeps the rule exact even if one ever were not). Letting a `maintain()`
+     * call through under such a verb would make an observational write the entity's freshest
+     * review-freshness-relevant action — clearing a pending rejection with no re-submit, which is precisely the
+     * S1 hole this mechanism's arrival made possible and the filtered derivation closed.
+     *
+     * A {@see LogicException} (not a domain rejection): no operator input can reach this, only a programming
+     * mistake at a call site — and the mistake must surface at the call, not as a green suite hiding a
+     * governance bypass. {@see edit()} is exempt by construction: `identity_updated` is governed ON PURPOSE.
+     */
+    private static function assertVerbIsNotReviewGoverned(string $verb): void
+    {
+        foreach (ApprovalGovernance::REVIEW_FRESHNESS_VERBS as $governed) {
+            if ($verb === $governed || str_ends_with($verb, '.'.$governed)) {
+                throw new LogicException(
+                    "A maintenance write may not use the review-freshness-governed verb `{$verb}` (design D5): "
+                    .'it would let an observational edit clear a pending rejection. Use `edit()` if the write '
+                    .'really is a re-versioning identity change.'
+                );
+            }
+        }
     }
 
     /**

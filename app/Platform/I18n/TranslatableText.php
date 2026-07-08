@@ -68,6 +68,48 @@ class TranslatableText implements JsonSerializable
     }
 
     /**
+     * Do these two values carry the SAME CONTENT? — the equality every content-diff must use, because
+     * `TranslatableText` is a value object and PHP's own comparison operators both get it wrong:
+     *
+     *   `===` on two instances is IDENTITY (two objects built from the same map are "different"), and
+     *   `==` on their maps is LOOSE ARRAY comparison, which recurses into loose VALUE comparison — under
+     *   which two NUMERIC STRINGS compare numerically. On PHP 8, `['en' => '1e2'] == ['en' => '100']` is
+     *   `true`, as is `['en' => '0'] == ['en' => '0.0']`. A diff built on `!=` therefore silently misses a
+     *   real edit whenever both the old and the new text are numeric strings — rare in prose, ordinary the
+     *   moment an adapter-fed numeric field (a critic score) travels this same path.
+     *
+     * The content is the locale ⇒ text MAP, so equality is: same locale keys, same texts, compared as
+     * STRINGS, insensitive to the order the map was built in ({@see canonical()} sorts by locale, and `===`
+     * on two same-ordered arrays compares values strictly). An ABSENT value and an EMPTY map are the same
+     * content — neither carries text — so `null` and `of([])` are equal here, and a cleared attribute does
+     * not read as a change merely because it was stored as `{}` rather than `NULL`.
+     */
+    public static function sameContent(?self $left, ?self $right): bool
+    {
+        return self::canonical($left) === self::canonical($right);
+    }
+
+    /**
+     * The comparable form of a (possibly absent) value: its locale ⇒ text map sorted by locale key, with
+     * absence and emptiness collapsed to the same `[]`. Sorting is what makes {@see sameContent()} blind to
+     * construction order while still comparing the texts with `===`.
+     *
+     * @return array<string, string>
+     */
+    private static function canonical(?self $text): array
+    {
+        if ($text === null) {
+            return [];
+        }
+
+        $translations = $text->translations;
+
+        ksort($translations);
+
+        return $translations;
+    }
+
+    /**
      * Resolve to the requested locale's text, falling back to English for THIS
      * attribute only when the locale is absent (DEC-127 item 4 — per-attribute, never
      * whole-object). Returns null only when neither the requested locale nor English is

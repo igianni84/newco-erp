@@ -133,17 +133,15 @@ class UpdateProductMasterIdentity
             $after['region'] = $region;
         }
 
-        // The prose compares by its i18n-keyed MAP, never by object identity: two `TranslatableText`s carrying the
-        // same locale ⇒ text pairs are the same content whatever order they were built in (`==` on string-keyed
-        // arrays ignores key order). `null` on either side is a legitimate value — an untranslated, or a cleared,
-        // story — and is preserved verbatim in the snapshots.
-        $storyBefore = $wine->winery_story?->jsonSerialize();
-        $storyAfter = $wineryStory?->jsonSerialize();
-
-        if ($storyBefore != $storyAfter) {
+        // The prose compares by CONTENT, never by object identity and never with `!=` on the raw maps: loose array
+        // comparison recurses into loose value comparison, under which two numeric strings compare NUMERICALLY
+        // ('1e2' == '100'), swallowing a real edit. {@see TranslatableText::sameContent()} owns the correct
+        // equality — order-insensitive over locales, strict over texts. `null` on either side is a legitimate
+        // value — an untranslated, or a cleared, story — and is preserved verbatim in the snapshots.
+        if (! TranslatableText::sameContent($wine->winery_story, $wineryStory)) {
             $wineAttributes['winery_story'] = $wineryStory;
-            $before['winery_story'] = $storyBefore;
-            $after['winery_story'] = $storyAfter;
+            $before['winery_story'] = $wine->winery_story?->jsonSerialize();
+            $after['winery_story'] = $wineryStory?->jsonSerialize();
         }
 
         // The per-type attribute set is a related row: it is written HERE, inside the mechanism's transaction, so

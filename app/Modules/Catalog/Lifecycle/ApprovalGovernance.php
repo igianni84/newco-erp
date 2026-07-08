@@ -89,9 +89,16 @@ class ApprovalGovernance
      * review-freshness condition is derived from. Any other catalog audit row (`activated`, `retired`,
      * `reopened`, `enrichment_updated`, `whitelist_updated`, …) neither sets nor clears the condition.
      *
+     * PUBLIC because the D5 collision discipline is enforced against it, not merely documented:
+     * {@see CatalogContentEdit::maintain()} refuses a maintenance verb drawn from this list, so a
+     * non-governance audit row can never be written under a verb the derivation below would read. The two
+     * sides of that rule must name ONE list — a copy would drift, and the drift is invisible (a green suite
+     * with a silently re-opened S1 hole). The console mirrors the list rather than importing it, because the
+     * boundary law forbids the import; a uniformity test pins the two in agreement.
+     *
      * @var list<string>
      */
-    private const REVIEW_FRESHNESS_VERBS = [
+    public const REVIEW_FRESHNESS_VERBS = [
         self::VERB_SUBMITTED,
         self::VERB_RESUBMITTED,
         self::VERB_REJECTED,

@@ -347,3 +347,59 @@ it('derives the audit action segment from the edited model\'s own table', functi
         ->and(CompositeSku::findOrFail($compositeSku->id)->version)->toBe(2)
         ->and(DomainEvent::query()->count())->toBe(0);
 });
+
+/**
+ * The D5 collision discipline, enforced rather than documented.
+ *
+ * `maintain()` writes audit rows that the review-freshness derivation must NOT see. Because an audit action is
+ * `catalog.<segment>.<verb>`, a maintenance verb drawn from `ApprovalGovernance::REVIEW_FRESHNESS_VERBS` would
+ * make an observational write the entity's freshest review-freshness-relevant action — clearing a pending
+ * rejection with no re-submit. That is the S1 hole this very mechanism's arrival made possible.
+ *
+ * It is a `LogicException`, not a domain rejection: no operator input reaches it, only a call-site mistake — and
+ * the mistake must surface at the call rather than as a green suite hiding a governance bypass. The guard runs
+ * BEFORE the transaction, so nothing at all is written; the `$applied` flag proves the closure never ran.
+ */
+it('refuses a maintenance write under a review-freshness-governed verb, writing nothing', function (string $verb) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Reviewed]);
+    $applied = false;
+
+    expect(fn () => app(CatalogContentEdit::class)->maintain(
+        $master,
+        'ProductMaster',
+        $verb,
+        function (Model $locked) use (&$applied): array {
+            $applied = true;
+
+            return ['attributes' => [], 'before' => [], 'after' => []];
+        },
+    ))->toThrow(LogicException::class);
+
+    expect($applied)->toBeFalse()                                                   // the closure never ran
+        ->and(AuditRecord::query()->count())->toBe(0)                               // no audit row
+        ->and(DomainEvent::query()->count())->toBe(0)
+        ->and(ProductMaster::findOrFail($master->id)->version)->toBe(1);
+})->with(['submitted', 'resubmitted', 'rejected', 'identity_updated']);
+
+/**
+ * The guard's other half: the verbs the two shipped maintenance Actions actually use must pass it. Without this,
+ * a future tightening of `assertVerbIsNotReviewGoverned()` (say, refusing every `_updated` suffix) would break
+ * enrichment and whitelist maintenance and only the far-away Action tests would say so.
+ */
+it('admits the maintenance verbs the catalog actually writes', function (string $verb) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = ProductMaster::factory()->create(['lifecycle_state' => LifecycleState::Reviewed]);
+
+    app(CatalogContentEdit::class)->maintain(
+        $master,
+        'ProductMaster',
+        $verb,
+        fn (Model $locked): array => ['attributes' => [], 'before' => ['x' => 1], 'after' => ['x' => 2]],
+    );
+
+    expect(AuditRecord::query()->sole()->action)->toBe("catalog.product_master.{$verb}")
+        ->and(ProductMaster::findOrFail($master->id)->version)->toBe(1);            // maintenance never versions
+})->with(['enrichment_updated', 'whitelist_updated']);

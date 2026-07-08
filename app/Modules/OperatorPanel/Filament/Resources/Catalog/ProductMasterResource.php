@@ -340,10 +340,11 @@ class ProductMasterResource extends OperatorConsoleResource
     /**
      * The producer DISPLAY label: the producer's human NAME, denormalized onto Catalog's OWN producer-state
      * projection ({@see ProducerState::$producer_name}), or a localized "not projected" marker when no
-     * projection row exists yet (a producer is projected only once Parties emits ProducerActivated/Retired —
-     * design D3). When a row exists but carries no name yet (the event-driven runtime path until the producer
-     * events carry the name — see the projection migration), it falls back to the bare id. Read-only and
-     * Catalog-local; never Module K (invariant 10), and no `Catalog\Enums` import.
+     * projection row exists yet (a producer is projected from its FIRST lifecycle event — `ProducerCreated`,
+     * `ProducerActivated` or `ProducerRetired`; catalog-module-0-completeness-sweep design D7). When a row
+     * exists but carries no name yet (the event-driven runtime path until the projector reads a name off the
+     * payload — see the projection migration), it falls back to the bare id. Read-only and Catalog-local;
+     * never Module K (invariant 10), and no `Catalog\Enums` import.
      */
     private static function producerLabel(ProductMaster $record): string
     {
@@ -361,11 +362,13 @@ class ProductMasterResource extends OperatorConsoleResource
     /**
      * Create-form producer options, keyed by `producer_id` → the producer's display NAME (or the bare id when
      * the projection row carries no name yet), read from Catalog's OWN producer-state projection
-     * ({@see ProducerState}). A producer is selectable only once it has been projected (Parties emits
-     * ProducerActivated/Retired — design D3); the Producer-activation gate (a domain rule) is what blocks
-     * activating a Master under a non-active producer, so creation lists every projected producer. Read-only
-     * and Catalog-local; never Module K (invariant 10), and no `Catalog\Enums` import (the {Models, Actions}
-     * surface, task 1.3).
+     * ({@see ProducerState}). A producer is selectable once it has been projected — which, since the projector
+     * widened to `ProducerCreated` (catalog-module-0-completeness-sweep design D7), means from the moment
+     * Parties creates it: the list therefore carries `registered`, `active` AND `retired` producers, with NO
+     * status filter. That is deliberate and mirrors the domain exactly — CREATABLE ≠ ACTIVATABLE. The
+     * create-time guard asks only "does this producer exist?"; the Producer-activation gate (a separate domain
+     * rule) is what blocks ACTIVATING a Master under a non-`active` producer. Read-only and Catalog-local;
+     * never Module K (invariant 10), and no `Catalog\Enums` import (the {Models, Actions} surface, task 1.3).
      *
      * @return array<int, string>
      */

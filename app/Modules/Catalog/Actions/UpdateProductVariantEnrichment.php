@@ -40,9 +40,10 @@ use App\Platform\I18n\TranslatableText;
  * IDEMPOTENT by contract: an update carrying the value already stored is a silent NO-OP — no event, no audit
  * row, no write, not even an `updated_at` touch. That is what makes the event meaningful ("the enrichment
  * changed"), and it is why the closure may hand the mechanism `null` for *nothing to record*. The comparison is
- * therefore load-bearing, not cosmetic: prose is diffed by its i18n-keyed MAP (`==` on string-keyed arrays
- * ignores key order — two `TranslatableText`s carrying the same locale ⇒ text pairs are the same content), and
- * `null` on either side is a legitimate value (untranslated, or cleared).
+ * therefore load-bearing, not cosmetic — it decides whether the event fires — so it is delegated to
+ * {@see TranslatableText::sameContent()}, which is order-insensitive over locales and STRICT over texts. It is
+ * emphatically not `!=` on the raw maps: loose array comparison would judge `'1e2'` and `'100'` the same text
+ * and swallow a real edit. `null` on either side is a legitimate value (untranslated, or cleared).
  *
  * REPLACEMENT semantics, field-agnostic in shape: every enrichment field travels on every call (the console
  * modal prefills them), and only the fields that actually moved reach the write and the audit snapshots (design
@@ -110,16 +111,17 @@ class UpdateProductVariantEnrichment
         $after = [];
 
         foreach ($this->incomingEnrichment($tastingNotes) as $field => $value) {
-            // Prose compares by its i18n-keyed MAP, never by object identity: `!=` on string-keyed arrays ignores
-            // key order, so two values carrying the same locale ⇒ text pairs are the same content. Both maps ride
-            // into the snapshots verbatim, `null` (untranslated / cleared) included.
-            $storedMap = ($stored[$field] ?? null)?->jsonSerialize();
-            $incomingMap = $value?->jsonSerialize();
+            // Prose compares by CONTENT, never by object identity and never with `!=` on the raw maps: loose
+            // array comparison recurses into loose value comparison, under which two numeric strings compare
+            // NUMERICALLY ('1e2' == '100'). {@see TranslatableText::sameContent()} owns the correct equality —
+            // order-insensitive over locales, strict over texts, absence ≡ empty map. Both maps still ride into
+            // the snapshots verbatim, `null` (untranslated / cleared) included.
+            $storedValue = $stored[$field] ?? null;
 
-            if ($storedMap != $incomingMap) {
+            if (! TranslatableText::sameContent($storedValue, $value)) {
                 $columns[$field] = $value;
-                $before[$field] = $storedMap;
-                $after[$field] = $incomingMap;
+                $before[$field] = $storedValue?->jsonSerialize();
+                $after[$field] = $value?->jsonSerialize();
             }
         }
 

@@ -92,6 +92,38 @@ function identityEditRanDedupQuery(Closure $work): bool
     return $ran;
 }
 
+/**
+ * The identity edit's twin of the enrichment regression. An identity edit ALWAYS versions and always audits, so
+ * a swallowed story change is quieter here than in the enrichment path — but it is worse: `version` reaches 2,
+ * the audit row claims an `identity_updated`, review is re-armed, and the story the operator typed was never
+ * written. The old `!=` on the i18n-keyed maps compared two numeric strings NUMERICALLY, so `'1e2'` → `'100'`
+ * left `$wineAttributes` empty and the `winery_story` column untouched.
+ */
+it('writes a winery-story change between two numeric-string texts, which loose comparison would swallow', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $master = ProductMaster::factory()->create(['name' => 'Château Ancien']);
+    identityWineAttributesOf($master)->update([
+        'appellation' => 'Margaux',
+        'region' => 'Bordeaux',
+        'winery_story' => TranslatableText::of(['en' => '1e2']),
+    ]);
+
+    app(UpdateProductMasterIdentity::class)->handle(
+        master: $master,
+        name: 'Château Ancien',      // identity key unmoved: the story is the ONLY change
+        appellation: 'Margaux',
+        region: 'Bordeaux',
+        wineryStory: TranslatableText::of(['en' => '100']),
+    );
+
+    $audit = AuditRecord::query()->sole();
+
+    expect(identityWineAttributesOf($master)->winery_story?->jsonSerialize())->toBe(['en' => '100'])
+        ->and($audit->before)->toEqual(['winery_story' => ['en' => '1e2'], 'version' => 1])
+        ->and($audit->after)->toEqual(['winery_story' => ['en' => '100'], 'version' => 2]);
+});
+
 /*
 |--------------------------------------------------------------------------
 | AC-0-BR-Audit-1 (Master half) — the new version, the old version, the before/after

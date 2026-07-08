@@ -102,3 +102,28 @@
   - progress.md `## Codebase Patterns` consolidated; tracker/hot/log updates are session-close work, not this task
   - Typecheck passes; tests pass
 
+
+## 8. Semantic-verify remediation (2026-07-08, post-merge, pre-archive)
+
+Three parallel verifier passes over the 12 delta requirements returned **no CRITICAL**. These four items are the WARNINGs that were confirmed against the code rather than accepted on the verifier's word; the remaining findings (DemoSeeder watermark trap, `catch (RuntimeException)` catching `QueryException`, `is_breakable` asserted on 2 of 11 catalog tables, no `lang/it/catalog.php`) are latent, unreachable today, and recorded in progress.md as follow-ups.
+
+- [x] 8.1 Content-diff equality: `TranslatableText::sameContent()` + both call sites (D2, D11)
+  - `!=` on the i18n-keyed maps recursed into loose VALUE comparison: on PHP 8 two numeric strings compare NUMERICALLY, so `'1e2'` → `'100'` was diffed as "unchanged". In `UpdateProductVariantEnrichment` that swallowed the write, the audit row AND `EnrichmentDataUpdated` — inverting the Requirement's own "an update that actually changes the stored value SHALL record the event". In `UpdateProductMasterIdentity` it versioned + re-armed review while never writing the story.
+  - New `TranslatableText::sameContent(?self, ?self)`: order-insensitive over locales (ksort), STRICT over texts (`===`), absence ≡ empty map. The equality lives on the value object, not duplicated in two Actions.
+  - Tests: unit — the `==` trap asserted true, `sameContent` asserted false, over 4 numeric-string pairs; key-order, dropped-locale, null/`of([])` cases. Feature — enrichment `'1e2'`→`'100'` records event + audit + write (RED on the old code, verified by reverting); identity story-only numeric change writes the column.
+  - Typecheck passes; tests pass
+
+- [x] 8.2 Enforce the D5 verb-collision discipline in `CatalogContentEdit::maintain()` (D5)
+  - The discipline was prose only; a `maintain()` call under `rejected`/`identity_updated`/`submitted`/`resubmitted` would make an observational row the freshest review-freshness-relevant action and clear a pending rejection — the S1 hole, re-opened by the mechanism built to close it, with a green suite.
+  - `ApprovalGovernance::REVIEW_FRESHNESS_VERBS` promoted `private` → `public` so the rule and its derivation read ONE list; `assertVerbIsNotReviewGoverned()` throws `LogicException` before the transaction (a call-site bug, not a domain rejection). `edit()` exempt by construction.
+  - Tests: all four governed verbs rejected with closure un-run and zero audit/event/version writes; both shipped maintenance verbs admitted.
+  - Typecheck passes; tests pass
+
+- [x] 8.3 Residual-claim sweep, second pass — the two hits task 7.1 missed
+  - `ProductMasterResource::producerLabel()` and `::producerOptions()` still read "a producer is projected only once Parties emits ProducerActivated/Retired — design D3". False since 5.1 (`ProducerCreated` → `registered`). progress.md had both on 7.1's list.
+  - Docblock-only; the create-form option list is already correctly unfiltered (creatable ≠ activatable).
+
+- [x] 8.4 `design.md` build-time deviations note (not a rewrite — the decision prose is history)
+  - D8 names `lifecycleAction()`; `contentEditAction()` shipped, and every content-edit rejection validates rather than notifies (spec permits either; the split is by action shape).
+  - D5 is now a guard, not a comment (8.2).
+  - Migration Plan asserts `DemoSeeder` "creates producers through the real actions" — it does not (`Producer::create`), which is what hides the hand-seeded-watermark trap.

@@ -72,6 +72,14 @@ All five criteria are frozen-spec (verdict Part-4 check); no canon `MVP-DEC` is 
 
 Pre-production: one additive migration (`catalog_variant_case_whitelists`); the `registered` enum case needs no ALTER (the PG CHECK derives from `cases()` on fresh migrate — RM-04 precedent); every env is `migrate:fresh` + reseed. `DemoSeeder` needs no data change (it creates producers through the real actions, so `ProducerCreated` rows project inline), but its truncation list gains the whitelist table if it sweeps catalog tables — verify at task 5.2. Rollback = drop the change branch (no deployed DB).
 
+## Build-time deviations (recorded 2026-07-08 at semantic-verify, before archive)
+
+The decisions above are the pre-build record and are left as written. Three of them did not survive contact with the code exactly as stated; the shipped behaviour is correct and spec-compliant, but a reader of this file must not be misled by the prose.
+
+- **D8 — factory name and surfacing rule.** D8 says the edit modals ship "via the shared `lifecycleAction()` kit factory" and that "state guards and composition rejections surface as notifications". Shipped: a *new* `contentEditAction()` factory, and **every** content-edit rejection lands as a validation error on one designated field. The delta spec permits either ("validation error or notification"); the split is by action SHAPE — verb-shaped actions notify, form-shaped actions validate — and is reasoned in `OperatorConsoleViewRecord`'s kit docblock. Lifecycle-verb rejections (activation on a review-stale entity, the SKU whitelist gate) do still notify.
+- **D5 — from prose to guard.** D5 recorded the verb-collision discipline as a rule "the next writer inherits" via CONTEXT.md. Documentation cannot hold an invariant whose breach leaves the suite green: `CatalogContentEdit::maintain()` now **enforces** it, reading `ApprovalGovernance::REVIEW_FRESHNESS_VERBS` (promoted to `public` so the rule and its derivation name one list) and throwing a `LogicException` at the call site.
+- **Migration Plan — `DemoSeeder` does *not* create its demo producers through the real actions.** `seedProducers()` uses a bare `Producer::create` (no `ProducerCreated`), and `seedProducerStates()` hand-writes `active` projection rows with a local watermark of `1..7`. The seeder is correct today and needs no data change, but the stated *reason* is wrong — and it hides a trap: those hand-seeded watermarks sit **below** real `domain_events` ids, so the day `seedProducers()` is switched to `CreateProducer`, the emitted `ProducerCreated` would strictly advance them and rewrite every `active` row back to `registered`. The one producer that *is* built through the real action (`seedProducerApprovalScenario`) now correctly projects as `registered`.
+
 ## Open Questions
 
 None — the 2026-07-08 interview closed all eleven decision points; anything the loop finds ambiguous beyond these escalates per RALPH rules rather than inventing.

@@ -355,3 +355,31 @@ it('rejects an enrichment update under a system actor, writing nothing', functio
         ->and(DomainEvent::query()->count())->toBe(0)
         ->and(enrichmentStoredNotes($variant))->toEqual(['en' => 'Cherry.']);
 });
+
+/**
+ * The no-op rule's dark twin: a REAL change must never be mistaken for "identical" and swallowed.
+ *
+ * The diff once compared the i18n-keyed maps with `!=`, whose loose array comparison recurses into loose VALUE
+ * comparison — so on PHP 8 the texts `'1e2'` and `'100'` (both numeric strings) compared EQUAL and the update
+ * became a silent no-op: no write, no audit row, and — the part that matters — no `EnrichmentDataUpdated` for
+ * the Module S marketing consumer, while the console reported success. `TranslatableText::sameContent()` is
+ * strict over texts. Tasting notes are rarely numeric; the adapter-fed critic scores this surface is explicitly
+ * field-agnostic FOR will be.
+ */
+it('records a change between two numeric-string texts, which loose comparison would swallow', function (string $stored, string $incoming) {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    $variant = enrichmentVariant(TranslatableText::of(['en' => $stored]));
+
+    app(UpdateProductVariantEnrichment::class)->handle($variant, TranslatableText::of(['en' => $incoming]));
+
+    expect(enrichmentStoredNotes($variant))->toBe(['en' => $incoming])                       // the write actually landed
+        ->and(DomainEvent::query()->sole()->name)->toBe('EnrichmentDataUpdated')             // exactly one, and it fired
+        ->and(AuditRecord::query()->sole()->action)->toBe('catalog.product_variant.enrichment_updated')
+        ->and(AuditRecord::query()->sole()->before)->toEqual(['tasting_notes' => ['en' => $stored]])
+        ->and(AuditRecord::query()->sole()->after)->toEqual(['tasting_notes' => ['en' => $incoming]])
+        ->and(ProductVariant::findOrFail($variant->id)->version)->toBe(1);                   // still not an identity edit
+})->with([
+    'exponent vs decimal' => ['1e2', '100'],
+    'integer vs float' => ['0', '0.0'],
+]);

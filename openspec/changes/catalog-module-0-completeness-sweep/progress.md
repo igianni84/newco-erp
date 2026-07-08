@@ -671,3 +671,29 @@ Each is stated in the delta and pinned in a docblock — none is a silent omissi
 - The residual-claim sweep in 7.1 scoped itself to `app/`. Test docblocks carry claims too, and they rot the same way (`draft-as-absent` here). A future sweep should grep `tests/` as well.
 
 ---
+
+## Semantic verify (2026-07-08, post-merge, pre-archive) — §2.7 step 4
+
+Three independent verifier passes over the 12 delta requirements (product-catalog ADDED ×3, product-catalog MODIFIED ×4, operator-console ×5 / 53 scenarios). **No CRITICAL.** Every scenario has a real test; the traceability table above was re-checked claim-by-claim and holds, with the two corrections noted below.
+
+Confirmed clean under adversarial reading: the 4-suffix filter is exact on both engines (the SQL `LIKE` prefilter over-approximates because `_` is a wildcard; the PHP `str_ends_with` pass is the authority and returns the first newest-first exact match); `reviewerOf`'s `LIKE '%.submitted'` cannot capture `.resubmitted`; no `.enrichment_updated`/`.whitelist_updated`/`.activated`/`.retired`/`.reopened` row can block or unblock activation; no permanently un-activatable audit history exists; `ProducerActivationGate` is byte-identical but for its docblock; no raw `orderByDesc('id')->value('action')` survives in `app/`; the R10 non-retroactivity assertion is non-vacuous (it pins `toHaveCount(2)` on the ids-snapshot before re-comparing it).
+
+**One verifier finding was rejected on inspection.** The console pass claimed `isReviewStale()` is inherited by "six Parties view pages", making the missing `module` predicate exploitable. It is not: `grep -rl 'extends OperatorConsoleViewRecord'` returns exactly the 7 Catalog view pages; the Parties view pages extend Filament's own `ViewRecord`. The missing predicate is a latent hardening item (below), not a live defect.
+
+### Remediated before archive — see tasks 8.1–8.4
+
+1. **`!=` on the i18n-keyed maps** (`UpdateProductVariantEnrichment`, `UpdateProductMasterIdentity`) → `TranslatableText::sameContent()`. Loose array comparison recurses into loose value comparison, so two numeric-string texts compared equal and a real edit was swallowed — no write, no audit row, no `EnrichmentDataUpdated`. Proved RED against the old code. The lesson is in `lessons.md`.
+2. **D5 verb-collision discipline was prose** → `CatalogContentEdit::maintain()` enforces it against the one `ApprovalGovernance::REVIEW_FRESHNESS_VERBS` list (now `public`).
+3. **Two residual claims task 7.1 missed** in `ProductMasterResource` ("a producer is projected only once Parties emits ProducerActivated/Retired") — both were on 7.1's own list.
+4. **`design.md` build-time deviations note** (D8's factory name and surfacing rule; D5 now a guard; the Migration Plan's false "DemoSeeder creates producers through the real actions").
+
+### Latent, unreachable today — follow-ups, deliberately NOT fixed here
+
+- **`DemoSeeder` hand-seeded watermark trap.** `seedProducerStates()` writes `status = active` with `last_event_id = 1..7`, **below** real `domain_events` ids. Harmless while `seedProducers()` uses a bare `Producer::create` (no `ProducerCreated`). The day it is switched to the real `CreateProducer` action, the emitted event strictly advances those watermarks and rewrites every `active` row to `registered` — the demo's Master activations start failing the gate, and `DemoSeederTest` counts rows, not statuses. Fix when touched: seed `last_event_id` at `PHP_INT_MAX`, or project the demo producers through real events. Same trap in `Tests\Support\Catalog\ProducerProjectionFixture` (`last_event_id = 0`), whose docblock reasons only about a subsequent `ProducerActivated`/`ProducerRetired`.
+- **`OperatorConsoleViewRecord::isReviewStale()` omits the `module` predicate** the domain read carries. No collision today (catalog basenames are globally unique among audited entity types) and no non-Catalog subclass exists. One line to restore value-for-value mirroring the day a Parties page extends the base.
+- **`catch (RuntimeException)` in the content-edit kit** also catches `Illuminate\Database\QueryException` (via `PDOException`), which would render a raw SQL string under a modal field — an invariant-12 breach. Unreachable: every submittable id comes from a `Select` fed by the very table its FK points at, `SetVariantCaseWhitelist` guards existence explicitly, and the Master identity key is a query, not a unique index. `OperatorConsoleCreateRecord` documents the same hazard for the create path.
+- **`is_breakable` absence is asserted on 2 of the 11 `catalog_*` tables** (`VariantCaseWhitelistSchemaTest`, `CaseConfigurationTest`), while the scenario says "nowhere in PIM". A loop over `Schema::getColumnListing()` for every `catalog_*` table would discharge AC-0-XM-11 literally.
+- **`lang/it/catalog.php` does not exist**, so catalog *domain* rejection reasons resolve to English under `app.locale=it`. Pre-existing baseline, not introduced here; invariant 12 is satisfied (nothing hardcoded), and the new **console** keys are authored EN+IT. Flagged so it is a decision, not an oversight.
+- **The six spine console re-submit tests** assert neither "no domain event" nor "a distinct approver can then activate" — both fixtures run a single operator, so the distinct-approver leg is structurally untestable there. The chain is proven at the domain (`CatalogReviewFreshnessUniformityTest`) and through the console for Product Master only. The traceability row above overstates; corrected here rather than in the table, which records what each test was written to cover.
+- **`ProducerCreated` carries `name`/`region`/`country`**, which the projector deliberately ignores; no test records a full payload and asserts `producer_name` stays null. Cheap, and it is the observable face of the delta's "reads only `producer_id`" wording.
+
