@@ -15,11 +15,11 @@ updated: 2026-07-08
 
 ## Active Change & Next Task
 - **No change in flight** — `openspec/changes/` holds only `archive/`. Branch `ralph/parties-module-k-br-guards` merged (deletable after push).
-- **PUSH PENDING (classifier-gated — ASK Giovanni before `git push`):** local `main` is ahead of `origin/main` by the whole batch — pre-batch memory/approve commits (`fe31c4d`, `dc15eeb`), the 24 branch commits (incl. the two §7-close ones), merge `40f6c0a`, archive `2671dde`, + the close memory-sync commit.
+- **Pushed** (2026-07-08, `git push` run by Giovanni): `main` ↔ `origin/main` in sync — `36ee05b..50f834e` (the whole batch: pre-batch approve/memory commits, 24 branch commits, merge `40f6c0a`, archive `2671dde`, memory-sync `50f834e`). Ralph branch deleted.
 - **Next candidates** (tracker §1): **RM-15** (Module 0 Producer-existence at creation — kept separate, S, maybe-ADR) · P3 Module-0 completeness (RM-12/13/14) · **RM-05** stays ⏸️ (Module A `qty`). F2 (prod operator-management) is pre-go-live. Or advance the Build Workplan (F2 → Module A/D slices via `/spec-to-change`).
 
 ## Blockers & Decisions Needed
-- None technical. Only the push gate (ask first), then `git branch -d ralph/parties-module-k-br-guards`.
+- None. Ritual fully closed (merge + archive + push done; branch deleted).
 
 ## Open Patterns
 (full forms in the archived change's `progress.md` `## Codebase Patterns`)
