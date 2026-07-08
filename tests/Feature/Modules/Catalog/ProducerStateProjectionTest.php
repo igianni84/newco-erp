@@ -101,3 +101,60 @@ it('enforces the status value-set at the PostgreSQL CHECK, while SQLite accepts 
             ->and(DB::table('catalog_producer_states')->where('status', $outOfDomain)->exists())->toBeTrue();
     }
 });
+
+it('derives the status CHECK from all three enum cases on a fresh migrate', function () {
+    // catalog-module-0-completeness-sweep task 5.1 / design D7: appending `registered` to the enum must widen
+    // the PG CHECK with NO `ALTER` migration, because the migration derives `IN (...)` from `cases()`. A stale
+    // two-token CHECK would reject the projector's very first `ProducerCreated` write on PostgreSQL — and the
+    // SQLite lane, having no CHECK at all, could never surface it. DatabaseMigrations re-migrates each test,
+    // so this asserts the constraint a FRESH deploy emits.
+    $tokens = array_map(fn (ProducerProjectionStatus $s): string => $s->value, ProducerProjectionStatus::cases());
+    expect($tokens)->toEqualCanonicalizing(['registered', 'active', 'retired']);
+
+    // Engine-agnostic leg: every enum token survives a RAW insert (which bypasses the cast, so on PG only the
+    // CHECK can reject it). Proves the constraint admits `registered` — the leg that would red on a stale CHECK.
+    foreach ($tokens as $i => $token) {
+        DB::table('catalog_producer_states')->insert([
+            'producer_id' => 500 + $i,
+            'status' => $token,
+            'last_event_id' => 1 + $i,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+    expect(DB::table('catalog_producer_states')->count())->toBe(count($tokens));
+
+    // `DB::scalar()` is typed `mixed` (the EnvironmentTest idiom); narrow it to a string here rather than let
+    // a null "no such constraint" masquerade as an empty definition — the `not->toBe('')` below is what turns
+    // a MISSING constraint into a failure instead of a vacuous pass.
+    $catalogProducerStatesDdl = static function (string $sql): string {
+        $raw = DB::scalar($sql);
+
+        return is_string($raw) ? $raw : '';
+    };
+
+    if (DB::getDriverName() === 'pgsql') {
+        // The constraint-truth engine: the derived CHECK enumerates exactly the three tokens and nothing else.
+        $definition = $catalogProducerStatesDdl(
+            "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'catalog_producer_states_status_check'"
+        );
+
+        expect($definition)->not->toBe('');   // the named CHECK exists on a fresh migrate
+
+        foreach ($tokens as $token) {
+            expect($definition)->toContain("'{$token}'");
+        }
+
+        // …and no fourth token slipped in: three quoted literals in the IN list, one per enum case.
+        expect(substr_count($definition, "'"))->toBe(2 * count($tokens));
+    } else {
+        // SQLite lane: the CHECK is skipped by the driver guard, so its ABSENCE is what must hold. A positive
+        // assertion over the stored DDL, never a vacuous skip.
+        $ddl = $catalogProducerStatesDdl(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'catalog_producer_states'"
+        );
+
+        expect($ddl)->not->toBe('')
+            ->and(strtolower($ddl))->not->toContain('check');
+    }
+});

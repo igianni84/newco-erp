@@ -8,11 +8,13 @@ use App\Modules\Catalog\Actions\ResubmitProductMasterForReview;
 use App\Modules\Catalog\Actions\RetireProductMaster;
 use App\Modules\Catalog\Actions\SubmitProductMasterForReview;
 use App\Modules\Catalog\Enums\LifecycleState;
+use App\Modules\Catalog\Enums\ProducerProjectionStatus;
 use App\Modules\Catalog\Exceptions\ApprovalGovernanceViolation;
 use App\Modules\Catalog\Exceptions\IllegalLifecycleTransition;
 use App\Modules\Catalog\Exceptions\ProducerActivationGateViolation;
 use App\Modules\Catalog\Lifecycle\LifecycleTransition;
 use App\Modules\Catalog\Lifecycle\LifecycleTransitionType;
+use App\Modules\Catalog\Models\ProducerState;
 use App\Modules\Catalog\Models\ProductMaster;
 use App\Modules\Module;
 use App\Modules\OperatorPanel\Models\Operator;
@@ -709,9 +711,38 @@ it('blocks activation when the linked Producer is absent from the projection (dr
     $reviewer = Operator::factory()->create();
     $approver = Operator::factory()->create();
 
-    // Producer 9 is never projected — a draft/unknown producer presents as NO projection row (the read model
-    // only carries active/retired), and the gate treats "no row" as not-gated-open. The Master is still
-    // saveable and held in reviewed (AC-0-J-2), but not activatable.
+    // Producer 9 emits nothing, so it has NO projection row — a producer wholly unknown to Catalog — and the
+    // gate treats "no row" as not-gated-open (fail-closed). The Master is still saveable and held in reviewed
+    // (AC-0-J-2), but not activatable.
+    $master = lifecycleCreateDraftMaster($creator, 9);
+    actingAs($reviewer, 'operator');
+    app(SubmitProductMasterForReview::class)->handle($master);
+
+    actingAs($approver, 'operator');
+    expect(fn () => app(ActivateProductMaster::class)->handle($master))
+        ->toThrow(ProducerActivationGateViolation::class);
+
+    expect(ProductMaster::findOrFail($master->id)->lifecycle_state)->toBe(LifecycleState::Reviewed)
+        ->and(AuditRecord::query()->where('action', 'catalog.product_master.activated')->count())->toBe(0)
+        ->and(DomainEvent::query()->where('name', 'ProductMasterActivated')->count())->toBe(0);
+});
+
+it('blocks activation when the linked Producer is only registered in the projection', function () {
+    $creator = Operator::factory()->create();
+    $reviewer = Operator::factory()->create();
+    $approver = Operator::factory()->create();
+
+    // The `registered` half of the gate matrix (catalog-module-0-completeness-sweep, task 5.1; the delta's
+    // "Producer Activation Gate" scenario lists `registered` beside `retired` and absent). The widened
+    // projection now gives a merely-CREATED producer a row — proving that EXISTENCE (which admits Master
+    // creation, task 5.2) is not activeness: the gate is unchanged and still demands `status === active`.
+    lifecycleProjectProducer('ProducerCreated', 9, 'draft');
+
+    // Non-vacuity: the row really is there and really is `registered` — the gate is rejecting a PRESENT row,
+    // not silently taking the no-row branch that the sibling test above already covers.
+    expect(ProducerState::query()->where('producer_id', 9)->sole()->status)
+        ->toBe(ProducerProjectionStatus::Registered);
+
     $master = lifecycleCreateDraftMaster($creator, 9);
     actingAs($reviewer, 'operator');
     app(SubmitProductMasterForReview::class)->handle($master);

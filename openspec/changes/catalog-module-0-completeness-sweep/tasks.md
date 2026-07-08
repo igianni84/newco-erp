@@ -59,7 +59,7 @@
 
 ## 5. RM-15 — producer existence at creation (XM-2)
 
-- [ ] 5.1 Widen the projection: `ProducerLifecycleProjector` consumes `ProducerCreated` → `ProducerProjectionStatus::Registered` (D7, R2)
+- [x] 5.1 Widen the projection: `ProducerLifecycleProjector` consumes `ProducerCreated` → `ProducerProjectionStatus::Registered` (D7, R2)
   - FIRST verify the `ProducerCreated` payload key against `app/Modules/Parties/Events/ProducerCreated.php` (never invent — expect `producer_id`); register the third event-name in `CatalogServiceProvider`; enum case `Registered = 'registered'` appended; the projector's `match` maps Created→Registered with the existing watermark semantics (a stale Created after Activated is a no-op — no downgrade)
   - `EnumsTest`: `ProducerProjectionStatus` count 2→3 + value map updated; projector tests: Created ⇒ `registered` row with watermark; Created-then-Activated ⇒ `active`; REPLAYED/stale Created after Activated ⇒ still `active`, watermark unregressed; PG CHECK on `status` derives 3 tokens on fresh migrate (engine-guarded assertion per data-model rule)
   - `ProducerActivationGate` untouched and proven: a `registered` producer still blocks Master activation (extend the gate test matrix)
