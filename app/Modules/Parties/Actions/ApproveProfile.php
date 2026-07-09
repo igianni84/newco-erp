@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\DB;
  * Approves a Profile membership and, in ONE transaction, drives it straight through to `active` — the atomic
  * **approve = charge = activation** collapse (canon MVP-DEC-016; parties-membership-charge-on-approval, design
  * Decisions #1/#2; parties-hero-package, design D3/D4/D8; party-registry — Requirements: Profile Membership
- * Approval, Profile Activation, Demand-Side Activation Events, Hero Package Membership Capacity Is Enforced at
- * Every Seat-Consuming Transition, WaitingList Placement, Conversion and Decline). On an `applied` — or, equally,
+ * Approval, Profile Activation, Demand-Side Activation Events, Hero Package Capacity Invariant,
+ * WaitingList Placement, Conversion and Decline). On an `applied` — or, equally,
  * a `waiting_list` — Profile whose Club has a free seat it writes `approved`, performs the conditional
  * Originating-Club one-shot lock, then invokes the within-module {@see ActivateProfile} writer to reach `active`
  * — all inside the SAME {@see DB::transaction}. `Approved` is a TRANSIENT pass-through, NEVER a durable resting

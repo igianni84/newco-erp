@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Transitions a Profile membership `Lapsed → Active` within the 30-day grace window, clears the `lapsed_at` anchor,
  * and records its {@see ProfileRenewed} event atomically (parties-membership-suspension, design L3/L4/L5/L9/L10/L11;
  * parties-hero-package, design D8/D9; party-registry — Requirements: Profile Lapse and Grace Renewal, Hero Package
- * Membership Capacity Is Enforced at Every Seat-Consuming Transition, Demand-Side Status Events). It is the inverse of
+ * Capacity Invariant, Demand-Side Status Events). It is the inverse of
  * {@see LapseProfile}.
  *
  * NAMING TRAP (design L3): the grace restore (`lapsed → active`) records {@see ProfileRenewed}, NOT

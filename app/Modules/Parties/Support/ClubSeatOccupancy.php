@@ -11,7 +11,7 @@ use App\Modules\Parties\Models\Profile;
  * ClubSeatOccupancy — the K-internal seat ledger of a Club's Hero Package: it counts the Profiles that OCCUPY a
  * seat, under the Club-row lock that makes the count trustworthy, and answers whether one more seat-consuming
  * transition would breach the Club's capacity (parties-hero-package task 1.2, design D3/D6/D10; party-registry —
- * Requirement: Hero Package Membership Capacity Is Enforced at Every Seat-Consuming Transition; § 13 / AC-K-J-13;
+ * Requirement: Hero Package Capacity Invariant; § 13 / AC-K-J-13;
  * ADR 2026-07-09-hero-package-capacity-seat-set-and-waitinglist).
  *
  * THE SEAT SET IS `Active` + `Suspended`, AND NOTHING ELSE ({@see OCCUPYING_STATES}). Occupancy is DERIVED from
