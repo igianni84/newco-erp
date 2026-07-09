@@ -132,12 +132,15 @@ return [
         // id references (not PII), so they are interpolated to make the reason self-documenting (unlike the
         // duplicate_email reason, which omits the PII email).
         'duplicate_for_club' => 'Cannot create a Profile: Customer :customer already has a live Profile in Club :club. A Customer may hold at most one non-terminal Profile per Club.',
-        // Profile membership FSM `applied → approved | rejected → active` (parties-membership-activation,
-        // design L2/L4; § 4.2.1 / AC-K-FSM-2) illegal-transition reasons. Approve/decline are audit-only writes
-        // (no Profile event — L2); activation records ProfileActivated. :state is the offending from-state token
-        // (a business enum value, not PII).
-        'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied.',
-        'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied.',
+        // Profile membership FSM `applied | waiting_list → approved | rejected → active` (parties-membership-
+        // activation, design L2/L4; parties-hero-package, design D8; § 4.2.1:186 / AC-K-FSM-2) illegal-transition
+        // reasons. Approve and decline are BOTH reachable from `applied` and from `waiting_list` — the waitlist's
+        // two exits (the conversion and the decline) are those same Actions, not distinct ones — so both reasons
+        // name the pair of legal from-states. Approve/decline are audit-only writes (no Profile event — L2);
+        // activation records ProfileActivated. :state is the offending from-state token (a business enum value,
+        // not PII).
+        'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied or waiting_list.',
+        'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied or waiting_list.',
         'cannot_activate' => 'Cannot activate this Profile from state :state. A Profile activates only from approved.',
         // Profile status FSM off `active` (parties-membership-suspension, design L4/L5; § 4.2.1 /
         // AC-K-FSM-2): `active ↔ suspended`, `active → lapsed → active` (30-day grace, DEC-034),
@@ -150,6 +153,14 @@ return [
         'cannot_renew' => 'Cannot renew this Profile from state :state. A Profile renews only from lapsed within the grace window.',
         'cannot_cancel' => 'Cannot cancel this Profile from state :state. A Profile cancels only from active or lapsed.',
         'cannot_deactivate' => 'Cannot deactivate this Profile from state :state. A Profile deactivates only from active.',
+        // Hero-Package capacity rejection (change parties-hero-package, design D8; party-registry — Requirement:
+        // Hero Package Capacity Invariant; canon MVP-DEC-017 / § 13.1 / AC-K-J-13). Raised by the only two
+        // seat-consuming transitions with no edge left to take at parity: an approve of an ALREADY-`waiting_list`
+        // Profile whose Club is still full, and a within-grace renewal (`lapsed → active` re-consumes a seat). An
+        // `applied` Profile at parity is diverted to `waiting_list` instead, never rejected. :state is the offending
+        // from-state token; :occupied and :capacity are Club-level seat cardinals — all three are business values,
+        // never PII. The copy names the seat set, so the operator knows which memberships hold the seats it counts.
+        'club_at_capacity' => 'Cannot admit this Profile to its Club from state :state. The Club is at its Hero-Package capacity — :occupied of :capacity seats are occupied. Only Active and Suspended memberships hold a seat; one must be released before a further Profile can become active.',
     ],
     'account' => [
         // Account status FSM `active → suspended → closed`, `suspended → active` (parties-membership-

@@ -120,8 +120,10 @@ it('drives the entire membership console slice end-to-end as an operator demo �
         ->and($lock->entity_id)->toBe((string) $customer->id);
 
     // (No separate ACTIVATE leg — the approve above already drove the Profile to `active` atomically (MVP-DEC-016), so
-    //  the `activate` verb is hidden from `active`; the chain proceeds straight to the suspend self-edge. UNCAPPED —
-    //  the Hero-Package capacity cap is a deferred Module-A seam, MVP-DEC-017 / RM-05.)
+    //  the `activate` verb is hidden from `active`; the chain proceeds straight to the suspend self-edge. The
+    //  Hero-Package seat gate DOES ship (parties-hero-package, MVP-DEC-017 / RM-05), but this Club is UNCAPPED: no
+    //  `PARTIES_HERO_PACKAGE_CAPACITY` exists in the test environment, so capacity reads `null` and the approve above
+    //  activates rather than diverting to `waiting_list`. The capped arm is driven by ProfileApprovalConsoleTest.)
 
     // ── SUSPEND — active → suspended + ProfileSuspended (state-preserving — design L9; the cross-entity Club-Credit
     //    preservation is pinned by ProfileStatusConsoleTest).

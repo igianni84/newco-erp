@@ -901,3 +901,35 @@
 ## [2026-07-09 11:50] spec-to-change | parties-hero-package (RM-05) | 13 reqs (3 ADDED + 10 MODIFIED, 2 caps) + 16 tasks; validate --all --strict 11/11; APPROVED created; no code
 
 ## [2026-07-09 12:01] push | parties-hero-package (RM-05) | pushed 2 commits (5da1c6b..545ed00): ADR + approve/change artifacts; main==origin/main, worktree clean
+
+## [2026-07-09 12:18] ralph | parties-hero-package 1.1 | green | 5 files | HeroPackageCapacityReader port + ConfigHeroPackageCapacityReader + config/parties.php + bind; suite 2234/2234 (2221 baseline unmoved), phpstan 0
+
+## [2026-07-09 12:39] ralph | parties-hero-package 1.2 | green | 4 files | Support/ClubSeatOccupancy: Club-row lock before seat count (Active+Suspended); 2255/2255, PHPStan 0
+
+## [2026-07-09 12:56] ralph | parties-hero-package 1.3 | green | 4 files | clubAtCapacity factory + EN/IT club_at_capacity copy | suite 2263/2263, phpstan 0
+
+## [2026-07-09 13:05] ralph | parties-hero-package 1.4 | green | 3 files | WaitingListJoined event class (§15.6, PII-free 4-key payload) + ProfileState docblock inverted | suite 2268/2268, phpstan 0
+
+## [2026-07-09 13:52] ralph | parties-hero-package 2.1 | green | 3 files | CreateProfile births waiting_list at capacity (+WaitingListJoined); recovered a crashed iteration's untested impl; suite 2280/2280
+
+## [2026-07-09 14:09] ralph | parties-hero-package 2.2 | green | 3 files | ApproveProfile seat gate: club-row lock before count, at-parity divert to waiting_list, from-state {applied,waiting_list} | suite 2292
+
+## [2026-07-09 14:24] ralph | parties-hero-package 2.3 | green | 5 files | DeclineProfile from-state {applied,waiting_list}; +14 tests, suite 2306/2306; fixed 2.2's false cannot_approve copy
+
+## [2026-07-09 14:41] ralph | parties-hero-package 2.4 | green | 2 files | RenewProfile cap-gated, grace sub-gate first, never diverts; suite 2323/2323, phpstan 0
+
+## [2026-07-09 15:02] ralph | parties-hero-package 3.1 | green | 3 files | ReactivateProfile+ActivateProfile stay ungated (docblocks only); mutation-tested the non-gate: injected gate killed 9/10 assertions. Suite 2331/2331, PHPStan 0
+
+## [2026-07-09 15:33] ralph | parties-hero-package 3.2 | green | 3 files | PG17 two-connection race proof: 1 Active + 1 WaitingList, mutation-verified (racy impl reds PG, greens SQLite). First full PG17 run of the change: 2333/2333 both engines
+
+## [2026-07-09 16:05] ralph | parties-hero-package 4.1 | green | 6 files | boundary pins: no capacity storage, no Module-A import, no auto-promotion, no new Action. 7 mutants, all 15 tests falsified. SQLite+PG17 2348/2348
+
+## [2026-07-09 16:39] ralph | parties-hero-package 5.1 | green | 2 files | SurfacesDomainActions successKey widens to string|Closure(mixed):string; 22 tests, 10 mutants, every test falsified; SQLite 2370/2370 + PG17 2370/2370; zero call sites touched
+
+## [2026-07-09 17:06] ralph | parties-hero-package 5.2 | green | 5 files | ViewProfile approve/decline widen to {applied,waiting_list}; approve titled by outcome (waitlisted vs approved) + EN/IT copy; 8 mutants incl. a regression control; SQLite 2376/2376, PG17 2376/2376, PHPStan 0
+
+## [2026-07-09 17:36] ralph | parties-hero-package 6.1 | green | 3 files | demo capacity documented (.env.example commented-out + docs/development.md) + DemoSeederHeroPackageCapacityTest (5 tests, 6 mutants). SQLite+PG17 2381/2381, PHPStan 0. .env leaks into APP_ENV=testing — an active var in .env.example would cap the suite.
+
+## [2026-07-09 17:55] ralph | parties-hero-package 7.1 | green | 6 files | CONTEXT.md six false claims inverted + WaitingListJoined payload row + Club seat glossary term; 3 stale comments fixed, pins kept; comments-only .php diff; SQLite 2381/2381
+
+## [2026-07-09 18:19] ralph | parties-hero-package 7.2 | green | 5 files | close gate: 2381/2381 SQLite+PG17, phpstan 0, pint clean, validate 11/11; tracker records the J-14/J-15/J-15a/XM-19 subset + 2 RM-03 residuals + 2 open escalations; F1 falsified -> F11 opened

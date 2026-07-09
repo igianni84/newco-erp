@@ -11,7 +11,7 @@
 
 ## 1. Substrate — the capacity port, the seat count, the exception, the event
 
-- [ ] 1.1 Add the capacity read-port + its config-backed launch adapter + `config/parties.php`, bound in `PartiesServiceProvider::register()` (D1, D2)
+- [x] 1.1 Add the capacity read-port + its config-backed launch adapter + `config/parties.php`, bound in `PartiesServiceProvider::register()` (D1, D2)
   - `app/Modules/Parties/Contracts/HeroPackageCapacityReader.php` — interface, one method `forClub(int $clubId): ?int`, `null` ⇒ uncapped. Mirror the docblock discipline of `Contracts/CustomerTransactionTotalsReader.php`
   - `app/Modules/Parties/Reads/ConfigHeroPackageCapacityReader.php` — reads `config('parties.hero_package.capacity.by_club_id')[$clubId]` then falls back to `config('parties.hero_package.capacity.default')`. **Cast to `int`**: `env()` yields a string, the contract returns `?int`
   - `config/parties.php` — `'hero_package' => ['capacity' => ['default' => env('PARTIES_HERO_PACKAGE_CAPACITY'), 'by_club_id' => []]]`, with a banner comment naming Module A as the owner of `qty` and this file as the launch adapter's source
@@ -20,7 +20,7 @@
   - Tests: adapter returns `int` for a configured `default`, `int` for a `by_club_id` override (override wins over default), `null` when neither is set; a **string** config value (the `env()` shape) still returns `int`; the container resolves the interface to the config adapter
   - Typecheck passes; tests pass
 
-- [ ] 1.2 Add the K-internal seat-occupancy helper `app/Modules/Parties/Support/ClubSeatOccupancy.php` (D3, D10)
+- [x] 1.2 Add the K-internal seat-occupancy helper `app/Modules/Parties/Support/ClubSeatOccupancy.php` (D3, D10)
   - **`Support/`, never `Actions/`** — a new `Actions/` file fails `SupplyLifecycleChainTest`. `Support/` already exists (`AnonymisedPlaceholders.php`)
   - Exposes the Club-row lock + count: acquires `Club::query()->whereKey($clubId)->lockForUpdate()->firstOrFail()` **then** counts `Profile::query()->where('club_id', …)->whereIn('state', [Active, Suspended])->count()`. **Lock strictly before count** — that ordering *is* the fix
   - Exposes a "would this transition oversell?" predicate that reads capacity via the injected `HeroPackageCapacityReader` and returns false when capacity is `null`
@@ -29,14 +29,14 @@
   - Tests: occupancy counts `Active` + `Suspended` and **excludes** `Applied`, `WaitingList`, `Rejected`, `Lapsed`, `Cancelled`, `Inactive` (drive all 9 states in one Club — this is the `AC-K-J-13` seat-set proof); occupancy is per-Club (a second Club's Profiles never leak in); `null` capacity ⇒ never at capacity
   - Typecheck passes; tests pass
 
-- [ ] 1.3 Add the capacity rejection to `IllegalProfileTransition` + EN/IT copy (D8)
+- [x] 1.3 Add the capacity rejection to `IllegalProfileTransition` + EN/IT copy (D8)
   - New static factory (no capacity constructor exists today). It serves **two** callers: `ApproveProfile` on a still-waitlisted Profile at parity, and `RenewProfile` at parity
   - Follow the shipped idiom exactly: `new self((string) __('parties.profile.<key>', [...]))`. Include the Club's capacity and current occupancy in the placeholders so the operator's danger toast says *why*
   - `lang/en/parties.php` → new key in the `profile` group. `lang/it/parties.php` → the IT counterpart. **IT is a documented subset**, but `PartiesApprovalCopyTest` enforces IT ⊆ EN, so an IT key without its EN counterpart fails
   - Tests: the factory renders the EN message with placeholders substituted; the IT locale renders the IT message; the existing IT ⊆ EN copy test stays green
   - Typecheck passes; tests pass
 
-- [ ] 1.4 Add `app/Modules/Parties/Events/WaitingListJoined.php` (D7)
+- [x] 1.4 Add `app/Modules/Parties/Events/WaitingListJoined.php` (D7)
   - Static-holder shape, `final`, exactly like `ProfileCreated`: `public const NAME = 'WaitingListJoined'`, `public const ENTITY_TYPE = 'Profile'`, `public static function payload(Profile $profile): array`
   - Payload exactly `{profile_id, customer_id, club_id, state}` — ids and enum values only, **PII-free**
   - **Invert `ProfileState.php:20`**, whose docblock currently asserts the enum *"emits no `*Activated`/`ProfileExpired`/**`WaitingListJoined`**/etc."*
@@ -47,8 +47,9 @@
 
 > Each task below flips existing green tests. **Update them in the same task**, or the iteration closes red. Never "fix" the code to keep a stale pin green.
 
-- [ ] 2.1 `CreateProfile`: birth in `WaitingList` when the target Club is at capacity (D6)
+- [x] 2.1 `CreateProfile`: birth in `WaitingList` when the target Club is at capacity (D6)
   - Inject `HeroPackageCapacityReader` + the occupancy helper. Evaluate the **Club-active gate first**, the capacity read second: a `sunset` Club rejects outright, it never waitlists
+  > ℹ 2026-07-09: only `ClubSeatOccupancy` is injected. `CreateProfile` reads no capacity *number* (it never throws the 1.3 rejection), so a directly-injected `HeroPackageCapacityReader` is `property.onlyWritten` under PHPStan max — verified empirically. The port still reaches the Action solely through Module K's own contract, autowired into the helper. Tasks 2.2 / 2.4 DO inject both: they build the rejection message.
   - Born `waiting_list` ⇒ record `ProfileCreated` **and** `WaitingListJoined`. Born `applied` ⇒ `ProfileCreated` only
   - **No Club-row lock here** (D6): neither `Applied` nor `WaitingList` holds a seat, so this gate cannot oversell. Adding a lock would serialise every application in a Club for no invariant gain
   - `auto_renew` inheritance and the duplicate guard are untouched; `waiting_list` is non-terminal, so the existing partial-unique index blocks a second live Profile with **no migration**
@@ -56,7 +57,7 @@
   - `ProfileAutoRenewTest`'s `'auto_renew'` writer-set assertion still yields exactly `['CreateProfile','SetProfileAutoRenew']`
   - Typecheck passes; tests pass
 
-- [ ] 2.2 `ApproveProfile`: Club-row lock → seat count → gate; at parity transition to `WaitingList`; from-state widens to `{applied, waiting_list}` (D3, D4, D8)
+- [x] 2.2 `ApproveProfile`: Club-row lock → seat count → gate; at parity transition to `WaitingList`; from-state widens to `{applied, waiting_list}` (D3, D4, D8)
   - **Take the `parties_clubs` row lock BEFORE counting**, inside the existing transaction. Keep the existing Profile-row lock and Customer-row lock. This is the oversell-race fix (D3)
   - From-state guard widens to `{Applied, WaitingList}`; every other state still `cannotApprove`
   - Free seat (or uncapped) ⇒ unchanged behaviour: `Approved` transient → delegate to `ActivateProfile` → `Active`; conditional `OriginatingClubLocked`; `ProfileActivated`
@@ -66,25 +67,28 @@
   - **Flips these existing tests — invert them here:** `ProfileApprovalConsoleTest.php:186` — remove `'waiting_list → hidden + rejected'` from the reject-floor dataset (approve/decline are now **legal** from `waiting_list`; under the uncapped test default the approve now *converts*, so the `toThrow` assertion goes red)
   - Tests: 51st approve against a 50-seat Club ⇒ `waiting_list` + `WaitingListJoined`, occupancy still 50, no `ProfileActivated`, no `OriginatingClubLocked`, `originating_club_id` still null (`AC-K-J-13` leg 1); conversion `waiting_list → active` once a seat frees, recording `ProfileActivated` **and** the first-ever `OriginatingClubLocked`; approve on a still-at-parity `waiting_list` Profile ⇒ capacity rejection, no second event; uncapped Club ⇒ every approve activates
   - Typecheck passes; **full suite** passes (not `--filter`)
+  > ℹ 2026-07-09: **the from-state guard runs BEFORE the capacity gate.** The delta spec (`specs/party-registry/spec.md:212`) words the order as *"lock; count; read capacity; … then, only if a seat is free: assert the from-state"* — that ordering is loose prose, and taking it literally would divert an `active` or `lapsed` Profile in a full Club onto the waitlist (it is not `waiting_list`, so it falls into the `Applied` arm). D8's table is authoritative: capacity reads *"—"* for every other from-state. Guard first also means a doomed approve locks no Club. Pinned by a 7-state dataset. Tasks 2.4 / 3.1 must keep this order.
 
-- [ ] 2.3 `DeclineProfile`: from-state widens to `{applied, waiting_list}`
+- [x] 2.3 `DeclineProfile`: from-state widens to `{applied, waiting_list}`
   - `WaitingList → Rejected`, audit-only, still event-silent, still no constructor
   - Takes **no** Club-row lock and reads **no** capacity: a decline neither frees nor consumes a seat
   - **Flips:** the same `ProfileApprovalConsoleTest` reject-floor dataset (if 2.2 left the decline half asserting `toThrow` on `waiting_list`)
   - Tests: decline from `applied` ⇒ `rejected`, zero events (unchanged); decline from `waiting_list` ⇒ `rejected`, zero events; decline from any other state ⇒ `cannotReject`; re-application after a waitlist decline inserts a fresh Profile (partial-unique index admits it)
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: nothing to flip — 2.2 removed the `waiting_list` reject-floor row outright. **2.3 also corrected a 2.2 residual the § 7.1 sweep grep cannot see:** `lang/en/parties.php`'s `cannot_approve` still read *"approved only from applied"* after 2.2 widened the approve guard. Both reasons now name the pair. The § 7.1 grep (`UNCAPPED|uncapped|deferred Module-A seam|WaitingListJoined`) matches neither key — **7.1 must additionally grep the operator-facing copy for from-state claims**, not just the four deferred-seam tokens.
 
-- [ ] 2.4 `RenewProfile`: cap-gated, grace sub-gate evaluated **first** (D8, D9)
+- [x] 2.4 `RenewProfile`: cap-gated, grace sub-gate evaluated **first** (D8, D9)
   - ⚠️ **The naming trap (D9).** Our `RenewProfile` is `lapsed → active` — a **cap-gated re-activation** (canon §13.1:627, :629). The *grandfathered* renewal of `MVP-DEC-011`/`AC-K-J-15a` is an `Active` **period rollover we do not model**. Same word, opposite rule. Do not "grandfather" this Action
   - Order: from-state guard → **30-day grace guard** → Club-row lock → seat count → capacity gate. A past-grace renewal reports the **grace** reason regardless of capacity
   - At parity ⇒ throw the 1.3 capacity rejection. **Do NOT divert to `WaitingList`**: canon draws no `Lapsed → WaitingList` edge, and diverting would clear `lapsed_at` and burn the grace clock
   - On rejection: `state` stays `lapsed`, `lapsed_at` **unchanged**, no `ProfileRenewed`
   - Tests: renew within grace + free seat ⇒ `active`, `lapsed_at` cleared, one `ProfileRenewed`; renew within grace at parity ⇒ capacity rejection, still `lapsed`, `lapsed_at` intact, **not** `waiting_list`, zero events; then free a seat and renew again within grace ⇒ succeeds; past-grace at parity ⇒ **grace** reason, not the capacity reason; uncapped ⇒ unchanged behaviour
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: the guard order is pinned NEGATIVELY, which is the only way it can be: a past-grace call emits **no `parties_clubs` statement at all** (`DB::listen`), so the grace sub-gate provably precedes the lock. Asserting the *reason* alone would not distinguish the orders — at a free seat both orderings report grace. The dataset therefore runs past-grace × {at parity, free seat, **explicitly-uncapped**}. **The § 7.1 copy grep came back clean here**: 2.4 changes no from-state set, so `cannot_renew` ("only from lapsed within the grace window") stays true, and the capacity refusal speaks through `club_at_capacity`. **`ReactivateProfile` (3.1) must stay ungated** — it is `suspended → active` and a `Suspended` Profile never released its seat; only `RenewProfile` re-consumes one.
 
 ## 3. The deliberate non-gates, and their regression proofs
 
-- [ ] 3.1 `ReactivateProfile` and `ActivateProfile` stay ungated — prove it, and delete the false docblocks (D4)
+- [x] 3.1 `ReactivateProfile` and `ActivateProfile` stay ungated — prove it, and delete the false docblocks (D4)
   - **Code change is docblocks only.** Add **no** gate to either Action. `ActivateProfile.php:49-54` and `ApproveProfile`'s sibling paragraph both claim an `UNCAPPED / DEFERRED MODULE-A SEAM` that is now false
   - `ActivateProfile` docblock: `Approved` is transient, so `Approved → Active` never *newly* consumes a seat; the gate lives on the seat-consuming caller, which evaluates it under the Club-row lock before delegating; gating here would count the same seat twice. When the Module-S `MembershipFeePaid` listener lands, **it** becomes a seat-consuming entry point and carries the gate at its own boundary
   - `ReactivateProfile` docblock: a `Suspended` Profile **keeps its seat**; re-checking would let a temporary Hold evict a member
@@ -94,18 +98,20 @@
     - `ActivateProfile` on a Profile placed directly in `Approved`, Club at parity ⇒ becomes `Active`, no capacity rejection (the seat is never counted twice)
     - Grep-style assertion: no `Parties\Actions\{ActivateProfile,ReactivateProfile}` file references the capacity reader
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **`ApproveProfile` had no false paragraph left to delete** — 2.2 already replaced it; its surviving `UNCAPPED` mentions describe the shipped config posture and are true. Only `ActivateProfile:49-54` was false. `ReactivateProfile` never carried the claim at all, so its non-gate paragraph is an ADDITION, not an inversion. **A non-gate is invisible to a diff, so a green test proves nothing until it is falsified:** I injected the forbidden gate into both Actions and confirmed 9 of the 10 assertions went red (the survivor was the `SuspendProfile`-frees-no-seat test, which drives neither Action — correctly). Every future "we deliberately did NOT do X" task should mutation-test the same way. **New § 7.1 residual found:** `ProfileMembershipChainTest.php:124` calls the cap *"a deferred Module-A seam"* — 7.1's four-token grep catches it, but its bullet list does not name it.
 
-- [ ] 3.2 PG17-only concurrency proof: two same-Club approvals serialise on the `parties_clubs` row (D3)
+- [x] 3.2 PG17-only concurrency proof: two same-Club approvals serialise on the `parties_clubs` row (D3)
   - **This is the only proof that D3 works.** `AC-K-J-13` drives a *sequential* 51st approve and passes green against the racy implementation
   - Follow the house driver-gated idiom, which **asserts both halves and never skips** — `tests/Feature/Platform/ActorRoleConstraintTest.php:110` + its docblock `:17-23`. **There is no `markTestSkipped`/`->skip()` anywhere in `tests/`; do not introduce the first one**
   - `pgsql` lane: one free seat, two `Applied` Profiles in that Club, two genuinely concurrent connections/transactions each calling `ApproveProfile` ⇒ **exactly one** lands `Active`, the other lands `WaitingList`; occupancy never exceeds capacity
   - `sqlite` lane: assert the **positive** half — `lockForUpdate` is a no-op, so the concurrency claim is not provable here; assert instead that the *sequential* gate holds (second approve diverts) and document the asymmetry in the docblock
   - Run **both** lanes before closing
   - Typecheck passes; tests pass on SQLite **and** PG17
+  > ℹ 2026-07-09: **test file only — zero production files touched.** The harness: hand-open transaction A on the default connection (the Action's own `DB::transaction` then nests as a SAVEPOINT, so its `parties_clubs` lock survives the Action's return), give B its own session by cloning the default connection's config and `DB::setDefaultConnection()`-ing for the duration of its call (the *unmodified* Action resolves onto it), and bound B's wait with `SET lock_timeout` — **the timeout IS the serialisation observation** (SQLSTATE `55P03`; no constraint name exists here, so the SQLSTATE is the stable needle). **`pcntl_fork` exists in this environment and is the wrong tool**: a forked race is nondeterministic *in the red direction* and can pass by luck against the racy code. **Mutation-proven both ways:** `lockAndCountOccupiedSeats()` → `countOccupiedSeats()` reds the PG lane (B never blocks, oversells `2 of 1`) and leaves the SQLite lane green — that green is the *evidence* for the engine asymmetry. Requires `DatabaseMigrations` (a `RefreshDatabase` wrapper txn hides the fixture from session B); the holder must be rolled back in a `finally` or `migrate:rollback` blocks on its locks and **hangs the suite**. **First full PG17 run of the change: 2333/2333 on both engines.** § 7.1's sweep grep now self-matches this file's docblock prose — read the grep, don't count it.
 
 ## 4. Architecture assertions — the boundary this change must not cross
 
-- [ ] 4.1 Assert zero capacity storage, zero Module-A coupling, zero auto-promotion (`AC-K-XM-18`, `AC-K-XM-20`, D5, D10)
+- [x] 4.1 Assert zero capacity storage, zero Module-A coupling, zero auto-promotion (`AC-K-XM-18`, `AC-K-XM-20`, D5, D10)
   - Schema inspection (the literal `AC-K-XM-20` verification method): **no** Module K table carries a capacity / seat / quota / max-members column — assert explicitly on `parties_clubs`; no `parties_*` capacity table exists
   - No Module K source file imports a `Modules\Allocation\*` symbol (`ModuleBoundariesTest` covers `Contracts`/`Events` only — this asserts *nothing at all* is imported)
   - `Parties\Contracts` exposes the capacity **read** port and **no** seat-occupancy reader contract (the count stays internal until a consumer exists)
@@ -113,44 +119,48 @@
   - `app/Modules/Parties/Actions/` gained **no** new file — `SupplyLifecycleChainTest`'s non-`Create*` set is unchanged
   - Behavioural proof of no-backfill: at parity with a `WaitingList` Profile, drive each attrition transition (`LapseProfile`, `CancelProfile`, `DeactivateProfile`) and assert the waitlisted Profile is **still** `waiting_list`, the freed seat stays unoccupied, and no `ProfileActivated` fires
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **test file only — zero production files touched** (`HeroPackageCapacityBoundaryTest.php`, 15 tests). **Seven mutants, and every one of the 15 tests was falsified by at least one.** The load-bearing surprise: mutant B — a `DomainEventConsumer` auto-promoter planted in **`Support/`** — sails straight through the subdirectory set-pin. Only the **type scan** (`is_subclass_of` over every declared Module K class) and the `ConsumerRegistry` pin caught it. **A structural absence must be pinned by NAME *and* by TYPE**; a name pin alone tells a promoter where not to stand. Mutant A (model observer) reds 7 tests incl. all four attrition edges; mutant D proved an **unused** `use App\Modules\Allocation\…` is still seen by `not->toUse` — the Pint `{@see}` trap is live, so this file names Allocation in backticks only. Mutants C/E/F/G (capacity column · seat-occupancy contract · `PromoteWaitlistedProfile` Action · scheduled promoter) each red exactly their own pin. **The `Schema` facade erases `list<string>`** (`@method static array getColumnListing()`) — under PHPStan max every table/column name arrives `mixed`; read `DB::connection()->getSchemaBuilder()` instead of casting (helper `heroBoundarySchema()`). Both engines: **SQLite 2348/2348 · PG17 2348/2348**. **5.1's *"the console re-checks no gate itself"* carries the same mutation obligation** — and now also the name-vs-type lesson: pin what the console *is*, not only what it is *called*.
 
 ## 5. Operator surface — stop the console lying about the outcome
 
-- [ ] 5.1 Make `SurfacesDomainActions` able to derive a success notification from the action's outcome (D11)
+- [x] 5.1 Make `SurfacesDomainActions` able to derive a success notification from the action's outcome (D11)
   - `lifecycleAction()` passes a **fixed** success title into `surfaceLifecycleOutcome()` (`:81-84`). Add an outcome-aware path (a resolver receiving the Action's return value) **without** changing the ~20 existing call sites' behaviour
   - The console must still re-check **no** gate itself (design L4) and import nothing from a module's `Exceptions` namespace — it reads the returned model's state and catches `RuntimeException` by base type, as today
   - Tests: an existing form-less verb still surfaces its fixed title (regression across the Catalog + Producer + Customer console suites); an outcome-aware verb surfaces the title selected by the returned state; a `RuntimeException` still surfaces the danger toast with the domain's localized message
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **`$successKey` itself widened to `string|Closure(mixed): string`** — no new parameter, so all ~20 call sites are byte-identical (`git status` = 2 files). A fixed key resolves in `lifecycleAction()`; a Closure key can only resolve *after* the Action returns, so it is deferred into `surfaceLifecycleOutcome()` as a title resolver, applied **outside the `try`** (a console-side failure is a programmer error, not a domain rejection). **Ten mutants; every one of the 22 tests reds under at least one.** Two findings 5.2 inherits: (1) **`toUse` resolves symbol references, not the `use` block** — mutant B's inline `catch (\App\Modules\…\IllegalProfileTransition)` with no import was flagged, so the type route needed its own pin (`is_subclass_of` over all 39 module exceptions). (2) **An absence-mutant cannot red a happy-path row** — mutant I (hardcode the title) was required to prove the 4 fixed-title rows and the `applied` from-state row are load-bearing. **5.2's resolver must take `mixed` and narrow with `$outcome instanceof Profile`**: PHPStan max enforces callable contravariance, so `Closure(Profile): string` is rejected where `Closure(mixed): string` is expected. 5.1 added **no copy** — the *waitlisted* keys are 5.2's.
 
-- [ ] 5.2 `ViewProfile`: `approve`/`decline` visible from `{applied, waiting_list}`; the approve toast tells the truth (D11)
+- [x] 5.2 `ViewProfile`: `approve`/`decline` visible from `{applied, waiting_list}`; the approve toast tells the truth (D11)
   - `approve` and `decline` visibility predicates widen to `stateIs('applied') || stateIs('waiting_list')` — the exact complement of the widened domain guards. **Waitlist conversion is unreachable through the console today**; this is what makes `AC-K-J-13` demonstrable in Paolo's walkthrough
   - `approve` uses the 5.1 outcome-aware path: reaching `Active` ⇒ the *approved* copy; landing in `WaitingList` ⇒ distinct *waitlisted* copy. Never report a capacity-diverted approval as an approval
   - New notification copy in `lang/en/operator_console.php` **and** `lang/it/operator_console.php` (the *"Operator console copy is localized in EN and IT"* requirement)
   - **Flips:** `ProfileApprovalConsoleTest.php:154` — `'waiting_list → hidden'` becomes **visible**; the test's name and its *"only from Applied … Both gate identically"* comment both go stale
   - Tests: approve visible + drives conversion from `waiting_list`; approve at parity from `applied` ⇒ Profile lands `waiting_list` and the **waitlisted** toast is surfaced (assert the notification title, not just the state — the old bug was invisible precisely because no test asserted the title); approve on a still-at-parity `waiting_list` ⇒ danger toast carrying the capacity reason; decline visible + terminal from `waiting_list`; both verbs still hidden in all 7 other states
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: the resolver is a **first-class callable** (`$this->approvalOutcomeKey(...)`), which types as `Closure(mixed): string` with no annotation; it matches `$outcome->state->value === 'waiting_list'` so no `Parties\Enums` import enters the console. **Eight mutants.** M1 (resolver → the fixed `'approved'` key) reds **only the title assertion** — every state assertion in the file stays green, which is the pre-5.2 bug reproduced exactly. M5, the **regression control** (resolver hardcoded to `'waitlisted'`), reds the two shipped happy-path approve tests. M7/M8 red only the danger test, so its *body* is load-bearing. **5.1's toast helper cannot be copied verbatim: under Livewire the toasts are `put` onto `filament.claimed_notifications` at `dehydrate`**, so reading `filament.notifications` alone returns `[]` and an exact-list expectation passes vacuously — 6.1 inherits this. Both engines: **SQLite 2376/2376 · PG17 2376/2376**.
 
 ## 6. Demo — make the seeded waiting list mean something
 
-- [ ] 6.1 Make the near-capacity Club real in the demo (tracker RM-08's *"post RM-05"* item; D2)
+- [x] 6.1 Make the near-capacity Club real in the demo (tracker RM-08's *"post RM-05"* item; D2)
   - `DemoSeeder` already seeds the DRC club with `hiroshi-drc → Active`, `carlos-drc → Suspended` and `eleanor-drc → WaitingList`. Under the `Active` + `Suspended` seat set that Club sits at **exactly 2 occupied seats**, so `PARTIES_HERO_PACKAGE_CAPACITY=2` makes the pre-seeded `WaitingList` Profile coherent **for the first time**, and makes a third approve divert — live, no fixture surgery
   - Document the env var in `.env.example` and in `docs/development.md` (the demo turns the gate on; production leaves it unset ⇒ uncapped ⇒ dark-launch, per `design.md` Migration Plan). The seeder writes no config
   - **Do not** change the seeded rows, and do not add a capacity column
   - Tests: a feature test that binds capacity `2` and asserts the seeded DRC Club is at exact parity, that `ApproveProfile` on a fresh `Applied` Profile there diverts to `waiting_list` + records `WaitingListJoined`, and that `ReactivateProfile` on `carlos-drc` **succeeds** at parity; existing `DemoSeederTest` stays green with capacity unset
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **docs + one test file — zero production files touched** (`DemoSeeder` untouched, no migration). **The env var ships COMMENTED OUT in `.env.example`, and that is not a style choice.** `APP_ENV=testing` loads **`.env`** (no `.env.testing` exists here) and `phpunit.xml` overrides only the keys it lists — so `cp .env.example .env` (the documented setup step, `docs/development.md:23`) with an active `PARTIES_HERO_PACKAGE_CAPACITY=2` caps the **whole suite**. Proved empirically: appending it to `.env` makes `config(...capacity.default)` read `"2"` and reds `HeroPackageCapacityReaderBindingTest:34` — hard rule 2 of this change is enforced by the var's ABSENCE, not by `phpunit.xml`. A test pins it (every `.env.example` line naming the var starts with `#`, and `config/parties.php` reads that same key). **Six mutants; all 5 tests killed.** M1 (drop the approve gate) reds only the divert; M2 (reader → always `2`) reds only the **uncapped positive control** — without that control, the divert test is indistinguishable from a fixture that could never activate; M3 (the forbidden gate on `ReactivateProfile`) reds only the at-parity restore; M4 (seat set → `[Active]`) reds three; M5/M6 (uncomment the var · rename the config key) red only the doc pin. **Gotcha for future mutation runs: Pest's JSON puts a thrown domain exception under `error_details`, not `failures`** — M3 looked like a silent survivor until I read the raw output. Both engines: **SQLite 2381/2381 · PG17 2381/2381** (2376 baseline + 5; `DemoSeederTest` green on both with capacity unset, so tracker finding **F1** did not bite).
 
 ## 7. Docs, residual-claim sweep, and the close gate
 
-- [ ] 7.1 Invert every shipped claim that this change makes false
+- [x] 7.1 Invert every shipped claim that this change makes false
   - `CONTEXT.md:287` — **invert**: it asserts as a hard rule that *"No name outside the eight above is recorded — no `ProfileLapsed`, `ProfileCancelled`, `AccountSuspended`, `AccountClosed`, **`WaitingListJoined`** or `CustomerSegmentChanged`."* Add `WaitingListJoined` to the recorded set with its payload row
   - `CONTEXT.md:131`, `:166`, `:170`, `:174` — all assert the capacity invariant / `Applied → WaitingList` path is a deferred Module-A seam and that approval and activation *"ship uncapped"*. Rewrite. `:267` and `:298` — the deferred-seam bullets naming this very change; rewrite to record what shipped and what stayed carved out
   - `MembershipSuspensionChainTest.php:260-265` — the **assertion stays green** (that chain never reaches parity under the uncapped default), but its comment calls `WaitingListJoined` a *"deferred-seam name … pinned absent"*. That prose is now false. Fix the comment; keep the pin
   - `SupplyLifecycleChainTest.php:424` — the comment naming *"the deferred seams `WaitingList`/segment/Hero-cap (no Action class)"*. The **no-Action-class** half is still true and load-bearing (D10); the *deferred-seam* half is not. Fix the comment
-  - Sweep for further residuals: `grep -rn "UNCAPPED\|uncapped\|deferred Module-A seam\|WaitingListJoined" app/ tests/ CONTEXT.md` and reconcile every hit against what shipped
+  - Sweep for further residuals: `grep -rn "UNCAPPED\|uncapped\|deferred Module-A seam\|WaitingListJoined" app/ tests/ CONTEXT.md` and reconcile every hit against what shipped. **Include `lang/`** — a copy file's *comments* restate the spec as readily as its strings, and neither this grep nor the `only from` one sees them (5.2 found both locales' `notifications` comment claiming `action_failed` is UI-reachable *"only by a past-grace `renew`"*, and inverted it in place)
   - Tests: existing suites stay green; no test asserts a claim the change falsified
   - Typecheck passes; tests pass
 
-- [ ] 7.2 Close gate — full verification on both engines, and the honesty note
+- [x] 7.2 Close gate — full verification on both engines, and the honesty note
   - Full suite **SQLite** and **PG17** (`php -d memory_limit=-1 vendor/bin/pest`, then the PG17 prefix). The PG17 lane is the **only** place task 3.2's concurrency proof runs
   - `php -d memory_limit=-1 vendor/bin/phpstan analyse` ⇒ 0 · `vendor/bin/pint --test` clean · `openspec validate --all --strict` green
   - ⚠️ **Record the subset in `docs/validation/Remediation_Tracker.md` §3/§4:** RM-05 closes against a **documented subset**. `AC-K-J-14` / `AC-K-J-15` / `AC-K-J-15a` / `AC-K-XM-19` are **NOT met**, each blocked on Module A's capacity-adjust surface, the unmodelled period rollover, or Module 0/S. **If the tracker does not say this, a later reader will believe capacity is fully compliant — the single biggest honesty risk of this change**

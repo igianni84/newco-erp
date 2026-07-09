@@ -4,8 +4,9 @@
 // governance surfaced by ActivateProducer (change parties-producer-approval-sod, task 1.1; design D1/D4;
 // DEC-127) AND the module-K business-rule guards of change parties-module-k-br-guards (tasks 2.4 + 3.1): the
 // ProducerAgreement scope-conflict / Club-not-active / settlement-cadence closed-set reject, Club
-// not-accepting-memberships, registration age-gate and Producer content-lock rejection reasons. This file
-// authors a SUBSET of `parties.*`; every other key is
+// not-accepting-memberships, registration age-gate and Producer content-lock rejection reasons — AND the
+// Hero-Package capacity rejection of change parties-hero-package (task 1.3). This file authors a SUBSET of
+// `parties.*`; every other key is
 // authored in lang/en/parties.php and resolves under `it` via per-key EN fallback (Laravel chain [it, en]).
 // Product-domain terms (Producer, Club, Profile, ProducerAgreement) stay in English even in Italian copy, per
 // Crurated convention (CRURATED/CLAUDE.md — terminologia tecnica di prodotto può restare in inglese). Every key
@@ -50,5 +51,14 @@ return [
         // and the derived age are PII and are DELIBERATELY never surfaced (the duplicate_email / gate_not_met discipline).
         'below_minimum_registration_age' => 'Impossibile registrare questo Customer: la data di nascita autodichiarata è inferiore all\'età minima di registrazione della piattaforma di :min_age. La registrazione richiede un\'età di almeno :min_age anni.',
         'missing_date_of_birth' => 'Impossibile registrare questo Customer: è richiesta una data di nascita autodichiarata per verificare l\'età minima di registrazione di :min_age. La registrazione richiede una data di nascita corrispondente ad almeno :min_age anni.',
+    ],
+    'profile' => [
+        // Hero-Package capacity rejection (change parties-hero-package, design D8 / MVP-DEC-017). Mirrors the EN key
+        // — the ONLY `profile` reason authored in `it`, because it is the only one the seat ledger raises rather than
+        // the operator's own out-of-state click: the operator meets it as a danger toast and must read why. The other
+        // `profile.*` keys stay EN-only and resolve under `it` via per-key EN fallback. :state is the offending
+        // from-state token; :occupied / :capacity are Club-level seat cardinals (business values, not PII). The state
+        // tokens (active, suspended) stay in English — product-domain terms.
+        'club_at_capacity' => 'Impossibile ammettere questo Profile nel suo Club dallo stato :state. Il Club ha raggiunto la capacità del suo Hero Package — :occupied posti occupati su :capacity. Solo le membership active e suspended occupano un posto; uno deve liberarsi prima che un altro Profile possa diventare active.',
     ],
 ];

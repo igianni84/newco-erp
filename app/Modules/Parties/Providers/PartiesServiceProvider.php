@@ -3,7 +3,9 @@
 namespace App\Modules\Parties\Providers;
 
 use App\Modules\Parties\Contracts\CustomerTransactionTotalsReader;
+use App\Modules\Parties\Contracts\HeroPackageCapacityReader;
 use App\Modules\Parties\Contracts\PartyComplianceStatusReader;
+use App\Modules\Parties\Reads\ConfigHeroPackageCapacityReader;
 use App\Modules\Parties\Reads\DatabaseComplianceStatusReader;
 use App\Modules\Parties\Reads\NullCustomerTransactionTotalsReader;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +35,14 @@ class PartiesServiceProvider extends ServiceProvider
         // binds to the zero-returning NullCustomerTransactionTotalsReader at launch: the periodic scan runs and
         // detection is a correct no-op until Module S ships the real adapter. Stateless, so a plain bind suffices.
         $this->app->bind(CustomerTransactionTotalsReader::class, NullCustomerTransactionTotalsReader::class);
+
+        // The Module-A capacity seam for the Hero-Package seat gate (parties-hero-package, design D1/D2;
+        // party-registry — Requirement: Hero Package Capacity Is Read from Module A, Never Stored in Module K;
+        // canon MVP-DEC-020). The capacity is the Hero-Package Allocation's qty, owned by Module A — a two-file
+        // stub — so the interface binds to the config-backed ConfigHeroPackageCapacityReader at launch, which
+        // reads config/parties.php (null ⇒ uncapped ⇒ the gate dark-launches). Module K stores no capacity value
+        // of any kind (AC-K-XM-20); when Module A lands, ONLY this line changes. Stateless, so a plain bind suffices.
+        $this->app->bind(HeroPackageCapacityReader::class, ConfigHeroPackageCapacityReader::class);
     }
 
     /**

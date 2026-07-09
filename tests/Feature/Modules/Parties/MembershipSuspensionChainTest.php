@@ -257,8 +257,11 @@ it('records exactly the emergent suspension name-set — no invented, audit-only
         ->and(DomainEvent::query()->get()->every(fn (DomainEvent $event): bool => $event->actor_role === ActorRole::System))->toBeTrue();
 
     // Nothing outside the eight-name status set is recorded — every name the catalog never coins (the lapse state is
-    // `Lapsed` but the event is `ProfileExpired`; cancellation + Account are audit-only) and every deferred-seam name
-    // (WaitingList, Customer segments) is pinned absent.
+    // `Lapsed` but the event is `ProfileExpired`; cancellation + Account are audit-only), the still-deferred
+    // `CustomerSegmentChanged`, and `WaitingListJoined`, which now EXISTS (parties-hero-package) but rides no status
+    // edge: it fires only on ENTRY into `waiting_list`, and this chain never enters it (the Club here is uncapped —
+    // no `PARTIES_HERO_PACKAGE_CAPACITY` in the test environment — so the approve activates rather than diverting).
+    // The pin therefore still holds, and now says something sharper: no status transition records it.
     foreach ([
         'ProfileLapsed', 'ProfileCancelled', 'ProfileApproved', 'ProfileRejected',
         'AccountActivated', 'AccountSuspended', 'AccountReactivated', 'AccountClosed', 'AccountCreated',

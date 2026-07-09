@@ -421,10 +421,12 @@ it('exposes the supply-side, compliance, Hold and demand-side activation transit
     // ...and the ONLY non-Create (transition) Actions are exactly those supply-side + compliance + Hold-registry +
     // demand-side activation + demand-side status + Club Credit-writer + anonymisation + Profile-preference ones. With task 3.2 the
     // demand-side status set is complete; the only names that stay ABSENT are `ActivateAccount` (the Account is born
-    // `active` — design L8) and the deferred seams `WaitingList`/segment/Hero-cap (no Action class) and
-    // `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock lives inside `ApproveProfile`, never a
-    // standalone Action). If a deferred-seam Action were added without declaring it here, it would appear in this set
-    // and fail the assertion (the whitelist grew one slice at a time).
+    // `active` — design L8), `WaitingList`/Hero-cap — which SHIPPED (parties-hero-package) with deliberately NO Action
+    // class of their own: the birth routing lives inside `CreateProfile`, the divert and the waitlist conversion inside
+    // `ApproveProfile`, the renew gate inside `RenewProfile`, and the seat ledger in `Support/ClubSeatOccupancy` —
+    // `segment` (still a deferred seam), and `LockOriginatingClub`/`SetOriginatingClub` (the Originating-Club lock
+    // lives inside `ApproveProfile`, never a standalone Action). If any of them were added as an Action without being
+    // declared here, it would appear in this set and fail the assertion (the whitelist grew one slice at a time).
     $transitions = array_values(array_filter($actions, static fn (string $name): bool => ! str_starts_with($name, 'Create')));
     expect($transitions)->toEqualCanonicalizing([...$supplySideTransitions, ...$complianceTransitions, ...$holdTransitions, ...$demandSideTransitions, ...$demandSideStatusTransitions, ...$clubCreditWriters, ...$anonymisationWriters, ...$profilePreferenceWriters]);
 

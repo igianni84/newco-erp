@@ -33,6 +33,14 @@ use RuntimeException;
  *     consumes — the one place a `Model` becomes a `ProductMaster`/`Format`/… so each invocation stays a
  *     clean, fully-typed one-liner.
  *
+ * A verb whose single click has TWO lawful successful outcomes cannot name them with one fixed title, and the
+ * console must never report one outcome as the other (parties-hero-package, design D11: an approve that the
+ * Hero-Package capacity gate diverts lands the Profile on the waiting list, not in the membership). So the
+ * success-notification key may instead be a RESOLVER — a Closure handed the value the domain action returned,
+ * naming the copy for THAT outcome. Deriving is not gating: the domain has already decided and written, and the
+ * resolver only READS what came back. The console still evaluates no rule of its own, still catches the
+ * rejection by base type, and still imports nothing from a module's `Exceptions` namespace (design L4).
+ *
  * All user-facing copy is localized through the host's {@see i18nKey()} (invariant 12). The concrete
  * exceptions above are named in PROSE, never as a `{@see}` type, so Pint's fully_qualified_strict_types
  * cannot re-add a forbidden `Catalog\Exceptions` import (lessons.md, 2026-06-20).
@@ -54,15 +62,22 @@ trait SurfacesDomainActions
      * notification. An optional notes form and an optional confirmation affordance
      * (`operator_console.<entity>.<confirmationKey>`) are attached when supplied.
      *
+     * `$successKey` is a FIXED key for the verbs with one lawful outcome, or — for a verb the domain may
+     * lawfully complete in more than one way — a Closure handed the domain action's return value and naming the
+     * key for that outcome (design D11). The two paths differ only in WHEN the key is known: a fixed key
+     * resolves to its title here, an outcome-aware one can only resolve after the action returns, so it is
+     * deferred into {@see surfaceLifecycleOutcome()} as a title resolver.
+     *
      * @param  string  $verb  the Filament action id (also the label key, snake-cased)
-     * @param  string  $successKey  the `notifications.<successKey>` suffix for the success title
+     * @param  string|Closure(mixed): string  $successKey  the `notifications.<successKey>` suffix for the success
+     *                                                     title — fixed, or resolved from the action's return value
      * @param  Closure(Model, string): mixed  $invoke  the per-entity domain-action invocation (record, notes)
      * @param  array<int, Component>|null  $form  optional action form (e.g. reject notes)
      * @param  string|null  $confirmationKey  optional `operator_console.<entity>.<confirmationKey>` affordance copy
      */
     protected function lifecycleAction(
         string $verb,
-        string $successKey,
+        string|Closure $successKey,
         Closure $invoke,
         ?array $form = null,
         ?string $confirmationKey = null,
@@ -78,9 +93,13 @@ trait SurfacesDomainActions
                     // form-less action receives `data = []` (Filament's getData()), so `notes` narrows to ''.
                     $notes = is_string($data['notes'] ?? null) ? $data['notes'] : '';
 
+                    $successTitle = $successKey instanceof Closure
+                        ? static fn (mixed $outcome): string => (string) __("operator_console.{$i18nKey}.notifications.".$successKey($outcome))
+                        : (string) __("operator_console.{$i18nKey}.notifications.{$successKey}");
+
                     $this->surfaceLifecycleOutcome(
                         fn () => $invoke($record, $notes),
-                        (string) __("operator_console.{$i18nKey}.notifications.{$successKey}"),
+                        $successTitle,
                     );
                 }
             );
@@ -100,19 +119,25 @@ trait SurfacesDomainActions
 
     /**
      * Run a domain lifecycle action and surface its outcome to the operator. On completion: a success
-     * notification. When the domain REJECTS the transition — an out-of-state transition, an
-     * approval-governance / producer-gate / activation-cascade / reference-integrity violation (all extend
-     * RuntimeException) — a danger notification carrying the action's already-localized message, leaving the
-     * record unchanged (the rejecting action's transaction rolled back). The console never re-checks the
-     * from-state or any gate itself (design L4); it catches the rejection by base type so it imports nothing
-     * from a module's `Exceptions` namespace (the {Models, Actions} surface, task 1.3).
+     * notification, titled either by the fixed `$successTitle` or by a resolver READING the value the action
+     * returned (design D11). When the domain REJECTS the transition — an out-of-state transition, an
+     * approval-governance / producer-gate / activation-cascade / reference-integrity / Hero-Package-capacity
+     * violation (all extend RuntimeException) — a danger notification carrying the action's already-localized
+     * message, leaving the record unchanged (the rejecting action's transaction rolled back). The console never
+     * re-checks the from-state or any gate itself (design L4); it catches the rejection by base type so it
+     * imports nothing from a module's `Exceptions` namespace (the {Models, Actions} surface, task 1.3) and so
+     * surfaces every module exception, present and future, by construction.
      *
-     * @param  Closure(): mixed  $run  invokes the domain action (its return value is unused)
+     * A title resolver runs OUTSIDE the try: it is console code, and a console-side failure is a programmer
+     * error to be raised, never a domain rejection to be dressed up as one.
+     *
+     * @param  Closure(): mixed  $run  invokes the domain action
+     * @param  string|Closure(mixed): string  $successTitle  a fixed title, or a resolver reading `$run()`'s return value
      */
-    protected function surfaceLifecycleOutcome(Closure $run, string $successTitle): void
+    protected function surfaceLifecycleOutcome(Closure $run, string|Closure $successTitle): void
     {
         try {
-            $run();
+            $outcome = $run();
         } catch (RuntimeException $exception) {
             Notification::make()
                 ->danger()
@@ -125,7 +150,7 @@ trait SurfacesDomainActions
 
         Notification::make()
             ->success()
-            ->title($successTitle)
+            ->title($successTitle instanceof Closure ? $successTitle($outcome) : $successTitle)
             ->send();
     }
 
