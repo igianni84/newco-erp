@@ -891,3 +891,11 @@
 ## [2026-07-08 21:14] close-ritual | catalog-module-0-completeness-sweep | pushed main to origin (22 commits), deleted ralph branch; main==origin/main, worktree clean
 
 ## [2026-07-08 21:56] tracker-sync | Remediation_Tracker | P3 sweep RM-12/13/14/15 closed in tracker (was stale at approve commit); RM-05 marked NEXT + ADR open questions; F5/F6/F7 opened from the sweep's 7 latent follow-ups
+
+## [2026-07-08 22:02] push | tracker-sync | pushed 2 commits (f7c1709..5da1c6b): tracker re-sync + hot.md trim; main==origin/main, worktree clean
+
+## [2026-07-09 10:21] adr | RM-05 hero-package capacity seat-set + WaitingList | ADR + INDEX + tracker sync (prep-only, no code/change/APPROVED). Canon @ 360df0b: MVP-DEC-020 declines the K-owned qty column; (b)+(c) already closed by canon. Named 2 silent defects: oversell race, RenewProfile trap. F8: canon 7 DECs past baseline
+
+## [2026-07-09 10:59] canon-recon | c-mless/documentation GitHub (read-only) | 18 issues = the question channel (#1/#9/#11 -> DEC-011/016+017/020). 2 of 5 ADR escalations already answered -> ADR amended in-place, pointers swept; WaitingListJoined-on-birth never asked. New: F9 (issue #18 OPEN: auth OTP not password), F10 (spec/ 29 commits behind)
+
+## [2026-07-09 11:50] spec-to-change | parties-hero-package (RM-05) | 13 reqs (3 ADDED + 10 MODIFIED, 2 caps) + 16 tasks; validate --all --strict 11/11; APPROVED created; no code
