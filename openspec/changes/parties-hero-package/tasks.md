@@ -57,7 +57,7 @@
   - `ProfileAutoRenewTest`'s `'auto_renew'` writer-set assertion still yields exactly `['CreateProfile','SetProfileAutoRenew']`
   - Typecheck passes; tests pass
 
-- [ ] 2.2 `ApproveProfile`: Club-row lock → seat count → gate; at parity transition to `WaitingList`; from-state widens to `{applied, waiting_list}` (D3, D4, D8)
+- [x] 2.2 `ApproveProfile`: Club-row lock → seat count → gate; at parity transition to `WaitingList`; from-state widens to `{applied, waiting_list}` (D3, D4, D8)
   - **Take the `parties_clubs` row lock BEFORE counting**, inside the existing transaction. Keep the existing Profile-row lock and Customer-row lock. This is the oversell-race fix (D3)
   - From-state guard widens to `{Applied, WaitingList}`; every other state still `cannotApprove`
   - Free seat (or uncapped) ⇒ unchanged behaviour: `Approved` transient → delegate to `ActivateProfile` → `Active`; conditional `OriginatingClubLocked`; `ProfileActivated`
@@ -67,6 +67,7 @@
   - **Flips these existing tests — invert them here:** `ProfileApprovalConsoleTest.php:186` — remove `'waiting_list → hidden + rejected'` from the reject-floor dataset (approve/decline are now **legal** from `waiting_list`; under the uncapped test default the approve now *converts*, so the `toThrow` assertion goes red)
   - Tests: 51st approve against a 50-seat Club ⇒ `waiting_list` + `WaitingListJoined`, occupancy still 50, no `ProfileActivated`, no `OriginatingClubLocked`, `originating_club_id` still null (`AC-K-J-13` leg 1); conversion `waiting_list → active` once a seat frees, recording `ProfileActivated` **and** the first-ever `OriginatingClubLocked`; approve on a still-at-parity `waiting_list` Profile ⇒ capacity rejection, no second event; uncapped Club ⇒ every approve activates
   - Typecheck passes; **full suite** passes (not `--filter`)
+  > ℹ 2026-07-09: **the from-state guard runs BEFORE the capacity gate.** The delta spec (`specs/party-registry/spec.md:212`) words the order as *"lock; count; read capacity; … then, only if a seat is free: assert the from-state"* — that ordering is loose prose, and taking it literally would divert an `active` or `lapsed` Profile in a full Club onto the waitlist (it is not `waiting_list`, so it falls into the `Applied` arm). D8's table is authoritative: capacity reads *"—"* for every other from-state. Guard first also means a doomed approve locks no Club. Pinned by a 7-state dataset. Tasks 2.4 / 3.1 must keep this order.
 
 - [ ] 2.3 `DeclineProfile`: from-state widens to `{applied, waiting_list}`
   - `WaitingList → Rejected`, audit-only, still event-silent, still no constructor

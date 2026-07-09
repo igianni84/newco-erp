@@ -911,3 +911,5 @@
 ## [2026-07-09 13:05] ralph | parties-hero-package 1.4 | green | 3 files | WaitingListJoined event class (§15.6, PII-free 4-key payload) + ProfileState docblock inverted | suite 2268/2268, phpstan 0
 
 ## [2026-07-09 13:52] ralph | parties-hero-package 2.1 | green | 3 files | CreateProfile births waiting_list at capacity (+WaitingListJoined); recovered a crashed iteration's untested impl; suite 2280/2280
+
+## [2026-07-09 14:09] ralph | parties-hero-package 2.2 | green | 3 files | ApproveProfile seat gate: club-row lock before count, at-parity divert to waiting_list, from-state {applied,waiting_list} | suite 2292

@@ -183,7 +183,11 @@ it('proves the approve/decline reject floor — hidden out of Applied AND the do
     expect(Profile::findOrFail($profile->id)->state)->toBe($from)
         ->and(DomainEvent::query()->count())->toBe(0);
 })->with([
-    'waiting_list → hidden + rejected' => [ProfileState::WaitingList],
+    // `waiting_list` is NOT in this floor. Since parties-hero-package, approve is LEGAL from `waiting_list` (the
+    // waitlist conversion — the same atomic instant, § 13.5), so under the uncapped test default the domain half
+    // below would activate the Profile rather than throw. The console still HIDES both verbs there today; that half
+    // is covered by the visibility dataset above, and the conversion + its at-parity rejection are pinned in
+    // tests/Feature/Modules/Parties/ProfileApprovalCapacityGateTest.php.
     'approved → hidden + rejected' => [ProfileState::Approved],
     'rejected → hidden + rejected' => [ProfileState::Rejected],
     'active → hidden + rejected' => [ProfileState::Active],
