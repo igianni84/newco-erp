@@ -23,8 +23,11 @@ use Illuminate\Support\Facades\DB;
  *
  * Four claims:
  *   1. THE GATE ROUTES, IT NEVER REJECTS. An applicant for a full Club is born `waiting_list` and admitted onto the
- *      waitlist — `ProfileCreated` AND `WaitingListJoined`, both in the write's transaction. A free seat, or an
- *      uncapped Club (the shipped default), births `applied` and records `ProfileCreated` alone.
+ *      waitlist — `ProfileCreated` AND `WaitingListJoined`, both in the write's transaction, and the latter a ROOT
+ *      event notwithstanding the former preceding it there (party-registry — *"WaitingListJoined carries a PII-free
+ *      payload and is a root event"*; parties-hero-package-residuals design R3: two `record()` call sites, so the
+ *      divert's root-ness is pinned separately, in `ProfileApprovalCapacityGateTest`). A free seat, or an uncapped
+ *      Club (the shipped default), births `applied` and records `ProfileCreated` alone.
  *   2. THE CLUB-STATUS GUARD IS EVALUATED STRICTLY FIRST. A `sunset` Club at capacity REJECTS the application; it
  *      never waitlists it. Waitlisting for a Club that will never admit anyone is a lie to the customer.
  *   3. IT TAKES NO CLUB-ROW LOCK (D6). Neither `Applied` nor `WaitingList` occupies a seat, so this gate
@@ -83,6 +86,15 @@ it('births a Profile in waiting_list when the target Club is at capacity, record
         ->and($joined->payload['customer_id'])->toBe($customer->id)
         ->and($joined->payload['club_id'])->toBe($club->id)
         ->and($joined->payload['state'])->toBe('waiting_list');
+
+    // `WaitingListJoined` IS A ROOT EVENT — and the BIRTH entry point is where that is easiest to get wrong, because
+    // `ProfileCreated` is recorded first, in this very transaction, so it reads like the cause. It is not: the two are
+    // SIBLING roots. A birth is not an edge (the Action writes no transition out of the birth state), so nothing
+    // caused the waitlist join. Two independent ways to break this, hence two assertions, neither implying the other:
+    // a `causationId` re-parents the confirmation under the creation, while a shared `correlationId` (the tempting
+    // "one correlation per transaction") leaves `causation_id` null and still collapses two roots into one chain.
+    expect($joined->causation_id)->toBeNull()
+        ->and($joined->correlation_id)->toBe($joined->event_id);
 });
 
 it('births a Profile in applied when the target Club still has a free seat, recording ProfileCreated alone', function () {

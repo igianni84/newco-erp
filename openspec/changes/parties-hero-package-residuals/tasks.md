@@ -22,7 +22,7 @@
 
 ## 2. The event-envelope pin — `WaitingListJoined` is a root event
 
-- [ ] 2.1 Pin root-ness at the **birth** entry point in `tests/Feature/Modules/Parties/ProfileBirthStateRoutingTest.php` (R3)
+- [x] 2.1 Pin root-ness at the **birth** entry point in `tests/Feature/Modules/Parties/ProfileBirthStateRoutingTest.php` (R3)
   - On the recorded `WaitingListJoined`: `causation_id` is null **and** `correlation_id === event_id`. Mirror `ProfileActivationTest.php:74-75` verbatim
   - **Not** in `WaitingListJoinedEventTest` — that is a pure `payload()` unit test that never touches the recorder, so root-ness cannot live there
   - **Mutant:** pass a `causationId` into `CreateProfile`'s `record()` call; confirm only this pin reds; restore
