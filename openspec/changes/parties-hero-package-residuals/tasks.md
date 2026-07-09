@@ -53,9 +53,10 @@
 
 ## 4. Close
 
-- [ ] 4.1 Close gate — full verification, and the residual sweep
+- [x] 4.1 Close gate — full verification, and the residual sweep
   - `php -d memory_limit=-1 vendor/bin/pest` on **SQLite** and on **PG17**; `phpstan analyse` 0; `pint --test` clean; `openspec validate --all --strict` green
   - Confirm `git diff --stat` touches **no file under `app/`** (design R1 / Non-Goals). If it does, the change went wrong
   - Sweep for claims this change makes false: `grep -rn "only if a seat is free" openspec/ app/ docs/` and `grep -rn "assert the from-state" openspec/` — the corrected sequence must not survive anywhere in its old form. **Read the grep, do not count it**: this change's own delta quotes the superseded prose in its `_Source:_` line, on purpose
   - Update `docs/validation/Remediation_Tracker.md`: RM-05 still closes against a **documented subset** — this change closes **none** of `AC-K-J-14` / `J-15` / `J-15a` / `XM-19`. Say so, or a later reader will read "residuals closed" as "capacity is compliant"
   - `progress.md` § Codebase Patterns consolidated; `log.md` via `scripts/memlog.sh`; `hot.md` overwritten (≤550 words)
+  > ⓘ 2026-07-10: green. SQLite **2389/2389** (12 404 assn) · PG17 **2389/2389** (12 411) — *identical to 3.2's baseline*, which is the proof a doc-only task changed no behaviour. PHPStan 0 · Pint clean · `validate --all --strict` 11/11 · **0 files under `app/`** across all six tasks. **Sweep: 11 hits, 0 defects** — and the classification is the finding. Three hit-classes are *supposed* to fire: the truth spec `party-registry:670` (folds on archive; invariant 11 forbids hand-editing), archived history ×4, this change's own deliberate quotations ×5. `app/` and `docs/`: zero. The **second** grep is the discriminator — `"assert the from-state"` hits `:670` and **not** `:889`, so `RenewProfile`'s requirement is *silent*, not contradicted (`RenewProfile.php:112`→`:124` guards before it locks; docblock `:53` says so). **The tracker was contradicting itself:** §4 said *"Semantic-verify has NOT run"* while §7's F12 was stamped *"found by RM-05 §2.7 semantic-verify"*, and six *"pending §2.7 close"* markers outlived the merge **and** archive of the change they described. Corrected in the current-state sections; §6 Session Log appended to, never rewritten. See progress.md § 4.1.

@@ -947,3 +947,5 @@
 ## [2026-07-09 23:17] ralph | parties-hero-package-residuals 3.1 | green | 3 files | console create-at-capacity pinned; WaitingListJoined birth envelope was blind repo-wide; hypotheses count corrected 2/3→1/3
 
 ## [2026-07-09 23:47] ralph | parties-hero-package-residuals 3.2 | green | 4 files | console renew-at-capacity pinned; the 3-field toast is dominated by the shared kit — the pin is assertActionVisible against a full Club (1 red of 2389)
+
+## [2026-07-10 00:06] ralph | parties-hero-package-residuals 4.1 | green | 4 files | close gate: SQLite+PG17 2389/2389 (12404/12411 assn), PHPStan 0, Pint clean, validate --strict 11/11; 0 app/ files. Sweep read: 11 hits, 0 defects. Tracker: RM-05 closes a SUBSET, none of J-14/15/15a/XM-19; 7 stale claims fixed. 6/6 COMPLETE.
