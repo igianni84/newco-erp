@@ -129,3 +129,28 @@ Two corollaries worth grepping for:
 - `parties-hero-package` task 3.2 — `ApproveProfile`'s `parties_clubs` row lock (design D3). Two sessions, one free seat, two `Applied` Profiles ⇒ exactly one `Active`, one `WaitingList`. Mutating `lockAndCountOccupiedSeats()` → `countOccupiedSeats()` reds the PG lane at the `55P03` assertion (B sails through and oversells 2-of-1) and leaves the SQLite lane green — the asymmetry, demonstrated. *(Confirmation date = archive-dir date once archived.)*
 
 **Applies to.** Every enforcement site of invariants 1 and 2 — Module A's `qty − issued ≥ 0` per sub-pool and Module B's `physical_in_storage − reserved − quarantined − under_adjustment ≥ 0` — both check-then-act over a derived aggregate, both needing this harness for their PG lane. Also `InlineDeliveryExecutor`'s `lockForUpdate` winner-election, where the claim is that two concurrent sweeps deliver an event exactly once.
+
+---
+
+## `.env.example` is a test-environment file: document a new env var COMMENTED OUT, and pin the comment
+
+**Hypothesis.** An env var added to `.env.example` with an active value silently reconfigures the whole test suite, because three facts compose:
+
+1. `LoadEnvironmentVariables` prefers `.env.{APP_ENV}` **only if that file exists**. This repo has **no `.env.testing`**, so `APP_ENV=testing` falls back to plain **`.env`**.
+2. `phpunit.xml` overrides only the ~13 keys it lists (`DB_CONNECTION`, `CACHE_STORE`, …). Every other key in `.env` reaches `env()` and therefore `config()` during tests.
+3. `docs/development.md` instructs every developer and CI job to `cp .env.example .env`.
+
+So `.env.example` is transitively a test-environment file. A var whose **absence** is the suite's baseline posture (an uncapped gate, a disabled feature flag, a null driver) must therefore ship **commented out** — the `EVENTS_SWEEP_*` block is the house precedent. Documenting it by activating it is the failure mode, and it fails *quietly*: only the config-sensitive tests move, and they move consistently, so the run looks like a real regression somewhere else.
+
+**Prescription.** Ship the var commented out with a comment saying *why*, then pin the ban mechanically in the change's own test file:
+- `.env.example` names the var (the doc exists), and **every line naming it starts with `#`** after `ltrim` (the doc cannot be armed by accident);
+- `config/<file>.php` contains `env('<THE_SAME_KEY>')` (a rename cannot orphan the doc).
+
+Read both files with the house idiom, `(string) file_get_contents(base_path(...))`. Mutation-prove it two ways: uncommenting the line and renaming the config key must each red exactly this test and nothing else.
+
+**Corollary — the baseline posture has no other guardian.** The uncapped/disabled default that hundreds of existing tests are written against is protected by the variable's *absence*, not by `phpunit.xml`. Never add such a key to `phpunit.xml` "for clarity": that pins the value, and the next task that needs the other value has nowhere to stand. Bind per-test with `config()->set(...)` instead — and bind it as a **string**, since `env()` yields a string and the config sources the default straight from it (empirically: a `.env` entry arrives as `"2"`, not `2`). Testing with an `int` skips the adapter's cast, which is exactly the boundary worth exercising.
+
+**Confirmations: 1/3** (need 2 more distinct changes).
+- `parties-hero-package` task 6.1 — `PARTIES_HERO_PACKAGE_CAPACITY`. Appending it to `.env` made `config('parties.hero_package.capacity.default')` read `"2"` and reddened `HeroPackageCapacityReaderBindingTest:34` (*"reads uncapped by default — no capacity is configured in the test environment"*), which is the suite's uncapped-baseline canary. Shipped commented out; pinned by `DemoSeederHeroPackageCapacityTest`'s doc test; mutants M5 (uncomment) / M6 (rename the key) red only that test. *(Confirmation date = archive-dir date once archived.)*
+
+**Applies to.** Every open stack decision in root `CLAUDE.md` that lands as an env var — the queue driver (`QUEUE_CONNECTION` beyond the phpunit-pinned `sync`), object storage for invoice documents, and the hosting/infra keys — plus any feature flag whose OFF state is the tested baseline, notably the **D12 NFT/on-chain flag**, whose entire test suite assumes mint/burn stays flagged off.

@@ -44,6 +44,28 @@ php artisan db:seed                      # DatabaseSeeder → RoleSeeder then Op
 
 `DatabaseSeeder` runs `RoleSeeder` (the Creator / Reviewer / Approver roles on the `operator` guard) **then** `OperatorSeeder`, which `updateOrCreate`s the operator (idempotent, keyed on email) and grants it all three roles. The order matters: `OperatorSeeder` assigns roles, so running `php artisan db:seed --class=OperatorSeeder` alone fails unless `RoleSeeder` has already run. `OperatorSeeder` throws a `RuntimeException` naming any missing variable — an empty `OPERATOR_PASSWORD` is the usual culprit.
 
+### Hero-Package membership capacity (`PARTIES_HERO_PACKAGE_CAPACITY`)
+
+The Module K seat gate (no-oversell on Club membership) reads a Club's Hero-Package capacity through the `HeroPackageCapacityReader` port. Module A owns the real Allocation `qty`; until it ships, the bound adapter reads `config/parties.php`, whose global default comes from this env var. A Club's occupancy is **derived** from Profile state — the seat set is `active` + `suspended`, and nothing is stored in Module K.
+
+| Value | Posture |
+|---|---|
+| **unset** (the default) | **Uncapped** — the gate passes unconditionally. This is the shipped **production** posture: a dark launch, and the reason every pre-existing Parties test runs against unchanged behaviour. |
+| `2` | The **demo** posture. `DemoSeeder` seeds the Romanée-Conti Cercle club with one `active` and one `suspended` member, so it sits at **exactly 2 occupied seats** — at parity. Its pre-seeded waiting-list membership becomes coherent, and the next approval there diverts onto the waiting list instead of activating. |
+
+```bash
+# in .env, to walk the capacity story in the operator console:
+PARTIES_HERO_PACKAGE_CAPACITY=2
+php artisan db:seed --class=DemoSeeder      # chains RoleSeeder + OperatorDemoSeeder
+```
+
+Two rules the value carries:
+
+- **`0` is a real capacity** (a Club admitting nobody), never an absence. Only an absent or non-numeric value normalises to uncapped.
+- **Never set it in `.env.example`.** `APP_ENV=testing` loads `.env` (there is no `.env.testing`), and `phpunit.xml` does not override this key — so a `cp .env.example .env` with a capped default silently caps the test suite. `.env.example` documents it commented out; `tests/Feature/DemoSeederHeroPackageCapacityTest.php` pins that.
+
+A per-Club override (`config('parties.hero_package.capacity.by_club_id')`) exists for pinning one Club, and wins on **presence, not truthiness** — an explicit `null` there leaves that Club uncapped beneath a capped global default. Tests bind capacity with `config()->set(...)`, never through the environment.
+
 ### Operator authentication & RBAC
 
 Operator auth is wired by the `operator-auth-foundation` change — the operator slice of `decisions/2026-06-15-identity-auth.md`:
