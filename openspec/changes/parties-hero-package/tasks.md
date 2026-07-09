@@ -20,7 +20,7 @@
   - Tests: adapter returns `int` for a configured `default`, `int` for a `by_club_id` override (override wins over default), `null` when neither is set; a **string** config value (the `env()` shape) still returns `int`; the container resolves the interface to the config adapter
   - Typecheck passes; tests pass
 
-- [ ] 1.2 Add the K-internal seat-occupancy helper `app/Modules/Parties/Support/ClubSeatOccupancy.php` (D3, D10)
+- [x] 1.2 Add the K-internal seat-occupancy helper `app/Modules/Parties/Support/ClubSeatOccupancy.php` (D3, D10)
   - **`Support/`, never `Actions/`** — a new `Actions/` file fails `SupplyLifecycleChainTest`. `Support/` already exists (`AnonymisedPlaceholders.php`)
   - Exposes the Club-row lock + count: acquires `Club::query()->whereKey($clubId)->lockForUpdate()->firstOrFail()` **then** counts `Profile::query()->where('club_id', …)->whereIn('state', [Active, Suspended])->count()`. **Lock strictly before count** — that ordering *is* the fix
   - Exposes a "would this transition oversell?" predicate that reads capacity via the injected `HeroPackageCapacityReader` and returns false when capacity is `null`

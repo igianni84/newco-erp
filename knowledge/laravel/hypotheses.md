@@ -12,3 +12,14 @@
 - *(Weaker, NOT counted as the 3rd: 2026-06-16 `catalog-lifecycle-approval` exercises `config/catalog.php`'s `approval.role_count` through behavioral governance tests rather than a pure `expect(config(...))` equality — same "config is unanalysed, prove it via a booted test" mechanism, looser form.)*
 
 **Applies to.** Any invariant that lives in a `config/*.php` file (derived arrays, published-package keys, env-overridable defaults).
+
+## Pint promotes a docblock `{@see \Fully\Qualified\Name}` into a real `use` import — which can manufacture a module-boundary violation out of prose
+
+**Hypothesis.** Pint's `fully_qualified_strict_types` fixer (on in the Laravel preset) does not merely shorten FQCNs in *code*: it scans **docblocks**, shortens any fully-qualified `{@see \A\B\C}` to `{@see C}`, and **adds `use A\B\C;` to the file** to keep it resolvable. The import is indistinguishable from a hand-written one. Pest's architecture expectations (`expect($ns)->not->toUse('App\Modules\Allocation')`, `tests/Architecture/ModuleBoundariesTest.php:121`) read real imports — so a purely explanatory cross-module `{@see}` in a docblock becomes a **genuine dependency** and reds the boundary test. In this repo, where docblocks routinely explain a class by naming its collaborators, that is a live trap rather than a curiosity.
+
+**Prescription.** Reference a class the file does not actually depend on as **plain backticked prose** (`` `ApproveProfile` ``), never `{@see \FQCN}`. Reserve `{@see}` for symbols the file genuinely imports or for its own methods (`{@see methodName()}`). After writing a docblock-heavy file, always `git diff` the `use` block after the first `pint` run — the fixer edits the imports silently and the diff is the only place it shows.
+
+**Confirmations: 1/3** (need 2 more distinct changes).
+- `parties-hero-package` task 1.2 — `Support\ClubSeatOccupancy`'s docblock explained the seat set by naming the four Actions that consume it (`{@see \App\Modules\Parties\Actions\ApproveProfile}` etc.). Pint silently added four `use App\Modules\Parties\Actions\*` imports to a `Support/` class that depends on none of them. Within-module here, so nothing went red — but the identical prose naming a `Modules\Allocation\*` symbol would have imported it and tripped task 4.1's *"no Module K source file imports a `Modules\Allocation\*` symbol"* assertion, and invariant 10 with it. *(Confirmation date = archive-dir date once archived.)*
+
+**Applies to.** Every module-boundary assertion in `tests/Architecture/ModuleBoundariesTest.php`, the `Platform`-must-not-use-`App\Modules` pin (`:215`), and the per-class `not->toUse` guards on the deferred read-ports (`HeroPackageCapacityReaderBindingTest:118`). Highest risk where a docblock's job is to explain a **deferred seam** by naming the module that will own it.
