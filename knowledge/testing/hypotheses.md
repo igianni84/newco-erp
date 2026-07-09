@@ -52,3 +52,12 @@ Two corollaries worth grepping for:
 - `catalog-module-0-completeness-sweep` task 7.2 — the new `ProducerActivated`-lands-on-a-reviewed-Master test. First draft snapshotted audit-record **ids**; the Master's only pre-disturbance audit row is its `submitted`, and had the test been written one statement earlier (before the submit) the assertion would have compared `[]` to `[]` and proven nothing. Rewritten to pin the ordered action list. *(Confirmation date = archive-dir date once archived.)*
 
 **Applies to.** Every non-retroactivity / preserve-actives / no-side-effect assertion — the R10 whitelist-reduction proof (3.2) already uses the ids form and is non-vacuous only because its SKU has activation rows; re-check it if that fixture ever moves.
+
+## A test fake of a nullable contract must exercise BOTH arms — PHPStan max audits your fakes, and `return.unusedType` means the fake is too weak
+
+**Hypothesis.** `phpstan.neon` analyses `tests/`, so an in-test (usually anonymous-class) fake implementing a `?T`-returning port is type-checked like production code. A fake that only ever returns a `T` draws `return.unusedType` — *"never returns null so it can be removed from the return type"*. **Never narrow the fake's signature to silence it, and never `@phpstan-ignore` it.** The diagnostic is not a typing nit: it proves the fake cannot drive the consumer's null branch, so any test using it silently leaves the null arm — usually the *safe default / disabled-feature* arm, i.e. the one that governs production — unproven. The fix is to make the fake answer both arms on different inputs (`fn ($id) => $id === 1 ? null : $id * 10`). Same family as the first hypothesis's generalisation — *"PHPStan max proving your test assertion means the assertion is not a test"* — but the prescription inverts: there, delete the assertion; here, **strengthen the fake**.
+
+**Confirmations: 1/3** (need 2 more distinct changes).
+- `parties-hero-package` task 1.1 — the swappability fake for `HeroPackageCapacityReader::forClub(): ?int` returned `$clubId * 10` unconditionally. PHPStan max flagged it; the null arm is `null ⇒ uncapped`, which is the **shipped production posture** (dark launch), so the too-weak fake would have left exactly the arm that matters untested. *(Confirmation date = archive-dir date once archived.)*
+
+**Applies to.** Every deferred-module read-port fake (`Parties\Contracts\*Reader` and its Module-A/S/E successors), and any fake of a contract whose `null`/absent return encodes a feature-disabled or unconfigured default.

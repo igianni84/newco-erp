@@ -11,7 +11,7 @@
 
 ## 1. Substrate — the capacity port, the seat count, the exception, the event
 
-- [ ] 1.1 Add the capacity read-port + its config-backed launch adapter + `config/parties.php`, bound in `PartiesServiceProvider::register()` (D1, D2)
+- [x] 1.1 Add the capacity read-port + its config-backed launch adapter + `config/parties.php`, bound in `PartiesServiceProvider::register()` (D1, D2)
   - `app/Modules/Parties/Contracts/HeroPackageCapacityReader.php` — interface, one method `forClub(int $clubId): ?int`, `null` ⇒ uncapped. Mirror the docblock discipline of `Contracts/CustomerTransactionTotalsReader.php`
   - `app/Modules/Parties/Reads/ConfigHeroPackageCapacityReader.php` — reads `config('parties.hero_package.capacity.by_club_id')[$clubId]` then falls back to `config('parties.hero_package.capacity.default')`. **Cast to `int`**: `env()` yields a string, the contract returns `?int`
   - `config/parties.php` — `'hero_package' => ['capacity' => ['default' => env('PARTIES_HERO_PACKAGE_CAPACITY'), 'by_club_id' => []]]`, with a banner comment naming Module A as the owner of `qty` and this file as the launch adapter's source

@@ -901,3 +901,5 @@
 ## [2026-07-09 11:50] spec-to-change | parties-hero-package (RM-05) | 13 reqs (3 ADDED + 10 MODIFIED, 2 caps) + 16 tasks; validate --all --strict 11/11; APPROVED created; no code
 
 ## [2026-07-09 12:01] push | parties-hero-package (RM-05) | pushed 2 commits (5da1c6b..545ed00): ADR + approve/change artifacts; main==origin/main, worktree clean
+
+## [2026-07-09 12:18] ralph | parties-hero-package 1.1 | green | 5 files | HeroPackageCapacityReader port + ConfigHeroPackageCapacityReader + config/parties.php + bind; suite 2234/2234 (2221 baseline unmoved), phpstan 0
