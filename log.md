@@ -899,3 +899,5 @@
 ## [2026-07-09 10:59] canon-recon | c-mless/documentation GitHub (read-only) | 18 issues = the question channel (#1/#9/#11 -> DEC-011/016+017/020). 2 of 5 ADR escalations already answered -> ADR amended in-place, pointers swept; WaitingListJoined-on-birth never asked. New: F9 (issue #18 OPEN: auth OTP not password), F10 (spec/ 29 commits behind)
 
 ## [2026-07-09 11:50] spec-to-change | parties-hero-package (RM-05) | 13 reqs (3 ADDED + 10 MODIFIED, 2 caps) + 16 tasks; validate --all --strict 11/11; APPROVED created; no code
+
+## [2026-07-09 12:01] push | parties-hero-package (RM-05) | pushed 2 commits (5da1c6b..545ed00): ADR + approve/change artifacts; main==origin/main, worktree clean

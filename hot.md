@@ -7,7 +7,7 @@ updated: 2026-07-09
 # Hot Cache
 
 ## Last Updated
-**2026-07-09 — RM-05: ADR + `/spec-to-change` → `parties-hero-package`, `APPROVED` created. Ready for `./ralph.sh`.** No code written. **Tree dirty & uncommitted** (ADR + `decisions/INDEX.md` + tracker + change artifacts). **Commit on `main` before looping**, else ralph's iteration-1 `git add -A` sweeps them into a task commit.
+**2026-07-09 — RM-05: ADR + `/spec-to-change` → `parties-hero-package`, `APPROVED`. Ready for `./ralph.sh`.** No code written. **Committed + pushed** (`5da1c6b..545ed00`): `6896f8e` ADR, `545ed00` approve. `main` ↔ `origin` in sync, worktree clean.
 
 ## Build & Quality Status
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint. **Untouched** (doc-only session).
