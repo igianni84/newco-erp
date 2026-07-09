@@ -36,7 +36,7 @@
   - Tests: the factory renders the EN message with placeholders substituted; the IT locale renders the IT message; the existing IT ⊆ EN copy test stays green
   - Typecheck passes; tests pass
 
-- [ ] 1.4 Add `app/Modules/Parties/Events/WaitingListJoined.php` (D7)
+- [x] 1.4 Add `app/Modules/Parties/Events/WaitingListJoined.php` (D7)
   - Static-holder shape, `final`, exactly like `ProfileCreated`: `public const NAME = 'WaitingListJoined'`, `public const ENTITY_TYPE = 'Profile'`, `public static function payload(Profile $profile): array`
   - Payload exactly `{profile_id, customer_id, club_id, state}` — ids and enum values only, **PII-free**
   - **Invert `ProfileState.php:20`**, whose docblock currently asserts the enum *"emits no `*Activated`/`ProfileExpired`/**`WaitingListJoined`**/etc."*

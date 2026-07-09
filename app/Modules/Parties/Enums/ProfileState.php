@@ -16,9 +16,15 @@ namespace App\Modules\Parties\Enums;
  * `parties_profiles` excludes — `(customer_id, club_id) WHERE state NOT IN
  * ('rejected','cancelled','inactive')` — so "at most one non-terminal Profile per
  * Customer–Club pair" (BR-K-Identity-2) coexists with "rejected Profiles are not
- * reused" (§ 4.2.1). This change stores the state but writes NO transition and
- * emits no `*Activated`/`ProfileExpired`/`WaitingListJoined`/etc. (those arrive
- * with the deferred `parties-membership-lifecycle` change).
+ * reused" (§ 4.2.1). Every edge between these states is written by a Parties
+ * Action, which records the § 15.2 status event for that edge (`ProfileActivated`
+ * / `ProfileSuspended` / `ProfileReactivated` / `ProfileExpired` / `ProfileRenewed`
+ * / `ProfileInactive`; approve, decline and cancel are AUDIT-ONLY — the catalog
+ * names no event for them). `WaitingList` is the Hero-Package capacity-overflow
+ * state (parties-hero-package, design D7): it is entered at application and at
+ * approval, recording `Events\WaitingListJoined` at both entry points (the two
+ * entry writers land in tasks 2.1 / 2.2), and it is left ONLY by a Producer's
+ * manual approve or decline — nothing promotes a Profile off it automatically.
  *
  * - case name    = the state in PascalCase (Parties vocabulary)
  * - backing value = the persisted token (the column value)

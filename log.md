@@ -907,3 +907,5 @@
 ## [2026-07-09 12:39] ralph | parties-hero-package 1.2 | green | 4 files | Support/ClubSeatOccupancy: Club-row lock before seat count (Active+Suspended); 2255/2255, PHPStan 0
 
 ## [2026-07-09 12:56] ralph | parties-hero-package 1.3 | green | 4 files | clubAtCapacity factory + EN/IT club_at_capacity copy | suite 2263/2263, phpstan 0
+
+## [2026-07-09 13:05] ralph | parties-hero-package 1.4 | green | 3 files | WaitingListJoined event class (§15.6, PII-free 4-key payload) + ProfileState docblock inverted | suite 2268/2268, phpstan 0
