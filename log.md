@@ -915,3 +915,5 @@
 ## [2026-07-09 14:09] ralph | parties-hero-package 2.2 | green | 3 files | ApproveProfile seat gate: club-row lock before count, at-parity divert to waiting_list, from-state {applied,waiting_list} | suite 2292
 
 ## [2026-07-09 14:24] ralph | parties-hero-package 2.3 | green | 5 files | DeclineProfile from-state {applied,waiting_list}; +14 tests, suite 2306/2306; fixed 2.2's false cannot_approve copy
+
+## [2026-07-09 14:41] ralph | parties-hero-package 2.4 | green | 2 files | RenewProfile cap-gated, grace sub-gate first, never diverts; suite 2323/2323, phpstan 0

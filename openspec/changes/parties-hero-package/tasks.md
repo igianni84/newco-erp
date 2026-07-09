@@ -77,13 +77,14 @@
   - Typecheck passes; tests pass
   > ℹ 2026-07-09: nothing to flip — 2.2 removed the `waiting_list` reject-floor row outright. **2.3 also corrected a 2.2 residual the § 7.1 sweep grep cannot see:** `lang/en/parties.php`'s `cannot_approve` still read *"approved only from applied"* after 2.2 widened the approve guard. Both reasons now name the pair. The § 7.1 grep (`UNCAPPED|uncapped|deferred Module-A seam|WaitingListJoined`) matches neither key — **7.1 must additionally grep the operator-facing copy for from-state claims**, not just the four deferred-seam tokens.
 
-- [ ] 2.4 `RenewProfile`: cap-gated, grace sub-gate evaluated **first** (D8, D9)
+- [x] 2.4 `RenewProfile`: cap-gated, grace sub-gate evaluated **first** (D8, D9)
   - ⚠️ **The naming trap (D9).** Our `RenewProfile` is `lapsed → active` — a **cap-gated re-activation** (canon §13.1:627, :629). The *grandfathered* renewal of `MVP-DEC-011`/`AC-K-J-15a` is an `Active` **period rollover we do not model**. Same word, opposite rule. Do not "grandfather" this Action
   - Order: from-state guard → **30-day grace guard** → Club-row lock → seat count → capacity gate. A past-grace renewal reports the **grace** reason regardless of capacity
   - At parity ⇒ throw the 1.3 capacity rejection. **Do NOT divert to `WaitingList`**: canon draws no `Lapsed → WaitingList` edge, and diverting would clear `lapsed_at` and burn the grace clock
   - On rejection: `state` stays `lapsed`, `lapsed_at` **unchanged**, no `ProfileRenewed`
   - Tests: renew within grace + free seat ⇒ `active`, `lapsed_at` cleared, one `ProfileRenewed`; renew within grace at parity ⇒ capacity rejection, still `lapsed`, `lapsed_at` intact, **not** `waiting_list`, zero events; then free a seat and renew again within grace ⇒ succeeds; past-grace at parity ⇒ **grace** reason, not the capacity reason; uncapped ⇒ unchanged behaviour
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: the guard order is pinned NEGATIVELY, which is the only way it can be: a past-grace call emits **no `parties_clubs` statement at all** (`DB::listen`), so the grace sub-gate provably precedes the lock. Asserting the *reason* alone would not distinguish the orders — at a free seat both orderings report grace. The dataset therefore runs past-grace × {at parity, free seat, **explicitly-uncapped**}. **The § 7.1 copy grep came back clean here**: 2.4 changes no from-state set, so `cannot_renew` ("only from lapsed within the grace window") stays true, and the capacity refusal speaks through `club_at_capacity`. **`ReactivateProfile` (3.1) must stay ungated** — it is `suspended → active` and a `Suspended` Profile never released its seat; only `RenewProfile` re-consumes one.
 
 ## 3. The deliberate non-gates, and their regression proofs
 
