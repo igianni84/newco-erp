@@ -11,9 +11,10 @@ use RuntimeException;
  * party-registry — Requirements: Profile Membership Approval, Profile Activation, Profile Suspension
  * and Restoration, Profile Lapse and Grace Renewal, Profile Cancellation and Deactivation).
  *
- * The retained demand-side Profile FSM is `applied → approved | rejected → active` (Module K PRD
- * § 4.2.1): approval and decline are valid only from `applied`, activation only from `approved`.
- * The suspension subset adds the status edges off `active`: `active ↔ suspended`
+ * The retained demand-side Profile FSM is `applied | waiting_list → approved | rejected → active`
+ * (Module K PRD § 4.2.1:186): approval and decline are each valid from `applied` AND from
+ * `waiting_list` — the waitlist's two exits are those same two Actions — while activation is valid
+ * only from `approved`. The suspension subset adds the status edges off `active`: `active ↔ suspended`
  * ({@see cannotSuspend} / {@see cannotReactivate}), `active → lapsed → active` grace
  * ({@see cannotLapse} / {@see cannotRenew} — the renewal also rejects a from-state past the
  * 30-day grace window, DEC-034), `active | lapsed → cancelled` ({@see cannotCancel}) and

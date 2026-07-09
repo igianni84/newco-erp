@@ -30,9 +30,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *   - {@see DeclineProfile} transitions `applied → rejected` and is EVENT-SILENT (records nothing — it mirrors
  *     `RecordKycRejected`); `rejected` is terminal-for-this-application, so a fresh re-application on the same
  *     (Customer, Club) pair via {@see CreateProfile} inserts cleanly (the partial unique index excludes `rejected`);
- *   - both transitions are from-state guarded: a call from any non-`applied` state throws
+ *   - both transitions are from-state guarded: a call from a state outside `{applied, waiting_list}` throws
  *     {@see IllegalProfileTransition} before any write and the transaction rolls back (no state change, no lock,
  *     no event).
+ *
+ * Since parties-hero-package (tasks 2.2 / 2.3) BOTH verbs are also reachable from `waiting_list` — the waitlist's
+ * two exits are these same two Actions. This file pins the `applied` legs and the Originating-Club lock, which the
+ * capacity gate leaves untouched; the `waiting_list` legs are pinned in `ProfileApprovalCapacityGateTest` (the
+ * conversion and its at-parity rejection) and `ProfileWaitlistDeclineTest` (the decline), as is the EXHAUSTIVE
+ * seven-state complement of `{applied, waiting_list}` for each verb. The reject datasets below are a three-state
+ * subset of that complement — a cheap floor kept beside the happy paths they bracket, never the whole proof.
  *
  * RefreshDatabase per the directory convention; each Action opens its OWN DB::transaction, so the recorder's
  * `transactionLevel() === 0` guard is satisfied by the savepoint under the wrapper (the event being recorded at all
@@ -154,7 +161,7 @@ it('declines an applied Profile to rejected, records no event and locks no Club,
         ->and(DomainEvent::query()->where('name', ProfileCreated::NAME)->count())->toBe(1);
 });
 
-it('rejects approving a Profile not in applied, leaving it unchanged with no event and no lock', function (ProfileState $state) {
+it('rejects approving a Profile outside {applied, waiting_list}, leaving it unchanged with no event and no lock', function (ProfileState $state) {
     $customer = Customer::factory()->create();
     $club = Club::factory()->create();
     $profile = Profile::factory()->create(['customer_id' => $customer->id, 'club_id' => $club->id, 'state' => $state]);
@@ -173,7 +180,7 @@ it('rejects approving a Profile not in applied, leaving it unchanged with no eve
     'rejected' => [ProfileState::Rejected],
 ]);
 
-it('rejects declining a Profile not in applied, leaving it unchanged with no event', function (ProfileState $state) {
+it('rejects declining a Profile outside {applied, waiting_list}, leaving it unchanged with no event', function (ProfileState $state) {
     $customer = Customer::factory()->create();
     $club = Club::factory()->create();
     $profile = Profile::factory()->create(['customer_id' => $customer->id, 'club_id' => $club->id, 'state' => $state]);

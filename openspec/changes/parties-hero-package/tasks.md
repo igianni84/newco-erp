@@ -69,12 +69,13 @@
   - Typecheck passes; **full suite** passes (not `--filter`)
   > ℹ 2026-07-09: **the from-state guard runs BEFORE the capacity gate.** The delta spec (`specs/party-registry/spec.md:212`) words the order as *"lock; count; read capacity; … then, only if a seat is free: assert the from-state"* — that ordering is loose prose, and taking it literally would divert an `active` or `lapsed` Profile in a full Club onto the waitlist (it is not `waiting_list`, so it falls into the `Applied` arm). D8's table is authoritative: capacity reads *"—"* for every other from-state. Guard first also means a doomed approve locks no Club. Pinned by a 7-state dataset. Tasks 2.4 / 3.1 must keep this order.
 
-- [ ] 2.3 `DeclineProfile`: from-state widens to `{applied, waiting_list}`
+- [x] 2.3 `DeclineProfile`: from-state widens to `{applied, waiting_list}`
   - `WaitingList → Rejected`, audit-only, still event-silent, still no constructor
   - Takes **no** Club-row lock and reads **no** capacity: a decline neither frees nor consumes a seat
   - **Flips:** the same `ProfileApprovalConsoleTest` reject-floor dataset (if 2.2 left the decline half asserting `toThrow` on `waiting_list`)
   - Tests: decline from `applied` ⇒ `rejected`, zero events (unchanged); decline from `waiting_list` ⇒ `rejected`, zero events; decline from any other state ⇒ `cannotReject`; re-application after a waitlist decline inserts a fresh Profile (partial-unique index admits it)
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: nothing to flip — 2.2 removed the `waiting_list` reject-floor row outright. **2.3 also corrected a 2.2 residual the § 7.1 sweep grep cannot see:** `lang/en/parties.php`'s `cannot_approve` still read *"approved only from applied"* after 2.2 widened the approve guard. Both reasons now name the pair. The § 7.1 grep (`UNCAPPED|uncapped|deferred Module-A seam|WaitingListJoined`) matches neither key — **7.1 must additionally grep the operator-facing copy for from-state claims**, not just the four deferred-seam tokens.
 
 - [ ] 2.4 `RenewProfile`: cap-gated, grace sub-gate evaluated **first** (D8, D9)
   - ⚠️ **The naming trap (D9).** Our `RenewProfile` is `lapsed → active` — a **cap-gated re-activation** (canon §13.1:627, :629). The *grandfathered* renewal of `MVP-DEC-011`/`AC-K-J-15a` is an `Active` **period rollover we do not model**. Same word, opposite rule. Do not "grandfather" this Action

@@ -132,12 +132,15 @@ return [
         // id references (not PII), so they are interpolated to make the reason self-documenting (unlike the
         // duplicate_email reason, which omits the PII email).
         'duplicate_for_club' => 'Cannot create a Profile: Customer :customer already has a live Profile in Club :club. A Customer may hold at most one non-terminal Profile per Club.',
-        // Profile membership FSM `applied → approved | rejected → active` (parties-membership-activation,
-        // design L2/L4; § 4.2.1 / AC-K-FSM-2) illegal-transition reasons. Approve/decline are audit-only writes
-        // (no Profile event — L2); activation records ProfileActivated. :state is the offending from-state token
-        // (a business enum value, not PII).
-        'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied.',
-        'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied.',
+        // Profile membership FSM `applied | waiting_list → approved | rejected → active` (parties-membership-
+        // activation, design L2/L4; parties-hero-package, design D8; § 4.2.1:186 / AC-K-FSM-2) illegal-transition
+        // reasons. Approve and decline are BOTH reachable from `applied` and from `waiting_list` — the waitlist's
+        // two exits (the conversion and the decline) are those same Actions, not distinct ones — so both reasons
+        // name the pair of legal from-states. Approve/decline are audit-only writes (no Profile event — L2);
+        // activation records ProfileActivated. :state is the offending from-state token (a business enum value,
+        // not PII).
+        'cannot_approve' => 'Cannot approve this Profile from state :state. A Profile is approved only from applied or waiting_list.',
+        'cannot_reject' => 'Cannot decline this Profile from state :state. A Profile is declined only from applied or waiting_list.',
         'cannot_activate' => 'Cannot activate this Profile from state :state. A Profile activates only from approved.',
         // Profile status FSM off `active` (parties-membership-suspension, design L4/L5; § 4.2.1 /
         // AC-K-FSM-2): `active ↔ suspended`, `active → lapsed → active` (30-day grace, DEC-034),
