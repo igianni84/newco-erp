@@ -47,8 +47,9 @@
 
 > Each task below flips existing green tests. **Update them in the same task**, or the iteration closes red. Never "fix" the code to keep a stale pin green.
 
-- [ ] 2.1 `CreateProfile`: birth in `WaitingList` when the target Club is at capacity (D6)
+- [x] 2.1 `CreateProfile`: birth in `WaitingList` when the target Club is at capacity (D6)
   - Inject `HeroPackageCapacityReader` + the occupancy helper. Evaluate the **Club-active gate first**, the capacity read second: a `sunset` Club rejects outright, it never waitlists
+  > ℹ 2026-07-09: only `ClubSeatOccupancy` is injected. `CreateProfile` reads no capacity *number* (it never throws the 1.3 rejection), so a directly-injected `HeroPackageCapacityReader` is `property.onlyWritten` under PHPStan max — verified empirically. The port still reaches the Action solely through Module K's own contract, autowired into the helper. Tasks 2.2 / 2.4 DO inject both: they build the rejection message.
   - Born `waiting_list` ⇒ record `ProfileCreated` **and** `WaitingListJoined`. Born `applied` ⇒ `ProfileCreated` only
   - **No Club-row lock here** (D6): neither `Applied` nor `WaitingList` holds a seat, so this gate cannot oversell. Adding a lock would serialise every application in a Club for no invariant gain
   - `auto_renew` inheritance and the duplicate guard are untouched; `waiting_list` is non-terminal, so the existing partial-unique index blocks a second live Profile with **no migration**
