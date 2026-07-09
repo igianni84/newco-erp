@@ -935,3 +935,5 @@
 ## [2026-07-09 18:19] ralph | parties-hero-package 7.2 | green | 5 files | close gate: 2381/2381 SQLite+PG17, phpstan 0, pint clean, validate 11/11; tracker records the J-14/J-15/J-15a/XM-19 subset + 2 RM-03 residuals + 2 open escalations; F1 falsified -> F11 opened
 
 ## [2026-07-09 20:26] close-ritual §2.7 | parties-hero-package | Merged --no-ff (91adfdb) + archived (24df7af). Verified BOTH engines: SQLite 2381/2381 (12340 assn), PG17 2381/2381 (12347). PHPStan 0, Pint clean, validate 10/10. Semantic-verify: 4 agents, 13 delta reqs, 0 CRITICAL / 5 WARNING / 8 SUGGESTION. Unpushed (18 ahead).
+
+## [2026-07-09 21:06] follow-up | parties-hero-package residuals | 3 citations fixed (docblock-only, 0 new imports). Tracker F12: Profile<->Customer lock-order inversion (PRE-EXISTING; RM-05's Club lock closes no cycle). Change parties-hero-package-residuals drafted+validated 11/11, NO APPROVED. SQLite 2381/2381, PHPStan 0, Pint clean.
