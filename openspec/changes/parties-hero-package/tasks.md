@@ -29,7 +29,7 @@
   - Tests: occupancy counts `Active` + `Suspended` and **excludes** `Applied`, `WaitingList`, `Rejected`, `Lapsed`, `Cancelled`, `Inactive` (drive all 9 states in one Club — this is the `AC-K-J-13` seat-set proof); occupancy is per-Club (a second Club's Profiles never leak in); `null` capacity ⇒ never at capacity
   - Typecheck passes; tests pass
 
-- [ ] 1.3 Add the capacity rejection to `IllegalProfileTransition` + EN/IT copy (D8)
+- [x] 1.3 Add the capacity rejection to `IllegalProfileTransition` + EN/IT copy (D8)
   - New static factory (no capacity constructor exists today). It serves **two** callers: `ApproveProfile` on a still-waitlisted Profile at parity, and `RenewProfile` at parity
   - Follow the shipped idiom exactly: `new self((string) __('parties.profile.<key>', [...]))`. Include the Club's capacity and current occupancy in the placeholders so the operator's danger toast says *why*
   - `lang/en/parties.php` → new key in the `profile` group. `lang/it/parties.php` → the IT counterpart. **IT is a documented subset**, but `PartiesApprovalCopyTest` enforces IT ⊆ EN, so an IT key without its EN counterpart fails

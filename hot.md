@@ -7,23 +7,23 @@ updated: 2026-07-09
 # Hot Cache
 
 ## Last Updated
-**2026-07-09 — RM-05 task 1.2 green: the seat ledger ships, lock strictly before count.** Branch `ralph/parties-hero-package`, **2/16**. Local commits, not pushed.
+**2026-07-09 — RM-05 task 1.3 green: one capacity rejection, two callers, EN+IT.** Branch `ralph/parties-hero-package`, **3/16**. Local commits, not pushed.
 
 ## Build & Quality Status
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- SQLite **2255/2255** (2234 baseline + 21) · PHPStan **0** · Pint clean · `validate parties-hero-package --strict` green. **PG17 not re-run** — first required at 3.2.
+- SQLite **2263/2263** (2255 baseline + 8) · PHPStan **0** · Pint clean · `validate parties-hero-package --strict` green. **PG17 not re-run** — first required at 3.2.
 - Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 env prefix: see the `tasks.md` header.
 
 ## Active Change & Next Task
-- **`parties-hero-package` — 2/16.** Next: **1.3** — capacity rejection factory on `IllegalProfileTransition` + EN/IT copy. Idiom `new self((string) __('parties.profile.<key>', [...]))`; placeholders carry **capacity + occupancy**. `PartiesApprovalCopyTest` enforces IT ⊆ EN.
-- **Shipped 1.2 — `Support/ClubSeatOccupancy`:** `OCCUPYING_STATES = [Active, Suspended]` is the one definition of a seat · `lockAndCountOccupiedSeats()` locks `parties_clubs` **then** counts — seat-consuming callers only, inside an open transaction · `countOccupiedSeats()` lock-free, for `CreateProfile`'s D6 birth gate alone · `wouldOversell($clubId,$occupied)` — no DB, `>=` not `>`, `null` ⇒ uncapped.
+- **`parties-hero-package` — 3/16.** Next: **1.4** — `Events/WaitingListJoined.php`, static-holder shape exactly like `ProfileCreated` (`NAME`, `ENTITY_TYPE`, `payload(Profile): array`), payload `{profile_id, customer_id, club_id, state}`, PII-free. **Invert `ProfileState.php:20`**, whose docblock asserts the enum emits no `WaitingListJoined`. Unit pin in the style of `Events/ActivationEventsTest.php`.
+- **Shipped 1.3 — `IllegalProfileTransition::clubAtCapacity($from, int $capacity, int $occupiedSeats)`:** one factory, two rejecting callers (`ApproveProfile` on an already-`waiting_list` Profile; `RenewProfile` within grace). `applied` at parity is **diverted, never rejected**. `int` (not `?int`) capacity is a typecheck-enforced proof that uncapped never reaches the throw. Key `parties.profile.club_at_capacity` in EN **and** IT (the first `profile` group in `lang/it`).
 - **ADR `2026-07-09-hero-package-capacity-seat-set-and-waitinglist` is the plan; `design.md` D1–D11 restates it.** Don't re-derive it; don't re-ground against canon.
 - **⚠️ Closes against a documented SUBSET:** `J-14`/`J-15`/`J-15a`/`XM-19` NOT met. Task 7.2 forces this onto the tracker.
 
 ## Blockers & Decisions Needed
 - **None blocking.** Landmines (fuller in `design.md` / `tasks.md` / `progress.md` § Codebase Patterns):
-  1. **No new class in `Actions/`** — `SupplyLifecycleChainTest` set-pins it. `Contracts/`/`Reads/`/`Support/` unpinned.
-  2. **Test-env capacity default stays `null`** — *why* the 2234 prior tests are unmoved. Per-test: `config()->set()` or a fake.
+  1. **No new class in `Actions/`** — `SupplyLifecycleChainTest` set-pins it. `Contracts/`/`Reads/`/`Support/`/`Exceptions/` unpinned.
+  2. **Test-env capacity default stays `null`** — *why* the 2255 prior tests are unmoved. Per-test: `config()->set()` or a fake.
   3. **PHPStan max audits test fakes.** A `?int` fake never returning `null` draws `return.unusedType` — strengthen the fake, never the signature. 2.2/2.4/3.2/6.1 hit this.
   4. **Pint promotes a docblock `{@see \FQCN}` into a real `use` import** — name non-dependencies as backticked prose, or 4.1's *no `Modules\Allocation\*` import* assertion breaks on prose.
   5. **No `markTestSkipped` in `tests/`**; driver-gated lanes assert both halves (`ActorRoleConstraintTest:110`).
@@ -34,6 +34,7 @@ updated: 2026-07-09
 ## Open Patterns
 - **A green acceptance test can pass against a racy implementation.** `AC-K-J-13`'s 51st approve is *sequential*; the oversell race survives it. A criterion tests a scenario, not an invariant.
 - **Lock-before-read is invisible on SQLite** (no lock clause compiled). Pin it as SQL **statement order** (`DB::listen`) + driver-gate `for update`. Order ≠ serialisation — **3.2 must still run.**
+- **A `\d`-based PII pin inverts on a cardinal-bearing message.** `club_at_capacity` carries the occupancy; assert *exactly* the gate's two numbers in order, never "no digits".
 - **`0` is a capacity, not an absence**; an explicit `null` override is a pin, not a fallthrough. `is_numeric` / `array_key_exists`, never `??`.
 - **`RenewProfile` is `lapsed→active` and cap-gated**; the *grandfathered* renewal is an unmodelled period rollover. Same word, opposite rule.
 - **Always `MVP-DEC-NNN`**, never bare `DEC-NNN`. A verifier's finding is a **candidate** — check every quote against the file.

@@ -905,3 +905,5 @@
 ## [2026-07-09 12:18] ralph | parties-hero-package 1.1 | green | 5 files | HeroPackageCapacityReader port + ConfigHeroPackageCapacityReader + config/parties.php + bind; suite 2234/2234 (2221 baseline unmoved), phpstan 0
 
 ## [2026-07-09 12:39] ralph | parties-hero-package 1.2 | green | 4 files | Support/ClubSeatOccupancy: Club-row lock before seat count (Active+Suspended); 2255/2255, PHPStan 0
+
+## [2026-07-09 12:56] ralph | parties-hero-package 1.3 | green | 4 files | clubAtCapacity factory + EN/IT club_at_capacity copy | suite 2263/2263, phpstan 0

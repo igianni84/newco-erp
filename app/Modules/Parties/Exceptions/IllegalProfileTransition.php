@@ -30,8 +30,11 @@ use RuntimeException;
  * user-facing strings): the English baseline lives in the `profile` group of `lang/en/parties.php`
  * (keys `cannot_approve` / `cannot_reject` / `cannot_activate` / `cannot_suspend` /
  * `cannot_reactivate` / `cannot_lapse` / `cannot_renew` / `cannot_cancel` / `cannot_deactivate`),
- * with a `:state` placeholder. The
- * offending state token (`$from->value`) is a business enum value, NOT PII — so, like the sibling
+ * with a `:state` placeholder. Alongside them sits `club_at_capacity` — the Hero-Package capacity
+ * rejection ({@see clubAtCapacity}), which interpolates `:capacity` and `:occupied` as well, and is
+ * the one reason of this class also authored in `lang/it/parties.php`: it is refused by the Club's
+ * seat ledger rather than by the operator's own click, so it must say why in the operator's language.
+ * The offending state token (`$from->value`) is a business enum value, NOT PII — so, like the sibling
  * {@see IllegalProducerTransition}, it is interpolated to make the reason self-documenting.
  * `(string)` coerces the translator return (typed `mixed` by Larastan) to the RuntimeException
  * message contract.
@@ -102,6 +105,35 @@ class IllegalProfileTransition extends RuntimeException
     {
         return new self((string) __('parties.profile.cannot_deactivate', [
             'state' => $from->value,
+        ]));
+    }
+
+    /**
+     * The Hero-Package capacity rejection — ONE factory shared by the only two seat-consuming transitions that,
+     * at parity, have no transition left to make (parties-hero-package, design D8; party-registry — Requirement:
+     * Hero Package Capacity Invariant; ADR 2026-07-09-hero-package-capacity-seat-set-and-waitinglist):
+     *   - `ApproveProfile` on a Profile ALREADY in `waiting_list` whose Club is STILL full. It throws rather than
+     *     no-opping idempotently: a silent no-op is indistinguishable from a defect to the operator who clicked.
+     *   - `RenewProfile` on a `lapsed` Profile inside its 30-day grace: `lapsed → active` RE-CONSUMES a seat
+     *     (canon § 13.1), and canon draws no `Lapsed → WaitingList` edge to divert onto — so the Profile stays
+     *     `lapsed`, its `lapsed_at` untouched and its grace clock still running, and the operator reads why.
+     *
+     * An `applied` Profile at parity is NOT rejected here: a transition exists, so `ApproveProfile` DIVERTS it
+     * into `waiting_list` and records `WaitingListJoined`. This factory is for the absence of an edge, never for
+     * the absence of a seat alone.
+     *
+     * `$capacity` is typed `int`, not `?int`, because an UNCAPPED Club (`null` capacity) can never oversell and
+     * so never reaches this throw. `$occupiedSeats` is the count the caller already took under the `parties_clubs`
+     * row lock (`ClubSeatOccupancy::lockAndCountOccupiedSeats()`), handed in rather than counted a second time —
+     * which also means the number in the message is exactly the number the gate decided on. Both are Club-level
+     * cardinals and `$from->value` is a business enum token: the reason names the seat ledger, never a customer.
+     */
+    public static function clubAtCapacity(ProfileState $from, int $capacity, int $occupiedSeats): self
+    {
+        return new self((string) __('parties.profile.club_at_capacity', [
+            'state' => $from->value,
+            'capacity' => $capacity,
+            'occupied' => $occupiedSeats,
         ]));
     }
 }

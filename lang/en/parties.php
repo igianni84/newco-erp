@@ -150,6 +150,14 @@ return [
         'cannot_renew' => 'Cannot renew this Profile from state :state. A Profile renews only from lapsed within the grace window.',
         'cannot_cancel' => 'Cannot cancel this Profile from state :state. A Profile cancels only from active or lapsed.',
         'cannot_deactivate' => 'Cannot deactivate this Profile from state :state. A Profile deactivates only from active.',
+        // Hero-Package capacity rejection (change parties-hero-package, design D8; party-registry — Requirement:
+        // Hero Package Capacity Invariant; canon MVP-DEC-017 / § 13.1 / AC-K-J-13). Raised by the only two
+        // seat-consuming transitions with no edge left to take at parity: an approve of an ALREADY-`waiting_list`
+        // Profile whose Club is still full, and a within-grace renewal (`lapsed → active` re-consumes a seat). An
+        // `applied` Profile at parity is diverted to `waiting_list` instead, never rejected. :state is the offending
+        // from-state token; :occupied and :capacity are Club-level seat cardinals — all three are business values,
+        // never PII. The copy names the seat set, so the operator knows which memberships hold the seats it counts.
+        'club_at_capacity' => 'Cannot admit this Profile to its Club from state :state. The Club is at its Hero-Package capacity — :occupied of :capacity seats are occupied. Only Active and Suspended memberships hold a seat; one must be released before a further Profile can become active.',
     ],
     'account' => [
         // Account status FSM `active → suspended → closed`, `suspended → active` (parties-membership-
