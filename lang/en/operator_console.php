@@ -1000,10 +1000,16 @@ return array_replace_recursive([
         // approved AND activated atomically — approve = charge = activation, MVP-DEC-016; the Originating Club locks
         // on the Customer's first-ever approval) and `declined` (the application is rejected, audit-only); group 4
         // adds `suspended` and `reactivated` (the status edges); group 5 adds `lapsed`, `renewed`, `cancelled` and
-        // `deactivated` (the lapse/renew/terminal edges) — `action_failed` is reached through the UI only by a
-        // past-grace `renew` (design D5).
+        // `deactivated` (the lapse/renew/terminal edges). `action_failed` is reachable through the UI from exactly TWO
+        // verbs, both of whose visibility predicates can only see a from-state and never a capacity: a past-grace
+        // `renew` (design D5) and an `approve` on a `waiting_list` Profile whose Club is STILL at its Hero-Package
+        // capacity — that Profile has no edge left to take, so the domain refuses (parties-hero-package design D8/D11).
         'notifications' => [
             'approved' => 'Membership approved and activated.',
+            // The approve verb's SECOND lawful success (parties-hero-package design D11). The Club was at its
+            // Hero-Package capacity, so the domain placed the membership on the waiting list rather than activating
+            // it. Distinct copy is the whole point: a diverted approval must never be reported as an approval.
+            'waitlisted' => 'Club at capacity — the membership was placed on the waiting list.',
             'declined' => 'Membership application declined.',
             'suspended' => 'Membership suspended.',
             'reactivated' => 'Membership reactivated.',

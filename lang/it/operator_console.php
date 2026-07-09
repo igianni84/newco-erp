@@ -652,10 +652,16 @@ return array_replace_recursive([
         // della rejection — lang/*/parties.php). Gruppo 3: `approved` nomina l'esito atomico approvazione+attivazione
         // (approve = charge = activation, MVP-DEC-016). Gruppo 4 aggiunge `suspended`/`reactivated` (i passaggi di
         // stato dell'adesione); gruppo 5 aggiunge `lapsed`/`renewed`/`cancelled`/`deactivated` (scadenza, rinnovo e
-        // terminali) — `action_failed` è raggiungibile dall'interfaccia solo da un `renew` fuori dal periodo di
-        // grazia (design D5).
+        // terminali). `action_failed` è raggiungibile dall'interfaccia da due soli verbi, entrambi con un predicato di
+        // visibilità che vede solo lo stato di partenza e mai la capienza: un `renew` fuori dal periodo di grazia
+        // (design D5) e un `approve` su un Profile già in `waiting_list` il cui Club è ANCORA al limite della capienza
+        // Hero-Package — non gli resta alcuna transizione, quindi il dominio rifiuta (parties-hero-package design D8/D11).
         'notifications' => [
             'approved' => 'Adesione approvata e attivata.',
+            // Il secondo esito lecito del verbo approve (parties-hero-package design D11): il Club era al limite della
+            // capienza Hero-Package, quindi il dominio ha messo l'adesione in lista d'attesa invece di attivarla. Il
+            // testo è distinto proprio per questo: un'approvazione deviata non va mai riportata come un'approvazione.
+            'waitlisted' => 'Club al completo: adesione messa in lista d’attesa.',
             'declined' => 'Candidatura all’adesione rifiutata.',
             'suspended' => 'Adesione sospesa.',
             'reactivated' => 'Adesione riattivata.',

@@ -925,3 +925,5 @@
 ## [2026-07-09 16:05] ralph | parties-hero-package 4.1 | green | 6 files | boundary pins: no capacity storage, no Module-A import, no auto-promotion, no new Action. 7 mutants, all 15 tests falsified. SQLite+PG17 2348/2348
 
 ## [2026-07-09 16:39] ralph | parties-hero-package 5.1 | green | 2 files | SurfacesDomainActions successKey widens to string|Closure(mixed):string; 22 tests, 10 mutants, every test falsified; SQLite 2370/2370 + PG17 2370/2370; zero call sites touched
+
+## [2026-07-09 17:06] ralph | parties-hero-package 5.2 | green | 5 files | ViewProfile approve/decline widen to {applied,waiting_list}; approve titled by outcome (waitlisted vs approved) + EN/IT copy; 8 mutants incl. a regression control; SQLite 2376/2376, PG17 2376/2376, PHPStan 0

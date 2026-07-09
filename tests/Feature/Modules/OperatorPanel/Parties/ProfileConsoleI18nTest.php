@@ -55,6 +55,11 @@ use Illuminate\Support\Facades\Lang;
  *     notifications.{approved,declined,suspended,reactivated,lapsed,renewed,cancelled,deactivated} +
  *     notifications.action_failed (the rejection title). The `activate` verb was removed with RM-03 (MVP-DEC-016) —
  *     approval reaches `active` atomically, so its `actions.activate` / `notifications.activated` keys are gone too.
+ *     `notifications.waitlisted` is the NINTH notification against only eight verbs: `approve` has two lawful
+ *     successful outcomes, and ViewProfile hands the kit a RESOLVER that names one key or the other off the state of
+ *     the record the domain returned (parties-hero-package design D11). Its suffix is a bare `'waitlisted'` literal
+ *     in the resolver, never the full dot-path, so — exactly like the eight kit-concatenated keys — a source scan
+ *     cannot prove it is authored, and dropping it would surface the raw key to an operator at capacity.
  *   - customer.*  — the three Account status verbs added to ViewCustomer in group 6:
  *     actions.{suspend_account,reactivate_account,close_account} +
  *     notifications.{account_suspended,account_reactivated,account_closed}. They live in the customer block but are
@@ -93,6 +98,7 @@ function profileConsoleKitKeys(): array
         'operator_console.profile.actions.deactivate',
         'operator_console.profile.actions.set_auto_renew',
         'operator_console.profile.notifications.approved',
+        'operator_console.profile.notifications.waitlisted',
         'operator_console.profile.notifications.declined',
         'operator_console.profile.notifications.suspended',
         'operator_console.profile.notifications.reactivated',
