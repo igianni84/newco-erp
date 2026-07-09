@@ -933,3 +933,5 @@
 ## [2026-07-09 17:55] ralph | parties-hero-package 7.1 | green | 6 files | CONTEXT.md six false claims inverted + WaitingListJoined payload row + Club seat glossary term; 3 stale comments fixed, pins kept; comments-only .php diff; SQLite 2381/2381
 
 ## [2026-07-09 18:19] ralph | parties-hero-package 7.2 | green | 5 files | close gate: 2381/2381 SQLite+PG17, phpstan 0, pint clean, validate 11/11; tracker records the J-14/J-15/J-15a/XM-19 subset + 2 RM-03 residuals + 2 open escalations; F1 falsified -> F11 opened
+
+## [2026-07-09 20:26] close-ritual §2.7 | parties-hero-package | Merged --no-ff (91adfdb) + archived (24df7af). Verified BOTH engines: SQLite 2381/2381 (12340 assn), PG17 2381/2381 (12347). PHPStan 0, Pint clean, validate 10/10. Semantic-verify: 4 agents, 13 delta reqs, 0 CRITICAL / 5 WARNING / 8 SUGGESTION. Unpushed (18 ahead).
