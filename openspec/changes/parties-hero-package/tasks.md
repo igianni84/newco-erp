@@ -123,11 +123,12 @@
 
 ## 5. Operator surface — stop the console lying about the outcome
 
-- [ ] 5.1 Make `SurfacesDomainActions` able to derive a success notification from the action's outcome (D11)
+- [x] 5.1 Make `SurfacesDomainActions` able to derive a success notification from the action's outcome (D11)
   - `lifecycleAction()` passes a **fixed** success title into `surfaceLifecycleOutcome()` (`:81-84`). Add an outcome-aware path (a resolver receiving the Action's return value) **without** changing the ~20 existing call sites' behaviour
   - The console must still re-check **no** gate itself (design L4) and import nothing from a module's `Exceptions` namespace — it reads the returned model's state and catches `RuntimeException` by base type, as today
   - Tests: an existing form-less verb still surfaces its fixed title (regression across the Catalog + Producer + Customer console suites); an outcome-aware verb surfaces the title selected by the returned state; a `RuntimeException` still surfaces the danger toast with the domain's localized message
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **`$successKey` itself widened to `string|Closure(mixed): string`** — no new parameter, so all ~20 call sites are byte-identical (`git status` = 2 files). A fixed key resolves in `lifecycleAction()`; a Closure key can only resolve *after* the Action returns, so it is deferred into `surfaceLifecycleOutcome()` as a title resolver, applied **outside the `try`** (a console-side failure is a programmer error, not a domain rejection). **Ten mutants; every one of the 22 tests reds under at least one.** Two findings 5.2 inherits: (1) **`toUse` resolves symbol references, not the `use` block** — mutant B's inline `catch (\App\Modules\…\IllegalProfileTransition)` with no import was flagged, so the type route needed its own pin (`is_subclass_of` over all 39 module exceptions). (2) **An absence-mutant cannot red a happy-path row** — mutant I (hardcode the title) was required to prove the 4 fixed-title rows and the `applied` from-state row are load-bearing. **5.2's resolver must take `mixed` and narrow with `$outcome instanceof Profile`**: PHPStan max enforces callable contravariance, so `Closure(Profile): string` is rejected where `Closure(mixed): string` is expected. 5.1 added **no copy** — the *waitlisted* keys are 5.2's.
 
 - [ ] 5.2 `ViewProfile`: `approve`/`decline` visible from `{applied, waiting_list}`; the approve toast tells the truth (D11)
   - `approve` and `decline` visibility predicates widen to `stateIs('applied') || stateIs('waiting_list')` — the exact complement of the widened domain guards. **Waitlist conversion is unreachable through the console today**; this is what makes `AC-K-J-13` demonstrable in Paolo's walkthrough
