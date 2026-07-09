@@ -28,10 +28,11 @@
   - **Mutant:** pass a `causationId` into `CreateProfile`'s `record()` call; confirm only this pin reds; restore
   - Full suite green both engines; typecheck; format
 
-- [ ] 2.2 Pin root-ness at the **divert** entry point in `tests/Feature/Modules/Parties/ProfileApprovalCapacityGateTest.php` (R3)
+- [x] 2.2 Pin root-ness at the **divert** entry point in `tests/Feature/Modules/Parties/ProfileApprovalCapacityGateTest.php` (R3)
   - Same two assertions on the `WaitingListJoined` recorded by `ApproveProfile`'s capacity divert. Two `record()` call sites ⇒ two pins; 2.1 does not cover this one
   - **Mutant:** pass a `causationId` into `ApproveProfile`'s `record()` call; confirm only this pin reds; restore
   - Full suite green both engines; typecheck; format
+  > ⓘ 2026-07-09: the prescribed `causationId` mutant **does not exist** at this entry point, and that is the finding, not a skip. `domain_events` is UPDATE-rejecting (trigger) and `causation_id` is FK-constrained, so a single-event transaction cannot name a donor; the only drift that can — recording a donor event first — reds the pre-existing `count()->toBe(1)` 27 lines above the pin. `correlation_id` was mutation-proved alone (`Str::uuid7()` → 1 failure repo-wide, 12 386 assn: conjunct 1 ran and passed). Enumeration written into the test comment so the assertion is not later deleted as decoration. See progress.md § 2.2.
 
 ## 3. The console pins — two requirements that exist only as prose
 

@@ -23,7 +23,11 @@ use Illuminate\Support\Facades\DB;
  * Approval is the seat-CONSUMING instant, so it is the sole enforcement point of the membership no-oversell
  * invariant (CLAUDE.md invariant 1). Five claims:
  *   1. AT PARITY, AN `applied` APPROVAL TRANSITIONS — it does not throw. The Profile LANDS in `waiting_list`, one
- *      `WaitingListJoined` is recorded, and no charge, no Originating-Club lock and no `ProfileActivated` follow.
+ *      `WaitingListJoined` is recorded — a ROOT event — and no charge, no Originating-Club lock and no
+ *      `ProfileActivated` follow. This is the DIVERT entry point of that event; the BIRTH one is pinned separately,
+ *      in `ProfileBirthStateRoutingTest` (two `record()` call sites, so one pin cannot cover the other —
+ *      parties-hero-package-residuals design R3; party-registry — Scenario: *WaitingListJoined carries a PII-free
+ *      payload and is a root event*, "at either entry point").
  *   2. AT PARITY, AN ALREADY-`waiting_list` APPROVAL THROWS — there is no edge left to take. No state write, and
  *      never a second `WaitingListJoined`.
  *   3. THE CONVERSION IS THE SAME ATOMIC INSTANT. Once a seat frees, approving off the waitlist reaches `active`
@@ -120,6 +124,25 @@ it('diverts the 51st approval of a 50-seat Club into waiting_list — no activat
         ->and($joined->payload['customer_id'])->toBe($customer->id)
         ->and($joined->payload['club_id'])->toBe($club->id)
         ->and($joined->payload['state'])->toBe('waiting_list');
+
+    // `WaitingListJoined` IS A ROOT EVENT at the DIVERT entry point too (party-registry — Scenario: *WaitingListJoined
+    // carries a PII-free payload and is a root event*, "at either entry point"). The two conjuncts are NOT equally
+    // load-bearing here, and the asymmetry is worth knowing before someone prunes one of them:
+    //
+    // `correlation_id` is live. A caller may pass any correlation it likes, and a fresh UUID is the recorder's own
+    // documented trap (a root's correlation defaults to its OWN `event_id`, never an independent UUID). Mutating the
+    // `record()` call to pass one reds THIS LINE ALONE across the whole suite — nothing else in the repository sees it.
+    //
+    // `causation_id` is, at this entry point, structurally null — there are exactly three ways it could go non-null
+    // and every one is already loud. (i) A dangling id: `causation_id` is an FK onto `domain_events.id`, so the insert
+    // raises. (ii) Self-parenting after the insert: `domain_events` carries an immutability trigger and rejects the
+    // UPDATE. (iii) A donor event recorded first in this transaction — the natural refactor the day a `ProfileApproved`
+    // event exists (§ 15.2 names none today, so the divert records exactly the one event counted above) — which reds
+    // the `count()->toBe(1)` assertion 27 lines up, before this one ever runs. So the assertion below cannot fail
+    // today; it is here because the spec requires it at BOTH entry points and because the count that dominates it is
+    // not a statement about causality. If that count ever stops being `1`, this line is the only guard left standing.
+    expect($joined->causation_id)->toBeNull()
+        ->and($joined->correlation_id)->toBe($joined->event_id);
 });
 
 it('rejects an approval of a still-waitlisted Profile whose Club is still full — no second WaitingListJoined, no state write', function () {
