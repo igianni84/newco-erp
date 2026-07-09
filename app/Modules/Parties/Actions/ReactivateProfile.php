@@ -23,6 +23,16 @@ use Illuminate\Support\Facades\DB;
  * `lapsed → active` grace edge records `ProfileRenewed` (via the deferred `RenewProfile`), NOT this event — never
  * conflate the two. Reactivation is therefore reachable only from `suspended` (§ 4.2.1); every other state rejects.
  *
+ * THIS ACTION IS NEVER CAPACITY-GATED, AND THE NON-GATE IS LOAD-BEARING (parties-hero-package design D4; § 13.1 /
+ * § 10.1 / AC-K-FSM-2a; canon MVP-DEC-017). A `suspended` Profile OCCUPIES its Hero-Package seat — a suspension is a
+ * temporary restriction, not a departure, so the seat was never freed. The K-internal seat ledger
+ * (`ClubSeatOccupancy`) counts `active` + `suspended`, which means {@see SuspendProfile} frees nothing and this
+ * restore RE-CONSUMES nothing: there is no new seat to gate. Adding the gate anyway would let a temporary Hold
+ * EVICT a member — a Club that filled its last seat while this member sat suspended could never let them back in,
+ * turning a reversible restriction into a permanent expulsion. Only `lapsed → active` re-consumes a seat, because
+ * only `lapsed` LEAVES the seat set; that is why {@see RenewProfile}, and not this Action, carries the gate
+ * (design D9). Never copy the renewal's gate here.
+ *
  * HOLD COUPLING — DRIVEN IN PRODUCTION (design L6; ADR 2026-06-19; § 10.1): in production this transition is driven
  * by the Hold→`suspended` coupling on the lift of the LAST covering Hold — `LiftHold` (operator) and the system
  * `kyc`-lift in `RecordKycVerified` restore a covered `suspended` scope iff no other active Hold still covers it

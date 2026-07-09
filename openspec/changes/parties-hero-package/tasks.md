@@ -88,7 +88,7 @@
 
 ## 3. The deliberate non-gates, and their regression proofs
 
-- [ ] 3.1 `ReactivateProfile` and `ActivateProfile` stay ungated — prove it, and delete the false docblocks (D4)
+- [x] 3.1 `ReactivateProfile` and `ActivateProfile` stay ungated — prove it, and delete the false docblocks (D4)
   - **Code change is docblocks only.** Add **no** gate to either Action. `ActivateProfile.php:49-54` and `ApproveProfile`'s sibling paragraph both claim an `UNCAPPED / DEFERRED MODULE-A SEAM` that is now false
   - `ActivateProfile` docblock: `Approved` is transient, so `Approved → Active` never *newly* consumes a seat; the gate lives on the seat-consuming caller, which evaluates it under the Club-row lock before delegating; gating here would count the same seat twice. When the Module-S `MembershipFeePaid` listener lands, **it** becomes a seat-consuming entry point and carries the gate at its own boundary
   - `ReactivateProfile` docblock: a `Suspended` Profile **keeps its seat**; re-checking would let a temporary Hold evict a member
@@ -98,6 +98,7 @@
     - `ActivateProfile` on a Profile placed directly in `Approved`, Club at parity ⇒ becomes `Active`, no capacity rejection (the seat is never counted twice)
     - Grep-style assertion: no `Parties\Actions\{ActivateProfile,ReactivateProfile}` file references the capacity reader
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **`ApproveProfile` had no false paragraph left to delete** — 2.2 already replaced it; its surviving `UNCAPPED` mentions describe the shipped config posture and are true. Only `ActivateProfile:49-54` was false. `ReactivateProfile` never carried the claim at all, so its non-gate paragraph is an ADDITION, not an inversion. **A non-gate is invisible to a diff, so a green test proves nothing until it is falsified:** I injected the forbidden gate into both Actions and confirmed 9 of the 10 assertions went red (the survivor was the `SuspendProfile`-frees-no-seat test, which drives neither Action — correctly). Every future "we deliberately did NOT do X" task should mutation-test the same way. **New § 7.1 residual found:** `ProfileMembershipChainTest.php:124` calls the cap *"a deferred Module-A seam"* — 7.1's four-token grep catches it, but its bullet list does not name it.
 
 - [ ] 3.2 PG17-only concurrency proof: two same-Club approvals serialise on the `parties_clubs` row (D3)
   - **This is the only proof that D3 works.** `AC-K-J-13` drives a *sequential* 51st approve and passes green against the racy implementation

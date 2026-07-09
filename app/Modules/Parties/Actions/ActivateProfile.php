@@ -46,12 +46,21 @@ use Illuminate\Support\Facades\DB;
  * trigger is that same Module-S `MembershipFeePaid` listener — the same deferred Phase-6 seam), so the split across
  * slices breaks no ordering.
  *
- * HERO PACKAGE CAPACITY GATE — DEFERRED MODULE-A SEAM (design L7; § 13.1 / AC-K-J-13 / AC-K-XM-18): § 13.1 mandates
- * the membership no-oversell ceiling at "every Profile transition into `active`", but § 13.2 puts the cap on Module
- * A's Hero-Package Allocation `qty` — and Module A is unbuilt, so the gate cannot read it without inventing A's
- * contract. Activation therefore ships UNCAPPED, the same deferred-seam framing as {@see ApproveProfile} (the cap
- * also gates approval) and the {@see ActivateProducer} / {@see CloseClub} precedents. The cap (and the
- * `Applied → WaitingList` capacity-exceeded path) lands with `parties-hero-package` after Module A.
+ * THIS ACTION IS DELIBERATELY NOT CAPACITY-GATED, AND THAT IS A DECISION — NOT AN OMISSION (parties-hero-package
+ * design D4; § 13 / AC-K-J-13; canon MVP-DEC-017). The Hero-Package seat gate ships, but it lives on the
+ * seat-CONSUMING caller and never here. `Approved` is a TRANSIENT pass-through (MVP-DEC-016, above), so
+ * `approved → active` never NEWLY consumes a seat: the seat was already decided one step earlier, in this very
+ * transaction, by {@see ApproveProfile} under the `parties_clubs` row lock. A gate here would re-decide that same
+ * seat — and the moment `approved` were ever counted as seat-occupying, the second gate would refuse the very
+ * approval that had just reserved the seat for it. The K-internal seat ledger (`ClubSeatOccupancy`, whose seat set
+ * is `active` + `suspended`) excludes `approved` for exactly this reason. Its converse also holds: if any future
+ * Action ever lets a Profile REST durably in `approved`, the seat set is wrong — not this non-gate.
+ *
+ * WHEN THE DEFERRED MODULE-S `MembershipFeePaid` LISTENER LANDS (above), IT — not this Action — CARRIES THE GATE.
+ * That listener drives `approved → active` on a payment confirmation that may arrive long after the approval, so it
+ * is a seat-consuming entry point in its own right: it must take the Club-row lock and evaluate capacity at its own
+ * boundary, exactly as {@see ApproveProfile} does today. Pushing the gate down into this Action instead would
+ * double-gate the approval path to buy that listener nothing.
  *
  * From-state guarded and race-safe (design L4, mirroring `ActivateProducer`): inside ONE {@see DB::transaction} it
  * re-reads the Profile `->lockForUpdate()` (a real row lock on PostgreSQL, a no-op under SQLite — the from-state

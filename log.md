@@ -917,3 +917,5 @@
 ## [2026-07-09 14:24] ralph | parties-hero-package 2.3 | green | 5 files | DeclineProfile from-state {applied,waiting_list}; +14 tests, suite 2306/2306; fixed 2.2's false cannot_approve copy
 
 ## [2026-07-09 14:41] ralph | parties-hero-package 2.4 | green | 2 files | RenewProfile cap-gated, grace sub-gate first, never diverts; suite 2323/2323, phpstan 0
+
+## [2026-07-09 15:02] ralph | parties-hero-package 3.1 | green | 3 files | ReactivateProfile+ActivateProfile stay ungated (docblocks only); mutation-tested the non-gate: injected gate killed 9/10 assertions. Suite 2331/2331, PHPStan 0
