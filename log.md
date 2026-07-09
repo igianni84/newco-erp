@@ -929,3 +929,5 @@
 ## [2026-07-09 17:06] ralph | parties-hero-package 5.2 | green | 5 files | ViewProfile approve/decline widen to {applied,waiting_list}; approve titled by outcome (waitlisted vs approved) + EN/IT copy; 8 mutants incl. a regression control; SQLite 2376/2376, PG17 2376/2376, PHPStan 0
 
 ## [2026-07-09 17:36] ralph | parties-hero-package 6.1 | green | 3 files | demo capacity documented (.env.example commented-out + docs/development.md) + DemoSeederHeroPackageCapacityTest (5 tests, 6 mutants). SQLite+PG17 2381/2381, PHPStan 0. .env leaks into APP_ENV=testing — an active var in .env.example would cap the suite.
+
+## [2026-07-09 17:55] ralph | parties-hero-package 7.1 | green | 6 files | CONTEXT.md six false claims inverted + WaitingListJoined payload row + Club seat glossary term; 3 stale comments fixed, pins kept; comments-only .php diff; SQLite 2381/2381

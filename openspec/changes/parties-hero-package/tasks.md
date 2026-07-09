@@ -151,7 +151,7 @@
 
 ## 7. Docs, residual-claim sweep, and the close gate
 
-- [ ] 7.1 Invert every shipped claim that this change makes false
+- [x] 7.1 Invert every shipped claim that this change makes false
   - `CONTEXT.md:287` — **invert**: it asserts as a hard rule that *"No name outside the eight above is recorded — no `ProfileLapsed`, `ProfileCancelled`, `AccountSuspended`, `AccountClosed`, **`WaitingListJoined`** or `CustomerSegmentChanged`."* Add `WaitingListJoined` to the recorded set with its payload row
   - `CONTEXT.md:131`, `:166`, `:170`, `:174` — all assert the capacity invariant / `Applied → WaitingList` path is a deferred Module-A seam and that approval and activation *"ship uncapped"*. Rewrite. `:267` and `:298` — the deferred-seam bullets naming this very change; rewrite to record what shipped and what stayed carved out
   - `MembershipSuspensionChainTest.php:260-265` — the **assertion stays green** (that chain never reaches parity under the uncapped default), but its comment calls `WaitingListJoined` a *"deferred-seam name … pinned absent"*. That prose is now false. Fix the comment; keep the pin
