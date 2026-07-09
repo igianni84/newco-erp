@@ -931,3 +931,5 @@
 ## [2026-07-09 17:36] ralph | parties-hero-package 6.1 | green | 3 files | demo capacity documented (.env.example commented-out + docs/development.md) + DemoSeederHeroPackageCapacityTest (5 tests, 6 mutants). SQLite+PG17 2381/2381, PHPStan 0. .env leaks into APP_ENV=testing — an active var in .env.example would cap the suite.
 
 ## [2026-07-09 17:55] ralph | parties-hero-package 7.1 | green | 6 files | CONTEXT.md six false claims inverted + WaitingListJoined payload row + Club seat glossary term; 3 stale comments fixed, pins kept; comments-only .php diff; SQLite 2381/2381
+
+## [2026-07-09 18:19] ralph | parties-hero-package 7.2 | green | 5 files | close gate: 2381/2381 SQLite+PG17, phpstan 0, pint clean, validate 11/11; tracker records the J-14/J-15/J-15a/XM-19 subset + 2 RM-03 residuals + 2 open escalations; F1 falsified -> F11 opened

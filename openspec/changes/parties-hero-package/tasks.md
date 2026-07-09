@@ -160,7 +160,7 @@
   - Tests: existing suites stay green; no test asserts a claim the change falsified
   - Typecheck passes; tests pass
 
-- [ ] 7.2 Close gate — full verification on both engines, and the honesty note
+- [x] 7.2 Close gate — full verification on both engines, and the honesty note
   - Full suite **SQLite** and **PG17** (`php -d memory_limit=-1 vendor/bin/pest`, then the PG17 prefix). The PG17 lane is the **only** place task 3.2's concurrency proof runs
   - `php -d memory_limit=-1 vendor/bin/phpstan analyse` ⇒ 0 · `vendor/bin/pint --test` clean · `openspec validate --all --strict` green
   - ⚠️ **Record the subset in `docs/validation/Remediation_Tracker.md` §3/§4:** RM-05 closes against a **documented subset**. `AC-K-J-14` / `AC-K-J-15` / `AC-K-J-15a` / `AC-K-XM-19` are **NOT met**, each blocked on Module A's capacity-adjust surface, the unmodelled period rollover, or Module 0/S. **If the tracker does not say this, a later reader will believe capacity is fully compliant — the single biggest honesty risk of this change**
