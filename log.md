@@ -943,3 +943,5 @@
 ## [2026-07-09 22:02] ralph | parties-hero-package-residuals 2.1 | green | 3 files | WaitingListJoined root-ness pinned at the birth entry point; 2 mutants (causationId, shared correlationId) each red only the new pin across the full suite
 
 ## [2026-07-09 22:40] ralph | parties-hero-package-residuals 2.2 | green | 3 files | WaitingListJoined root-ness pinned at ApproveProfile's divert; causation_id has NO quiet mutant (FK + immutability trigger + dominated by count()->toBe(1)); correlation_id mutant reds alone
+
+## [2026-07-09 23:17] ralph | parties-hero-package-residuals 3.1 | green | 3 files | console create-at-capacity pinned; WaitingListJoined birth envelope was blind repo-wide; hypotheses count corrected 2/3→1/3

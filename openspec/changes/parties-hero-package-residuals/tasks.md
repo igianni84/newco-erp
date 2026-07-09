@@ -36,11 +36,12 @@
 
 ## 3. The console pins — two requirements that exist only as prose
 
-- [ ] 3.1 Console **create-at-capacity** in `tests/Feature/Modules/OperatorPanel/Parties/ProfileCreateConsoleTest.php` (R4; operator-console — *Operator creates a Profile through the console*)
+- [x] 3.1 Console **create-at-capacity** in `tests/Feature/Modules/OperatorPanel/Parties/ProfileCreateConsoleTest.php` (R4; operator-console — *Operator creates a Profile through the console*)
   - Drive the Filament create surface against an `active` Club at exactly its Hero-Package capacity: the Profile is born `waiting_list` (not `applied`), and **both** `ProfileCreated` and `WaitingListJoined` carry `actor_role: newco_ops` and `actor_id` = the operator's id (the domain test records `System` — this envelope is what only the console can break)
   - Assert the create form exposes **no** capacity field (the birth state is decided by the domain, never by the operator)
   - **Mutant:** hardcode `CreateProfile`'s birth state to `Applied`; confirm red; restore
   - Full suite green both engines; typecheck; format
+  > ⓘ 2026-07-09: the prescribed mutant reds the `state` line and **never reaches the envelope conjuncts** — 10 red, 9 of them pre-existing. It proves the pin fires, not that it is needed. Necessity came from three more: `actorRole: System` and `actorId: null` on `CreateProfile`'s `WaitingListJoined` `record()` call (1 failure repo-wide each; 12 395 / 12 396 assn — the short-circuit, measured), and a `capacity` field added to the form (1 failure repo-wide). `ProfileApprovalConsoleTest` already pinned this event's `actor_role` — at the **divert** call site; the birth site was blind. `ProfileCreated`'s envelope is dominated by the file's applied-path test; kept with the enumeration in-comment. See progress.md § 3.1.
 
 - [ ] 3.2 Console **renew-at-capacity** in `tests/Feature/Modules/OperatorPanel/Parties/ProfileLifecycleConsoleTest.php` (R4; operator-console — *Operator advances a Profile through its lifecycle*)
   - A Profile lapsed within the 30-day grace whose Club has since reached exactly its capacity: `renew` is **visible** from `lapsed`, the domain rejects, and the console surfaces a **danger** notification whose body is the localized `parties.profile.club_at_capacity`. The Profile stays `lapsed` with `lapsed_at` intact and is **not** moved to `waiting_list`; no event recorded
