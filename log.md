@@ -921,3 +921,5 @@
 ## [2026-07-09 15:02] ralph | parties-hero-package 3.1 | green | 3 files | ReactivateProfile+ActivateProfile stay ungated (docblocks only); mutation-tested the non-gate: injected gate killed 9/10 assertions. Suite 2331/2331, PHPStan 0
 
 ## [2026-07-09 15:33] ralph | parties-hero-package 3.2 | green | 3 files | PG17 two-connection race proof: 1 Active + 1 WaitingList, mutation-verified (racy impl reds PG, greens SQLite). First full PG17 run of the change: 2333/2333 both engines
+
+## [2026-07-09 16:05] ralph | parties-hero-package 4.1 | green | 6 files | boundary pins: no capacity storage, no Module-A import, no auto-promotion, no new Action. 7 mutants, all 15 tests falsified. SQLite+PG17 2348/2348

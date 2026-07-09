@@ -111,7 +111,7 @@
 
 ## 4. Architecture assertions — the boundary this change must not cross
 
-- [ ] 4.1 Assert zero capacity storage, zero Module-A coupling, zero auto-promotion (`AC-K-XM-18`, `AC-K-XM-20`, D5, D10)
+- [x] 4.1 Assert zero capacity storage, zero Module-A coupling, zero auto-promotion (`AC-K-XM-18`, `AC-K-XM-20`, D5, D10)
   - Schema inspection (the literal `AC-K-XM-20` verification method): **no** Module K table carries a capacity / seat / quota / max-members column — assert explicitly on `parties_clubs`; no `parties_*` capacity table exists
   - No Module K source file imports a `Modules\Allocation\*` symbol (`ModuleBoundariesTest` covers `Contracts`/`Events` only — this asserts *nothing at all* is imported)
   - `Parties\Contracts` exposes the capacity **read** port and **no** seat-occupancy reader contract (the count stays internal until a consumer exists)
@@ -119,6 +119,7 @@
   - `app/Modules/Parties/Actions/` gained **no** new file — `SupplyLifecycleChainTest`'s non-`Create*` set is unchanged
   - Behavioural proof of no-backfill: at parity with a `WaitingList` Profile, drive each attrition transition (`LapseProfile`, `CancelProfile`, `DeactivateProfile`) and assert the waitlisted Profile is **still** `waiting_list`, the freed seat stays unoccupied, and no `ProfileActivated` fires
   - Typecheck passes; tests pass
+  > ℹ 2026-07-09: **test file only — zero production files touched** (`HeroPackageCapacityBoundaryTest.php`, 15 tests). **Seven mutants, and every one of the 15 tests was falsified by at least one.** The load-bearing surprise: mutant B — a `DomainEventConsumer` auto-promoter planted in **`Support/`** — sails straight through the subdirectory set-pin. Only the **type scan** (`is_subclass_of` over every declared Module K class) and the `ConsumerRegistry` pin caught it. **A structural absence must be pinned by NAME *and* by TYPE**; a name pin alone tells a promoter where not to stand. Mutant A (model observer) reds 7 tests incl. all four attrition edges; mutant D proved an **unused** `use App\Modules\Allocation\…` is still seen by `not->toUse` — the Pint `{@see}` trap is live, so this file names Allocation in backticks only. Mutants C/E/F/G (capacity column · seat-occupancy contract · `PromoteWaitlistedProfile` Action · scheduled promoter) each red exactly their own pin. **The `Schema` facade erases `list<string>`** (`@method static array getColumnListing()`) — under PHPStan max every table/column name arrives `mixed`; read `DB::connection()->getSchemaBuilder()` instead of casting (helper `heroBoundarySchema()`). Both engines: **SQLite 2348/2348 · PG17 2348/2348**. **5.1's *"the console re-checks no gate itself"* carries the same mutation obligation** — and now also the name-vs-type lesson: pin what the console *is*, not only what it is *called*.
 
 ## 5. Operator surface — stop the console lying about the outcome
 
