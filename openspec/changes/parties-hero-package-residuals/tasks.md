@@ -11,7 +11,7 @@
 
 ## 1. The ordering pin — make the corrected requirement enforceable
 
-- [ ] 1.1 Pin **guard-before-lock** negatively in `tests/Feature/Modules/Parties/ProfileApprovalCapacityGateTest.php` (R1, R2)
+- [x] 1.1 Pin **guard-before-lock** negatively in `tests/Feature/Modules/Parties/ProfileApprovalCapacityGateTest.php` (R1, R2)
   - Capture SQL with `DB::listen`; assert an `ApproveProfile` on a Profile outside `{applied, waiting_list}` emits **no `parties_clubs` statement at all** (`toBeEmpty()`), and raises the **from-state** reason (`cannot_approve`), never `club_at_capacity`
   - Assert the Profile is **not** moved to `waiting_list`
   - **Dataset across the later gate's outcomes** so independence is shown, not coincidental: at parity (capacity `0` — full while empty, the cheapest fixture), a free seat, and **explicitly uncapped** (an explicit `null` in `by_club_id` beneath a capped `default` — the only honest uncapped fixture; `PHP_INT_MAX` exercises the *capped* branch)

@@ -937,3 +937,5 @@
 ## [2026-07-09 20:26] close-ritual §2.7 | parties-hero-package | Merged --no-ff (91adfdb) + archived (24df7af). Verified BOTH engines: SQLite 2381/2381 (12340 assn), PG17 2381/2381 (12347). PHPStan 0, Pint clean, validate 10/10. Semantic-verify: 4 agents, 13 delta reqs, 0 CRITICAL / 5 WARNING / 8 SUGGESTION. Unpushed (18 ahead).
 
 ## [2026-07-09 21:06] follow-up | parties-hero-package residuals | 3 citations fixed (docblock-only, 0 new imports). Tracker F12: Profile<->Customer lock-order inversion (PRE-EXISTING; RM-05's Club lock closes no cycle). Change parties-hero-package-residuals drafted+validated 11/11, NO APPROVED. SQLite 2381/2381, PHPStan 0, Pint clean.
+
+## [2026-07-09 21:41] ralph | parties-hero-package-residuals 1.1 | green | 3 files | negative ordering pin, 6 rows; mutant B reds ONLY the new pin (13 pre-existing green) — R2 measured, not argued; SQLite+PG17 2387/2387

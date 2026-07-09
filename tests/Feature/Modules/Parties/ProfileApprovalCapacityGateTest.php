@@ -30,7 +30,12 @@ use Illuminate\Support\Facades\DB;
  *      through the transient `approved`, recording `ProfileActivated` and the first-ever `OriginatingClubLocked` —
  *      exactly as an approval from `applied` does. Nothing converted the Profile when the seat freed (design D5).
  *   4. THE FROM-STATE GUARD PRECEDES THE GATE. An out-of-state approval into a FULL Club throws `cannotApprove`,
- *      never `clubAtCapacity`, and is never diverted onto the waitlist.
+ *      never `clubAtCapacity`, and is never diverted onto the waitlist. That ORDER is pinned NEGATIVELY — by the
+ *      `parties_clubs` statement the doomed call never emitted — because the reason it reports is identical under
+ *      BOTH orderings whenever the capacity gate would have rejected too, so the reason discriminates nothing. The
+ *      negative pin also carries the operational half: a doomed call must not serialise a Club against healthy
+ *      concurrent approvals (parties-hero-package-residuals design R1/R2; party-registry — Scenario: *An
+ *      out-of-state approve is rejected before any Club row is locked*).
  *   5. THE COUNT IS TAKEN UNDER THE `parties_clubs` ROW LOCK, ACQUIRED FIRST (design D3). Pinned as SQL statement
  *      order, plus the driver-gated `for update` needle — the only cross-engine proof of the race fix. Statement
  *      order is not serialisation: the two-connection proof is task 3.2's, and runs on PostgreSQL 17 only.
@@ -235,6 +240,59 @@ it('guards the from-state BEFORE the capacity gate — an out-of-state approval 
     'lapsed' => [ProfileState::Lapsed],
     'cancelled' => [ProfileState::Cancelled],
     'inactive' => [ProfileState::Inactive],
+]);
+
+it('locks no Club row for an out-of-state approval, whatever the gate that never ran would have said', function (ProfileState $from, ?int $capacity, int $occupied) {
+    $club = Club::factory()->create();
+
+    // The `default` is CAPPED so the `uncapped` rows below are honest ones: the adapter resolves `by_club_id` on
+    // `array_key_exists`, so an explicit `null` there pins THIS Club uncapped beneath that capped default. A huge cap
+    // would instead exercise the CAPPED branch of a Club that merely is not full — a different code path.
+    config()->set('parties.hero_package.capacity.default', 1);
+    config()->set('parties.hero_package.capacity.by_club_id', [$club->id => $capacity]);
+
+    Profile::factory()->count($occupied)->create(['club_id' => $club->id, 'state' => ProfileState::Active]);
+
+    $profile = Profile::factory()->create(['club_id' => $club->id, 'state' => $from]);
+
+    /** @var list<string> $statements */
+    $statements = [];
+    DB::listen(function (QueryExecuted $query) use (&$statements): void {
+        if (str_contains($query->sql, 'parties_clubs')) {
+            $statements[] = $query->sql;
+        }
+    });
+
+    // THE ORDER IS THE CLAIM (design D3/D8). The from-state guard runs before the Club-row lock, so a Profile that
+    // was never approvable is told THAT — and the capacity gate is never consulted at all.
+    expect(fn () => app(ApproveProfile::class)->handle($profile->id))
+        ->toThrow(IllegalProfileTransition::class, (string) __('parties.profile.cannot_approve', ['state' => $from->value]));
+
+    // The DISCRIMINATOR. The reason above is reported under both orderings whenever the gate would also have
+    // rejected (the `at parity` rows); only the trace separates them. A doomed call reached
+    // `lockAndCountOccupiedSeats()` never, so it emitted no `parties_clubs` statement at all — on PostgreSQL, the
+    // difference between a no-op and an unrelated healthy approval queueing behind this one.
+    expect($statements)->toBeEmpty();
+
+    // …and it was never diverted onto the waitlist merely because its Club happened to be full: the at-capacity
+    // branch is reachable only from `applied` (which diverts) and `waiting_list` (which is rejected).
+    $persisted = Profile::findOrFail($profile->id);
+
+    expect($persisted->state)->toBe($from)
+        ->and($persisted->state)->not->toBe(ProfileState::WaitingList)
+        ->and(DomainEvent::query()->where('name', WaitingListJoined::NAME)->count())->toBe(0)
+        ->and(DomainEvent::query()->count())->toBe(0);
+})->with([
+    // The dataset sweeps the LATER gate's three outcomes under each from-state, so the guard's independence from
+    // capacity is demonstrated rather than coincidental. Capacity `0` is full while empty (`wouldOversell()` is true
+    // at every occupancy), so it needs no seated members; the `free seat` rows are capped well above the occupancy
+    // the subject itself contributes — `active` occupies a seat, `lapsed` does not.
+    'active · at parity — the gate would have DIVERTED' => [ProfileState::Active, 0, 0],
+    'active · a free seat — the gate would have PASSED' => [ProfileState::Active, 5, 1],
+    'active · explicitly uncapped — no gate to run' => [ProfileState::Active, null, 1],
+    'lapsed · at parity — the gate would have DIVERTED' => [ProfileState::Lapsed, 0, 0],
+    'lapsed · a free seat — the gate would have PASSED' => [ProfileState::Lapsed, 5, 1],
+    'lapsed · explicitly uncapped — no gate to run' => [ProfileState::Lapsed, null, 1],
 ]);
 
 it('takes the parties_clubs row lock strictly before it counts the seats (design D3)', function () {
