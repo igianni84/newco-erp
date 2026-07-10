@@ -7,7 +7,7 @@ updated: 2026-07-10
 # Hot Cache
 
 ## Last Updated
-**2026-07-10 — F10 DECIDED (ADR landed); RM-26 + RM-27 opened; nothing in flight.** Tree clean, `openspec/changes/` holds only `archive/`. Doc-only session: two commits, zero `app/` diff.
+**2026-07-10 — F10 DECIDED (ADR landed); RM-26 + RM-27 opened; the "frozen spec" folklore retired at its sources.** Nothing in flight; tree clean; `openspec/changes/` holds only `archive/`. Doc-only session, zero `app/` diff. `CLAUDE.md` §Spec-authority + invariant 11 reworded (protected file, Giovanni-authorised).
 
 ## Build & Quality Status
 - **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — PG surplus = the PG-only concurrency + CHECK lanes. Untouched today.
@@ -30,6 +30,6 @@ updated: 2026-07-10
 
 ## Open Patterns
 - **A word repeated across artefacts becomes a constraint, and nothing reds.** F10 asked to supersede an ADR that had *authorised* the very thing it wanted — "frozen" was folklore, never a decision. Quote the decision; prose *about* it drifts.
-- **A memory file that asserts a remote's state expires by design.** `hot.md` said *"11 commits ahead"* — true 13:12, false 13:15, falsified by the push it recorded as pending. **Ask the remote; never remember it.** Same root as the canon-staleness gap.
-- **A vacuous gate is worse than no gate** — the first staleness detector compared an *empty string* to the pin and reported STALE; it would have said STALE while in sync. Fail closed. (3rd confirmation.)
-- **A verifier's finding is a candidate, not a fact** (F1, twice). Full set in `lessons.md`.
+- **A memory file that asserts a remote's state expires by design.** *"11 commits ahead"* was true 13:12, false 13:15 — falsified by the push it recorded as pending. **Ask the remote; never remember it.** Same root as the canon-staleness gap.
+- **A vacuous gate is worse than no gate** — the first staleness detector compared an *empty string* to the pin and reported STALE. Fail closed. (3rd confirmation.)
+- Full set in `lessons.md`.
