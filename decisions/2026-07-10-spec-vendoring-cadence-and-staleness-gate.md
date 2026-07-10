@@ -93,6 +93,22 @@ Read from the canon diff before the refresh; each becomes an RM row in the triag
 - **`MVP-DEC-024`** — already tracked as **RM-26** (+ RM-27). Canon names it in the **launch-blocking build set**.
 - **`MVP-DEC-025 / 027 / 028 / 029 / 030 / 032 / 036`** — Modules 0 / A / B / D / S. Screen when those modules open (F8's standing instruction).
 
+## Execution constraints (read before building this)
+
+Every surface this ADR prescribes is a **protected file** under root `CLAUDE.md` → *"never modify unless the user explicitly asks."* The implementing session must obtain Giovanni's explicit go-ahead for each, and should ask once, up front, rather than four times:
+
+| Surface | Why it is touched | Protected as |
+|---|---|---|
+| `spec/**` | the refresh itself (written **only** by `scripts/sync-spec.sh`, never by hand) | `spec/**` |
+| `.claude/settings.json` + `.claude/hooks/**` | the `SessionStart` staleness warning | both listed |
+| `.claude/skills/**` | `/spec-to-change` gains the staleness precondition | `.claude/skills/**` |
+| `CLAUDE.md` | already amended 2026-07-10 (Giovanni-authorised) — *"Spec authority"* + invariant 11 | `CLAUDE.md` |
+
+Two further traps for the implementing session:
+
+- **`sync-spec.sh` mutates Giovanni's `../documentation` clone** — `git checkout main` + `merge --ff-only cmless/main` — moving its HEAD off `4f48277`. It refuses to run against a dirty clone, which is the only guard. Confirm with Giovanni before running it, and never `git show`/`fetch` your way into thinking that is read-only.
+- **Re-measure the canon before you act.** `9eaa341` is this ADR's observation, not a constant: canon advanced six MVP-DECs *during* the investigation that produced this document. The detector exists precisely so that no document — including this one — is the source of that number.
+
 ## Explicitly not decided here
 
 **The outbound half of the escalation asymmetry.** Team memory records the root cause as bidirectional: *"we DO grill and DO find gaps … but we route via Giovanni↔Paolo calls + local errata, often resolved verbally and **archived UNSENT** — so our findings never enter the shared written record."* This ADR fixes only the inbound flow. The outbound flow stays open, and it is now sharper, not softer:

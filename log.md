@@ -959,3 +959,5 @@
 ## [2026-07-10 14:14] adr | F10 — spec vendoring cadence + staleness gate | DECIDED (grill-with-docs, live canon). F10's premise was FALSE: the 2026-06-17 ADR never froze spec/, it designed the refresh -> new ADR EXTENDS it. spec/=build authority; fail-closed detector gates /spec-to-change; refresh is code-free + triage. Inbound only. NOT built.
 
 ## [2026-07-10 14:21] docs | CLAUDE.md + validation README + lessons.md | Retired the 'frozen spec' folklore at its sources: CLAUDE.md spec-authority + invariant 11 (immutability -> write-discipline), verdict README dated-banner, mini-ADR trigger re-scoped to 'newer than spec.lock'. Historical uses left intact. Giovanni-authorised protected-file edit.
+
+## [2026-07-10 14:23] docs | F10 ADR + tracker §1 | Added Execution constraints: every surface the ADR prescribes (spec/**, .claude/settings.json, hooks/**, skills/**) is a protected file, and sync-spec.sh moves Giovanni's documentation clone HEAD. Also: re-measure canon, 9eaa341 is an observation not a constant.
