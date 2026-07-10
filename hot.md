@@ -13,7 +13,7 @@ updated: 2026-07-10
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
 - **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — identical to 3.2's baseline, as a doc-only task must be.
 - PHPStan **0** · Pint clean · `openspec validate --all --strict` **11/11**.
-- **`git diff --stat main...HEAD`: 11 files, ZERO under `app/`** — design R1 held across all six tasks. The code was always right; the spec and the suite were wrong.
+- **`git diff --stat main...HEAD`: 12 files, ZERO under `app/`** — design R1 held across all six tasks. The code was always right; the spec and the suite were wrong.
 - Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 lane: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`).
 
 ## Active Change & Next Task

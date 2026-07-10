@@ -23,10 +23,13 @@
 // `state == lapsed`; BOTH other sub-gates are domain-internal. So a Lapsed Profile is ALWAYS offered `renew`, the
 // domain rejects on whichever sub-gate bites first (grace strictly before capacity — RenewProfile's documented gate
 // order), and surfaceLifecycleOutcome surfaces the `action_failed` danger notification carrying THAT gate's own
-// localized reason. `renew` is the sole VERB whose rejects reach this page, and it has TWO of them: past-grace, and
-// within-grace into a Club at capacity. Every other illegal transition is hidden, so its reject is proven by a domain
-// toThrow + assertActionHidden, never an action_failed the page can't raise (the Filament hidden-action landmine,
-// lessons.md 2026-06-22).
+// localized reason. Among the LIFECYCLE verbs this file covers, `renew` is the sole one whose rejects reach the page,
+// and it has TWO of them: past-grace, and within-grace into a Club at capacity. It is not the PAGE's only rejecting
+// verb — `approve` lives on the same ViewProfile (`:95`) and raises a third `action_failed`, on a `waiting_list`
+// Profile whose Club is still full (design D11; pinned in ProfileApprovalConsoleTest, and all three enumerated in the
+// lang/*/operator_console.php notifications comment). Every other illegal transition is hidden, so its reject is
+// proven by a domain toThrow + assertActionHidden, never an action_failed the page can't raise (the Filament
+// hidden-action landmine, lessons.md 2026-06-22).
 //
 // THE EVENT SURFACE (verified in the Action bodies): lapse / renew / deactivate each record exactly one ROOT § 15.2
 // event when directly invoked — ProfileExpired / ProfileRenewed / ProfileInactive — carrying the operator audit
