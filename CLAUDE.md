@@ -4,7 +4,7 @@
 
 Implementation of **NewCo ERP v0.3-MVP**: the system of record for a producer-club fine-wine aggregator — commerce, custody, fulfilment and finance on passive consignment, B2C only, NewCo as Seller of Record. Nine modules: 0 (PIM/Catalog), K (Parties), A (Allocation), D (Procurement), S (Sales/Commerce), B (Inventory + Provenance), C (Fulfilment), E (Finance), Admin Panel (Operator Surface).
 
-**Spec authority:** `spec/` is the immutable v0.3-MVP handoff baseline. Every requirement we implement must trace to it (file + section) or to an ADR in `decisions/`. Never edit `spec/**`. The v1.1 reference is frozen, lives outside this repo, and is never a build source. Start here: `spec/README.md` → `spec/05-release/Build_Workplan_v0.3-MVP.md` → `spec/02-prd/Architecture_v0.3-MVP.md`.
+**Spec authority:** `spec/` is the v0.3-MVP build authority — a vendored mirror of canon (`c-mless/documentation` → `handoff/`), pinned in `spec.lock` and **never hand-edited**: only `scripts/sync-spec.sh` writes it. It is **not fixed**. It *chases* canon by **deliberate refresh** — a reviewed, code-free commit, never a live float — gated by a fail-closed staleness check before any change is authored (ADR `decisions/2026-07-10-spec-vendoring-cadence-and-staleness-gate.md`). Every requirement we implement must trace to it (file + section) or to an ADR in `decisions/`. The **v1.1 reference is genuinely frozen**, lives outside this repo, and is never a build source. Start here: `spec/README.md` → `spec/05-release/Build_Workplan_v0.3-MVP.md` → `spec/02-prd/Architecture_v0.3-MVP.md`.
 
 ## Tech Stack and Tech Rules
 
@@ -47,7 +47,7 @@ When a gate approaches, run a `grill-with-docs` session, write the ADR, then pro
 8. **Audit envelope** — every operator action records `actor_role`; audit trails are append-only.
 9. **Invoicing ownership** — INV1/INV2/INV3 issuance lifecycle lives only in Module S (R2).
 10. **Module boundaries** — no cross-module DB access; events + contracts only.
-11. **Spec immutability** — never edit `spec/**`. Never hand-edit `openspec/specs/**` (truth changes only via change archive).
+11. **Spec write-discipline** — never *hand-edit* `spec/**`; only `scripts/sync-spec.sh` writes it, and a refresh is its own code-free commit. ("Never edit" ≠ "never changes": `spec/` tracks canon.) Never hand-edit `openspec/specs/**` (truth changes only via change archive).
 12. **i18n** — no hardcoded user-facing strings.
 13. **EU data residency** for production data and backups.
 

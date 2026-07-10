@@ -3,6 +3,8 @@
 > **Context.** On 2026-07-01 Paolo Alfieri asked Taha (official tech team) for what's needed to **validate and close a module, Module 0 & K first**. This folder applies Paolo's exact three asks to **our** underwater AI-native build — to see where we stand vs the official effort, on the same yardstick.
 > **Deliverables.** [`Module_0_Verdict_v0.3-MVP.md`](./Module_0_Verdict_v0.3-MVP.md) · [`Module_K_Verdict_v0.3-MVP.md`](./Module_K_Verdict_v0.3-MVP.md) — the annotated acceptance criteria (Verdict/Evidence/Notes) Paolo asked for.
 > **Baseline & method.** Verdicts are against our **local frozen spec** (`spec/` = a c-mless `handoff/` snapshot at MVP-DEC-007); a **Canon Overlay** in each report layers on where the current c-mless canon (through DEC-023) has moved. Evidence = real code + the Pest suite (full suite 1753/1753 green; ~1423 tests touch these two modules), cited `file:line`. Reviewer-verified sample of every headline claim.
+>
+> ⚠️ **Amended 2026-07-10 — read the two paragraphs above as *dated*, not current.** (i) "**frozen**" was never a decision: [ADR 2026-07-10](../../decisions/2026-07-10-spec-vendoring-cadence-and-staleness-gate.md) establishes that `spec/` is the **build authority and chases canon** by deliberate refresh; the word here is one of the artefacts that turned an unexercised capability into folklore (`lessons.md` 2026-07-10). (ii) "canon **through DEC-023**" was already wrong when written and is now far off — canon was `360df0b` (MVP-DEC-030) on 2026-07-09 and **`9eaa341` (MVP-DEC-036)** on 2026-07-10. **These verdicts remain valid as written, against the baseline they name** (`spec.lock` → `4f48277`); they are a snapshot, not a live diff. Do not update them — check `spec.lock` and the staleness detector instead.
 
 ---
 
