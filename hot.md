@@ -7,7 +7,7 @@ updated: 2026-07-10
 # Hot Cache
 
 ## Last Updated
-**2026-07-10 — F10 EXECUTED end-to-end: fail-closed staleness detector + spec-refresh to canon + full triage.** Three steps, two commits + a triage commit, **not yet pushed** (close-ritual push gate: ask Giovanni). `openspec/changes/` holds only `archive/`; tree clean after the triage commit.
+**2026-07-10 — F10 EXECUTED end-to-end + PUSHED: fail-closed staleness detector + spec-refresh to canon + full triage.** Three commits (`aaec37e` detector · `d435742` refresh · `b42d0f5` triage) merged to `main` and **pushed** (`main == origin/main`, verified via `git ls-remote`). `openspec/changes/` holds only `archive/`; tree clean.
 
 ## Build & Quality Status
 - **SQLite 2401/2401** (12 435 assn) · **PG17 2401/2401** (12 442 assn) — +12 over the prior 2389 = the new `SpecStalenessDetectorTest`. **The refresh moved ZERO tests** (2401 = 2401 IDENTICAL before/after, both engines — ruling-3 invariant proven).
@@ -21,7 +21,6 @@ updated: 2026-07-10
 - **Refresh-surfaced batch (Round 4, F13):** RM-28 `AC-K-J-7a` compensating control (real FLOOR gap, S, runbook, NOT blocked) · RM-29 Intrinsic-SKU event rename (`033`, M, needs ADR for A-vs-B scope — persisted `name` is a hand-pinned const, no history yet → near-zero-cost now) · RM-30 dedup residual (`023`) · RM-31 Case Config (`025`) · RM-33 `BR-K-Customer-3` (`021`, maybe assertion-only) · RM-32 transactional email (`035`, 🔵 deferred).
 
 ## Blockers & Decisions Needed
-- **Push pending** — 3 local commits (`aaec37e` detector, `d435742` refresh, triage) not pushed. Ask before pushing (close-ritual push gate).
 - **Doc-sync flag for Giovanni (protected files):** `MVP-DEC-028` renamed `ownership_flag` `CRURATED→NEWCO`; still `CRURATED` at **CLAUDE.md:73** + **CONTEXT.md:450/453**. Hand-edit when convenient; no shipped code depends on it (Module B unbuilt).
 - **Root `CLAUDE.md`** still says `spec/` "immutable v0.3-MVP handoff baseline" — the wording the F10 ADR flagged for your explicit approval (protected; unedited).
 - Queued (gate, not date): **F12** lock-order inversion (before producer HTTP surface) · two canon capacity escalations (before Module A) · **F2** prod operator-mgmt (🟥 go-live). Also: F5/F6/F7/F9/F11.

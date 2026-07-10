@@ -967,3 +967,5 @@
 ## [2026-07-10 19:12] F10-step2 | sync-spec.sh refresh spec/ + spec.lock | code-free commit d435742; pin 4f48277->b7f5ae7 (MVP-DEC-037, re-measured from remote); suite IDENTICAL 2401/2401 SQLite+PG17 pre/post (invariant held)
 
 ## [2026-07-10 19:12] F10-step3 | canon-diff triage -> tracker RM rows + F13 | 4 read-only subagents over 30 DECs; opened RM-28..RM-33 + RM-05 relabel (034a); dismissals+doc-sync flag(028)+human-eye flags in F13; 034b not-ours
+
+## [2026-07-10 19:18] F10-push | origin/main | 3 F10 commits pushed (aaec37e detector, d435742 refresh, b42d0f5 triage); main==origin verified via git ls-remote
