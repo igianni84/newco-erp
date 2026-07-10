@@ -21,6 +21,10 @@
 // club_id is rejected by CreateProfile's ClubNotAcceptingMemberships guard, surfaced on the `club_id` field by the
 // kit base catch — no Profile, no event (the 6.1 forced-out-of-option pattern: Filament passes an out-of-option
 // Select value straight to the action, so the server guard is the floor beneath the picker).
+//
+// Task 3.1 (parties-hero-package-residuals; design R4) appends the Hero-Package capacity BIRTH's console leg — the
+// second lawful outcome of a console create. Its section banner below says what only the console can break there,
+// and what is deliberately not re-asserted.
 
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource;
 use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages\CreateProfile;
@@ -28,6 +32,8 @@ use App\Modules\OperatorPanel\Filament\Resources\Parties\ProfileResource\Pages\L
 use App\Modules\OperatorPanel\Models\Operator;
 use App\Modules\Parties\Enums\ClubStatus;
 use App\Modules\Parties\Enums\ProfileState;
+use App\Modules\Parties\Events\ProfileCreated;
+use App\Modules\Parties\Events\WaitingListJoined;
 use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Customer;
 use App\Modules\Parties\Models\Profile;
@@ -110,7 +116,7 @@ it('surfaces DuplicateProfileForClub on the club_id field for a live (Customer, 
         ->and(DomainEvent::query()->where('name', 'ProfileCreated')->count())->toBe($eventsBefore);
 });
 
-it('exposes the Customer and Club create selects and no state, tier or role field', function () {
+it('exposes the Customer and Club create selects and no state, tier, role or capacity field', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     Livewire::test(CreateProfile::class)
@@ -120,7 +126,11 @@ it('exposes the Customer and Club create selects and no state, tier or role fiel
         // none of these — the lifecycle verbs live on ViewProfile (groups 3–5).
         ->assertFormFieldDoesNotExist('state')
         ->assertFormFieldDoesNotExist('tier')
-        ->assertFormFieldDoesNotExist('role');
+        ->assertFormFieldDoesNotExist('role')
+        // Nor a capacity. The birth state is DECIDED BY THE DOMAIN — the action reads the Club's Hero-Package
+        // capacity through Module K's own port, which stores no capacity value of any kind (AC-K-XM-20) — so there
+        // is nothing here for an operator to compose, override or even see (residuals task 3.1, design R4).
+        ->assertFormFieldDoesNotExist('capacity');
 });
 
 it('reaches the create page through a header navigation link, never an inline CreateAction', function () {
@@ -179,4 +189,73 @@ it('offers only active Clubs in the create Club picker (a sunset or closed Club 
                 && ! in_array($sunset->id, $keys, true)
                 && ! in_array($closed->id, $keys, true);
         });
+});
+
+/*
+|--------------------------------------------------------------------------
+| The Hero-Package capacity birth (parties-hero-package-residuals task 3.1, design R4)
+|
+| A console create into a FULL Club is the surface's second lawful success: the routing gate ADMITS the applicant
+| onto the waitlist, it never rejects — so there is no form error to assert, and `waiting_list` is the only tell.
+|
+| The DOMAIN outcome of that birth — the routed state, both events, the PII-free payload, the absent Club-row lock —
+| is already pinned in tests/Feature/Modules/Parties/ProfileBirthStateRoutingTest.php and is NOT re-asserted here
+| (design R4: the console pins assert what only the console can break). That is the AUDIT ENVELOPE. The domain test
+| drives the action bare, so the ActorContext seam resolves (`System`, null) and the test asserts exactly that; under
+| an authenticated operator the very same two `record()` calls must instead carry (`newco_ops`, the operator id) —
+| resolved by the action off the `operator` guard, never constructed by the page.
+|--------------------------------------------------------------------------
+*/
+
+it('births a waiting_list Profile through the console when the Club is at capacity, both events carrying the operator envelope', function () {
+    $operator = Operator::factory()->create();
+    actingAs($operator, 'operator');
+
+    // An `active` Club at EXACT parity: one Hero-Package seat, one `Active` member holding it (the factory seats it
+    // under its own Customer, so the partial unique index on the pair is untouched). Capacity is set INLINE through
+    // config — never through the environment (an active `PARTIES_HERO_PACKAGE_CAPACITY` would cap the whole suite)
+    // and never through a new global helper: Pest `include`s every selected test file into ONE process, so a second
+    // `clubAtCapacity()` / `approvalConsoleSeatClubTo()` is a fatal redeclare at suite-build time, not a shadow.
+    $customer = Customer::factory()->create();
+    $club = Club::factory()->create(['status' => ClubStatus::Active]);
+    config()->set('parties.hero_package.capacity.by_club_id', [$club->id => 1]);
+    Profile::factory()->create(['club_id' => $club->id, 'state' => ProfileState::Active]);
+
+    // The create SUCCEEDS. A full Club waitlists an applicant rather than turning one away, so the operator sees no
+    // form error here — unlike the sunset/closed Club and duplicate-pair rejections above.
+    Livewire::test(CreateProfile::class)
+        ->fillForm([
+            'customer_id' => $customer->id,
+            'club_id' => $club->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $profile = Profile::query()
+        ->where('customer_id', $customer->id)
+        ->where('club_id', $club->id)
+        ->sole();
+
+    // Born on the waitlist, not `applied` — the operator composed no state, and the console asked for none.
+    expect($profile->state)->toBe(ProfileState::WaitingList);
+
+    $created = DomainEvent::query()->where('name', ProfileCreated::NAME)->sole();
+    $joined = DomainEvent::query()->where('name', WaitingListJoined::NAME)->sole();
+
+    // ProfileCreated's envelope is DOMINATED by the applied-path test at the top of this file: both births run the
+    // same unconditional `record()` call, so every realistic drift on it reds that test and these two lines never
+    // execute. Asserted regardless — the requirement says BOTH events carry the envelope — and it becomes the last
+    // guard standing the day the envelope is made to depend on the birth state.
+    expect($created->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($created->actor_id)->toEqual($operator->id);   // loose: PG returns a numeric string for the bigint
+
+    // WaitingListJoined's envelope is the pair this test EXISTS FOR, and nothing else in the repository holds it.
+    // The domain birth test drives the action bare and asserts `System`. ProfileApprovalConsoleTest does pin
+    // `newco_ops` on a WaitingListJoined — but the one ApproveProfile records at the DIVERT: a different `record()`
+    // call, in a different Action (design R3's two entry points, again). This one is reachable only from a console
+    // create into a full Club, and its `actor_id` is asserted at neither call site. Two independent conjuncts, so
+    // two mutants: hardcoding `System` reds the role, `actorId: null` reds the id (a chained `and()` short-circuits,
+    // and the assertion count proves which conjunct ran — progress.md § Codebase Patterns).
+    expect($joined->actor_role)->toBe(ActorRole::NewcoOps)
+        ->and($joined->actor_id)->toEqual($operator->id);
 });

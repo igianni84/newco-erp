@@ -15,7 +15,9 @@
 //
 // A HIDDEN VERB IS NOT THE ONLY FLOOR ANY MORE. The visibility predicate can see a from-state and never a capacity, so
 // approve on a `waiting_list` Profile in a STILL-FULL Club is visible, driveable, and refused by the domain — the one
-// action_failed this surface raises besides a past-grace renew (design D8/D11). And an approve at capacity from
+// action_failed APPROVE raises, alongside the two `renew` raises from `lapsed` (past-grace, and within-grace into a
+// Club at capacity — ProfileLifecycleConsoleTest, which shares this ViewProfile page). Design D8/D11; the three are
+// enumerated together in the lang/*/operator_console.php notifications comment. And an approve at capacity from
 // `applied` SUCCEEDS into `waiting_list`: a second lawful outcome, which the console must name with its own copy
 // rather than reporting a divert as an approval. Both are pinned below on the NOTIFICATION, not merely on the state —
 // the pre-5.2 bug (a green "Membership approved and activated." over a waitlisted Profile) was invisible precisely
@@ -368,7 +370,7 @@ it('converts a waitlisted Profile through the console once a seat frees — acti
         ->and(DomainEvent::query()->where('name', WaitingListJoined::NAME)->count())->toBe(0);
 });
 
-it('surfaces the domain capacity refusal as a danger toast when the Club is still full — the only action_failed this surface raises besides a past-grace renew', function () {
+it('surfaces the domain capacity refusal as a danger toast when the Club is still full — the only action_failed approve raises, alongside the two from renew', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     // At parity, with the Profile ALREADY on the waitlist: it has no edge left to take (design D8), so the domain

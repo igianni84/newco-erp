@@ -18,11 +18,17 @@
 // from-state guard. lapse / cancel / deactivate share `active`; renew / cancel share `lapsed`; so a state can surface
 // MORE THAN ONE verb at once (the visibility sweep checks a SET per state, not a single verb).
 //
-// THE ONE UI-REACHABLE REJECT (design D5): `renew`'s gate is compound — `lapsed` AND within the 30-day grace — but the
-// visibility predicate can only check `state == lapsed`; the grace sub-gate is domain-internal. So a Lapsed-but-past-
-// grace renew is VISIBLE, the domain rejects it, and surfaceLifecycleOutcome surfaces the `action_failed` danger
-// notification. This is the SOLE reject testable through the page; every other illegal transition is hidden, so its
-// reject is proven by a domain toThrow + assertActionHidden, never an action_failed the page can't raise (the Filament
+// THE TWO UI-REACHABLE REJECTS (design D5; parties-hero-package-residuals design R4): `renew`'s gate is compound —
+// `lapsed` AND within the 30-day grace AND a free Hero-Package seat — but the visibility predicate can only check
+// `state == lapsed`; BOTH other sub-gates are domain-internal. So a Lapsed Profile is ALWAYS offered `renew`, the
+// domain rejects on whichever sub-gate bites first (grace strictly before capacity — RenewProfile's documented gate
+// order), and surfaceLifecycleOutcome surfaces the `action_failed` danger notification carrying THAT gate's own
+// localized reason. Among the LIFECYCLE verbs this file covers, `renew` is the sole one whose rejects reach the page,
+// and it has TWO of them: past-grace, and within-grace into a Club at capacity. It is not the PAGE's only rejecting
+// verb — `approve` lives on the same ViewProfile (`:95`) and raises a third `action_failed`, on a `waiting_list`
+// Profile whose Club is still full (design D11; pinned in ProfileApprovalConsoleTest, and all three enumerated in the
+// lang/*/operator_console.php notifications comment). Every other illegal transition is hidden, so its reject is
+// proven by a domain toThrow + assertActionHidden, never an action_failed the page can't raise (the Filament
 // hidden-action landmine, lessons.md 2026-06-22).
 //
 // THE EVENT SURFACE (verified in the Action bodies): lapse / renew / deactivate each record exactly one ROOT § 15.2
@@ -47,6 +53,7 @@ use App\Modules\Parties\Events\ProfileExpired;
 use App\Modules\Parties\Events\ProfileInactive;
 use App\Modules\Parties\Events\ProfileRenewed;
 use App\Modules\Parties\Exceptions\IllegalProfileTransition;
+use App\Modules\Parties\Models\Club;
 use App\Modules\Parties\Models\Profile;
 use App\Platform\Events\ActorRole;
 use App\Platform\Events\DomainEvent;
@@ -57,6 +64,55 @@ use Livewire\Livewire;
 use function Pest\Laravel\actingAs;
 
 uses(DatabaseMigrations::class);
+
+/**
+ * Every toast the last Livewire request sent, oldest first — title, status AND body.
+ *
+ * `assertNotified()` cannot express the capacity reject below: given a STRING it matches the TITLE only, and the
+ * refusal's title is the shared `action_failed` while the fact under test lives in the BODY. It also PULLS (its
+ * `mount()` claims the session key), so a snapshot taken after it is always empty — read this BEFORE any
+ * `assertNotified()`. And on every Livewire `dehydrate` the notifications provider MOVES `filament.notifications`
+ * onto `filament.claimed_notifications` (a `put`, so each request overwrites the last claim), hence: claimed key
+ * first, unclaimed as the fallback.
+ *
+ * Named distinctly from `ProfileApprovalConsoleTest`'s `approvalConsoleToasts()` and
+ * `SurfacesDomainActionsOutcomeTest`'s `consoleOutcomeToasts()`: Pest `include`s every selected test file into ONE
+ * process while building the suite, so two global helpers may never share a name — a duplicate is a fatal redeclare
+ * that kills the whole run before any test executes, not a shadow.
+ *
+ * @return list<array{title: ?string, status: ?string, body: ?string}>
+ */
+function lifecycleConsoleToasts(): array
+{
+    /** @var mixed $sent */
+    $sent = session()->get('filament.claimed_notifications')
+        ?? session()->get('filament.notifications', []);
+
+    if (! is_array($sent)) {
+        return [];
+    }
+
+    $toasts = [];
+
+    foreach ($sent as $toast) {
+        if (! is_array($toast)) {
+            continue;
+        }
+
+        $toasts[] = [
+            'title' => is_string($toast['title'] ?? null) ? $toast['title'] : null,
+            'status' => is_string($toast['status'] ?? null) ? $toast['status'] : null,
+            'body' => is_string($toast['body'] ?? null) ? $toast['body'] : null,
+        ];
+    }
+
+    return $toasts;
+}
+
+function lifecycleConsoleTitle(string $key): string
+{
+    return (string) __("operator_console.profile.notifications.{$key}");
+}
 
 it('lapses an Active Profile through the console — lapsed + one ProfileExpired with the operator envelope', function () {
     $operator = Operator::factory()->create();
@@ -113,7 +169,7 @@ it('renews a within-grace Lapsed Profile through the console — active + one Pr
         ->and($event->actor_role)->toBe(ActorRole::NewcoOps);
 });
 
-it('rejects a past-grace renew through the page — the sole UI-reachable reject: action_failed + state unchanged + no event (design D5)', function () {
+it('rejects a past-grace renew through the page — the FIRST of renew\'s two UI-reachable rejects: action_failed + state unchanged + no event (design D5)', function () {
     actingAs(Operator::factory()->create(), 'operator');
 
     // Lapsed 31 days ago — PAST the inclusive 30-day grace boundary (DEC-034): the grace deadline (`lapsed_at` + 30d)
@@ -137,6 +193,80 @@ it('rejects a past-grace renew through the page — the sole UI-reachable reject
     // The domain rolled back: state stays Lapsed and NO ProfileRenewed event was recorded.
     expect(Profile::findOrFail($profile->id)->state)->toBe(ProfileState::Lapsed)
         ->and(DomainEvent::query()->where('name', ProfileRenewed::NAME)->count())->toBe(0);
+});
+
+/*
+|--------------------------------------------------------------------------
+| The Hero-Package capacity reject (parties-hero-package-residuals task 3.2, design R4)
+|
+| `renew`'s SECOND UI-reachable reject, and the one the surface was blind to. A `lapsed` Profile released its seat,
+| so `lapsed → active` RE-CONSUMES one and is capacity-gated (RenewProfile, design D9) — but no visibility predicate
+| can see a seat count, so the verb is offered anyway and the domain refuses. Unlike `approve`, the refusal has no
+| second lawful outcome to fall through to: canon draws NO `lapsed → waiting_list` edge, and diverting would discard
+| `lapsed_at` and burn the grace clock the member is still entitled to (ProfileRenewalCapacityGateTest, claim 2).
+|
+| WHAT THIS PIN ALONE HOLDS — the verb stays VISIBLE against a FULL Club. The repo drives `renew` through the page
+| three times (the happy renew, the past-grace reject, ProfileMembershipChainTest) and the visibility sweep once, and
+| every one of them runs against an UNCAPPED Club: a console-side "helpfully hide renew when the Club is full" gate
+| would leave all four green while making the domain's own refusal unreachable — the exact inversion design D5 forbids.
+|
+| WHAT IS DOMINATED, and kept because the requirement names it (the 2.2 corollary): the `action_failed` TITLE is
+| dominated by the past-grace test above (same catch branch, same title) and by SurfacesDomainActionsOutcomeTest:224;
+| `status: danger` by SurfacesDomainActionsOutcomeTest:210 and ProfileApprovalConsoleTest:395; the BODY-carries-the-
+| exception-message mechanism by those same two; and the message's own parameters (`lapsed`, 1 of 1) by
+| ProfileRenewalCapacityGateTest:137. They are asserted as ONE exact-array `toBe` — which additionally pins that
+| EXACTLY ONE toast was sent, a claim no chained `and()` makes.
+|--------------------------------------------------------------------------
+*/
+
+it('rejects a within-grace renew into a Club at capacity through the page — renew stays VISIBLE, the danger toast carries the capacity reason, lapsed_at survives (design D5/R4)', function () {
+    actingAs(Operator::factory()->create(), 'operator');
+
+    // A Club at EXACT parity: one Hero-Package seat, one `Active` member holding it (only `active` + `suspended`
+    // memberships occupy a seat). Capacity is set INLINE through config — never through the environment (an active
+    // PARTIES_HERO_PACKAGE_CAPACITY would cap the whole suite) and never through a new global helper, since
+    // `renewalSeatClubTo()` / `approvalConsoleSeatClubTo()` are already taken process-wide.
+    $club = Club::factory()->create();
+    config()->set('parties.hero_package.capacity.by_club_id', [$club->id => 1]);
+    Profile::factory()->create(['club_id' => $club->id, 'state' => ProfileState::Active]);
+
+    // The subject: lapsed WITHIN the 30-day grace, in that same full Club — so the grace sub-gate PASSES and the
+    // capacity gate is the one that bites (RenewProfile evaluates grace strictly first). A `lapsed` Profile holds no
+    // seat, so the Club sits at 1 of 1. `lapsed_at` is anchored on a whole second: SQLite persists no microseconds,
+    // and the `equalTo()` round-trip below compares instants.
+    $lapsedAt = CarbonImmutable::now()->startOfSecond();
+    $profile = Profile::factory()->create([
+        'club_id' => $club->id,
+        'state' => ProfileState::Lapsed,
+        'lapsed_at' => $lapsedAt,
+    ]);
+
+    Livewire::test(ViewProfile::class, ['record' => $profile->id])
+        // VISIBLE at capacity — the predicate sees only `state == lapsed` (design D5). This is the assertion the rest
+        // of the repository cannot make: every other page-driven renew runs against an uncapped Club.
+        ->assertActionVisible('renew')
+        ->callAction('renew');
+
+    // Read the toasts BEFORE any assertNotified() — that helper PULLS the session key, and it can see neither the
+    // status nor the body, which is where the capacity reason lives. Exactly one toast: the domain's own localized
+    // refusal, surfaced verbatim as the danger body under the console's shared `action_failed` title.
+    expect(lifecycleConsoleToasts())->toBe([[
+        'title' => lifecycleConsoleTitle('action_failed'),
+        'status' => 'danger',
+        'body' => (string) __('parties.profile.club_at_capacity', [
+            'state' => 'lapsed',
+            'capacity' => 1,
+            'occupied' => 1,
+        ]),
+    ]]);
+
+    // The rejecting transaction rolled back before any write. `state === lapsed` IS the never-waitlisted assertion
+    // (the states are exclusive), and `lapsed_at` intact is the load-bearing one: a divert to `waiting_list` would
+    // have cleared it and burned the member's remaining grace. No event was recorded — the factories drive no Action.
+    $persisted = Profile::findOrFail($profile->id);
+    expect($persisted->state)->toBe(ProfileState::Lapsed)
+        ->and($persisted->lapsed_at?->equalTo($lapsedAt))->toBeTrue()
+        ->and(DomainEvent::query()->count())->toBe(0);
 });
 
 it('cancels a Profile through the console — cancelled + zero new events (audit-only) + the row stays queryable (soft-delete, AC-K-FSM-13)', function (ProfileState $from) {

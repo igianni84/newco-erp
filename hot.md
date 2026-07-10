@@ -1,37 +1,36 @@
 ---
 type: meta
 description: Hot cache — repo-state digest, overwritten each operation. Chronology lives in log.md.
-updated: 2026-07-09
+updated: 2026-07-10
 ---
 
 # Hot Cache
 
 ## Last Updated
-**2026-07-09 — `parties-hero-package` CLOSED via §2.7** (merged `91adfdb`, archived `24df7af`, **pushed**). RM-05 shipped, against a **documented subset**. A follow-up change is **drafted, not approved**.
+**2026-07-10 — `parties-hero-package-residuals` 4.1 green. CHANGE COMPLETE (6/6).** The close gate. Awaiting human review · merge · archive · push.
 
 ## Build & Quality Status
 - PHP 8.5 · Laravel 13 · Filament 5.6.7 · Pest · PHPStan max · Pint.
-- **SQLite 2381/2381** (12 340 assn) · **PG17 2381/2381** (12 347 assn) — verified at the close gate, and **re-run after the archive** (it rewrites `openspec/specs/**`, which three `*DocsTest` files read: not test-neutral).
+- **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — identical to 3.2's baseline, as a doc-only task must be.
 - PHPStan **0** · Pint clean · `openspec validate --all --strict` **11/11**.
-- PG-only lanes are real: `SeatRace` = **19 assn on PG17 vs 15 on SQLite**; neither skips.
-- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs).
-
+- **`git diff --stat main...HEAD`: 12 files, ZERO under `app/`** — design R1 held across all six tasks. The code was always right; the spec and the suite were wrong.
+- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 lane: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`).
 
 ## Active Change & Next Task
-- **`parties-hero-package-residuals` — drafted, 0/6 tasks, `validate --strict` green, NO `APPROVED`.** Next: **review → create `APPROVED` → `./ralph.sh --change parties-hero-package-residuals 11`**. Touches **no `app/` file** (task 4.1 fails the change if `git diff` does):
-  1. **Truth spec, *Profile Membership Approval*** orders *"lock; count; read capacity; then, only if a seat is free: assert the from-state"*. Code guards the from-state **first** (`ApproveProfile.php:131` before `:139`) — D8 governs, and a doomed call must lock no Club row. Read literally, the old prose diverts an `Active` Profile onto the waitlist. Delta corrects it, and pins it **negatively** (the `parties_clubs` statement the doomed call never emits).
-  2. **`WaitingListJoined` root-ness unpinned** at both entry points. Sibling pins it at `ProfileActivationTest.php:74`. Behaviour correct.
-  3. **Two console scenarios** (create-at-capacity, renew-at-capacity) proven only at the domain layer.
-- **Semantic-verify DID run** (4 agents, 13 reqs): **0 CRITICAL**, 5 WARNING, 8 SUGGESTION. Already fixed: the bad docblock citations (`9d6172b`); tracker **F12** (`83df84e`).
+- **`parties-hero-package-residuals` — all 6 tasks done.** Branch `ralph/parties-hero-package-residuals`. Nothing left for the loop.
+- **Human next:** review → merge `--no-ff` → `openspec archive` → push. **Only the archive** folds the corrected sequence (*guard → lock → count → read → gate*) into `openspec/specs/party-registry/spec.md:670`, which still carries the superseded ordering — expected, invariant 11.
+- Shipped: corrected prose + 4 mutation-verified pins (guard-before-lock, pinned **negatively** · `WaitingListJoined` root-ness at **both** `record()` sites · console create/renew-at-capacity).
 
 ## Blockers & Decisions Needed
-- **None blocking.** Three things the next reader must not lose:
-  1. **RM-05 closed against a SUBSET.** `AC-K-J-14` / `J-15` / `J-15a` / `XM-19` are **NOT met** (Module A's capacity-adjust · the unmodelled period rollover · Module 0/S). `RM-05 ✅` means *no-oversell at the approve instant is enforced and proven*, **not** *capacity is compliant*. The residuals change closes none of them.
-  2. **Two canon escalations stay OPEN,** due before Module A's capacity-adjust: the capacity-decrease seat floor (`AC-K-J-15` floors on **seats**, `BR-A-Mutability-1` on **vouchers issued**); and K PRD §1:77 (*S enforces*) vs §13 (*K enforces*).
-  3. **`.env.example` is a test-environment file.** `PARTIES_HERO_PACKAGE_CAPACITY` ships **commented out**, pinned by a test — an active value caps the suite.
-- **Tracker §7:** **F12** (new) `Profile↔Customer` lock-order inversion (`ApproveProfile` Profile→Customer vs `SuspendCustomer`/`ReactivateCustomer` the reverse) can deadlock. **Pre-existing**; RM-05's Club lock closes no cycle (all Actions take Profile→Club). Needs a *decision* before the producer HTTP surface. Also F11 · F2 · F5–F7 · F8 (→ RM-26/27) · F9 (**OTP**) · F10 (`spec/` behind canon — ADR).
+- **None blocking.** Two canon escalations stay OPEN, due before Module A's capacity-adjust: the capacity-decrease seat floor (`AC-K-J-15` floors on **seats**, `BR-A-Mutability-1` on **vouchers issued**); K PRD §1:77 (*S enforces*) vs §13 (*K*).
+- **RM-05 closes against a documented SUBSET.** `AC-K-J-14` · `J-15` · `J-15a` · `XM-19` untouched by this change too. *"Residuals closed" ≠ "capacity is compliant"* — now in the tracker's §4.
+- **`.env.example` is a test-environment file.** `PARTIES_HERO_PACKAGE_CAPACITY` ships **commented out**, pinned by a test — an active value caps the suite.
+- **Tracker §7:** **F12** `Profile↔Customer` lock-order inversion can deadlock — pre-existing, needs a *decision* before the producer HTTP surface. Also F11 · F2 · F5–F7 · F8 (→ RM-26/27) · F9 (**OTP**) · F10 (ADR).
+- One suggestion parked in `progress.md`: `party-registry:889` should state `RenewProfile`'s guard-before-lock order normatively.
 
 ## Open Patterns
-- **A green suite before a doc-only step is not green after it.** `openspec archive` rewrites truth specs that tests read.
-- **A spec sentence that orders operations is a claim, and it can ship false.** So is a docblock citation — nothing greps for a requirement name that resolves nowhere.
-- **A green test proves nothing about an absence until you mutate it.** Inject the forbidden code; watch it red.
+- **A close-gate sweep is a CLASSIFICATION, not a count** — three of four hit-classes are *supposed* to fire (truth spec: folds at archive · archived history: immutable · the change's own quotations: deliberate). Only a **live** doc/docblock is a defect. Measured: 11 hits, 0 defects. Two greps whose *intersection* is the defect beat one whose union is noise.
+- **A status marker duplicated across sections goes stale in every copy but the one you edit.** The tracker said semantic-verify "has NOT run" while F12 was stamped *"found by RM-05 §2.7 semantic-verify"*. Correct current-state sections; never rewrite append-only chronologies.
+- **A doc-only task must move the assertion count by ZERO.** "Green" without a baseline verifies nothing.
+- **A prescribed mutant is usually the loud one** — it proves the pin fires; necessity needs the quiet drift the suite passes. Find its red by test NAME + MESSAGE, not the reported line.
+- **A sentence that orders operations is a claim, and it can ship false** — in a spec, a test's name, or a tracker's status line.

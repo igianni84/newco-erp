@@ -937,3 +937,15 @@
 ## [2026-07-09 20:26] close-ritual §2.7 | parties-hero-package | Merged --no-ff (91adfdb) + archived (24df7af). Verified BOTH engines: SQLite 2381/2381 (12340 assn), PG17 2381/2381 (12347). PHPStan 0, Pint clean, validate 10/10. Semantic-verify: 4 agents, 13 delta reqs, 0 CRITICAL / 5 WARNING / 8 SUGGESTION. Unpushed (18 ahead).
 
 ## [2026-07-09 21:06] follow-up | parties-hero-package residuals | 3 citations fixed (docblock-only, 0 new imports). Tracker F12: Profile<->Customer lock-order inversion (PRE-EXISTING; RM-05's Club lock closes no cycle). Change parties-hero-package-residuals drafted+validated 11/11, NO APPROVED. SQLite 2381/2381, PHPStan 0, Pint clean.
+
+## [2026-07-09 21:41] ralph | parties-hero-package-residuals 1.1 | green | 3 files | negative ordering pin, 6 rows; mutant B reds ONLY the new pin (13 pre-existing green) — R2 measured, not argued; SQLite+PG17 2387/2387
+
+## [2026-07-09 22:02] ralph | parties-hero-package-residuals 2.1 | green | 3 files | WaitingListJoined root-ness pinned at the birth entry point; 2 mutants (causationId, shared correlationId) each red only the new pin across the full suite
+
+## [2026-07-09 22:40] ralph | parties-hero-package-residuals 2.2 | green | 3 files | WaitingListJoined root-ness pinned at ApproveProfile's divert; causation_id has NO quiet mutant (FK + immutability trigger + dominated by count()->toBe(1)); correlation_id mutant reds alone
+
+## [2026-07-09 23:17] ralph | parties-hero-package-residuals 3.1 | green | 3 files | console create-at-capacity pinned; WaitingListJoined birth envelope was blind repo-wide; hypotheses count corrected 2/3→1/3
+
+## [2026-07-09 23:47] ralph | parties-hero-package-residuals 3.2 | green | 4 files | console renew-at-capacity pinned; the 3-field toast is dominated by the shared kit — the pin is assertActionVisible against a full Club (1 red of 2389)
+
+## [2026-07-10 00:06] ralph | parties-hero-package-residuals 4.1 | green | 4 files | close gate: SQLite+PG17 2389/2389 (12404/12411 assn), PHPStan 0, Pint clean, validate --strict 11/11; 0 app/ files. Sweep read: 11 hits, 0 defects. Tracker: RM-05 closes a SUBSET, none of J-14/15/15a/XM-19; 7 stale claims fixed. 6/6 COMPLETE.

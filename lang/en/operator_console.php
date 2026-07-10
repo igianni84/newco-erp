@@ -1001,8 +1001,10 @@ return array_replace_recursive([
         // on the Customer's first-ever approval) and `declined` (the application is rejected, audit-only); group 4
         // adds `suspended` and `reactivated` (the status edges); group 5 adds `lapsed`, `renewed`, `cancelled` and
         // `deactivated` (the lapse/renew/terminal edges). `action_failed` is reachable through the UI from exactly TWO
-        // verbs, both of whose visibility predicates can only see a from-state and never a capacity: a past-grace
-        // `renew` (design D5) and an `approve` on a `waiting_list` Profile whose Club is STILL at its Hero-Package
+        // verbs — whose visibility predicates see only a from-state, never a grace window and never a capacity — in
+        // THREE scenarios: a past-grace `renew` (design D5); a within-grace `renew` into a Club at its Hero-Package
+        // capacity, which the domain REFUSES rather than diverting, since canon draws no `lapsed → waiting_list` edge
+        // (parties-hero-package design D8/D9); and an `approve` on a `waiting_list` Profile whose Club is STILL at that
         // capacity — that Profile has no edge left to take, so the domain refuses (parties-hero-package design D8/D11).
         'notifications' => [
             'approved' => 'Membership approved and activated.',

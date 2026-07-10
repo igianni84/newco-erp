@@ -652,10 +652,13 @@ return array_replace_recursive([
         // della rejection — lang/*/parties.php). Gruppo 3: `approved` nomina l'esito atomico approvazione+attivazione
         // (approve = charge = activation, MVP-DEC-016). Gruppo 4 aggiunge `suspended`/`reactivated` (i passaggi di
         // stato dell'adesione); gruppo 5 aggiunge `lapsed`/`renewed`/`cancelled`/`deactivated` (scadenza, rinnovo e
-        // terminali). `action_failed` è raggiungibile dall'interfaccia da due soli verbi, entrambi con un predicato di
-        // visibilità che vede solo lo stato di partenza e mai la capienza: un `renew` fuori dal periodo di grazia
-        // (design D5) e un `approve` su un Profile già in `waiting_list` il cui Club è ANCORA al limite della capienza
-        // Hero-Package — non gli resta alcuna transizione, quindi il dominio rifiuta (parties-hero-package design D8/D11).
+        // terminali). `action_failed` è raggiungibile dall'interfaccia da due soli verbi — i cui predicati di visibilità
+        // vedono solo lo stato di partenza, mai il periodo di grazia e mai la capienza — in TRE scenari: un `renew`
+        // fuori dal periodo di grazia (design D5); un `renew` entro la grazia in un Club al limite della capienza
+        // Hero-Package, che il dominio RIFIUTA invece di deviare, poiché il canon non traccia alcuna transizione
+        // `lapsed → waiting_list` (parties-hero-package design D8/D9); e un `approve` su un Profile già in
+        // `waiting_list` il cui Club è ANCORA a quella capienza — non gli resta alcuna transizione, quindi il dominio
+        // rifiuta (parties-hero-package design D8/D11).
         'notifications' => [
             'approved' => 'Adesione approvata e attivata.',
             // Il secondo esito lecito del verbo approve (parties-hero-package design D11): il Club era al limite della
