@@ -44,9 +44,9 @@
 
 ## §1 Module Purpose
 
-Module 0 is NewCo's **Product Information Management (PIM)** — the single authoritative source of truth for product *identity*. PIM owns the catalog of every product NewCo can talk about commercially: who made it, which variant/release, in which atomic-unit size, in what packaging form, and (via Sellable SKUs) which commercial units the marketplace can publish around it.
+Module 0 is NewCo's **Product Information Management (PIM)** — the single authoritative source of truth for product *identity*. PIM owns the catalog of every product NewCo can talk about commercially: who made it, which variant/release, in which atomic-unit size, in what packaging form, and (via Intrinsic and Composite SKUs) which commercial units the marketplace can publish around it.
 
-**At NewCo launch the catalog holds exactly one Product Type — `WINE` — and PIM models bottled wine only.** The generalisation (this PRD's one substantive change, §3) makes the spine *category-neutral* so a second product type slots in post-launch additively, without reshaping the core entities or the cross-module event contract — but **no non-wine type is defined at launch** (§16). The pre-bottling-wine entity that exists in Crurated v17's PIM (Liquid Product, with a Liquid SKU subtype and a BottlingResolution boundary into the allocation module) is *not* introduced (deferred, §17). Free experiences are booked operationally without a catalog representation; paid Service / Experience SKU subtypes are deferred (§17). NewCo's launch catalog is, in entity terms: **Product Master, Product Variant, Product Reference, Format, Case Configuration**, and the two Sellable SKU shapes (**Intrinsic** and **Composite**) — with the `WINE` attribute set carrying the wine-specific identity and descriptive fields (§3.9).
+**At NewCo launch the catalog holds exactly one Product Type — `WINE` — and PIM models bottled wine only.** The generalisation (this PRD's one substantive change, §3) makes the spine *category-neutral* so a second product type slots in post-launch additively, without reshaping the core entities or the cross-module event contract — but **no non-wine type is defined at launch** (§16). The pre-bottling-wine entity that exists in Crurated v17's PIM (Liquid Product, with a Liquid SKU subtype and a BottlingResolution boundary into the allocation module) is *not* introduced (deferred, §17). Free experiences are booked operationally without a catalog representation; paid Service / Experience SKU subtypes are deferred (§17). NewCo's launch catalog is, in entity terms: **Product Master, Product Variant, Product Reference, Format, Case Configuration**, and the two sellable SKU shapes (**Intrinsic** and **Composite**) — with the `WINE` attribute set carrying the wine-specific identity and descriptive fields (§3.9).
 
 Identity is the only thing PIM owns. Pricing, availability, inventory, fulfilment, procurement, financial-event recording, party identity (Producer / Supplier / Customer / Member), and serialization / NFT mechanics are owned by other modules. PIM publishes versioned domain events when product-identity state changes; downstream modules consume those events to stay synchronized.
 
@@ -58,7 +58,7 @@ PIM sits upstream of every commerce-facing module (Module S Sales, Module A Allo
 
 Three roles operate inside PIM, plus a generic upstream / downstream linkage:
 
-- **Catalog Operator (Creator).** Creates and edits PIM entities — Product Masters, Product Variants, Product References, Sellable SKUs, and the standalone reference entities Format and Case Configuration. Runs the creation/enrichment workflow (§5) on Product Master / Product Variant (the `WINE` enrichment adapter where available; the manual baseline otherwise); runs bulk imports during legacy migration and producer onboarding (§6); maintains enrichment metadata (critic scores, tasting notes, market-data snapshots).
+- **Catalog Operator (Creator).** Creates and edits PIM entities — Product Masters, Product Variants, Product References, Intrinsic and Composite SKUs, and the standalone reference entities Format and Case Configuration. Runs the creation/enrichment workflow (§5) on Product Master / Product Variant (the `WINE` enrichment adapter where available; the manual baseline otherwise); runs bulk imports during legacy migration and producer onboarding (§6); maintains enrichment metadata (critic scores, tasting notes, market-data snapshots).
 - **Catalog Reviewer.** Verifies product-data quality before approval — catches errors, duplicates, missing data, inconsistencies before an entity reaches `active`. Cannot be the same person as the Creator on a given entity.
 - **Catalog Lead / Approver.** Final approval authority on activations, retirements, re-activations, and on new reference data (Format and Case Configuration entries that expand the reference set). Cannot be the same person as the Creator or the Reviewer on a given entity.
 
@@ -72,7 +72,7 @@ PIM consumers (downstream module owners — the Module S Pricing Operator, the M
 
 ## §3 Entity Model
 
-PIM organises product identity in a strict hierarchy plus two reference entities and two Sellable SKU shapes, all classified by a first-class **Product Type**. Every PIM entity follows the same lifecycle (§4) and the same approval workflow. **The core entities carry only category-neutral identity fields; all type-specific descriptive/identity attributes belong to the Product Type's attribute set** (§3.9). At launch the sole Product Type is `WINE`, and the `WINE` attribute set carries everything wine-specific (appellation, vintage, varietal, scores, tasting notes, …).
+PIM organises product identity in a strict hierarchy plus two reference entities and two sellable SKU shapes (Intrinsic and Composite), all classified by a first-class **Product Type**. Every PIM entity follows the same lifecycle (§4) and the same approval workflow. **The core entities carry only category-neutral identity fields; all type-specific descriptive/identity attributes belong to the Product Type's attribute set** (§3.9). At launch the sole Product Type is `WINE`, and the `WINE` attribute set carries everything wine-specific (appellation, vintage, varietal, scores, tasting notes, …).
 
 > **Naming (generalisation + Phase C item A).** The structural/contract names are category-neutral: **Product Master / Product Variant / Product Reference (PR)**. **"Wine Master / Wine Variant / Bottle Reference / BR" are retained only as wine-facing display aliases** — wine-facing UI labels and wine documentation may still say "wine," "bottle," "vintage." The separation is deliberate: neutral structure, category-flavoured presentation (guardrail, §16).
 
@@ -83,10 +83,10 @@ PIM organises product identity in a strict hierarchy plus two reference entities
 - the **attribute set** that applies (§3.9);
 - the **variant-defining dimension(s)** (§3.3 / §3.9 — `WINE` = vintage);
 - the **enrichment adapter** used at creation (§5 — `WINE` = the LWIN/Liv-ex adapter);
-- the admissible **Format** vocabulary (`WINE` = bottle sizes);
-- the **identity-uniqueness key** (§13.1 — `WINE` = producer + product name + appellation).
+- the admissible **Format** vocabulary (`WINE` = bottle sizes; a Format may be admissible for one *or more* Product Types — §3.5);
+- the **identity-uniqueness key** (§13.1 — `WINE` = producer + product name + appellation, where appellation is optional).
 
-Product Type is a **classifier, not a hierarchy level**: one Product Master has exactly one Product Type. **Adding a future Product Type must require no change to the core entities or to consuming modules** — it slots in by adding its own attribute set, variant axis, enrichment adapter (or the manual baseline), Format vocabulary, and identity key. (No such type is defined at launch — §16.)
+Product Type is a **classifier, not a hierarchy level**: one Product Master has exactly one Product Type. **Product Type is fixed at creation — it is immutable for the life of the Product Master** (BR-Identity-5). Because Product Type selects the identity key, the attribute set, the variant axis, the enrichment adapter, and the Format vocabulary, changing it would invalidate the entity's identity and every type-driven binding; a reclassification is therefore modelled as **retire + register a new Master**, never an in-place type edit. **Adding a future Product Type must require no change to the core entities or to consuming modules** — it slots in by adding its own attribute set, variant axis, enrichment adapter (or the manual baseline), Format vocabulary, and identity key. (No such type is defined at launch — §16.)
 
 ### §3.2 Product Master
 
@@ -116,7 +116,7 @@ A **Product Reference (PR)** (wine display alias: *Bottle Reference / BR*) is th
 
 **The PR is the universal product key across all modules** — and the highest-impact rename in the generalisation. The two-dimension invariant is fundamental:
 
-- **Case Configuration is never part of PR identity.** One Sassicaia 2018 in 0.75L is the *same product* whether sold loose, in a six-bottle OWC, or in a twelve-bottle carton. The packaging form is a downstream commercial / operational decision (which Sellable SKU references which Case Configuration); it does not change identity.
+- **Case Configuration is never part of PR identity.** One Sassicaia 2018 in 0.75L is the *same product* whether sold loose, in a six-bottle OWC, or in a twelve-bottle carton. The packaging form is a downstream commercial / operational decision (which Intrinsic SKU references which Case Configuration); it does not change identity.
 - **The PR is the atomic "what is this product?" answer.** Every commercial layer above PIM keys at the PR level: Allocations (Module A) carve quantities of a PR; Offers (Module S) reference PRs (directly via an Intrinsic SKU, or as constituents of a Composite SKU); Stock positions (Module B) track quantities of a PR; Fulfilment (Module C) holds and ships against a PR; Procurement (Module D) places purchase orders for a PR.
 - **Allocation lineage keys at the PR.** Tracing a unit from sourcing to fulfilment runs through the PR — the PR is the spine of NewCo's product traceability.
 - **PR identity is immutable once referenced.** Once any allocation, voucher, stock position, or commercial offer exists against a PR, the Product Variant + Format composition cannot be changed. (Correcting an erroneously-published PR follows the retirement → new-PR path with downstream coordination.)
@@ -125,23 +125,29 @@ A **Product Reference (PR)** (wine display alias: *Bottle Reference / BR*) is th
 
 **Format** is the physical size/measure of the atomic unit — for `WINE`, bottle size: 0.75L, 1.5L (Magnum), 3.0L (Jeroboam / Double Magnum), 6.0L (Imperial / Methuselah), and so on. (A future Product Type would carry its own Format vocabulary, e.g. tin size.) Format is a standalone PIM reference entity, runtime-configurable, **name kept** in the generalisation.
 
+**Format ↔ Product Type admissibility (forward seam; moot at launch).** The admissible Format vocabulary is type-driven (§3.1), and a **Format may be admissible for one *or more* Product Types** — physical measures can legitimately be shared across types, so a Format is *not* scoped to exactly one type. **At launch this is not built:** with a single type, every Format is implicitly `WINE`-admissible and no Format→Type binding structure is required. The seam is that when a second Product Type lands, admissibility becomes an explicit per-Format set of admitting types (existing Formats stay `WINE`-admissible), added additively with no rework — consistent with the §16 guardrail (category-readiness, not maximal configurability: do not build the binding table before a second type exists).
+
 Format is administered by the Catalog Operator and approved through the standard approval workflow. Adding a new Format (a producer ships a new size NewCo has not previously sold) is a normal lifecycle event — propose, review, approve, activate — and the new Format becomes available for new Product References as soon as it is `active`. A PR cannot be activated unless its referenced Format is itself `active` (the parent-before-child cascade applied at the reference-data level, §4).
 
 ### §3.6 Case Configuration
 
 **Case Configuration** is the packaging form a product ships in — six-bottle Original Wood Case (OWC6), twelve-bottle carton (CARTON12), single-bottle loose, etc. It is a standalone PIM reference entity, distinct from Format, **name kept** (already packaging-agnostic by definition; an optional future neutralisation to "Packaging Configuration" is **not** done now, to keep churn low).
 
-Case Configuration carries packaging-form attributes only: how many units per case, packaging type, physical form. **Case Configuration carries no breakability flag.** Whether a given case can be split apart at sale is *not* a property of the Case Configuration — it is decided at sale time by the layered breakability rule (§7), which reads the Product Variant's possible-case-configurations whitelist (Layer 1, PIM), the Allocation's per-case-configuration producer-breakability declaration (Layer 2, Module A), and the Offer's commercial-breakability decision (Layer 3, Module S).
+Case Configuration carries packaging-form attributes only: how many units per case, packaging type, physical attributes. **Case Configuration carries no breakability flag.** Whether a given case can be split apart at sale is *not* a property of the Case Configuration — it is decided at sale time by the layered breakability rule (§7), which reads the Product Variant's possible-case-configurations whitelist (Layer 1, PIM), the Allocation's per-case-configuration producer-breakability declaration (Layer 2, Module A), and the Offer's commercial-breakability decision (Layer 3, Module S).
 
-Case Configuration is administered by the Catalog Operator and approved through the standard workflow. A Sellable SKU (Intrinsic) cannot be activated unless its referenced Case Configuration is itself `active` (alongside the PR's underlying Product Variant and Format).
+**Shape and identity (MVP-DEC-025).** The three attributes are: **`unitsPerCase`** (integer ≥ 1); **`packagingType`** — a **controlled base-code vocabulary**, bounded and validated (not free text, not a hard-coded constant), whose **launch set is a fixed, predefined seed** — `OWC`, `OC`, `CARTON`, `LOOSE` (seed vetted against the actual launch catalogue) — **stored as reference data** (each code carries a **human-readable label that is translatable per §8** — the six launch locales, English fallback per §8.3 — and carries **singular and plural forms per locale**, e.g. `OWC` → "Original Wooden Case" / "Original Wooden Cases", plus a normalised form), **not a hard-coded enum constant**, so the vocabulary stays extensible by a cheap config/seed addition. At launch operators build Case Configurations by **selecting an existing code** + `unitsPerCase`; **self-serve creation of a new packaging-type code is deferred post-launch (§17.7)**. When that flow lands it introduces a new code through the same Case Configuration approval — an explicit, approver-visible, normalised, near-duplicate-warned act that also **captures the code's human-readable label** — and the new code is minted only if that Case Configuration is approved (the Approver-level reference-data approval §2 already defines for "entries that expand the reference set"). Whether the vocabulary lives in its own lookup with its own lifecycle or is derived from approved Case Configurations, and the exact entry UX, are the dev team's call (DEC-073); and **`physicalAttributes`** — optional **descriptive** operator metadata (display / audit only), **not** part of Case Configuration identity. A Case Configuration is **unique on `(packagingType, unitsPerCase)`**: two entries differing only in `physicalAttributes` are the **same** configuration with different notes, not distinct entries. Two invariants govern `LOOSE`: `packagingType = LOOSE` **requires** `unitsPerCase = 1` (a loose unit is a single un-cased item); the converse does **not** hold — `unitsPerCase = 1` does **not** imply `LOOSE`, so `OWC1` (a single unit in its own wooden case) is a legitimate distinct configuration. Case Configuration has **no stored display name**: the canonical label is **derived** from `packagingType + unitsPerCase` (`OWC6`, `OWC1`, `CARTON12`, `loose`); human-readable base-code labels (e.g. `OWC` → "Original Wooden Case") are presentation metadata. Physical representation of all of the above — column types, whether `physicalAttributes` is free-text or light structured fields, how labels are stored — is the dev team's call (DEC-073).
 
-### §3.7 Sellable SKU — Intrinsic
+Case Configuration is administered by the Catalog Operator and approved through the standard workflow. An Intrinsic SKU cannot be activated unless its referenced Case Configuration is itself `active` (alongside the PR's underlying Product Variant and Format).
 
-A **Sellable SKU (Intrinsic)** is the **commercial unit** that gets priced and that an Offer references. An Intrinsic SKU = one Product Reference + one Case Configuration + commercial attributes carried at the SKU level (commercial name, marketing copy, etc., distinct from the identity attributes which live on Product Master / Product Variant / PR).
+### §3.7 Intrinsic SKU
+
+**The two sellable SKU shapes.** NewCo has **two sellable SKU shapes**: the **Intrinsic SKU** (this section) and the **Composite SKU** (§3.8). **Both are sellable** — each can back a priced Offer; "sellable" is a property of both shapes, not a synonym for either. The two shapes emit two distinct domain-event families — **`IntrinsicSKU*`** (this shape) and **`CompositeSKU*`** (§3.8) — the fixed cross-module contract on which consumers dispatch (§14.1 / §14.2; MVP-DEC-012). *(The Intrinsic family was named `SellableSKU*` through MVP-DEC-031 and renamed to `IntrinsicSKU*` under MVP-DEC-033 to match the concept, before any consumer depended on the name.)*
+
+An **Intrinsic SKU** is the **commercial unit** that gets priced and that an Offer references. An Intrinsic SKU = one Product Reference + one Case Configuration + commercial attributes carried at the SKU level (commercial name, marketing copy, etc., distinct from the identity attributes which live on Product Master / Product Variant / PR).
 
 Intrinsic SKUs are NewCo's most common commercial unit — "a six-bottle OWC of Sassicaia 2018 in 0.75L", "a single loose bottle of Vega Sicilia Único 2010 in 1.5L". An Offer publishing this SKU at a price is what a member or Discovery customer ultimately buys.
 
-Activation prerequisites (the parent-before-child cascade at the SKU-activation boundary): the referenced PR must be `active` (which by cascade means the Product Variant, the Product Master, and the Format are all `active` and the linked Producer is `active` and KYC-cleared), and the referenced Case Configuration must be `active`. Stating these explicitly at the SKU boundary lets downstream modules consume `SellableSKUActivated` without re-deriving each upstream gate. Intrinsic SKU is the only SKU shape that references Case Configuration.
+Activation prerequisites (the parent-before-child cascade at the SKU-activation boundary): the referenced PR must be `active` (which by cascade means the Product Variant, the Product Master, and the Format are all `active` and the linked Producer is `active` and KYC-cleared), and the referenced Case Configuration must be `active`. Stating these explicitly at the SKU boundary lets downstream modules consume `IntrinsicSKUActivated` without re-deriving each upstream gate. Intrinsic SKU is the only SKU shape that references Case Configuration.
 
 ### §3.8 Composite SKU — **KEPT (Q1)**
 
@@ -161,14 +167,16 @@ Each Composite SKU:
 
 **Surface-asymmetric admissibility (Module S concern).** NewCo's commercial surfaces apply different rules to Composite SKU admissibility — **Club Offers** must reference a single-producer constituent set (DEC-019); **Discovery Offers** admit multi-producer Composite SKUs (DEC-061). **At launch the multi-producer Discovery path is deferred (D7) → all launch composites are single-producer**; the seam is that PIM's producer-agnostic Composite SKU already supports N constituents from any producers, so the multi-producer surface restores additively. **PIM is silent on the admissibility rule**; Module S owns the validation predicate and the surface-by-surface decision.
 
+**Implementation note — one physical representation MAY back both SKU shapes (DEC-073; MVP-DEC-012).** Whether Intrinsic (§3.7) and Composite are two physical entities/tables or a single unified SKU representation with a constituent collection (Intrinsic = one constituent; Composite = N ≥ 2) is the dev team's call — physical shape is out of PRD scope, and a unified representation is the cleaner forward-compat seam for D7 (the composite capability stays latent and additively restorable). What the spec fixes and a unified representation **must preserve**: **(i)** the **two distinct event families** `IntrinsicSKU*` and `CompositeSKU*` remain the emitted contract — consumers dispatch on the event family, **not** a payload discriminator (§14.2); a single physical entity simply emits the family matching its constituent count at the emission boundary. **(ii)** Case Configuration attaches to the **Intrinsic shape only** (§3.7); Composite constituents are bare Product References and carry no per-constituent Case Configuration. **(iii)** The Composite-only invariants (atomicity, post-Offer immutability, producer-agnostic composition; BR-SKU-2..5) scope to the N ≥ 2 shape; the single-PR rule (BR-SKU-1) scopes to the one-constituent shape. Event-payload field shape (e.g. whether a constituent count is carried) stays a downstream tech choice (§14, DEC-073) and does not substitute for the event-family dispatch.
+
 ### §3.9 Attribute model — neutral core + per-type attribute set
 
 The generalisation's attribute-placement principle (brief §3.3/§3.4/§3.6), stated once here:
 
 - **The core Product entities (Master / Variant / Reference) carry only category-neutral identity fields:** producer link, product name, lifecycle state, the variant-identifier handle, the Format link, audit/version fields.
-- **All type-specific descriptive and identity attributes belong to the Product Type's attribute set.** For `WINE`: appellation / region, vintage year (or NV marker), varietal, critic scores, tasting notes, drinking window, etc. These are modelled as belonging to the `WINE` attribute set, **not** as columns on the core entity.
+- **All type-specific descriptive and identity attributes belong to the Product Type's attribute set.** For `WINE`: **the wine's** appellation / region (the wine's own region tied to its appellation — distinct from the Producer's region held in Module K §4.4, see §9.1), vintage year (or NV marker), varietal, critic scores, tasting notes, drinking window, and the **external reference code** (the LWIN-7/11/16 captured by the enrichment adapter — see §5.1/§5.5), etc. These are modelled as belonging to the `WINE` attribute set, **not** as columns on the core entity.
 - **A future Product Type slots in by adding its own attribute set**, without reshaping the core entities or the cross-module event contract.
-- **Identity uniqueness is a type-defined key** (§13.1): `WINE` = producer + product name + appellation (unchanged).
+- **Identity uniqueness is a type-defined key** (§13.1): `WINE` = producer + product name + appellation, where **appellation is optional and a null appellation is itself a significant key value** (unchanged value/behaviour for wines that carry an appellation). The persisted LWIN code is **not** part of the identity key (§5.1).
 - **Intent guard:** the goal is **category-readiness, not maximal configurability.** Keep wine concrete and well-modelled (a neutral core + additive per-type attribute sets is sufficient). **Do not** build an infinitely dynamic EAV / rules engine (§16).
 - **Out of scope (DEC-073):** the *physical* representation (typed tables, JSON attribute bag, EAV, hybrid) is the dev team's decision. This PRD constrains only that the core stays neutral and per-type attribute sets are additive.
 
@@ -176,7 +184,7 @@ The generalisation's attribute-placement principle (brief §3.3/§3.4/§3.6), st
 
 ## §4 Lifecycle Governance
 
-Every PIM entity — Product Master, Product Variant, Product Reference, Sellable SKU (Intrinsic and Composite), Format, Case Configuration — follows the **same 4-state lifecycle** and the **same approval workflow**. Lifecycle uniformity is a load-bearing property of PIM: every consumer module can rely on the same activation / retirement contract regardless of which entity it reads. **The lifecycle and governance are entity-agnostic and category-neutral — unchanged by the generalisation** (brief §3.8).
+Every PIM entity — Product Master, Product Variant, Product Reference, Intrinsic and Composite SKU, Format, Case Configuration — follows the **same 4-state lifecycle** and the **same approval workflow**. Lifecycle uniformity is a load-bearing property of PIM: every consumer module can rely on the same activation / retirement contract regardless of which entity it reads. **The lifecycle and governance are entity-agnostic and category-neutral — unchanged by the generalisation** (brief §3.8).
 
 ### §4.1 The 4-state lifecycle
 
@@ -184,7 +192,7 @@ Every PIM entity — Product Master, Product Variant, Product Reference, Sellabl
 
 - **`draft`.** Initial creation. Data may be incomplete; required fields can be filled over multiple sessions. No commercial commitment; downstream modules ignore `draft` entities.
 - **`reviewed`.** All required fields populated; the Catalog Reviewer has confirmed data quality and submitted for approval. No commercial commitment yet.
-- **`active`.** The Catalog Lead / Approver has approved the entity. Available for downstream consumption — Sellable SKUs can be priced, Allocations created against a PR, Offers published. PIM emits the `*Activated` domain event on this transition.
+- **`active`.** The Catalog Lead / Approver has approved the entity. Available for downstream consumption — Intrinsic and Composite SKUs can be priced, Allocations created against a PR, Offers published. PIM emits the `*Activated` domain event on this transition.
 - **`retired`.** No longer available for *new* downstream references. Existing references (active allocations, issued vouchers, in-flight orders, historical SKUs on past Offers) remain valid for their current lifecycle. PIM emits the `*Retired` domain event on this transition.
 
 Re-activation from `retired` to `active` is allowed, follows the same approval workflow, and (for Product Masters specifically) re-checks the Producer activation gate (§5.4) at the moment of re-activation.
@@ -205,6 +213,12 @@ Every state transition that opens or closes downstream commercial impact (`revie
 
 If a Reviewer or Approver rejects an entity, it stays in `reviewed` with a visible rejection flag and the reviewer's / approver's notes. The Creator edits the entity **in place** — there is no revert-to-draft step — and re-submits; the approval flow restarts from the review step. Every rejection round (notes, corrections, actor identities, timestamps) is preserved in the audit trail as part of the entity's permanent record.
 
+**Approval gate (explicit — MVP-DEC-019).** Two invariants make "restarts from the review step" enforceable; they govern the `reviewed → active` transition **without** ever reverting the lifecycle state to `draft`:
+- **A pending rejection blocks approval.** While an entity carries an un-remediated rejection flag it is **not approvable** — the Approver must not activate it. The flag is cleared only by an **explicit Creator re-submission** (a distinct, audited action — *not* an implicit side-effect of editing, since required fields may be filled across multiple sessions). Re-submission routes the entity back through the review step, so a **distinct** Reviewer must re-confirm the corrected content before the Approver can approve (the separation-of-duties floor, BR-Lifecycle-1, holds across every re-cycle). Only the live gate-flag is cleared on re-submission; the rejection **history** (every round's notes, actors, timestamps) is permanent (§4.8).
+- **Review freshness — an edit re-arms the review.** Editing the **review-governed (identity / quality) content** of a `reviewed` entity invalidates the prior review and re-arms the review step: approval is blocked until the changed content is re-reviewed (consistent with the version-on-edit rule, §4.8 — a new version carries no passing review). Purely **observational enrichment** changes (critic scores, tasting notes, market data; `EnrichmentDataUpdated`, §14.1) do **not** pass through the lifecycle and do **not** gate.
+
+*(How the gate is represented — a rejection flag, a workflow sub-status, or a review/approval record stamped with the entity version it was decided against — is a dev-implementation choice (DEC-073). A clean option is to stamp each review/approval with the entity version and gate `reviewed → active` on "the latest version carries a passing review," which makes an edit auto-invalidate a stale review through the existing §4.8 versioning.)*
+
 ### §4.4 Lifecycle cascading — activation
 
 A child entity cannot be set to `active` while its parent is not `active`:
@@ -212,14 +226,14 @@ A child entity cannot be set to `active` while its parent is not `active`:
 - A **Product Master** cannot be activated unless its linked Producer (Module K) is `active` and KYC-cleared (`verified` or `not_required`).
 - A **Product Variant** cannot be activated unless its parent Product Master is `active`.
 - A **Product Reference** cannot be activated unless its parent Product Variant is `active` and its referenced Format is `active`.
-- A **Sellable SKU (Intrinsic)** cannot be activated unless its referenced PR is `active` and its referenced Case Configuration is `active`.
+- An **Intrinsic SKU** cannot be activated unless its referenced PR is `active` and its referenced Case Configuration is `active`.
 - A **Composite SKU** cannot be activated unless every constituent PR is `active`.
 
 Standalone reference entities (Format, Case Configuration) have no parent in the PIM hierarchy; they activate independently subject to the standard approval. The activation cascade is a **hard gate**: an attempt to activate a child whose parent is not `active` is rejected at the workflow level.
 
 ### §4.5 Lifecycle cascading — retirement
 
-When a parent entity is retired, existing active child entities and their downstream references stay valid for their current lifecycle (existing allocations, issued vouchers, historical SKUs on past Offers are not invalidated retroactively). What retirement prevents: no new child can be activated under a retired parent; no new commercial activity can be opened against the retired entity (no new allocations, offers, Sellable SKU versions, or purchase orders) — but in-flight commercial state runs to natural completion. This preserves existing customer commitments while preventing new commitment on retired products.
+When a parent entity is retired, existing active child entities and their downstream references stay valid for their current lifecycle (existing allocations, issued vouchers, historical SKUs on past Offers are not invalidated retroactively). What retirement prevents: no new child can be activated under a retired parent; no new commercial activity can be opened against the retired entity (no new allocations, offers, SKU versions, or purchase orders) — but in-flight commercial state runs to natural completion. This preserves existing customer commitments while preventing new commitment on retired products.
 
 ### §4.6 Retirement blocked by active references
 
@@ -227,7 +241,7 @@ A PIM entity cannot itself be retired while it has *active downstream references
 
 ### §4.7 Operator-driven cascade retirement
 
-When an operator retires multiple linked entities in one workflow (e.g. a Product Master plus all its Variants and PRs because a producer relationship ended), the cascade emits retirement events in **parent-before-child** order — the Product Master's `ProductMasterRetired` first, then each `ProductVariantRetired`, then each `ProductReferenceRetired`, then any Sellable SKU under those PRs. This matches the activation-cascade ordering and gives consumers a predictable signal sequence. For non-cascading single-entity retirements (§4.6), no ordering constraint applies.
+When an operator retires multiple linked entities in one workflow (e.g. a Product Master plus all its Variants and PRs because a producer relationship ended), the cascade emits retirement events in **parent-before-child** order — the Product Master's `ProductMasterRetired` first, then each `ProductVariantRetired`, then each `ProductReferenceRetired`, then any Intrinsic SKU under those PRs. This matches the activation-cascade ordering and gives consumers a predictable signal sequence. For non-cascading single-entity retirements (§4.6), no ordering constraint applies.
 
 ### §4.8 Version immutability and audit
 
@@ -246,12 +260,14 @@ NewCo PIM creates products through a **pluggable enrichment adapter selected by 
 When the Product Type's enrichment adapter is available, it is the fast, low-error path. For `WINE` (the LWIN adapter — behaviour unchanged from v1.1 §5):
 
 1. The Catalog Operator enters the LWIN code at Product Master creation (LWIN-7 for the wine identity; LWIN-11 / LWIN-16 for vintage-specific identifiers at Product Variant).
-2. PIM queries the Liv-ex API and auto-populates the wine's identity fields (into the `WINE` attribute set) — wine name, appellation, region, producer-name candidate.
+2. PIM queries the Liv-ex API and auto-populates the wine's identity fields (into the `WINE` attribute set) — wine name, appellation, region, producer-name candidate. **The LWIN code itself is persisted** on the `WINE` attribute set (the external reference code, §3.9) so the entity can be re-enriched or cross-referenced later; like the other captured fields it is PIM-owned thereafter (capture-then-own, §5.5).
 3. PIM attempts to match the producer-name candidate to Module K's Producer Registry: **exact match** → the Product Master's Producer link is auto-set; **fuzzy match** → PIM surfaces candidate Producers for the Operator to confirm/reject; **no match** → the Operator must register the Producer in Module K first; the Product Master can be saved as `draft` but cannot transition to `active` until a `producer_id` is bound (the §5.4 Producer activation gate).
 4. The Operator reviews the auto-populated data, fills in NewCo-specific descriptive content (winery story, vintage-level commentary), and submits for review.
 5. The standard approval workflow runs (§4.2).
 
 The same mechanic operates at Product Variant creation.
+
+**LWIN and deduplication.** The persisted LWIN code is a **cross-reference / re-enrichment handle, not a uniqueness key.** Duplicate detection runs on the type-defined identity key alone (`WINE` = producer + product name + appellation, BR-Identity-1) so that it behaves identically on the manual baseline path (where no LWIN may exist). PIM MAY surface a matching-LWIN **advisory warning** at data entry, but it is not an enforced constraint and does not replace or extend the identity key.
 
 ### §5.2 The manual baseline path (type-agnostic; the launch default — Q3)
 
@@ -269,7 +285,7 @@ A consequence is **KYC-revocation symmetry**: if a Producer's KYC verification i
 
 ### §5.5 Captured-data ownership (capture-then-own)
 
-Identity fields captured from an enrichment adapter at creation (for `WINE`, from Liv-ex) become **owned by PIM** once saved. PIM does not auto-sync with future adapter-source changes — the captured snapshot is authoritative within PIM. Editing those fields post-creation is a standard audited change subject to version-immutability (§4.8). This matters because external identity data can drift in ways NewCo does not want to follow (a producer-name spelling change, a regional re-classification); the capture-then-own model gives NewCo deterministic control of its catalog.
+Identity fields captured from an enrichment adapter at creation (for `WINE`, from Liv-ex — including the persisted LWIN code, §5.1) become **owned by PIM** once saved. PIM does not auto-sync with future adapter-source changes — the captured snapshot is authoritative within PIM. Editing those fields post-creation is a standard audited change subject to version-immutability (§4.8). This matters because external identity data can drift in ways NewCo does not want to follow (a producer-name spelling change, a regional re-classification); the capture-then-own model gives NewCo deterministic control of its catalog.
 
 ---
 
@@ -279,7 +295,7 @@ Bulk import exists for two recurring operational needs: **legacy migration** at 
 
 ### §6.1 Configurable depth
 
-The Operator selects depth per operation: Product Master only; Product Master + Product Variant; Product Master + Product Variant + Product Reference; or the full chain through Sellable SKU. Operators choose depth based on what the source data supplies.
+The Operator selects depth per operation: Product Master only; Product Master + Product Variant; Product Master + Product Variant + Product Reference; or the full chain through the Intrinsic SKU. Operators choose depth based on what the source data supplies.
 
 ### §6.2 File format and validation
 
@@ -311,7 +327,7 @@ After each batch, PIM produces a summary (total records, successfully imported, 
 
 Product Variant carries an optional whitelist of Case Configurations admissible per Format — the **cataloging-level** statement: *"this product, in this format, can in principle be packaged in these forms."* If empty/absent, the default is permissive (every Case Configuration compatible with the Format is allowed). Layer 1 catalogs *physical / commercial possibility*; it does not, by itself, make a case unbreakable — a whitelisted case configuration still defaults to *breakable* unless Layer 2 or Layer 3 declares otherwise.
 
-Reductions to a Product Variant's whitelist on an `active` Variant follow the retirement-cascade semantics (§4.5): existing Sellable SKUs and Allocations referencing a now-excluded Case Configuration remain valid for their current lifecycle; only new Sellable SKU versions and new Allocations against the excluded entry are blocked. Layer-1 changes do not retroactively invalidate Layer-2 declarations on already-active allocations.
+Reductions to a Product Variant's whitelist on an `active` Variant follow the retirement-cascade semantics (§4.5): existing Intrinsic SKUs and Allocations referencing a now-excluded Case Configuration remain valid for their current lifecycle; only new Intrinsic SKU versions and new Allocations against the excluded entry are blocked. Layer-1 changes do not retroactively invalidate Layer-2 declarations on already-active allocations.
 
 ### §7.2 Layer 2 — producer breakability (Module A, allocation-time)
 
@@ -337,7 +353,7 @@ NewCo's Bottle Page and member-facing surfaces operate in **six locales at launc
 
 ### §8.1 Translatable content lives on existing PIM entities
 
-The descriptive-content fields PIM carries — master-level producer story, variant-level tasting notes and commentary, PR-level format-specific notes — are *translatable per attribute* across the six launch locales. The catalog model treats each translatable field as a per-locale collection of strings; the data shape is a downstream tech choice (DEC-073). The translatable-field set carries forward from v1.1 without field-level addition or removal at launch.
+The descriptive-content fields PIM carries — master-level producer story, variant-level tasting notes and commentary, PR-level format-specific notes — are *translatable per attribute* across the six launch locales. The catalog model treats each translatable field as a per-locale collection of strings; the data shape is a downstream tech choice (DEC-073). The translatable-field set carries forward from v1.1 without field-level addition or removal at launch. *(One targeted addition, MVP-DEC-025: the Case Configuration `packagingType` human-readable label is likewise translatable reference-data content across the six launch locales, and is the first translatable field to carry **singular and plural forms per locale** — because it renders with a unit count; locales added post-launch with additional CLDR plural categories are handled at the representation layer, DEC-073.)*
 
 ### §8.2 Locale-set evolution post-launch
 
@@ -355,10 +371,10 @@ The **Bottle Page** (the wine-display name retained per the generalisation guard
 
 ### §9.1 Where each kind of content lives
 
-- **Product Master** carries the **product-level prose**: the producer's story for this product, region / appellation context, winery narrative.
+- **Product Master** carries the **product-level prose**: the producer's story for this product, the **wine's** region / appellation context, winery narrative. The wine's region here (the `WINE` attribute set, §3.9) is the region **of the wine** (tied to its appellation) and is **authoritative for the wine's region on the Bottle Page.**
 - **Product Variant** carries **variant-specific prose**: tasting notes, critic scores (observational metadata, never used for pricing or allocation per §13), variant-level producer commentary.
 - **Product Reference** carries **format-specific notes** when present (rare).
-- **Producer (Module K)** carries the **producer-level description** independent of any specific product; the Product Master's Producer link makes it reachable at render time.
+- **Producer (Module K)** carries the **producer-level description** independent of any specific product, **plus the Producer's own `region`** (the producer's home region — a distinct attribute from the wine's region above; Module K §4.4); the Product Master's Producer link makes it reachable at render time. The two `region` fields are **not** duplicates — one describes the wine, the other the producer — and neither is derived from the other.
 
 Each surface is translatable per §8 across the six launch locales.
 
@@ -406,7 +422,7 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 ### §13.1 Product identity
 
-**BR-Identity-1. Unique product identity (type-defined key).** Uniqueness is enforced **per Product Type on a type-defined identity key.** For `WINE` the key is **producer + product name + appellation** (unchanged from v1.1's "producer + wine name + appellation"): no two `active` `WINE` Product Masters may share that combination. The deduplication check runs on both the enrichment-adapter creation path and the manual baseline path.
+**BR-Identity-1. Unique product identity (type-defined key).** Uniqueness is enforced **per Product Type on a type-defined identity key.** For `WINE` the key is **producer + product name + appellation** (unchanged from v1.1's "producer + wine name + appellation"): no two `active` `WINE` Product Masters may share that combination. **Appellation is optional** (many wines — IGT, vino da tavola, New-World, some non-vintage — carry no formal appellation): a **null appellation is itself a significant key value**, so two null-appellation wines with the same producer + name collide as duplicates, while an appellation-bearing wine and a null-appellation wine with the same producer + name are distinct (the key effectively degrades to producer + name when appellation is absent). The match is **normalisation-insensitive** — case-, accent-, and whitespace-folded for the comparison, while the stored/displayed values retain the operator's original casing (the normalisation algorithm is a dev-implementation choice, DEC-073). The persisted LWIN code is **not** part of the key (§5.1). The deduplication check runs identically on both the enrichment-adapter creation path and the manual baseline path.
 
 **BR-Identity-2. Hierarchy integrity.** Each Product Variant belongs to exactly one Product Master. Each Product Reference references exactly one Product Variant and one Format. No PIM entity belongs to multiple parents.
 
@@ -414,19 +430,21 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 **BR-Identity-4. Immutability on reference.** Once a PR is referenced by an Allocation, voucher, stock position, or commercial Offer, its Product Variant + Format composition cannot be changed.
 
+**BR-Identity-5. Product Type is immutable after creation.** A Product Master's Product Type is fixed at creation and cannot be changed for the life of the Master (§3.1). Because Product Type selects the identity key, the attribute set, the variant axis, the enrichment adapter, and the admissible Format vocabulary, an in-place type change would invalidate the entity's identity and every type-driven binding; a reclassification is modelled as **retire + register a new Master**, never a type edit. *(No non-`WINE` type exists at launch — §16 — so at launch this is a forward-seam guardrail with no reachable transition to block.)*
+
 ### §13.2 Lifecycle and governance
 
 **BR-Lifecycle-1. Multi-step approval required.** Every PIM entity follows the Creator → Reviewer → Approver workflow; the roles that run must be distinct people; **self-approval is never allowed.** *(The role-count is admin-configurable per Q2 — §4.2; the separation-of-duties floor holds at any configured depth.)*
 
-**BR-Lifecycle-2. Four-state lifecycle.** Every PIM entity follows `draft → reviewed → active → retired`. Re-activation from `retired` to `active` follows the same approval workflow.
+**BR-Lifecycle-2. Four-state lifecycle.** Every PIM entity follows `draft → reviewed → active → retired`. Both **retirement (`active → retired`) and re-activation (`retired → active`)** are commercial-impact transitions that pass the **same Creator → Reviewer → Approver approval workflow** as activation (§4.2) — retiring a PIM entity requires approval. The workflow runs at the configured role-count (Q2 — §4.2), and the separation-of-duties floor (no self-approval; distinct actors on each configured step; audited) holds at any depth.
 
-**BR-Lifecycle-3. Activation cascade.** A child cannot transition to `active` while its parent is not `active`. Product Master activation also requires its linked Producer (Module K) to be `active` and KYC-cleared (`verified` or `not_required`). Sellable SKU activation requires both the PR and the Case Configuration to be `active`.
+**BR-Lifecycle-3. Activation cascade.** A child cannot transition to `active` while its parent is not `active`. Product Master activation also requires its linked Producer (Module K) to be `active` and KYC-cleared (`verified` or `not_required`). Intrinsic SKU activation requires both the PR and the Case Configuration to be `active`.
 
 **BR-Lifecycle-4. Retirement cascade.** When a parent is retired, existing active children remain valid for current references but cannot be used in new commercial commitment. No new children can be activated under a retired parent.
 
 **BR-Lifecycle-5. Retirement blocked by active references.** A PIM entity cannot be retired while it has active downstream references that have not yet completed. The system surfaces the open references; retirement proceeds after they close.
 
-**BR-Lifecycle-6. Rejection handling.** A rejected entity stays in `reviewed` with a rejection flag and notes. The Creator edits in place — no revert to `draft` — and re-submits; the flow restarts from review. Full rejection history is preserved in the audit trail.
+**BR-Lifecycle-6. Rejection handling & approval gate.** A rejected entity stays in `reviewed` with a rejection flag and notes (no revert to `draft`). The Creator edits in place and **explicitly re-submits**; re-submission (a distinct, audited action — not an implicit effect of editing) clears the live rejection flag and restarts the flow from review. **A pending (un-remediated) rejection blocks the `reviewed → active` approval — an Approver must not activate a flagged entity** — and the re-cycle obeys the separation-of-duties floor (BR-Lifecycle-1). **Review freshness:** editing the review-governed (identity/quality) content of a `reviewed` entity invalidates the prior review and re-arms the review step (approval blocked until re-reviewed); purely observational enrichment changes do not gate. Full rejection history is preserved in the audit trail (never cleared).
 
 ### §13.3 Version, audit, and data ownership **(audit/retention floor)**
 
@@ -442,9 +460,9 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 **BR-Producer-2. KYC-revocation symmetry.** If a Producer's KYC verification is revoked after Product Masters have been activated under it, those existing `active` Masters remain `active`; the revocation only blocks *new* Master activations (and new child-entity activations under those Masters) for that Producer.
 
-### §13.5 Sellable SKU rules
+### §13.5 SKU rules
 
-**BR-SKU-1. Intrinsic SKU composition.** A Sellable SKU (Intrinsic) = one Product Reference + one Case Configuration + commercial attributes; the activation prerequisite is that the PR and the Case Configuration are both `active`.
+**BR-SKU-1. Intrinsic SKU composition.** An Intrinsic SKU = one Product Reference + one Case Configuration + commercial attributes; the activation prerequisite is that the PR and the Case Configuration are both `active`.
 
 **BR-SKU-2. Composite SKU governance.** Composite SKUs are originated by Module S for commercial purposes; PIM registers them and governs their lifecycle (same 4-state lifecycle, same approval workflow). Module S defines the constituent composition; PIM enforces hierarchy integrity (every constituent PR exists and is `active` at activation time) and lifecycle compliance.
 
@@ -454,15 +472,19 @@ The PIM business rules cluster into seven groups. **Behaviour is unchanged for w
 
 **BR-SKU-5. Composite SKU is producer-agnostic at PIM.** A Composite SKU may carry constituent PRs from one or many producers; PIM does not validate producer composition. Admissibility on a given commercial surface is a Module S Offer-publication validation (club Offers reject mixed-producer sets, DEC-019; Discovery Offers admit them, DEC-061 — *the multi-producer Discovery path is deferred at launch, D7; all launch composites are single-producer*). PIM is silent on this validation.
 
+**Implementation note (DEC-073; MVP-DEC-012).** BR-SKU-1 governs the single-PR (Intrinsic) shape; BR-SKU-2..5 govern the N ≥ 2 (Composite) shape. A single physical representation backing both shapes is permitted (physical shape is the dev team's call), **provided** the two event families (§14.1/§14.2) and the Intrinsic-only Case-Configuration reference (§3.7, BR-SKU-1) are preserved. See the §3.8 implementation note.
+
 ### §13.6 Format and Case Configuration
 
 **BR-RefData-1. Format governance.** New Formats can be proposed by any Catalog Operator and require the standard approval before becoming available for new PR creation; a PR cannot activate if its referenced Format is not `active`. *(The admissible Format vocabulary is type-driven — for `WINE`, bottle sizes; §3.1.)*
 
 **BR-RefData-2. Case Configuration is packaging form only.** Case Configuration carries packaging-form attributes only — units per case, packaging type, physical attributes. It **carries no breakability flag**; breakability is decided by the §7 layered rule, to which PIM contributes via Layer 1 only.
 
+**BR-RefData-3. Case Configuration shape and identity.** Case Configuration has three attributes: `unitsPerCase` (integer ≥ 1); `packagingType`, a controlled, bounded base-code vocabulary stored as reference data (not free text, not a hard-coded constant); at launch a **fixed, predefined seed set** (`OWC`, `OC`, `CARTON`, `LOOSE`, each with a human-readable label that is translatable per §8 across the six launch locales — English fallback, §8.3 — and carries singular and plural forms per locale), operators selecting from it — self-serve creation of a new code (via an approved Case Configuration, normalised, with label capture) is deferred post-launch (§17.7), the set remaining extensible by config in the interim; and optional descriptive, non-identifying `physicalAttributes` (display / audit only). A Case Configuration is unique on `(packagingType, unitsPerCase)`; `physicalAttributes` are not part of the key (entries differing only in notes are the same configuration). `packagingType = LOOSE` requires `unitsPerCase = 1`; the converse does not hold (`unitsPerCase = 1` does not imply `LOOSE` — e.g. `OWC1`). The canonical display name is derived from `packagingType + unitsPerCase` (no stored name required). Physical representation is the dev team's call (DEC-073).
+
 ### §13.7 Bulk import
 
-**BR-BulkImport-1. Configurable depth.** Bulk-import depth is configurable per operation (Product Master only; + Variant; + PR; or full chain through Sellable SKU).
+**BR-BulkImport-1. Configurable depth.** Bulk-import depth is configurable per operation (Product Master only; + Variant; + PR; or full chain through the Intrinsic SKU).
 
 **BR-BulkImport-2. Partial-failure handling.** Records that fail validation are skipped and reported in a detailed error log with specific reasons; valid records proceed regardless.
 
@@ -493,7 +515,7 @@ For each PIM entity that goes through the lifecycle, three events fire — one p
 | Product Master | `ProductMasterCreated` | `ProductMasterActivated` | `ProductMasterRetired` | **renamed** from `WineMaster*` |
 | Product Variant | `ProductVariantCreated` | `ProductVariantActivated` | `ProductVariantRetired` | **renamed** from `WineVariant*` |
 | Product Reference | `ProductReferenceCreated` | `ProductReferenceActivated` | `ProductReferenceRetired` | **renamed** from `BottleReference*` |
-| Sellable SKU (Intrinsic) | `SellableSKUCreated` | `SellableSKUActivated` | `SellableSKURetired` | unchanged |
+| Intrinsic SKU | `IntrinsicSKUCreated` | `IntrinsicSKUActivated` | `IntrinsicSKURetired` | **renamed** from `SellableSKU*` (MVP-DEC-033) |
 | Composite SKU | `CompositeSKUCreated` | `CompositeSKUActivated` | `CompositeSKURetired` | unchanged |
 | Format | `FormatCreated` | `FormatActivated` | `FormatRetired` | unchanged |
 | Case Configuration | `CaseConfigurationCreated` | `CaseConfigurationActivated` | `CaseConfigurationRetired` | unchanged |
@@ -507,11 +529,11 @@ Plus one observational-update event:
 - `*Activated` covers `reviewed → active` — the moment the entity becomes available for downstream commercial commitment.
 - `*Retired` covers `active → retired` — the moment new commercial commitment against the entity is blocked (existing references run to natural completion per §4.5).
 
-The `draft → reviewed` transition does not emit a distinct event; review is an internal-to-PIM checkpoint captured in the audit trail. Composite SKU events are emitted as a **distinct event family** from Intrinsic SKU events (Composite is a separate governance lane — the constituent-composition rule, the producer-agnostic-at-PIM rule, the surface-asymmetric admissibility at Module S); downstream consumers dispatch Composite vs Intrinsic on the event family rather than on a payload discriminator.
+The `draft → reviewed` transition does not emit a distinct event; review is an internal-to-PIM checkpoint captured in the audit trail. Composite SKU events are emitted as a **distinct event family** from Intrinsic SKU events (Composite is a separate governance lane — the constituent-composition rule, the producer-agnostic-at-PIM rule, the surface-asymmetric admissibility at Module S); downstream consumers dispatch Composite vs Intrinsic on the event family rather than on a payload discriminator. The Intrinsic shape's event family is **`IntrinsicSKU*`** and the Composite shape's is **`CompositeSKU*`** — each matches its concept. *(The Intrinsic family was `SellableSKU*` through MVP-DEC-031; renamed to `IntrinsicSKU*` under MVP-DEC-033 now that the two-shape taxonomy is settled and nothing yet depends on the name.)*
 
 ### §14.3 Emission ordering invariant
 
-**Activation events are emitted in parent-before-child order**, naturally enforced by the §4.4 activation cascade (a child cannot activate before its parent reaches `active`). **Retirement events** emitted by an explicit operator-driven cascade (§4.7) follow parent-before-child ordering (Product Master → Product Variant → Product Reference → Sellable SKU); non-cascading single-entity retirements (§4.6) carry no ordering constraint. **Downstream consumers tolerate eventual-consistency arrival order** — PIM guarantees the *emission* order in cascade workflows; arrival is best-effort; consumers dedupe and reconcile on the parent's current state at consume time.
+**Activation events are emitted in parent-before-child order**, naturally enforced by the §4.4 activation cascade (a child cannot activate before its parent reaches `active`). **Retirement events** emitted by an explicit operator-driven cascade (§4.7) follow parent-before-child ordering (Product Master → Product Variant → Product Reference → Intrinsic SKU); non-cascading single-entity retirements (§4.6) carry no ordering constraint. **Downstream consumers tolerate eventual-consistency arrival order** — PIM guarantees the *emission* order in cascade workflows; arrival is best-effort; consumers dedupe and reconcile on the parent's current state at consume time.
 
 ### §14.4 Versioning
 
@@ -521,7 +543,7 @@ Events are versioned at the schema level so downstream modules evolve consumptio
 
 The cross-module event-consumption map at launch (names generalised; consumption behaviour identical):
 
-- **Module S (Sales).** Consumes `ProductMasterActivated`, `ProductVariantActivated`, `ProductReferenceActivated`, `SellableSKUActivated`, `CompositeSKUActivated` — to enable Offer creation and Price-Book entries against the activated entities. Consumes `EnrichmentDataUpdated` for marketing surfaces. Consumes the corresponding `*Retired` events to flag Offers and Price-Book entries for review.
+- **Module S (Sales).** Consumes `ProductMasterActivated`, `ProductVariantActivated`, `ProductReferenceActivated`, `IntrinsicSKUActivated`, `CompositeSKUActivated` — to enable Offer creation and Price-Book entries against the activated entities. Consumes `EnrichmentDataUpdated` for marketing surfaces. Consumes the corresponding `*Retired` events to flag Offers and Price-Book entries for review.
 - **Module A (Allocations).** Consumes `ProductReferenceActivated` to enable Allocation creation; consumes `ProductReferenceRetired` to trigger Allocation review.
 - **Module B (Bottle / Stock).** Consumes `ProductReferenceActivated` for stock-position tracking; consumes `ProductReferenceRetired`, `ProductVariantRetired`, `ProductMasterRetired` to flag inventory for review.
 - **Module C (Fulfilment).** Consumes `ProductReferenceRetired` to trigger fulfilment holds where open vouchers exist.
@@ -568,16 +590,19 @@ The guardrails that bound the generalisation (brief §4 non-goals + §6 definiti
 
 ## §17 Deferred set & post-launch roadmap pointers (MVP)
 
-**Module 0 takes ~0 net-new deferrals in the MVP strip** (it is KEEP-in-full). The items below are **v1.1's already-deferred set, carried verbatim** to the post-launch roadmap with their existing re-introduction hooks (do not re-cut; do not re-derive). All feed [`../04-roadmap/Post_Launch_Roadmap_v0.1.md`](../04-roadmap/Post_Launch_Roadmap_v0.1.md) (which extends `greenfield/03-qa/qa.deferred.md`).
+**Module 0 takes ~0 net-new deferrals in the MVP strip** (it is KEEP-in-full). Items §17.1–§17.6 are **v1.1's already-deferred set, carried verbatim** to the post-launch roadmap with their existing re-introduction hooks (do not re-cut; do not re-derive); **§17.7 is the sole MVP-scope surface-deferral** (MVP-DEC-025 — a management UI, not a v1.1 capability or data-model cut). All feed [`../04-roadmap/Post_Launch_Roadmap_v0.1.md`](../04-roadmap/Post_Launch_Roadmap_v0.1.md) (which extends `greenfield/03-qa/qa.deferred.md`).
 
 | # | Deferred item | Seam preserved (P1) | Restores with |
 |---|---|---|---|
-| §17.1 | **Service / Experience SKU subtype** | Free experiences are booked operationally without a catalog representation; the SellableSKU subtype + lifecycle + pricing surface slot in additively. | Post-launch services/experiences workstream. |
+| §17.1 | **Service / Experience SKU subtype** | Free experiences are booked operationally without a catalog representation; the Service / Experience SKU subtype + lifecycle + pricing surface slot in additively. | Post-launch services/experiences workstream. |
 | §17.2 | **Liquid Product / Liquid SKU / BottlingResolution** | The v17 Liquid Product entity shape, its business-rule set, the Liquid SKU composition rule, the `LiquidProduct*` event triple, and the BottlingResolution boundary are well-specified and re-introducible as a coherent block. | Post-launch liquid-sales feature. |
 | §17.3 | **Separate translation registry / per-translator workflows** | Launch keeps translatable content on the entities that hold it; a separate translation entity (per-translator queues, per-translation version history, fallback chains beyond English) is additive. | Post-launch when translation workflows grow complex. |
 | §17.4 | **Locale-set expansion beyond the six launch locales** | Adding a 7th+ locale is a configuration change, not a data-model migration (§8.2); the six-locale set is the operational starting point, not an upper bound. | Post-launch market expansion. |
 | §17.5 | **Producer-content versioning beyond the standard approval** | Producer content follows the standard PIM approval at launch via the entity that holds it; a more granular content lifecycle (per-locale review, separate translator approval lanes, content versioning independent of the entity's version) is additive. | Post-launch. |
 | §17.6 | **Bulk-import auto-replay queue** | Re-attempt is operator-driven at launch (§6.4); an auto-replay queue (PIM subscribes to upstream `*Activated` and replays matched failed rows) adds on top of the existing operator path. | Post-launch when volume justifies it. |
+| §17.7 | **Self-serve creation of new `packagingType` codes** (MVP-DEC-025) | Launch ships a **fixed seeded set** of packaging-type base codes stored as **reference data** (code + label + normalised form — not a hard-coded enum), so operators build Case Configurations by selecting a code + `unitsPerCase`; the vocabulary stays extensible by a cheap config/seed addition (capability + data model ship in full — this defers only the runtime *management surface*). | Post-launch: the self-serve *introduce-a-new-code* flow via the Case Configuration approval (explicit, approver-visible, normalised, near-duplicate-warned, **+ human-readable label capture**), as specified in §3.6 / BR-RefData-3. |
+
+> **Service / Experience SKU — how it restores (§17.1 seam detail; MVP-DEC-012 pattern extended).** When the paid Service / Experience subtype lands it will be a **new, distinct event family** (e.g. `ServiceSKU*`), **not** a `kind`/subtype discriminator on the Intrinsic SKU's `IntrinsicSKU*` family — consumers dispatch on the event family, never on a payload flag (§14.2; the same rule that keeps Intrinsic and Composite as two families, MVP-DEC-012). Consistent with that, **no seam field is reserved on the Intrinsic family now**: the subtype is purely additive later (a new family + its own attribute/pricing surface), so reserving a field pre-emptively would violate the §16 don't-over-build guardrail and buys nothing. This records the forward direction only; nothing is built at launch.
 
 > **Generalisation forward-target (not a Module 0 deferral, recorded for roadmap coherence — Phase C item N).** The *category-expansion* workstream (defining a second Product Type — its attribute set, variant axis, enrichment adapter, Format vocabulary, identity key — **and** the A/B/C/D/E + business-model operating-model work to *sell and fulfil* it) is the immediate post-launch objective this generalisation enables. Module 0's generic spine is the catalogue-side readiness; it is **not** itself deferred scope — it ships at launch. The roadmap carries the *second-type* buildout as the forward target.
 
@@ -597,7 +622,8 @@ This PRD is the **source of truth** for the cross-module naming cascade. Every s
 | `WineMaster{Created,Activated,Retired}` | `ProductMaster{Created,Activated,Retired}` | — |
 | `WineVariant{Created,Activated,Retired}` | `ProductVariant{Created,Activated,Retired}` | — |
 | `BottleReference{Created,Activated,Retired}` | `ProductReference{Created,Activated,Retired}` | — |
-| Format, Case Configuration, Sellable SKU, Composite SKU, `EnrichmentDataUpdated` | **unchanged** | — |
+| Format, Case Configuration, Composite SKU, `EnrichmentDataUpdated` | **unchanged** | — |
+| Sellable SKU (Intrinsic) | **Intrinsic SKU**; event family `SellableSKU{Created,Activated,Retired}` → `IntrinsicSKU{Created,Activated,Retired}` (prose relabel MVP-DEC-031; event rename MVP-DEC-033) | — |
 
 **The carve-outs (do NOT rename these — Phase C item A):**
 - **Module E** keeps its own **category-neutral** names (`Invoice*`, `Payment*`, `Settlement*`, `NonRevenueCost*`, `OCShare*`, `Chargeback*`, `Refund*`, `Xero*`, `FXVariance*`, `ClubCredit*`, `StoreCredit*`) — unchanged (lightest touch).

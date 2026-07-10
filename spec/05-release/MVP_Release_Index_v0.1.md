@@ -130,7 +130,7 @@ Why it holds (Phase C §1.2, honest calibration): the supply-side quartet (0/K/A
 
 **No cut breaches the floor in composition.** Each chain composes end-to-end across the composed system (not just per-module), all KEPT as FLOOR:
 
-1. **No-overselling** — Module A Layer 1 (`qty − issued ≥ 0`) ∧ Module B Layer 2 (`physical_in_storage − reserved − quarantined − under_adjustment ≥ 0`) ∧ Module S shared-pool decrement + lesser-of storefront read ∧ Module C no-oversell-at-pick StockPosition read — strongly consistent, **per sub-pool**. ✓ *(carries the build-sequencing flag — §5.3)*
+1. **No-overselling** — Module A Layer 1 (`qty − issued ≥ 0`) ∧ Module B Layer 2 (`physical_in_storage − reserved − quarantined − under_adjustment ≥ 0`) ∧ Module S shared-pool decrement + lesser-of storefront read ∧ Module C no-oversell-at-pick StockPosition read — strongly consistent, **per sub-pool**; **Layer-2's sale-gate is sourcing-model-scoped (MVP-DEC-027): warehouse-resident stock (`passive_v2`; received `direct_purchase`) — `passive_v1` sells on Layer 1 alone, physical receipt gating shipment not sale (DEC-081 / Phase C item K).** ✓ *(carries the build-sequencing flag — §5.3)*
 2. **KYC / sanctions / OFAC / Hold** — Module K floor → Module S sanctions/Hold gate at order completion (the consumer-side enforcement point) → Module C OFAC at all destinations → Module E re-read at charge; DEC-181 uniformity at every transaction-initiation surface. ✓
 3. **Tax-correct invoicing (MPV VAT regime)** — Module S issues INV1/INV2/INV3 (Module-S-internal — R2) → Module C contributes excise (`ExciseCalculated`, runs even in white-glove) + actual shipping → Module S composes + issues INV2 → Module E records + charges + routes to Xero. ✓
 4. **Dual-record FX** — Module E records every customer-facing event in customer-currency + EUR; per-leg rate-lock; refund at the original captured rate; `FXVarianceRecorded` (D18 — FLOOR). ✓
@@ -174,7 +174,7 @@ The Architecture surfaced six minor cross-PRD editorial / consumer-list drifts a
 3. **`AllocationPoolDebitedDueToLoss`** — Module C / Module B reference an A-side loss/write-off pool-debit emission Module A's catalogue does not enumerate; confirm the emission locus (Module A emit vs derived from Module B's `InventoryAdjusted`).
 4. **Consumer-list enumeration gaps (two)** — (i) Module 0 names Module C a `ProductReferenceRetired` consumer; C reads PR identity on-demand and does not enumerate it; (ii) Module S subscribes to `InboundEventPhysicallyAccepted` (the R2 storage-clock anchor) but Module D's consumer list does not enumerate S. Both additive enumeration alignments.
 5. **`AllocationCapacityExhausted`** *(resolved — recorded for completeness)* — over-issuance is an operation-level rejection (`qty − issued ≥ 0`), no event; consistent across S/A/B/C.
-6. **`ClubCreditAccrued` → `ClubCreditIssued`** *(resolved)* — K + E both use `ClubCredit{Issued,Applied,Restored,Forfeited}`.
+6. **Club Credit / Store Credit event vocabulary** *(reconciled — MVP-DEC-018)* — the canonical issuance event is **`ClubCreditAccrued`** (Module-E-emitted) and the application events (`ClubCreditAutoApplied` / `ClubCreditRemovedByCustomer` / `StoreCreditApplied`) are **Module-S-emitted** per DEC-166 + DEC-174; Module K owns the balance + consumes from both. The earlier "`ClubCreditAccrued` → `ClubCreditIssued` (resolved)" digest note was itself stale (it contradicted the frozen DEC-174); Module K + Module E swept at MVP-DEC-018.
 
 ### §5.3 The build-sequencing flag (→ the workplan + the dev-team sizing exercise)
 

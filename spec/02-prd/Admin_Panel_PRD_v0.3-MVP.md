@@ -20,7 +20,7 @@
 
 2. **Exactly ONE producer write platform-wide: Module K membership approve/decline (L-PP / K-Q4).** Every other producer/back-office write across A / D / S / B / C / E is **operator-driven via the Admin Panel** (zero producer writes in each — A §3.3, D §3.6, S §15, B §0.8, C §0.9, E §1.4). **No backend capability is cut** — DEC-083/115 admin-parity is a *backend* contract; only the producer-facing write *UIs* are deferred, built back post-launch on the same backend (P1 seam). **State the boundary crisply** (§2).
 
-3. **Producer Portal read + full 7-section reporting (D23) is KEPT** (reads A / S / E / K — sell-through metrics, settlement projections, PO status, financial dashboards). **The consumer storefront / cellar / Bottle Page are EXEMPT** (self-serve KEPT — master §3): browse / buy / cart / checkout / cellar / cancellation (S), the cellar render + in-transit display (C), the Bottle Page (B). (§2.)
+3. **Producer Portal read + full 7-section reporting (D23) is KEPT** (reads A / S / D / E / K + B — sell-through metrics **measured against `received_to_date` with the committed `qty` alongside (MVP-DEC-037)**, settlement projections, PO status, received-to-date per allocation (Module B §8.3), financial dashboards). **The consumer storefront / cellar / Bottle Page are EXEMPT** (self-serve KEPT — master §3): browse / buy / cart / checkout / cellar / cancellation (S), the cellar render + in-transit display (C), the Bottle Page (B). (§2.)
 
 4. **The two substantive net-new consoles (§4 — the real content of this PRD):** **(i) the finance-ops console (E)** — the most load-bearing: operator-run settlement runs (compose the 5-section statement from the recorded settlement-input events + run Xero AP, D19); manual INV3 dunning / K-Hold placement (D4 manual-first); bank-transfer reconciliation (operator-fallback); FX-variance review; Xero exception / sync-failed retry queue; chargeback dispute-evidence (D21 auto-ingestion + operator step-4); the admin-configurable thresholds. **(ii) the shared Logilize discrepancy queue (B+C, DEC-141)** — the unified discrepancy surface both inventory (B) and fulfilment (C) feed. The other consoles (white-glove quote flow C/D3; returns/recall C/D14/D15; stocktake/quarantine/adjustment B/D16; procurement/discrepancy D) are the manual-first operator surfaces the defers created (§4.3–§4.6).
 
@@ -93,7 +93,9 @@ The Admin Panel serves the operator personas the 8 modules name — Catalog Oper
 
 ### §2.2 The Producer Portal read + full reporting (D23) — KEPT
 
-The **Producer Portal read + full 7-section self-serve reporting is KEPT at launch** (D23 — core to the producer promise; real-time). It reads across A / S / E / K: sell-through metrics per allocation (A/S), settlement projections (A/D/E), PO status — units shipped / in-transit / received (D), financial dashboards (E), membership + club state (K). **The Producer Portal is read-only at launch except for the one write (membership approve/decline).** The reporting *backend* is owned by the producer-reporting contract (D23); this surface notes that the read is KEPT whole — the deferral is producer *write UIs*, never producer *reads*.
+The **Producer Portal read + full 7-section self-serve reporting is KEPT at launch** (D23 — core to the producer promise; real-time). It reads across A / S / D / E / K + B: sell-through metrics per allocation (A/S — **measured against `received_to_date`, the committed `qty` always alongside; MVP-DEC-037, below**), settlement projections (A/D/E), PO status — units shipped / in-transit / received (D), **received-to-date per allocation (Module B §8.3)**, financial dashboards (E), membership + club state (K). **The Producer Portal is read-only at launch except for the one write (membership approve/decline).** The reporting *backend* is owned by the producer-reporting contract (D23); this surface notes that the read is KEPT whole — the deferral is producer *write UIs*, never producer *reads*.
+
+**The two reporting definitions (MVP-DEC-037).** **(i) Sell-through per allocation is measured against `received_to_date`** (Module B §8.3 — the canonical physically-received figure), **with the committed `qty` (Module A §4.1) always shown alongside** — "sold X of Y arrived (committed Z)". For `passive_v1` allocations (per-order inbound — arrivals *follow* sales by design; MVP-DEC-027) the same strip reads as sell-through against the commitment with `received_to_date` as fulfilment progress — same four figures, no separate formula. **(ii) "Received" in every producer- and operator-facing report = Module B's physical-match figure** (DEC-194, via §8.3), never Module D's documents-side accepted qty. *(Read/definition layer only — the Allocation record stays commitment-only; no new event; no Module A change.)*
 
 ### §2.3 The consumer storefront / cellar / Bottle Page — EXEMPT (self-serve KEPT)
 
@@ -134,6 +136,7 @@ The registry's operator surface runs onboarding flows, KYC, sanctions screening,
 | Producer onboarding | Create/edit Producer; manage Producer KYC; draft + activate ProducerAgreement (the D19 settlement-cadence seam); Club config; Producer-activation approval (3-step, Catalog Lead) | YES (Producer-active gate → 0; agreement → D/E) | §4.4, §4.6, §4.3 |
 | Operator-driven producer writes | Invitation send; Hero-Package designation; capacity adjustment (all operator-driven, producer UI deferred) | — | §3.1 |
 | Marketing-consent review | Consent-state review for audit; right-to-object; HubSpot coordination | — | §8.1 |
+| Manage the ERP email catalog | The registered-email catalog + template bindings (MVP-DEC-035): every ERP-sent email = ID + trigger event + audience + template + locales; adding an email = product decision; a bounded list, not a CMS | — | §14.9.1 |
 
 ### §3.A Module A (Allocation) — the allocation-ops console
 
@@ -146,6 +149,7 @@ Every allocation operation is a producer/back-office write → operator-driven v
 | Mid-life mutations | Visibility (CLUB ↔ DISCOVERY) / qty / commercial_terms / counterparty / sub-pool / opt-out; anti-orphan rules; Hero capacity invariant; waitlist conversion | YES (cut across K/S/D/E) | §3.3, §5.3.3–§5.3.8 |
 | Trigger a producer recall | Operator-driven (already admitted operator-side, DEC-090); five-module cascade (A → D → C → B → S) | YES → §4.4 | §3.3, §5.3.7 |
 | Close / retire an allocation | Operator-driven | — | §3.3, §5.3.9–§5.3.10 |
+| **View an allocation's position (read — MVP-DEC-037)** | The **four-figure position strip** — committed `qty` (A §4.1) / `received_to_date` (B §8.3) / issued (A §7.1) / available-to-sell (the Module S §8.6 lesser-of read; Layer-1-alone for `passive_v1`, MVP-DEC-027) — **same figures, same order as the Producer Portal** (§2.2). Plus the **soft under-receipt flag** (non-blocking — the Module A §5.2 soft-alert pattern): raised when `received_to_date < qty` at allocation close/retire and on an Accept-Shortage resolution touching the allocation (Module D §13); it informs — any realignment stays the existing operator qty decrease (A §5.3.4, anti-orphan-bounded). | YES (reads B/S/D) | Module B §8.3 (+ A §5.2/§5.3.4; S §8.6) |
 
 ### §3.D Module D (Procurement) — the procurement-ops console
 
@@ -155,7 +159,7 @@ The procurement spine (PI → PO → InboundEvent → discrepancy) is operator-d
 |---|---|---|---|
 | Issue a PO | DRAFT → ISSUED → … → CLOSED; the two-level issuance gate (reads ProducerAgreement + Allocation state) | YES (gate spans K/A) → §4.6 | §3.6, §6 |
 | Override the PO Level-1 gate | `POIssuedUnderNonActiveAgreement` — operator override + audit event for compliance review | YES (audit → K) → §4.6 | §3.6 |
-| Accept inbound goods (3-gate QC) | **Module D = documents-in-order** (paperwork / agreement / PO-line conformance; pass fires `InboundEventPhysicallyAccepted`); **Module B = physical match** (DEC-194 split) | YES (split with B) → §4.5/§4.6 | §3.6 (and Module B §11) |
+| Accept inbound goods (3-gate QC) | **Module D = documents-in-order** (quantity / damage / matching vs the producer's manifest — Module D §7, MVP-DEC-032; pass fires `InboundEventPhysicallyAccepted`); **Module B = physical match** (DEC-194 split) | YES (split with B) → §4.5/§4.6 | §3.6 (and Module B §11) |
 | Finalise inbound landed cost | The 5-WD cost-finalization; provisional → finalized flip (flows to B InboundBatch + E `COGSAdjustmentRecorded`) | YES (B/E) → §4.6 | §3.6 |
 | Resolve an inbound discrepancy | The DISCREPANCY state + the **6-path resolution enum** (Accept Shortage / Return+Reorder / Return for Credit / Adjustment / Supplier Replacement / Write-Off); **manual-first round-trip (N1 — operator opens + records within the 5-WD window)** | YES (B feed-back) → §4.5/§4.6 | §3.6 (and Module B §11.2) |
 | Record a producer-initiated reverse inbound | Operator-driven mirror (DEC-090/152); event-record-only at launch | YES → §4.4 | §3.6, §9 |
