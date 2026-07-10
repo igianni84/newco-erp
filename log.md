@@ -951,3 +951,7 @@
 ## [2026-07-10 00:06] ralph | parties-hero-package-residuals 4.1 | green | 4 files | close gate: SQLite+PG17 2389/2389 (12404/12411 assn), PHPStan 0, Pint clean, validate --strict 11/11; 0 app/ files. Sweep read: 11 hits, 0 defects. Tracker: RM-05 closes a SUBSET, none of J-14/15/15a/XM-19; 7 stale claims fixed. 6/6 COMPLETE.
 
 ## [2026-07-10 13:11] close-ritual | parties-hero-package-residuals | GUIDE §2.7: PG17 2389/2389 (12411) pre-merge; semantic-verify 0 CRITICAL / 2 WARNING (stale enumerations: false docblock + 11→12 files) fixed & re-verified both engines; merged --no-ff; archived → party-registry:670 now guard→lock→count→read→gate. Not pushed.
+
+## [2026-07-10 13:27] tracker-resync | Remediation_Tracker.md + hot.md | residuals confirmed CLOSED+PUSHED via git ls-remote (both memory files falsely claimed 11 commits unpushed). RM-26 + RM-27 opened out of F8 (MVP-DEC-024), sequenced behind the F10 re-vendoring decision. Doc-only, zero app/ diff.
+
+## [2026-07-10 13:28] correction | log.md 13:27 entry | 'falsely claimed' misattributes: reflog shows memory commit 13:12, Giovanni's push 13:15. hot.md was TRUE when written and expired 3min later, falsified by the push it recorded as pending. No prior session erred; the claim's shelf life was the human action it named.

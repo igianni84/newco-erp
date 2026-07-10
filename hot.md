@@ -7,28 +7,28 @@ updated: 2026-07-10
 # Hot Cache
 
 ## Last Updated
-**2026-07-10 — `parties-hero-package-residuals` CLOSED.** GUIDE §2.7 end to end: PG17 pre-merge, semantic-verify, merge `--no-ff`, archive. **No change in flight.** Local `main` is **11 commits ahead of `origin/main` — not pushed** (awaiting Giovanni).
+**2026-07-10 — nothing in flight; `RM-26` + `RM-27` opened; `F10` on Giovanni's desk.** `parties-hero-package-residuals` is **closed and pushed** (merge `0f75d41` / archive `1d3d941` / memory `5f25467`). Tree clean, `openspec/changes/` holds only `archive/`, `main`↔`origin` **in sync at `5f25467`** (verified via `git ls-remote`).
 
 ## Build & Quality Status
-- **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — re-run after the prose fix; identical to the 4.1 baseline, which is what proves the fix touched no behaviour.
-- PHPStan **0** · Pint clean · `openspec validate --all --strict` **10/10** (one item fewer: the change left `changes/`).
-- **13 files merged, ZERO under `app/`** — design R1 held. The code was always right; the spec and the suite were wrong.
-- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 lane: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`, left running).
+- **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — the PG surplus is the PG-only concurrency + CHECK lanes.
+- PHPStan max **0** · Pint clean · `openspec validate --all --strict` **10/10**.
+- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 lane: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`).
 
 ## Active Change & Next Task
-- **None.** `openspec/changes/` is empty; history at `archive/2026-07-10-parties-hero-package-residuals/`.
-- The archive did its one job: `party-registry:670` now reads **guard → lock → count → read → gate**, and `:717` carries the new scenario *"An out-of-state approve is rejected before any Club row is locked"*. Invariant 11 held throughout.
-- **Human next:** `git push` (11 commits), then `/spec-to-change` for the next slice.
+- **None in flight.** Every *scheduled* RM item is shipped. Read `docs/validation/Remediation_Tracker.md` **§1 ▶️ NEXT** first — it is the source of truth for what remains.
+- **Next, in order:** (1) **F10** — the `spec/` re-vendoring decision, **Giovanni's, not the loop's**; (2) **RM-26** (+ RM-27) via `/spec-to-change`; (3) the gated decisions (F12, the two capacity escalations); (4) pre-go-live **F2**.
+- **F10 is sequenced first on purpose.** RM-26 exists *because* `spec/` is pinned at `4f48277`, **29 commits / 23 MVP-DECs behind** canon `360df0b`. Authoring RM-26 first just re-runs the discovery one `MVP-DEC` later. Needs an ADR (supersedes `2026-06-17-spec-synced-from-documentation-repo`); only `scripts/sync-spec.sh` may write `spec/` (invariant 11).
 
 ## Blockers & Decisions Needed
-- **None blocking.** Two canon escalations stay OPEN, due before Module A's capacity-adjust: the capacity-decrease seat floor (`AC-K-J-15` floors on **seats**, `BR-A-Mutability-1` on **vouchers issued**); K PRD §1:77 (*S enforces*) vs §13 (*K*).
+- **None blocking a build.** Four decisions are queued, each with a *gate*, not a date:
+  - **F10** — re-vendor vs keep-frozen-plus-mandatory-live-fetch. Gate: before authoring RM-26.
+  - **F12** — `Profile ↔ Customer` lock-order inversion can deadlock (`40P01`). Pre-existing, no test can see it. Gate: before the producer-facing HTTP surface.
+  - **Two canon escalations on capacity** — who evaluates the seat floor (`BR-A-Mutability-1` floors on *vouchers issued*, `AC-K-J-15` on *seats*); K PRD §1:77 (*S enforces*) vs §13 (*K*). Gate: before Module A's capacity-adjust.
 - **RM-05 closed against a documented SUBSET.** `AC-K-J-14` · `J-15` · `J-15a` · `XM-19` untouched. *"Residuals closed" ≠ "capacity is compliant"* — tracker §4.
-- **Tracker §7:** **F12** `Profile↔Customer` lock-order inversion can deadlock — pre-existing, needs a *decision* before the producer HTTP surface. Also F11 · F2 · F5–F7 · F8 (→ RM-26/27) · F9 (**OTP**) · F10 (ADR).
-- **Two §2.7 follow-ups, deliberately unfixed:** `party-registry:889` should state `RenewProfile`'s guard-before-lock order normatively; `knowledge/testing/hypotheses.md` has ~6 confirmations still reading *"date = archive-dir date once archived"* for changes that **are** archived — under-dating, not pre-dating.
+- **Also open, unscheduled:** F2 (🟥 blocks go-live, not the demo) · F5 · F6 · F7 · F9 (**OTP** — watch, Paolo has not ruled) · F11 (`DemoSeeder` not re-runnable on SQLite, docblock says otherwise) · two §2.7 follow-ups (`party-registry:889` guard-before-lock prose; ~6 under-dated confirmations in `knowledge/testing/hypotheses.md`).
 
 ## Open Patterns
-- **An enumeration goes stale the moment the thing it enumerates grows, and nothing mechanical sees it.** Both §2.7 WARNINGs were this: the `action_failed` scenario list (2→3; task 3.2 updated `lang/`, left the docblock calling `renew` the page's *sole* rejecting verb — `approve` shares that `ViewProfile`) and the file count (11→12; a close gate reads `git diff --stat` before editing the tracker). A comment has no assertions; a count has no test. Only a reader asked to **verify the citation, not read it** catches them.
-- **A close-gate sweep is a CLASSIFICATION, not a count** — three of four hit-classes are *supposed* to fire. Only a **live** doc/docblock is a defect.
-- **A doc-only task must move the assertion count by ZERO.** "Green" without a baseline verifies nothing.
-- **A prescribed mutant is usually the loud one** — it proves the pin fires; necessity needs the quiet drift the suite passes.
-- **A sentence that orders operations is a claim, and it can ship false** — in a spec, a test's name, a tracker's status line, or the docblock of the very test that pins the corrected sentence.
+- **A memory file that asserts the remote's state expires by design, not by error.** Yesterday's `hot.md` said *"11 commits ahead, awaiting Giovanni"* — **true when written (13:12), false at 13:15**, falsified by the very push it recorded as pending. State what the repo *is*; never what the remote *has*. Only `git ls-remote` knows that.
+- **A close ritual that stops at the merge leaves the memory stale** — the 2026-07-08 lesson ("it leaves the *backlog* stale"), one layer up. The hot cache is a §2.7 close artifact, and it is the file the `SessionStart` hook *serves*.
+- **An enumeration goes stale the moment the thing it enumerates grows, and nothing mechanical sees it.** A comment has no assertions; a count has no test.
+- **A verifier's finding is a candidate, not a fact** — a code-reading claim about a second method is a hypothesis, not a verification (F1, twice).
