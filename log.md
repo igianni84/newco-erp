@@ -955,3 +955,5 @@
 ## [2026-07-10 13:27] tracker-resync | Remediation_Tracker.md + hot.md | residuals confirmed CLOSED+PUSHED via git ls-remote (both memory files falsely claimed 11 commits unpushed). RM-26 + RM-27 opened out of F8 (MVP-DEC-024), sequenced behind the F10 re-vendoring decision. Doc-only, zero app/ diff.
 
 ## [2026-07-10 13:28] correction | log.md 13:27 entry | 'falsely claimed' misattributes: reflog shows memory commit 13:12, Giovanni's push 13:15. hot.md was TRUE when written and expired 3min later, falsified by the push it recorded as pending. No prior session erred; the claim's shelf life was the human action it named.
+
+## [2026-07-10 14:14] adr | F10 — spec vendoring cadence + staleness gate | DECIDED (grill-with-docs, live canon). F10's premise was FALSE: the 2026-06-17 ADR never froze spec/, it designed the refresh -> new ADR EXTENDS it. spec/=build authority; fail-closed detector gates /spec-to-change; refresh is code-free + triage. Inbound only. NOT built.
