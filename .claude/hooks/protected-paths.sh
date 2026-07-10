@@ -4,7 +4,9 @@
 # running with --dangerously-skip-permissions (hooks still fire there).
 #
 # Tier 1 — blocked in EVERY mode (no legitimate Claude-edit path exists):
-#   spec/**            immutable v0.3-MVP baseline (CLAUDE.md invariant 11)
+#   spec/**            never hand-edited; only scripts/sync-spec.sh writes it, via
+#                      rsync in Bash (CLAUDE.md invariant 11). "Never edit" is not
+#                      "never changes": spec/ chases canon by deliberate refresh.
 #   openspec/specs/**  generated truth — changes only via `openspec archive` (Bash)
 #   **/APPROVED        the human's signature; on explicit approval the marker is
 #                      created via Bash `touch` (GUIDE.md §2.5), never via Write
@@ -56,7 +58,7 @@ esac
 # --- tier 1: immutable in every mode ------------------------------------------
 case "$REL" in
   spec/*)
-    deny "spec/** is the immutable v0.3-MVP baseline and is never edited (CLAUDE.md invariant 11)." ;;
+    deny "spec/** is never hand-edited (CLAUDE.md invariant 11). It is a vendored mirror of canon: only 'scripts/sync-spec.sh' writes it, as its own code-free commit. To pick up a canon change, refresh — do not edit." ;;
   openspec/specs/*)
     deny "openspec/specs/** is generated truth — it changes only via 'openspec archive <change>' run in Bash." ;;
 esac

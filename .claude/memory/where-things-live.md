@@ -6,7 +6,8 @@ type: reference
 
 | File / dir | What | Written by | Cadence |
 |---|---|---|---|
-| `spec/` | Immutable v0.3-MVP handoff (source: A_Simple_Test repo @ e55dfc8) | nobody (frozen) | never |
+| `spec/` | v0.3-MVP build authority: a vendored mirror of canon `c-mless/documentation:handoff/`, pinned in `spec.lock` | `scripts/sync-spec.sh` only (never by hand) | deliberate refresh, gated by `scripts/spec-staleness.sh` |
+| `spec.lock` | The pin: which canon commit `spec/` mirrors | `scripts/sync-spec.sh` | with every refresh |
 | `openspec/specs/` | Current behavioral truth | `openspec archive` only | per archived change |
 | `openspec/changes/<x>/` | In-flight change artifacts + `progress.md` + `APPROVED` (human only) | /spec-to-change + ralph iterations | continuous |
 | `hot.md` | ~500-word state cache (overwrite, never append) | every ralph iteration + interactive sessions | every significant op |

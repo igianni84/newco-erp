@@ -1,17 +1,27 @@
 ---
 name: spec-to-change
-description: Convert a slice of the frozen NewCo ERP spec (spec/) into a validated OpenSpec change ready for the ralph loop. Use when the user asks to prepare/convert/draft a change, kick off a module or build-workplan phase, or says "spec to change" / "prepara il change" / "prossimo change". Interview-driven, zero invention, every requirement cites its spec source.
+description: Convert a slice of the vendored NewCo ERP spec (spec/) into a validated OpenSpec change ready for the ralph loop. Use when the user asks to prepare/convert/draft a change, kick off a module or build-workplan phase, or says "spec to change" / "prepara il change" / "prossimo change". Interview-driven, zero invention, every requirement cites its spec source.
 ---
 
 # Spec → OpenSpec Change
 
-You convert a scoped slice of `spec/` (the immutable v0.3-MVP handoff) into one OpenSpec change under `openspec/changes/<name>/`. The output must be implementable by autonomous one-task-per-iteration loops with NO access to this conversation — everything the implementer needs goes into the artifacts.
+You convert a scoped slice of `spec/` (the v0.3-MVP build authority — a vendored mirror of canon, never hand-edited) into one OpenSpec change under `openspec/changes/<name>/`. The output must be implementable by autonomous one-task-per-iteration loops with NO access to this conversation — everything the implementer needs goes into the artifacts.
 
 ## Inputs
 
 The user names a target: a build-workplan phase, a module, or a capability slice (e.g. "Module 0 — product spine, first slice"). If ambiguous, ask before reading everything.
 
 ## Process
+
+### 0. Staleness gate — fail-closed, run BEFORE reading anything
+
+`spec/` does not float to canon; it *chases* canon by deliberate refresh. No change is authored against a stale snapshot. (ADR `decisions/2026-07-10-spec-vendoring-cadence-and-staleness-gate.md`.)
+
+Run `scripts/spec-staleness.sh` and branch on its exit code:
+
+- **0 — fresh.** `spec/` is at the canon tip. Proceed to step 1.
+- **1 — stale.** STOP. Report the commit distance. A refresh is `scripts/sync-spec.sh`, which is **its own code-free commit** (`spec/` + `spec.lock`, nothing else) followed by a triage pass over the diff — and it moves the `../documentation` clone's HEAD, so it needs the user's explicit go-ahead. Do **not** author against the stale snapshot, and do **not** settle for fetching "just the module I care about": canon does not respect our module boundaries (`MVP-DEC-033` renamed Module 0 events while we were working Module K).
+- **2 — unknown.** STOP. The canon was unreachable, so **no verdict was rendered**. "Unknown" is not "fresh". Tell the user the gate could not run and ask how to proceed.
 
 ### 1. Ground yourself (use subagents for the big reads)
 - `spec/05-release/Build_Workplan_v0.3-MVP.md` — sequencing + where this slice sits
