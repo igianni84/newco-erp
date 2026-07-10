@@ -961,3 +961,9 @@
 ## [2026-07-10 14:21] docs | CLAUDE.md + validation README + lessons.md | Retired the 'frozen spec' folklore at its sources: CLAUDE.md spec-authority + invariant 11 (immutability -> write-discipline), verdict README dated-banner, mini-ADR trigger re-scoped to 'newer than spec.lock'. Historical uses left intact. Giovanni-authorised protected-file edit.
 
 ## [2026-07-10 14:23] docs | F10 ADR + tracker §1 | Added Execution constraints: every surface the ADR prescribes (spec/**, .claude/settings.json, hooks/**, skills/**) is a protected file, and sync-spec.sh moves Giovanni's documentation clone HEAD. Also: re-measure canon, 9eaa341 is an observation not a constant.
+
+## [2026-07-10 19:12] F10-step1 | scripts/spec-staleness.sh + SessionStart hook + /spec-to-change gate | fail-closed detector (exit 0/1/2); 12 tests pin both empty-answer modes; SQLite+PG17 2401/2401; PHPStan 0, Pint clean; commit aaec37e
+
+## [2026-07-10 19:12] F10-step2 | sync-spec.sh refresh spec/ + spec.lock | code-free commit d435742; pin 4f48277->b7f5ae7 (MVP-DEC-037, re-measured from remote); suite IDENTICAL 2401/2401 SQLite+PG17 pre/post (invariant held)
+
+## [2026-07-10 19:12] F10-step3 | canon-diff triage -> tracker RM rows + F13 | 4 read-only subagents over 30 DECs; opened RM-28..RM-33 + RM-05 relabel (034a); dismissals+doc-sync flag(028)+human-eye flags in F13; 034b not-ours

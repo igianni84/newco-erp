@@ -7,29 +7,26 @@ updated: 2026-07-10
 # Hot Cache
 
 ## Last Updated
-**2026-07-10 — F10 DECIDED (ADR landed); RM-26 + RM-27 opened; the "frozen spec" folklore retired at its sources.** Nothing in flight; tree clean; `openspec/changes/` holds only `archive/`. Doc-only session, zero `app/` diff. `CLAUDE.md` §Spec-authority + invariant 11 reworded (protected file, Giovanni-authorised).
+**2026-07-10 — F10 EXECUTED end-to-end: fail-closed staleness detector + spec-refresh to canon + full triage.** Three steps, two commits + a triage commit, **not yet pushed** (close-ritual push gate: ask Giovanni). `openspec/changes/` holds only `archive/`; tree clean after the triage commit.
 
 ## Build & Quality Status
-- **SQLite 2389/2389** (12 404 assn) · **PG17 2389/2389** (12 411 assn) — PG surplus = the PG-only concurrency + CHECK lanes. Untouched today.
-- PHPStan max **0** · Pint clean · `openspec validate --all --strict` **10/10**.
-- Suite: `php -d memory_limit=-1 vendor/bin/pest` (`artisan test` OOMs). PG17 lane: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`).
+- **SQLite 2401/2401** (12 435 assn) · **PG17 2401/2401** (12 442 assn) — +12 over the prior 2389 = the new `SpecStalenessDetectorTest`. **The refresh moved ZERO tests** (2401 = 2401 IDENTICAL before/after, both engines — ruling-3 invariant proven).
+- PHPStan max **0** · Pint clean. `spec/` now @ canon **`b7f5ae7` = MVP-DEC-037** (`spec.lock` synced).
+- Suite: `php -d memory_limit=1G vendor/bin/pest` (`artisan test` OOMs — the `-d` flag doesn't reach the child). PG17: prefix `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=newco_test DB_USERNAME=newco DB_PASSWORD=newco` (container `pg`, reused).
+- **Staleness detector:** `scripts/spec-staleness.sh` (exit 0 fresh / 1 stale / 2 unknown). Wired at `SessionStart` (warn-only) + as a `/spec-to-change` step-0 precondition.
 
 ## Active Change & Next Task
-- **None in flight.** Read `docs/validation/Remediation_Tracker.md` **§1 ▶️ NEXT** first — source of truth for what remains.
-- **Next = the spec-refresh change**, per ADR [`2026-07-10-spec-vendoring-cadence-and-staleness-gate`](decisions/2026-07-10-spec-vendoring-cadence-and-staleness-gate.md): (a) build the **fail-closed staleness detector** + wire `SessionStart` + amend `/spec-to-change`; (b) run `sync-spec.sh` as a **code-free commit** (`spec/` + `spec.lock` only); (c) **triage pass** over the +502/−378 diff → an RM row per divergence. ⚠️ **Decided ≠ done** — no detector exists, no refresh has run.
-- **Then RM-26** (+ RM-27), never before: canon calls `MVP-DEC-024` launch-blocking; after the refresh it is simply *in* `spec/`, so no mini-ADR.
-- **Canon = `9eaa341` (MVP-DEC-036)**, **35 commits** past pin `4f48277`. It moved 6 DECs *during* the investigation.
+- **None in flight.** Read `docs/validation/Remediation_Tracker.md` **§1 ▶️ NEXT** first.
+- **Next = RM-26** (+ RM-27) Producer-retirement dual-control (`MVP-DEC-024`, S, reuses RM-08 primitive). The F10 authoring gate is clear: `spec/` is at canon, so `MVP-DEC-024` is simply *in* `spec/`.
+- **Refresh-surfaced batch (Round 4, F13):** RM-28 `AC-K-J-7a` compensating control (real FLOOR gap, S, runbook, NOT blocked) · RM-29 Intrinsic-SKU event rename (`033`, M, needs ADR for A-vs-B scope — persisted `name` is a hand-pinned const, no history yet → near-zero-cost now) · RM-30 dedup residual (`023`) · RM-31 Case Config (`025`) · RM-33 `BR-K-Customer-3` (`021`, maybe assertion-only) · RM-32 transactional email (`035`, 🔵 deferred).
 
 ## Blockers & Decisions Needed
-- **None blocking.** Queued decisions, each with a *gate*:
-  - **F12** — `Profile ↔ Customer` lock-order inversion can deadlock (`40P01`); pre-existing, no test sees it. Gate: before the producer-facing HTTP surface.
-  - **Two canon escalations on capacity** — who evaluates the seat floor (`BR-A-Mutability-1` floors on *vouchers issued*, `AC-K-J-15` on *seats*); K PRD §1:77 (*S enforces*) vs §13 (*K*). Gate: before Module A's capacity-adjust.
-  - **Outbound escalation channel** — 18 canon issues, all from the TS team, none ours. Named unresolved in the F10 ADR; **Giovanni's own ADR.**
-- **Known divergences the refresh will surface:** `MVP-DEC-033` renames `SellableSKU*`→`IntrinsicSKU*` (we ship all 3; it rewrites `event_type` in the append-only 10-yr log — a migration question) · `034(a)` `XM-19` "NOT met" → **Defer** (and vindicates RM-05's zero-storage read-port) · `034(c)` **real gap**: the `AC-K-J-7a` compensating manual control is absent here · `035` reverses *"K never sends"*. `034(b)` verified **not ours**.
-- **Also open:** F2 (🟥 go-live) · F5 · F6 · F7 · F9 (**OTP**, watch) · F11 (`DemoSeeder` not re-runnable on SQLite) · two §2.7 follow-ups.
+- **Push pending** — 3 local commits (`aaec37e` detector, `d435742` refresh, triage) not pushed. Ask before pushing (close-ritual push gate).
+- **Doc-sync flag for Giovanni (protected files):** `MVP-DEC-028` renamed `ownership_flag` `CRURATED→NEWCO`; still `CRURATED` at **CLAUDE.md:73** + **CONTEXT.md:450/453**. Hand-edit when convenient; no shipped code depends on it (Module B unbuilt).
+- **Root `CLAUDE.md`** still says `spec/` "immutable v0.3-MVP handoff baseline" — the wording the F10 ADR flagged for your explicit approval (protected; unedited).
+- Queued (gate, not date): **F12** lock-order inversion (before producer HTTP surface) · two canon capacity escalations (before Module A) · **F2** prod operator-mgmt (🟥 go-live). Also: F5/F6/F7/F9/F11.
 
 ## Open Patterns
-- **A word repeated across artefacts becomes a constraint, and nothing reds.** F10 asked to supersede an ADR that had *authorised* the very thing it wanted — "frozen" was folklore, never a decision. Quote the decision; prose *about* it drifts.
-- **A memory file that asserts a remote's state expires by design.** *"11 commits ahead"* was true 13:12, false 13:15 — falsified by the push it recorded as pending. **Ask the remote; never remember it.** Same root as the canon-staleness gap.
-- **A vacuous gate is worse than no gate** — the first staleness detector compared an *empty string* to the pin and reported STALE. Fail closed. (3rd confirmation.)
-- Full set in `lessons.md`.
+- **Ask the remote; never remember its state.** The detector caught canon at `b7f5ae7`, one commit past the ADR's own `9eaa341` — the number came from the remote, not the document. Exactly F10's thesis, proven mid-execution.
+- **A vacuous gate is worse than no gate.** `ls-remote` on a reachable remote with an absent ref exits 0 with empty stdout — so exit-status alone would read "" as STALE. The detector also requires a 40-hex sha. Fail closed. (4th confirmation.)
+- **A refresh changes what "correct" means, never what the code does** — zero test moved. Full set in `lessons.md`.
