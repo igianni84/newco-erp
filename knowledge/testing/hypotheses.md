@@ -73,17 +73,6 @@ Two corollaries worth grepping for:
 
 **Applies to.** Every `qty − issued ≥ 0` (Module A, invariant 1) and `physical_in_storage − reserved − … ≥ 0` (Module B, invariant 2) enforcement site — both are check-then-act over a derived aggregate and will need the same lock, the same asymmetry, and the same two-part proof. Also the `domain_events` per-consumer delivery ledger's `lockForUpdate` winner-election (`InlineDeliveryExecutor:154`).
 
-## A Pest global test helper is declared once per PROCESS — a duplicate name is a fatal redeclare that kills the whole run
-
-**Hypothesis.** Helper `function`s declared at the top level of a Pest test file land in the **global namespace of the single PHP process** that runs the suite. PHPUnit's `TestSuiteLoader` `include`s every selected test file while *building* the suite — before any test executes — so two files declaring the same helper name abort the entire run with `Cannot redeclare …`, not just the offending file, and not as a shadow. This is invisible while a helper is unique, and surfaces the moment a second test file wants the same fixture (the common case: every file testing one capability wants the same "arrange the aggregate into state X" helper).
-
-**Prescription.** Give each test file's fixture helper a **file-distinct name** (`clubAtCapacity`, `seatClubTo`, `seatLedgerQueries`, …) rather than the most natural one. When several files genuinely need the same arrangement, promote it to a factory state, a `tests/Support/` class, or a Pest `uses()`-bound trait method — never a second global `function`. Do not "reuse" another test file's helper by calling it: the coupling is invisible to `grep`, survives only because both files happen to be loaded, and inverts the file's own arrange-act-assert locality.
-
-**Confirmations: 1/3** (need 2 more distinct changes).
-- `parties-hero-package` task 2.2 — `ProfileApprovalCapacityGateTest` needed the same at-parity arrangement `ProfileBirthStateRoutingTest` had already named `clubAtCapacity()`. Verified empirically with a throwaway probe file: the duplicate declaration fataled inside `TestSuiteLoader::load()`, before a single test ran. Renamed to `seatClubTo()` / `freeOneSeat()`. *(Confirmation date = archive-dir date once archived.)*
-
-**Applies to.** Every capability whose tests span more than one file — which is most of them. Tasks 3.1 / 3.2 / 6.1 of this change each want a "Club at exact parity" fixture and each need their own name. Also a live hazard for the Module A / B oversell suites, which will want `allocationAtCapacity()` / `stockAtFloor()` in several files apiece.
-
 ## A guard-ORDER claim is provable only NEGATIVELY — assert the skipped gate left no trace, never the reason it reported
 
 **Hypothesis.** When a transition evaluates several rejection gates in a mandated order (from-state → grace → capacity; or KYC → sanctions → Hold), the natural test — *"a past-grace call reports the grace reason"* — **does not discriminate the orderings**. Whenever the later gate would also have passed, both orders report the same reason, so the test is green against the wrong implementation; and when the later gate would have failed, the assertion merely restates the guard it is meant to be checking. The property that actually distinguishes them is what the skipped gate **did not do**: it emitted no query, took no lock, made no port call. Assert that absence — `DB::listen` filtered to the later gate's table, `expect($statements)->toBeEmpty()`; or a counting fake of the port that must record zero calls.
