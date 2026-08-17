@@ -17,3 +17,15 @@
 **Confirmations (dated, cross-change).** 2026-06-15 `catalog-product-spine` (`ProductMaster::wineAttributes()` `hasOne`, `ProductVariant::master()` `belongsTo`, `CompositeSku::constituents()` `belongsToMany`); 2026-06-15 `parties-core` (Club→Producer, ProducerAgreement's two FKs, Customer/Account, Profile — all within Module K); 2026-06-16 `parties-producer-lifecycle` (`Producer::clubs()` — first within-module inverse `hasMany`); 2026-06-16 `catalog-lifecycle-approval` (gates read a sibling spine's `lifecycle_state` directly within Module 0). In every case `ModuleBoundariesTest` stayed 2/2, no amendment.
 
 **Applies to.** Modeling an entity's own sub-tables or same-module parent/child links. The cross-module ban still holds for any reference to **another** module's tables.
+
+## An Action injects `DomainEventRecorder` + `ActorContext` IFF it records a domain event — an audit-only / eventless Action injects neither
+
+**Rule.** A module write Action's constructor dependencies are decided by ONE question: *does this Action record a domain event?*
+- **Evented** Action (a spine `Create*`, an FSM transition that emits, a screening/completion recorder): injects **`DomainEventRecorder` + `ActorContext`**, and inside its single `DB::transaction` writes the model **and** `$recorder->record(...)` with the actor envelope.
+- **Eventless / audit-only** Action (a KYC transition that only mutates state under design L3; a *thin* satellite-entity `Create*` with no event): injects **nothing** — no constructor at all — and is invoked via a zero-arg container build `app(X::class)->handle($id)`. An injected-but-unused recorder is dead code the codebase deliberately avoids.
+
+Decide by behaviour, not surface symmetry: sibling Actions in one slice legitimately differ in their constructor because one emits and one doesn't. When a formerly-eventless Action later needs to emit (or to orchestrate a within-module sibling), add the dependency **then**. A multi-event Action selects the event class by a `match (true)` on the outcome and reads `$event::NAME` / `$event::payload($model)` — no base class, no magic string; a `default => null` arm absorbs the event-silent outcomes.
+
+**Confirmations (dated, cross-change).** 2026-06-17 `parties-compliance` (origin & richest — the KYC Actions have NO constructor per design L3; `RecordCustomerScreening` is the first *evented* compliance Action and injects recorder+actor like the spine); 2026-06-18 `parties-holds` (`PlaceHold` evented); 2026-06-19 `parties-membership-activation`; 2026-06-19 `parties-membership-suspension`; 2026-07-02 `parties-anonymisation` (the *thin* eventless `CreateCustomerAddress` — `Model::create()` only, no recorder, no transaction — is the documented counter-example); 2026-07-08 `parties-module-k-br-guards`.
+
+**Applies to.** Every module write Action. Pairs with the platform-substrate rule above (the recorder carries a **`string`** module identity across the boundary) and the closing-chain integration rule in `knowledge/testing/rules.md` (factories bypass the recorder, so they record nothing).
