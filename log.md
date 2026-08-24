@@ -969,3 +969,5 @@
 ## [2026-07-10 19:12] F10-step3 | canon-diff triage -> tracker RM rows + F13 | 4 read-only subagents over 30 DECs; opened RM-28..RM-33 + RM-05 relabel (034a); dismissals+doc-sync flag(028)+human-eye flags in F13; 034b not-ours
 
 ## [2026-07-10 19:18] F10-push | origin/main | 3 F10 commits pushed (aaec37e detector, d435742 refresh, b42d0f5 triage); main==origin verified via git ls-remote
+
+## [2026-08-24 06:27] dreaming | 2026-08-24 weekly, since 06-16 (23 archives) | 1 promoted (class-absence hyp→testing rule); 1 net-new laravel rule (nullable belongsTo/hasOne local+===null); 2 rules confirmed w/ dated obs (Pint {@see}, Pest global helper); 1 dupe hypothesis dedup'd; 5 Proposed
