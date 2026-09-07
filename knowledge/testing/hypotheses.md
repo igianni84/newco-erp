@@ -2,18 +2,6 @@
 
 > A hypothesis carries `Confirmations: N/3`. Confirmed 3× (dated) → promote to `rules.md`. Contradicted → note the contradiction and demote.
 
-## Prove a class is ABSENT by listing the directory at runtime — never `class_exists('<literal>')` (PHPStan max flags it impossible)
-
-**Hypothesis.** A scope guard that asserts a class / Action / Event does **not** exist must not use `class_exists('App\…\Absent')` with a string literal — PHPStan max evaluates the literal and flags the call `function.impossibleType` ("always false", dead code). Instead list the directory at runtime — `glob(app_path('Modules/<M>/<Dir>/*.php')) ?: []` (the `?: []` is required: `glob` returns `list<string>|false` and `array_map` rejects `false`), or a `RecursiveIteratorIterator` — map to basenames, and assert the **set** (`expect($names)->not->toContain('Absent')`, `toEqualCanonicalizing([...])`). A `class_exists($var)` on a variable derived from the listing is fine (not a resolvable literal). Bonus: a directory scan also catches a renamed-but-still-present class that a fixed `class_exists` list would miss.
-
-**Confirmations: 2/3** (need 1 more distinct change).
-- 2026-06-15 `catalog-product-spine` — `CatalogNamingCascadeTest` proves absence of a forbidden naming pattern by a recursive walk of the Catalog subtree (`getBasename('.php')` → `array_filter` → `toBe([])`).
-- 2026-06-16 `parties-producer-lifecycle` — `SupplyLifecycleChainTest` states the rule + the PHPStan reason explicitly; `glob(...) ?: []` scope-guards both `Actions/` (only the six supply transitions) and `Events/` (no demand-side event exists).
-- *(Related ancestor, NOT counted: 2026-06-12 `foundations-modules-skeleton` `ModuleConformanceTest` scans the modules dir for set-equality — same directory-scan idiom, but its driver is "no stray entries", not the `class_exists`-is-impossible mechanism.)*
-- *(Related mechanism, NOT counted: `catalog-module-0-completeness-sweep` task 5.2 — `is_a(A::class, B::class, allow_string: true)` asserting two exception classes are unrelated drew the SAME `function.impossibleType`. Same root — PHPStan max resolves class-name literals, so any runtime check of a **static** class relation is dead code — but the prescription differs: there is no runtime substitute to reach for, because the type system has already proven it. **Delete the assertion**; where the relation carries real meaning, let `toThrow(Class::class, 'message fragment')` carry it and prove it bites by mutation. Generalisation to watch: the hypothesis is really "PHPStan max proving your test assertion means the assertion is not a test" — the directory-scan is one prescription of several.)*
-
-**Applies to.** Any test that proves a class / Action / Event is absent (a category-neutrality or scope guard).
-
 ## A red-green FSM state-shape flip must invert EVERY observer in the SAME commit — enumerate by grep, sort into four kinds; the isolated writer's own contract + the source-scan guards stay diff-free
 
 **Hypothesis.** When a change alters a state-machine's *shape* (a durable resting state becomes a transient pass-through, two steps merge into one atomic transition, a state is removed), every test that observed the OLD shape must be inverted in the **same commit** so the suite never goes red mid-change. Enumerate them exhaustively by grepping the changed state token + the driving Action's class name across `tests/` **before** editing — the design's enumeration is a checklist, the grep is the proof it is complete. Sort the hits into four kinds, each with a distinct action:
@@ -72,17 +60,6 @@ Two corollaries worth grepping for:
 - `parties-hero-package` task 1.2 — `Support\ClubSeatOccupancy::lockAndCountOccupiedSeats()` locks the `parties_clubs` row before counting `Active`+`Suspended` Profiles. The ordering *is* the oversell fix (design D3), and `AC-K-J-13`'s sequential 51st approve passes green **against the racy implementation**, so nothing else in the suite would have caught its removal. Pinned by SQL statement order; the two-connection proof is task 3.2, PG17 only. *(Confirmation date = archive-dir date once archived.)*
 
 **Applies to.** Every `qty − issued ≥ 0` (Module A, invariant 1) and `physical_in_storage − reserved − … ≥ 0` (Module B, invariant 2) enforcement site — both are check-then-act over a derived aggregate and will need the same lock, the same asymmetry, and the same two-part proof. Also the `domain_events` per-consumer delivery ledger's `lockForUpdate` winner-election (`InlineDeliveryExecutor:154`).
-
-## A Pest global test helper is declared once per PROCESS — a duplicate name is a fatal redeclare that kills the whole run
-
-**Hypothesis.** Helper `function`s declared at the top level of a Pest test file land in the **global namespace of the single PHP process** that runs the suite. PHPUnit's `TestSuiteLoader` `include`s every selected test file while *building* the suite — before any test executes — so two files declaring the same helper name abort the entire run with `Cannot redeclare …`, not just the offending file, and not as a shadow. This is invisible while a helper is unique, and surfaces the moment a second test file wants the same fixture (the common case: every file testing one capability wants the same "arrange the aggregate into state X" helper).
-
-**Prescription.** Give each test file's fixture helper a **file-distinct name** (`clubAtCapacity`, `seatClubTo`, `seatLedgerQueries`, …) rather than the most natural one. When several files genuinely need the same arrangement, promote it to a factory state, a `tests/Support/` class, or a Pest `uses()`-bound trait method — never a second global `function`. Do not "reuse" another test file's helper by calling it: the coupling is invisible to `grep`, survives only because both files happen to be loaded, and inverts the file's own arrange-act-assert locality.
-
-**Confirmations: 1/3** (need 2 more distinct changes).
-- `parties-hero-package` task 2.2 — `ProfileApprovalCapacityGateTest` needed the same at-parity arrangement `ProfileBirthStateRoutingTest` had already named `clubAtCapacity()`. Verified empirically with a throwaway probe file: the duplicate declaration fataled inside `TestSuiteLoader::load()`, before a single test ran. Renamed to `seatClubTo()` / `freeOneSeat()`. *(Confirmation date = archive-dir date once archived.)*
-
-**Applies to.** Every capability whose tests span more than one file — which is most of them. Tasks 3.1 / 3.2 / 6.1 of this change each want a "Club at exact parity" fixture and each need their own name. Also a live hazard for the Module A / B oversell suites, which will want `allocationAtCapacity()` / `stockAtFloor()` in several files apiece.
 
 ## A guard-ORDER claim is provable only NEGATIVELY — assert the skipped gate left no trace, never the reason it reported
 
