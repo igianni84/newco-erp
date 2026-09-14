@@ -17,3 +17,14 @@
 - *(Related, NOT counted: the 2026-06-16 lifecycle changes build a **transition**-action variant on the same `DB::transaction` + `record` shape — a descendant, not a fresh create-entity spine. The next slice that stands up a new create-entity spine is the 3rd confirmation → promote.)*
 
 **Applies to.** Any new evented domain entity in a module slice.
+
+## A NON-evented entity gets a THIN `Create*` action — a single `Model::create()`, no `*Created` event, no `DB::transaction` (`CreateCustomerAddress` is the reference)
+
+**Hypothesis.** The evented spine template above is for entities that emit a `*Created` domain event. An entity that is **not** an inter-module event source — a compliance/minimal-sync record, an audit-only ledger row — takes the *inverse* shape: a thin `Create*` action doing a single `Model::create()`, recording **no** domain event and needing **no** `DB::transaction` (the recorder's level-0 atomicity guard only matters when a write and an `record()` must be atomic; with no emit there is nothing to make atomic). The entity still keeps the persistence half of the spine (`$guarded = []`, a typed `newFactory()`, a fixture factory). Deciding which shape a new entity takes is a design question answered by one fact: *does creating it emit a domain event other modules consume?* If no, thin; if yes, the full evented spine.
+
+**Confirmations: 2/3** (need 1 more distinct change).
+- 2026-07-02 `parties-anonymisation` — "Thin `Create*` action = no event, no transaction … A creation Action that records NO domain event and does a single `Model::create()` needs neither a `DB::transaction`… `CreateCustomerAddress` is the reference."
+- 2026-07-03 `parties-enhanced-kyc-threshold` — task 4.1 "a THIN `Create*` action mirroring `CreateCustomerAddress` (no event, no transaction)"; the event (`CustomerEnhancedKycReviewRequired`) and the row-create are deliberately **split** across an event-free `CreateComplianceReview` and the `Evaluate…` orchestrator.
+- *(Related, NOT counted: 2026-06-23 `club-credit` stands up the new `ClubCredit` entity audit-only — `IssueClubCredit` records no domain event — but it is an `Issue*` domain-verb writer with an `audit_records` write, not the thin `Create*` shape; a cousin, not a third confirmation.)*
+
+**Applies to.** Every new persistence entity that is not an inter-module event source — compliance/minimal-sync/address-style records, and audit-only ledgers. Pairs with the evented spine hypothesis above: the two are the two halves of "how do I stand up a new entity?".
